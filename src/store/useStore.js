@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { computeStartTime, computeEndTime } from '../lib/rounding.js';
 import { toNotionDateTime, formatDateDDMMYYYY } from '../lib/format.js';
+import { DEFAULT_PROPERTY_MAP } from '../lib/constants.js';
+import { t } from '../lib/i18n.js';
 
 const api = window.notionAPI;
 
@@ -10,9 +12,16 @@ const idleTimer = {
   roundedStart: null,
   startISO: null,
   rawStart: null,
+  propertyMap: null,
   elapsedSeconds: 0,
   tickInterval: null,
 };
+
+// Projects saved before property mapping existed have no propertyMap
+const withDefaultPropertyMap = (project) => ({
+  ...project,
+  propertyMap: { ...DEFAULT_PROPERTY_MAP, ...(project.propertyMap || {}) },
+});
 
 let toastSeq = 0;
 
@@ -21,6 +30,7 @@ export const useStore = create((set, get) => ({
   apiKey: '',
   projects: [],
   alwaysOnTop: true,
+  roundingEnabled: true,
 
   // UI
   view: 'timer', // 'timer' | 'settings'
@@ -57,14 +67,16 @@ export const useStore = create((set, get) => ({
 
   init: async () => {
     const settings = await api.getSettings();
+    const projects = (settings.projects || []).map(withDefaultPropertyMap);
     set({
       apiKey: settings.apiKey || '',
-      projects: settings.projects || [],
+      projects,
       alwaysOnTop: settings.alwaysOnTop !== false,
+      roundingEnabled: settings.roundingEnabled !== false,
     });
 
     // First launch: send the user to Settings
-    if (!settings.apiKey || !(settings.projects || []).length) {
+    if (!settings.apiKey || !projects.length) {
       set({ view: 'settings' });
     }
 
@@ -72,7 +84,7 @@ export const useStore = create((set, get) => ({
     if (settings.activeTimer && settings.activeTimer.notionPageId) {
       set({ recoveredTimer: settings.activeTimer });
     } else if (settings.lastUsedProjectId) {
-      const exists = (settings.projects || []).some((p) => p.id === settings.lastUsedProjectId);
+      const exists = projects.some((p) => p.id === settings.lastUsedProjectId);
       if (exists) get().selectProject(settings.lastUsedProjectId);
     }
   },
@@ -83,9 +95,21 @@ export const useStore = create((set, get) => ({
   },
 
   addProject: async (project) => {
-    const projects = [...get().projects, project];
+    const projects = [...get().projects, withDefaultPropertyMap(project)];
     await api.saveSettings({ projects });
     set({ projects });
+  },
+
+  updateProject: async (updatedProject) => {
+    const projects = get().projects.map((p) =>
+      p.id === updatedProject.id ? withDefaultPropertyMap(updatedProject) : p
+    );
+    await api.saveSettings({ projects });
+    set({ projects });
+    // If this is the selected project, re-fetch deelprojecten in case the title prop changed
+    if (get().selectedProjectId === updatedProject.id) {
+      get().selectProject(updatedProject.id);
+    }
   },
 
   deleteProject: async (projectId) => {
@@ -108,6 +132,11 @@ export const useStore = create((set, get) => ({
     set({ alwaysOnTop: value });
   },
 
+  toggleRounding: async (value) => {
+    await api.saveSettings({ roundingEnabled: value });
+    set({ roundingEnabled: value });
+  },
+
   // ---- Project / deelproject selection ----
 
   selectProject: async (projectId) => {
@@ -121,14 +150,17 @@ export const useStore = create((set, get) => ({
     api.saveSettings({ lastUsedProjectId: projectId });
     if (!project) return;
     try {
-      const deelprojecten = await api.fetchDeelprojecten(project.deelprojectenDbId);
+      const deelprojecten = await api.fetchDeelprojecten(
+        project.deelprojectenDbId,
+        project.propertyMap
+      );
       // Ignore stale responses if the user switched projects meanwhile
       if (get().selectedProjectId !== projectId) return;
       set({ deelprojecten, deelprojectenLoading: false });
     } catch (err) {
       if (get().selectedProjectId !== projectId) return;
       set({ deelprojectenLoading: false });
-      get().addToast({ type: 'error', message: `Could not load deelprojecten: ${err.message}` });
+      get().addToast({ type: 'error', message: `${t('toastDeelprojectenError')}: ${err.message}` });
     }
   },
 
@@ -141,7 +173,8 @@ export const useStore = create((set, get) => ({
     const deelproject = state.deelprojecten.find((d) => d.id === state.selectedDeelprojectId);
     if (!project || !deelproject) return;
 
-    const roundedStart = computeStartTime();
+    // With rounding off the exact timestamp is used; no 15-minute logic applies
+    const roundedStart = state.roundingEnabled ? computeStartTime() : new Date();
     const startISO = toNotionDateTime(roundedStart);
     const title =
       state.description.trim() ||
@@ -154,9 +187,10 @@ export const useStore = create((set, get) => ({
         title,
         startISO,
         deelprojectId: deelproject.id,
+        props: project.propertyMap,
       }));
     } catch (err) {
-      state.addToast({ type: 'error', message: `Could not start timer: ${err.message}` });
+      state.addToast({ type: 'error', message: `${t('toastStartError')}: ${err.message}` });
       return;
     }
 
@@ -171,13 +205,20 @@ export const useStore = create((set, get) => ({
         deelprojectId: deelproject.id,
         deelprojectName: deelproject.name,
         description: state.description,
+        propertyMap: project.propertyMap,
       },
     });
-    get().beginTicking({ pageId, roundedStart, startISO, rawStart });
+    get().beginTicking({
+      pageId,
+      roundedStart,
+      startISO,
+      rawStart,
+      propertyMap: project.propertyMap,
+    });
   },
 
   /** Shared by startTimer and crash-recovery resume. */
-  beginTicking: ({ pageId, roundedStart, startISO, rawStart }) => {
+  beginTicking: ({ pageId, roundedStart, startISO, rawStart, propertyMap }) => {
     const tickInterval = setInterval(() => {
       set((s) => ({
         timer: {
@@ -193,6 +234,7 @@ export const useStore = create((set, get) => ({
         roundedStart,
         startISO,
         rawStart,
+        propertyMap,
         elapsedSeconds: Math.floor((Date.now() - rawStart.getTime()) / 1000),
         tickInterval,
       },
@@ -201,23 +243,24 @@ export const useStore = create((set, get) => ({
   },
 
   stopTimer: async () => {
-    const { timer, addToast } = get();
+    const { timer, roundingEnabled, addToast } = get();
     if (!timer.running) return;
 
-    const endTime = computeEndTime(timer.roundedStart);
+    const endTime = roundingEnabled ? computeEndTime(timer.roundedStart) : new Date();
     try {
       await api.stopTijdsregistratie({
         pageId: timer.notionPageId,
         startISO: timer.startISO, // exact value from creation, never re-rounded
         endISO: toNotionDateTime(endTime),
+        props: timer.propertyMap || DEFAULT_PROPERTY_MAP,
       });
     } catch (err) {
       // Keep the timer state intact so the user can retry
       addToast({
         type: 'error',
         sticky: true,
-        message: `Could not stop timer: ${err.message}`,
-        action: { label: 'Retry', run: () => get().stopTimer() },
+        message: `${t('toastStopError')}: ${err.message}`,
+        action: { label: t('toastStopRetry'), run: () => get().stopTimer() },
       });
       return;
     }
@@ -243,6 +286,7 @@ export const useStore = create((set, get) => ({
       roundedStart: new Date(recovered.roundedStart),
       startISO: recovered.roundedStart,
       rawStart: new Date(recovered.rawStart || recovered.roundedStart),
+      propertyMap: recovered.propertyMap || DEFAULT_PROPERTY_MAP,
     });
   },
 
@@ -250,16 +294,19 @@ export const useStore = create((set, get) => ({
     const recovered = get().recoveredTimer;
     if (!recovered) return;
     set({ recoveryBusy: true });
-    const endTime = computeEndTime(new Date(recovered.roundedStart));
+    const endTime = get().roundingEnabled
+      ? computeEndTime(new Date(recovered.roundedStart))
+      : new Date();
     try {
       await api.stopTijdsregistratie({
         pageId: recovered.notionPageId,
         startISO: recovered.roundedStart,
         endISO: toNotionDateTime(endTime),
+        props: recovered.propertyMap || DEFAULT_PROPERTY_MAP,
       });
     } catch (err) {
       set({ recoveryBusy: false });
-      get().addToast({ type: 'error', message: `Could not stop the recovered timer: ${err.message}` });
+      get().addToast({ type: 'error', message: `${t('toastRecoveryStopError')}: ${err.message}` });
       return;
     }
     api.saveSettings({ activeTimer: null });

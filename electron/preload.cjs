@@ -3,7 +3,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('notionAPI', {
   getSettings: () => ipcRenderer.invoke('store:get'),
   saveSettings: (data) => ipcRenderer.invoke('store:set', data),
-  fetchDeelprojecten: (dbId) => ipcRenderer.invoke('notion:fetchDeelprojecten', dbId),
+  fetchDeelprojecten: (dbId, props) => ipcRenderer.invoke('notion:fetchDeelprojecten', dbId, props),
   createTijdsregistratie: (params) => ipcRenderer.invoke('notion:create', params),
   stopTijdsregistratie: (params) => ipcRenderer.invoke('notion:stop', params),
   testConnection: (apiKey, dbId) => ipcRenderer.invoke('notion:test', apiKey, dbId),
