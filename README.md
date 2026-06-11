@@ -1,10 +1,14 @@
 # Notion Timer
 
 A lightweight, always-on-top Windows desktop widget for time tracking in Notion.
-Pick a project and deelproject, press **START**, and the app creates a
-*Tijdsregistratie* page in your Notion database. Press **STOP** and it fills in
-the end time — with the same 15-minute rounding logic as the Notion Start/Stop
-buttons (minimum duration: 15 minutes).
+Pick a workspace and project, press **START**, and the app creates a time entry
+page in your Notion database. Press **STOP** and it fills in the end time —
+optionally rounded to the nearest 15 minutes (with a 15-minute minimum
+duration), configurable per workspace.
+
+The app makes no assumptions about how your Notion is structured: you pick the
+databases and the fields to use from dropdowns, straight from your own Notion
+workspace.
 
 Built with Electron, React, Vite, Tailwind CSS and Zustand.
 
@@ -13,10 +17,10 @@ Built with Electron, React, Vite, Tailwind CSS and Zustand.
 ## Table of contents
 
 1. [One-time setup: Notion API key](#1-one-time-setup-notion-api-key)
-2. [Finding your database IDs](#2-finding-your-database-ids)
+2. [What your databases need](#2-what-your-databases-need)
 3. [Running the app in development](#3-running-the-app-in-development)
 4. [Building the Windows installer (.exe)](#4-building-the-windows-installer-exe)
-5. [First launch & configuring projects](#5-first-launch--configuring-projects)
+5. [First launch & configuring workspaces](#5-first-launch--configuring-workspaces)
 6. [How the app behaves](#6-how-the-app-behaves)
 7. [Troubleshooting](#7-troubleshooting)
 8. [Project structure](#8-project-structure)
@@ -30,49 +34,36 @@ integration:
 
 1. Go to [notion.so/my-integrations](https://www.notion.so/my-integrations) and
    click **New integration**.
-2. Name it **Notion Timer**, type **Internal**, and pick your workspace.
+2. Name it **Notion Timer**, type **Internal**, and pick your Notion workspace.
 3. Under *Capabilities*, make sure **Read content**, **Insert content** and
    **Update content** are enabled.
 4. Copy the **Internal Integration Secret** — this is the API key you'll paste
    into the app's Settings. It starts with `secret_` or `ntn_`.
 5. **Important — give the integration access to your pages.** In Notion, open
-   each project page that contains your databases (e.g. *Schrijf-ze-VRIJdag*,
-   *Recht in de Klas*, *Groen*):
+   each page that contains the databases you want to use:
    - Click `···` in the top-right corner
    - Choose **Connections** → **Connect to** → **Notion Timer**
    - Do this on the **parent page that contains the databases**, not just on
      the databases themselves. Child databases inherit the connection.
 
-Without step 5 the API key is valid but every database call returns
-"object not found".
+Without step 5 the API key is valid but the app's database dropdowns will be
+empty — the integration can only see databases it has been connected to.
 
-## 2. Finding your database IDs
+## 2. What your databases need
 
-Each project needs two database IDs: the **Tijdsregistraties** database and the
-**Deelprojecten** database.
+Each workspace in the app points at two Notion databases (they may be the same
+database if your setup requires it):
 
-1. In Notion, open the database **as a full page** (click the `⤢ Open as page`
-   icon, or open it from the sidebar).
-2. Look at the URL in your browser:
-   ```
-   https://www.notion.so/yourworkspace/a0d05621427382f3b7f687172523bc41?v=...
-                                       └──────────── this part ───────────┘
-   ```
-3. The 32-character string before `?v=` is the database ID. You can paste it
-   with or without dashes — both work
-   (`a0d05621-4273-82f3-b7f6-87172523bc41` and
-   `a0d05621427382f3b7f687172523bc41` are the same ID).
+- a **Time Entries database**, where the timer creates and completes entries.
+  It needs at least: a *title* property, a *date* property (stores the
+  start/end range), a *status* property with one option for "running" and one
+  for "completed", and a *relation* property that links to your projects.
+- a **Projects database**, whose records appear in the app's project picker.
+  Only its *title* property is used (for display and sorting).
 
-The databases must have these properties (the existing ones already do):
-
-| Database | Required properties |
-|---|---|
-| Tijdsregistraties | `Tijdsregistratie` (title), `Tijd` (date), `Status` (status, with options "Lopende tijdsregistratie" and "Voltooide tijdsregistratie"), `Gekoppeld deelproject` (relation) |
-| Deelprojecten | `Deelproject` (title) |
-
-If you have renamed any of these properties in Notion, you don't need to rename
-them back: open the project in the app (Settings → ✏️) and adjust the names
-under **Property name mapping**.
+Property names don't matter — when you add a workspace, the app reads the
+database schema and lets you pick each field from a dropdown showing only
+properties of the right type.
 
 ## 3. Running the app in development
 
@@ -133,21 +124,25 @@ use Windows *Settings → Apps* like any other program.
 - To bump the version shown in the installer, change `"version"` in
   `package.json`.
 
-## 5. First launch & configuring projects
+## 5. First launch & configuring workspaces
 
 On first launch the app opens on the **Settings** screen:
 
 1. Paste your **Notion API key** and click **Test connection & save**.
-2. Click **+ Add project**. Enter:
-   - **Display name** — anything you like, e.g. `Schrijf-ze-VRIJdag`
-   - **Tijdsregistraties DB ID** — see [section 2](#2-finding-your-database-ids)
-   - **Deelprojecten DB ID** — same
-3. Optionally expand **Property name mapping** if your Notion property names
-   differ from the defaults (only needed if you renamed properties in Notion).
-4. Click **Save & Test** — the app verifies both databases are reachable with
-   your key before saving. If this fails, re-check section 1 step 5.
-5. Repeat for each project, then click `←` to go to the timer. You can edit a
-   project later via the ✏️ button next to it.
+2. Click **+ Add workspace**. The modal walks you through it:
+   - **Name** — anything you like.
+   - **Time Entries database** and **Projects database** — pick from the
+     dropdown of all databases your integration can access. If the list is
+     empty, the integration isn't connected to your pages (section 1, step 5).
+   - Once a database is selected its fields appear automatically: pick the
+     title, date range, status and project relation fields, and the status
+     options for "running" and "completed". Each dropdown only shows
+     properties of the right type, and single matches are pre-selected.
+   - Tick or untick **Round times to nearest 15 minutes** for this workspace.
+3. **Save** stays disabled until everything required is filled in, so a
+   half-configured workspace can't be saved.
+4. Repeat for each workspace, then click `←` to go to the timer. You can edit
+   a workspace later via the ✏️ button next to it.
 
 The app's language follows your Windows display language: Dutch for `nl-*`
 locales, English (UK) for everything else. There is no manual toggle.
@@ -155,21 +150,22 @@ locales, English (UK) for everything else. There is no manual toggle.
 All settings are stored locally in an encrypted file
 (`%APPDATA%/notion-timer/config.json`). Nothing is sent anywhere except to the
 Notion API. Note: the encryption is obfuscation against casual snooping, not a
-hard security boundary — the key lives in the app source.
+hard security boundary — the key lives in the app source. Settings from older
+versions of the app are migrated automatically on first launch.
 
 ## 6. How the app behaves
 
-- **Start**: rounds the start time to the nearest 15 minutes (14:07 → 14:00,
-  14:08 → 14:15) and creates a page with status *Lopende tijdsregistratie*.
-  The page title is your description, or `"{Deelproject} — {DD/MM/YYYY}"` if
-  you left it empty.
-- **Stop**: rounds the end time to the nearest 15 minutes, with a minimum
-  duration of 15 minutes, and sets status *Voltooide tijdsregistratie*.
-- **Rounding is optional**: untick *Round times to nearest 15 minutes* in
-  Settings to record exact timestamps instead (the 15-minute minimum no longer
-  applies either).
-- While running you see the live elapsed time and the projected rounded
-  interval (e.g. `14:00 → 14:15`), which updates as time passes.
+- **Start**: creates a time entry with the "running" status option and your
+  description as the title (or `"{Project} — {DD/MM/YYYY}"` if you left it
+  empty). With rounding on, the start time is rounded to the nearest
+  15 minutes (14:07 → 14:00, 14:08 → 14:15).
+- **Stop**: fills in the end time and sets the "completed" status option.
+  With rounding on, the end time is rounded to the nearest 15 minutes with a
+  minimum duration of 15 minutes.
+- **Rounding is per workspace**: configure it in the workspace's settings.
+  With rounding off, exact timestamps are recorded and no minimum applies.
+- While running you see the live elapsed time and the projected interval
+  (e.g. `14:00 → 14:15`), which updates as time passes.
 - **Closing the window minimises to the system tray** — the app keeps running.
   The tray icon turns into a red dot while a timer runs. Right-click the tray
   icon for *Open*, *Stop timer* and *Quit*.
@@ -185,9 +181,9 @@ hard security boundary — the key lives in the app source.
 | Problem | Fix |
 |---|---|
 | "Connection failed: API token is invalid" | Re-copy the secret from notion.so/my-integrations; no spaces. |
-| "Database test failed: Could not find database" | The integration isn't connected to the page containing the database — see section 1, step 5. |
-| Deelproject dropdown stays empty | The Deelprojecten title property name doesn't match — fix it under Settings → ✏️ → Property name mapping. |
-| Start fails with a property error | A Tijdsregistraties property name or Status option doesn't match — fix it under Settings → ✏️ → Property name mapping. |
+| Database dropdowns are empty | The integration isn't connected to the pages containing your databases — see section 1, step 5. |
+| "No suitable field found in this database" | The selected database is missing a property of the required type (e.g. no status property) — add it in Notion, then reopen the workspace modal. |
+| Project dropdown stays empty | Check the Projects database and its title field under Settings → ✏️; the picker only shows records with a non-empty title. |
 | App seems closed but won't restart | It's still in the system tray (bottom-right, behind `^`). Right-click → Quit. |
 | Installer blocked by SmartScreen | More info → Run anyway (unsigned personal build). |
 
@@ -203,18 +199,19 @@ notion-time-tracker/
 │   ├── App.jsx            # Root component, view switching
 │   ├── views/
 │   │   ├── Timer.jsx      # Idle + running timer screens
-│   │   └── Settings.jsx   # API key, projects, always-on-top
+│   │   └── Settings.jsx   # API key, workspaces, workspace modal
 │   ├── components/
 │   │   ├── Toasts.jsx     # Error/success toasts (with retry action)
 │   │   └── RecoveryModal.jsx  # Orphaned-timer prompt on launch
-│   ├── store/useStore.js  # Zustand store: settings, session, timer
+│   ├── store/useStore.js  # Zustand store: settings, session, timer, migration
 │   ├── locales/           # en-GB.js + nl-BE.js string tables
 │   └── lib/
 │       ├── rounding.js    # 15-minute rounding (mirrors Notion buttons)
 │       ├── rounding.test.js
 │       ├── format.js      # ISO-with-offset, DD/MM/YYYY, HH:MM:SS helpers
 │       ├── i18n.js        # locale detection + t() lookup
-│       └── constants.js   # DEFAULT_PROPERTY_MAP (Notion property names)
+│       ├── schema.js      # database schema helpers (propertiesByType, …)
+│       └── errors.js      # strips IPC noise from error messages
 ├── scripts/generate-icons.cjs  # Regenerates assets/ icons (no deps)
 ├── assets/                # icon.ico, window + tray icons (generated)
 └── package.json           # incl. electron-builder config

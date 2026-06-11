@@ -44,21 +44,54 @@ async function testConnection(apiKey, dbId) {
 }
 
 /**
- * Fetches all deelprojecten from a Deelprojecten database, sorted by name.
- * @param {object} props - the project's propertyMap
+ * Returns all Notion databases the integration can access.
  * @returns [{ id, name }]
  */
-async function fetchDeelprojecten(apiKey, dbId, props) {
+async function searchDatabases(apiKey) {
+  const results = [];
+  let cursor;
+  do {
+    const data = await notionFetch(apiKey, 'POST', '/search', {
+      filter: { value: 'database', property: 'object' },
+      sort: { direction: 'ascending', timestamp: 'last_edited_time' },
+      page_size: 100,
+      ...(cursor ? { start_cursor: cursor } : {}),
+    });
+    for (const db of data.results) {
+      const name = (db.title || []).map((t) => t.plain_text).join('').trim() || '(Untitled)';
+      results.push({ id: db.id, name });
+    }
+    cursor = data.has_more ? data.next_cursor : undefined;
+  } while (cursor);
+  return results;
+}
+
+/**
+ * Returns the raw `properties` map of a database. Filtering by property type
+ * happens in the renderer (src/lib/schema.js).
+ * Shape: { [propName]: { id, type, status?: { options: [{ name, color, id }] }, ... } }
+ */
+async function getDatabaseSchema(apiKey, dbId) {
+  const data = await notionFetch(apiKey, 'GET', `/databases/${dbId}`);
+  return data.properties;
+}
+
+/**
+ * Fetches all projects from a Projects database, sorted by title.
+ * @param {object} props - the workspace's propertyMap
+ * @returns [{ id, name }]
+ */
+async function fetchProjects(apiKey, dbId, props) {
   const results = [];
   let cursor = undefined;
   do {
     const data = await notionFetch(apiKey, 'POST', `/databases/${dbId}/query`, {
-      sorts: [{ property: props.deelTitleProp, direction: 'ascending' }],
-      filter: { property: props.deelTitleProp, title: { is_not_empty: true } },
+      sorts: [{ property: props.projectTitleProp, direction: 'ascending' }],
+      filter: { property: props.projectTitleProp, title: { is_not_empty: true } },
       ...(cursor ? { start_cursor: cursor } : {}),
     });
     for (const page of data.results) {
-      const titleParts = page.properties?.[props.deelTitleProp]?.title || [];
+      const titleParts = page.properties?.[props.projectTitleProp]?.title || [];
       const name = titleParts.map((t) => t.plain_text).join('');
       if (name) results.push({ id: page.id, name });
     }
@@ -68,25 +101,25 @@ async function fetchDeelprojecten(apiKey, dbId, props) {
 }
 
 /**
- * Creates a new Tijdsregistratie page (START).
- * @param {object} params { dbId, title, startISO, deelprojectId, props }
+ * Creates a new time entry page (START).
+ * @param {object} params { dbId, title, startISO, projectId, props }
  * @returns {{ pageId: string }}
  */
-async function createTijdsregistratie(apiKey, { dbId, title, startISO, deelprojectId, props }) {
+async function createTimeEntry(apiKey, { dbId, title, startISO, projectId, props }) {
   const data = await notionFetch(apiKey, 'POST', '/pages', {
     parent: { database_id: dbId },
     properties: {
-      [props.tijdsTitleProp]: {
+      [props.timeEntryTitleProp]: {
         title: [{ text: { content: title } }],
       },
-      [props.tijdsTijdProp]: {
+      [props.timeEntryDateProp]: {
         date: { start: startISO, end: null },
       },
-      [props.tijdsStatusProp]: {
-        status: { name: props.tijdsStatusRunning },
+      [props.timeEntryStatusProp]: {
+        status: { name: props.timeEntryStatusRunning },
       },
-      [props.tijdsRelationProp]: {
-        relation: [{ id: deelprojectId }],
+      [props.timeEntryRelationProp]: {
+        relation: [{ id: projectId }],
       },
     },
   });
@@ -94,18 +127,18 @@ async function createTijdsregistratie(apiKey, { dbId, title, startISO, deelproje
 }
 
 /**
- * Completes a Tijdsregistratie (STOP). startISO must be the exact value used
- * at creation — it is not re-rounded.
+ * Completes a time entry (STOP). startISO must be the exact value used at
+ * creation — it is not re-rounded.
  * @param {object} params { pageId, startISO, endISO, props }
  */
-async function stopTijdsregistratie(apiKey, { pageId, startISO, endISO, props }) {
+async function stopTimeEntry(apiKey, { pageId, startISO, endISO, props }) {
   await notionFetch(apiKey, 'PATCH', `/pages/${pageId}`, {
     properties: {
-      [props.tijdsTijdProp]: {
+      [props.timeEntryDateProp]: {
         date: { start: startISO, end: endISO },
       },
-      [props.tijdsStatusProp]: {
-        status: { name: props.tijdsStatusDone },
+      [props.timeEntryStatusProp]: {
+        status: { name: props.timeEntryStatusDone },
       },
     },
   });
@@ -114,7 +147,9 @@ async function stopTijdsregistratie(apiKey, { pageId, startISO, endISO, props })
 
 module.exports = {
   testConnection,
-  fetchDeelprojecten,
-  createTijdsregistratie,
-  stopTijdsregistratie,
+  searchDatabases,
+  getDatabaseSchema,
+  fetchProjects,
+  createTimeEntry,
+  stopTimeEntry,
 };

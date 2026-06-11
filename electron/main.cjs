@@ -10,9 +10,8 @@ const store = new Store({
   defaults: {
     apiKey: '',
     alwaysOnTop: true,
-    roundingEnabled: true,
-    projects: [],
-    lastUsedProjectId: null,
+    workspaces: [],
+    lastUsedWorkspaceId: null,
     activeTimer: null,
   },
 });
@@ -105,21 +104,34 @@ ipcMain.handle('store:get', () => store.store);
 
 ipcMain.handle('store:set', (_event, data) => {
   for (const [key, value] of Object.entries(data)) {
-    store.set(key, value);
+    // undefined means "remove this key" — used by schema migrations
+    if (value === undefined) {
+      store.delete(key);
+    } else {
+      store.set(key, value);
+    }
   }
   return store.store;
 });
 
-ipcMain.handle('notion:fetchDeelprojecten', (_event, dbId, props) =>
-  notion.fetchDeelprojecten(store.get('apiKey'), dbId, props)
+ipcMain.handle('notion:searchDatabases', () =>
+  notion.searchDatabases(store.get('apiKey'))
+);
+
+ipcMain.handle('notion:getDatabaseSchema', (_event, dbId) =>
+  notion.getDatabaseSchema(store.get('apiKey'), dbId)
+);
+
+ipcMain.handle('notion:fetchProjects', (_event, dbId, props) =>
+  notion.fetchProjects(store.get('apiKey'), dbId, props)
 );
 
 ipcMain.handle('notion:create', (_event, params) =>
-  notion.createTijdsregistratie(store.get('apiKey'), params)
+  notion.createTimeEntry(store.get('apiKey'), params)
 );
 
 ipcMain.handle('notion:stop', (_event, params) =>
-  notion.stopTijdsregistratie(store.get('apiKey'), params)
+  notion.stopTimeEntry(store.get('apiKey'), params)
 );
 
 // apiKey is passed explicitly here so Settings can test a key before saving it

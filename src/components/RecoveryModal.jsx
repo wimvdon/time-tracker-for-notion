@@ -19,8 +19,8 @@ export default function RecoveryModal() {
         <h2 className="text-sm font-semibold">{t('recoveryTitle')}</h2>
         <p className="text-xs text-zinc-300">{t('recoveryBody')}</p>
         <p className="text-xs text-zinc-400">
-          {recovered.deelprojectName && (
-            <span className="font-semibold">{recovered.deelprojectName} · </span>
+          {recovered.projectName && (
+            <span className="font-semibold">{recovered.projectName} · </span>
           )}
           <span className="font-semibold tabular-nums">{formatHHMM(start)}</span>
         </p>

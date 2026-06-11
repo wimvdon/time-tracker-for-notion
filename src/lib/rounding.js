@@ -19,7 +19,7 @@ export function roundToNearest15(date) {
 }
 
 /**
- * Computes the rounded start time for a new Tijdsregistratie.
+ * Computes the rounded start time for a new time entry.
  * Mirrors the Notion Start button formula exactly.
  */
 export function computeStartTime(now = new Date()) {

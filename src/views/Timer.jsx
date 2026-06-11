@@ -5,23 +5,23 @@ import { t } from '../lib/i18n.js';
 
 export default function Timer() {
   const apiKey = useStore((s) => s.apiKey);
+  const workspaces = useStore((s) => s.workspaces);
+  const selectedWorkspaceId = useStore((s) => s.selectedWorkspaceId);
+  const selectWorkspace = useStore((s) => s.selectWorkspace);
   const projects = useStore((s) => s.projects);
+  const projectsLoading = useStore((s) => s.projectsLoading);
   const selectedProjectId = useStore((s) => s.selectedProjectId);
-  const selectProject = useStore((s) => s.selectProject);
-  const deelprojecten = useStore((s) => s.deelprojecten);
-  const deelprojectenLoading = useStore((s) => s.deelprojectenLoading);
-  const selectedDeelprojectId = useStore((s) => s.selectedDeelprojectId);
-  const setSelectedDeelprojectId = useStore((s) => s.setSelectedDeelprojectId);
+  const setSelectedProjectId = useStore((s) => s.setSelectedProjectId);
   const description = useStore((s) => s.description);
   const setDescription = useStore((s) => s.setDescription);
   const timer = useStore((s) => s.timer);
   const startTimer = useStore((s) => s.startTimer);
   const stopTimer = useStore((s) => s.stopTimer);
-  const roundingEnabled = useStore((s) => s.roundingEnabled);
+  const getRoundingEnabled = useStore((s) => s.getRoundingEnabled);
   const setView = useStore((s) => s.setView);
 
+  const selectedWorkspace = workspaces.find((w) => w.id === selectedWorkspaceId);
   const selectedProject = projects.find((p) => p.id === selectedProjectId);
-  const selectedDeelproject = deelprojecten.find((d) => d.id === selectedDeelprojectId);
 
   const settingsButton = (
     <div className="flex justify-end px-4 pb-3">
@@ -39,15 +39,15 @@ export default function Timer() {
   if (timer.running) {
     // Recomputed on every tick render, so the projected end refreshes as time
     // passes. Without rounding the end is simply "now".
-    const projectedEnd = roundingEnabled ? computeEndTime(timer.roundedStart) : new Date();
+    const projectedEnd = getRoundingEnabled() ? computeEndTime(timer.roundedStart) : new Date();
     return (
       <div className="flex flex-col h-full">
         <div className="flex-1 flex flex-col items-center px-6 pt-8 gap-1">
           <div className="text-sm font-semibold text-zinc-300 truncate max-w-full">
-            {selectedProject?.name || '—'}
+            {selectedWorkspace?.name || '—'}
           </div>
           <div className="text-sm text-zinc-400 truncate max-w-full">
-            {selectedDeelproject?.name || '—'}
+            {selectedProject?.name || '—'}
           </div>
           {description.trim() && (
             <div className="text-xs text-zinc-500 italic truncate max-w-full">
@@ -75,7 +75,7 @@ export default function Timer() {
   }
 
   // ---- Idle state ----
-  const canStart = !!apiKey && !!selectedDeelprojectId;
+  const canStart = !!apiKey && !!selectedProjectId;
 
   return (
     <div className="flex flex-col h-full">
@@ -88,47 +88,47 @@ export default function Timer() {
             </button>
           </div>
         )}
-        {apiKey && projects.length === 0 && (
+        {apiKey && workspaces.length === 0 && (
           <div className="text-xs bg-zinc-800 border border-zinc-700 text-zinc-300 rounded-md p-2">
-            {t('warnNoProjects')}{' '}
+            {t('warnNoWorkspaces')}{' '}
             <button onClick={() => setView('settings')} className="underline font-semibold">
-              {t('warnNoProjectsLink')}
+              {t('warnNoWorkspacesLink')}
             </button>{' '}
-            {t('warnNoProjectsSuffix')}
+            {t('warnNoWorkspacesSuffix')}
           </div>
         )}
 
         <div>
-          <label className="block text-xs text-zinc-400 mb-1">{t('labelProject')}</label>
+          <label className="block text-xs text-zinc-400 mb-1">{t('labelWorkspace')}</label>
           <select
-            value={selectedProjectId || ''}
-            onChange={(e) => selectProject(e.target.value || null)}
-            disabled={projects.length === 0}
+            value={selectedWorkspaceId || ''}
+            onChange={(e) => selectWorkspace(e.target.value || null)}
+            disabled={workspaces.length === 0}
             className="w-full bg-zinc-800 border border-zinc-700 rounded-md px-3 py-2 text-sm disabled:opacity-50"
           >
-            <option value="">{t('placeholderSelectProject')}</option>
-            {projects.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
+            <option value="">{t('placeholderSelectWorkspace')}</option>
+            {workspaces.map((w) => (
+              <option key={w.id} value={w.id}>
+                {w.name}
               </option>
             ))}
           </select>
         </div>
 
         <div>
-          <label className="block text-xs text-zinc-400 mb-1">{t('labelDeelproject')}</label>
+          <label className="block text-xs text-zinc-400 mb-1">{t('labelProject')}</label>
           <select
-            value={selectedDeelprojectId || ''}
-            onChange={(e) => setSelectedDeelprojectId(e.target.value || null)}
-            disabled={!selectedProjectId || deelprojectenLoading}
+            value={selectedProjectId || ''}
+            onChange={(e) => setSelectedProjectId(e.target.value || null)}
+            disabled={!selectedWorkspaceId || projectsLoading}
             className="w-full bg-zinc-800 border border-zinc-700 rounded-md px-3 py-2 text-sm disabled:opacity-50"
           >
             <option value="">
-              {deelprojectenLoading ? t('placeholderLoading') : t('placeholderSelectSubproject')}
+              {projectsLoading ? t('placeholderLoading') : t('placeholderSelectProject')}
             </option>
-            {deelprojecten.map((d) => (
-              <option key={d.id} value={d.id}>
-                {d.name}
+            {projects.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
               </option>
             ))}
           </select>
