@@ -51,11 +51,24 @@ export default function SearchableSelect({
   const openPanel = () => {
     if (disabled || loading) return;
     const rect = triggerRef.current.getBoundingClientRect();
-    setPanelStyle({
-      top: rect.bottom + 2,
-      left: rect.left,
-      width: rect.width,
-    });
+    const spaceBelow = window.innerHeight - rect.bottom - 4;
+    const spaceAbove = rect.top - 4;
+    const MAX_HEIGHT = 320;
+    if (spaceBelow >= spaceAbove || spaceBelow >= 160) {
+      setPanelStyle({
+        top: rect.bottom + 2,
+        left: rect.left,
+        width: rect.width,
+        maxHeight: Math.min(MAX_HEIGHT, spaceBelow),
+      });
+    } else {
+      setPanelStyle({
+        bottom: window.innerHeight - rect.top + 2,
+        left: rect.left,
+        width: rect.width,
+        maxHeight: Math.min(MAX_HEIGHT, spaceAbove),
+      });
+    }
     setSearch('');
     setOpen(true);
   };
@@ -94,11 +107,10 @@ export default function SearchableSelect({
     ? createPortal(
         <div
           style={panelStyle}
-          className="fixed z-[9999] bg-zinc-900 border border-zinc-700 rounded-md shadow-xl"
-          // Prevent clicks inside the panel from reaching the document handler
+          className="fixed z-[9999] bg-zinc-900 border border-zinc-700 rounded-md shadow-xl flex flex-col"
           onMouseDown={(e) => e.stopPropagation()}
         >
-          <div className="p-1.5 border-b border-zinc-700">
+          <div className="p-1.5 border-b border-zinc-700 shrink-0">
             <input
               ref={searchRef}
               type="text"
@@ -108,7 +120,7 @@ export default function SearchableSelect({
               className="w-full bg-zinc-800 border border-zinc-600 rounded px-2 py-1.5 text-sm placeholder-zinc-600 outline-none"
             />
           </div>
-          <div className="max-h-48 overflow-y-auto py-1">
+          <div className="overflow-y-auto py-1 min-h-0">
             {displayOptions.length === 0 && (
               <div className="px-3 py-1.5 text-xs text-zinc-500 italic">
                 {t('searchNoResults')}
