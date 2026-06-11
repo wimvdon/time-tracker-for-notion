@@ -1,8 +1,17 @@
+import { useEffect, useState } from 'react';
 import { useStore } from '../store/useStore.js';
 import { computeEndTime } from '../lib/rounding.js';
 import { formatHHMM, formatElapsed } from '../lib/format.js';
 import { t } from '../lib/i18n.js';
 import ExtraFieldInput from '../components/ExtraFieldInput.jsx';
+
+/** Combines the date of `base` with an "HH:MM" string from a time input. */
+function timeOnDate(base, hhmm) {
+  const [hours, minutes] = hhmm.split(':').map(Number);
+  const result = new Date(base);
+  result.setHours(hours, minutes, 0, 0);
+  return result;
+}
 
 export default function Timer() {
   const apiKey = useStore((s) => s.apiKey);
@@ -21,8 +30,6 @@ export default function Timer() {
   const setExtraValue = useStore((s) => s.setExtraValue);
   const timer = useStore((s) => s.timer);
   const startTimer = useStore((s) => s.startTimer);
-  const stopTimer = useStore((s) => s.stopTimer);
-  const getRoundingEnabled = useStore((s) => s.getRoundingEnabled);
   const setView = useStore((s) => s.setView);
 
   const selectedWorkspace = workspaces.find((w) => w.id === selectedWorkspaceId);
@@ -42,40 +49,12 @@ export default function Timer() {
 
   // ---- Running state ----
   if (timer.running) {
-    // Recomputed on every tick render, so the projected end refreshes as time
-    // passes. Without rounding the end is simply "now".
-    const projectedEnd = getRoundingEnabled() ? computeEndTime(timer.roundedStart) : new Date();
     return (
-      <div className="flex flex-col h-full">
-        <div className="flex-1 flex flex-col items-center px-6 pt-8 gap-1">
-          <div className="text-sm font-semibold text-zinc-300 truncate max-w-full">
-            {selectedWorkspace?.name || '—'}
-          </div>
-          <div className="text-sm text-zinc-400 truncate max-w-full">
-            {selectedProject?.name || '—'}
-          </div>
-          {description.trim() && (
-            <div className="text-xs text-zinc-500 italic truncate max-w-full">
-              {description}
-            </div>
-          )}
-
-          <div className="mt-8 text-5xl font-mono font-bold tabular-nums text-red-400">
-            {formatElapsed(timer.elapsedSeconds)}
-          </div>
-          <div className="mt-2 text-sm text-zinc-400 tabular-nums">
-            {formatHHMM(timer.roundedStart)} → {formatHHMM(projectedEnd)}
-          </div>
-
-          <button
-            onClick={stopTimer}
-            className="mt-10 w-full py-3 rounded-lg bg-red-600 hover:bg-red-500 active:bg-red-700 font-semibold text-lg transition-colors"
-          >
-            {t('btnStop')}
-          </button>
-        </div>
-        {settingsButton}
-      </div>
+      <RunningView
+        workspaceName={selectedWorkspace?.name || '—'}
+        projectName={selectedProject?.name || '—'}
+        settingsButton={settingsButton}
+      />
     );
   }
 
@@ -170,6 +149,104 @@ export default function Timer() {
           className="mt-2 w-full py-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 disabled:bg-zinc-800 disabled:text-zinc-600 font-semibold text-lg transition-colors"
         >
           {t('btnStart')}
+        </button>
+      </div>
+      {settingsButton}
+    </div>
+  );
+}
+
+function RunningView({ workspaceName, projectName, settingsButton }) {
+  const timer = useStore((s) => s.timer);
+  const description = useStore((s) => s.description);
+  const stopTimer = useStore((s) => s.stopTimer);
+  const updateStartTime = useStore((s) => s.updateStartTime);
+  const getRoundingEnabled = useStore((s) => s.getRoundingEnabled);
+
+  const [startInput, setStartInput] = useState(() => formatHHMM(timer.roundedStart));
+  const [endInput, setEndInput] = useState('');
+
+  // Resync after the store applies (and possibly rounds) an edited start
+  useEffect(() => {
+    setStartInput(formatHHMM(timer.roundedStart));
+  }, [timer.startISO]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const commitStart = () => {
+    if (!startInput) {
+      setStartInput(formatHHMM(timer.roundedStart));
+      return;
+    }
+    updateStartTime(timeOnDate(timer.rawStart, startInput));
+  };
+
+  // Filling in an end time stops the timer at that time (rounding rules
+  // apply in the store). On a validation error the timer keeps running and
+  // the input keeps its value so it can be corrected.
+  const commitEnd = () => {
+    if (!endInput) return;
+    stopTimer(timeOnDate(timer.rawStart, endInput));
+  };
+
+  const blurOnEnter = (e) => {
+    if (e.key === 'Enter') e.currentTarget.blur();
+  };
+
+  // Recomputed on every tick render, so the projected end refreshes as time
+  // passes. Without rounding the end is simply "now".
+  const projectedEnd = getRoundingEnabled() ? computeEndTime(timer.roundedStart) : new Date();
+
+  const timeInputClass =
+    'w-full bg-zinc-800 border border-zinc-700 rounded-md px-2 py-1.5 text-sm tabular-nums text-center';
+
+  return (
+    <div className="flex flex-col h-full">
+      <div className="flex-1 flex flex-col items-center px-6 pt-6 gap-1 overflow-y-auto">
+        <div className="text-sm font-semibold text-zinc-300 truncate max-w-full">
+          {workspaceName}
+        </div>
+        <div className="text-sm text-zinc-400 truncate max-w-full">{projectName}</div>
+        {description.trim() && (
+          <div className="text-xs text-zinc-500 italic truncate max-w-full">{description}</div>
+        )}
+
+        <div className="mt-6 text-5xl font-mono font-bold tabular-nums text-red-400">
+          {formatElapsed(timer.elapsedSeconds)}
+        </div>
+        <div className="mt-2 text-sm text-zinc-400 tabular-nums">
+          {formatHHMM(timer.roundedStart)} → {formatHHMM(projectedEnd)}
+        </div>
+
+        <div className="mt-5 w-full grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-xs text-zinc-400 mb-1">{t('labelStartTime')}</label>
+            <input
+              type="time"
+              value={startInput}
+              onChange={(e) => setStartInput(e.target.value)}
+              onBlur={commitStart}
+              onKeyDown={blurOnEnter}
+              className={timeInputClass}
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-zinc-400 mb-1">{t('labelEndTime')}</label>
+            <input
+              type="time"
+              value={endInput}
+              onChange={(e) => setEndInput(e.target.value)}
+              onBlur={commitEnd}
+              onKeyDown={blurOnEnter}
+              className={timeInputClass}
+            />
+          </div>
+        </div>
+        <p className="mt-1 text-xs text-zinc-600 w-full">{t('hintManualEnd')}</p>
+
+        <button
+          onClick={() => stopTimer()}
+          className="mt-4 w-full py-3 rounded-lg bg-red-600 hover:bg-red-500 active:bg-red-700 font-semibold text-lg transition-colors"
+        >
+          {t('btnStop')}
         </button>
       </div>
       {settingsButton}

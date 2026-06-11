@@ -219,7 +219,12 @@ export const useStore = create((set, get) => ({
       const projects = await api.fetchDatabasePages(workspace.projectsDbId);
       // Ignore stale responses if the user switched workspaces meanwhile
       if (get().selectedWorkspaceId !== workspaceId) return;
-      set({ projects, projectsLoading: false });
+      // Pre-select the workspace's default project when it still exists
+      const selectedProjectId =
+        workspace.defaultProjectId && projects.some((p) => p.id === workspace.defaultProjectId)
+          ? workspace.defaultProjectId
+          : null;
+      set({ projects, projectsLoading: false, selectedProjectId });
     } catch (err) {
       if (get().selectedWorkspaceId !== workspaceId) return;
       set({ projectsLoading: false });
@@ -349,11 +354,63 @@ export const useStore = create((set, get) => ({
     api.setTimerRunning(true);
   },
 
-  stopTimer: async () => {
+  /**
+   * Applies a manually edited start time to the running timer. The rounding
+   * rules of the workspace apply. The corrected start is persisted for crash
+   * recovery and written to Notion with the PATCH on stop (which always sends
+   * the start).
+   */
+  updateStartTime: (newStart) => {
+    const state = get();
+    if (!state.timer.running) return;
+    const roundedStart = state.getRoundingEnabled() ? computeStartTime(newStart) : newStart;
+    const startISO = toNotionDateTime(roundedStart);
+    set((s) => ({
+      timer: {
+        ...s.timer,
+        roundedStart,
+        startISO,
+        rawStart: newStart,
+        elapsedSeconds: Math.max(0, Math.floor((Date.now() - newStart.getTime()) / 1000)),
+      },
+    }));
+    const project = state.projects.find((p) => p.id === state.selectedProjectId);
+    api.saveSettings({
+      activeTimer: {
+        notionPageId: state.timer.notionPageId,
+        roundedStart: startISO,
+        rawStart: newStart.toISOString(),
+        workspaceId: state.selectedWorkspaceId,
+        projectId: state.selectedProjectId,
+        projectName: project?.name ?? '',
+        description: state.description,
+        propertyMap: state.timer.propertyMap,
+      },
+    });
+  },
+
+  /**
+   * Stops the timer. With a manually entered end time (`manualEnd`), that
+   * time is used instead of "now" — still subject to the workspace's
+   * rounding rules (nearest 15 minutes, minimum duration of 15 minutes).
+   */
+  stopTimer: async (manualEnd = null) => {
     const { timer, addToast } = get();
     if (!timer.running) return;
 
-    const endTime = get().getRoundingEnabled() ? computeEndTime(timer.roundedStart) : new Date();
+    const rounding = get().getRoundingEnabled();
+    if (manualEnd) {
+      // Reject ends before the timer began; with rounding the minimum-
+      // duration rule handles ends between the raw and rounded start
+      const earliest = Math.min(timer.rawStart.getTime(), timer.roundedStart.getTime());
+      if (manualEnd.getTime() < earliest || (!rounding && manualEnd.getTime() <= earliest)) {
+        addToast({ type: 'error', message: t('toastEndBeforeStart') });
+        return;
+      }
+    }
+    const endTime = rounding
+      ? computeEndTime(timer.roundedStart, manualEnd ?? new Date())
+      : manualEnd ?? new Date();
     try {
       await api.stopTimeEntry({
         pageId: timer.notionPageId,

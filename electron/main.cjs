@@ -21,6 +21,14 @@ let tray = null;
 let timerRunning = false;
 let isQuitting = false;
 
+// Tray menu strings live in the main process, where the renderer's i18n is
+// not available; app.getLocale() reflects the Windows display language.
+const TRAY_STRINGS = {
+  'en-GB': { open: 'Open', stopTimer: 'Stop timer', quit: 'Quit' },
+  'nl-BE': { open: 'Openen', stopTimer: 'Timer stoppen', quit: 'Afsluiten' },
+};
+let trayStrings = TRAY_STRINGS['en-GB'];
+
 const assetPath = (name) => path.join(__dirname, '..', 'assets', name);
 
 function createWindow() {
@@ -63,11 +71,11 @@ function trayIcon() {
 
 function rebuildTrayMenu() {
   const items = [
-    { label: 'Open', click: () => showWindow() },
+    { label: trayStrings.open, click: () => showWindow() },
   ];
   if (timerRunning) {
     items.push({
-      label: 'Stop timer',
+      label: trayStrings.stopTimer,
       click: () => {
         showWindow();
         mainWindow.webContents.send('tray:stop-timer');
@@ -76,7 +84,7 @@ function rebuildTrayMenu() {
   }
   items.push({ type: 'separator' });
   items.push({
-    label: 'Quit',
+    label: trayStrings.quit,
     click: () => {
       isQuitting = true;
       app.quit();
@@ -165,6 +173,10 @@ if (!gotLock) {
   app.on('second-instance', () => showWindow());
 
   app.whenReady().then(() => {
+    // Same detection rule as the renderer: any Dutch locale maps to nl-BE
+    if (app.getLocale().toLowerCase().startsWith('nl')) {
+      trayStrings = TRAY_STRINGS['nl-BE'];
+    }
     createWindow();
     createTray();
   });

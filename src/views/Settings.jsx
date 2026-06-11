@@ -168,6 +168,7 @@ function WorkspaceModal({ workspace, onClose }) {
   const [timeEntriesDbId, setTimeEntriesDbId] = useState(workspace?.timeEntriesDbId || '');
   const [projectsDbId, setProjectsDbId] = useState(workspace?.projectsDbId || '');
   const [roundingEnabled, setRoundingEnabled] = useState(workspace?.roundingEnabled ?? true);
+  const [defaultProjectId, setDefaultProjectId] = useState(workspace?.defaultProjectId || '');
   const [sel, setSel] = useState({ ...EMPTY_SELECTION, ...(workspace?.propertyMap || {}) });
   // Optional extra fields (property names in the Time Entries database);
   // empty strings are unfilled rows and are dropped on save
@@ -177,6 +178,8 @@ function WorkspaceModal({ workspace, onClose }) {
   const [dbs, setDbs] = useState({ loading: true, error: null, items: [] });
   // Schema of the selected Time Entries database
   const [teSchema, setTeSchema] = useState({ loading: false, error: null, schema: null });
+  // Pages of the selected Projects database (for the default project picker)
+  const [projPages, setProjPages] = useState({ loading: false, error: null, items: [] });
 
   const setProp = (key, value) => setSel((s) => ({ ...s, [key]: value }));
 
@@ -221,6 +224,23 @@ function WorkspaceModal({ workspace, onClose }) {
     else setTeSchema({ loading: false, error: null, schema: null });
   }, [timeEntriesDbId]);
 
+  const loadProjPages = async (dbId) => {
+    setProjPages({ loading: true, error: null, items: [] });
+    try {
+      const items = await window.notionAPI.fetchDatabasePages(dbId);
+      setProjPages({ loading: false, error: null, items });
+      // A default project from another database is no longer valid
+      setDefaultProjectId((prev) => (items.some((p) => p.id === prev) ? prev : ''));
+    } catch (err) {
+      setProjPages({ loading: false, error: errorMessage(err), items: [] });
+    }
+  };
+
+  useEffect(() => {
+    if (projectsDbId) loadProjPages(projectsDbId);
+    else setProjPages({ loading: false, error: null, items: [] });
+  }, [projectsDbId]);
+
   const teTitleOpts = teSchema.schema ? propertiesByType(teSchema.schema, 'title') : [];
   const teDateOpts = teSchema.schema ? propertiesByType(teSchema.schema, 'date') : [];
   const teStatusOpts = teSchema.schema ? propertiesByType(teSchema.schema, 'status') : [];
@@ -264,6 +284,7 @@ function WorkspaceModal({ workspace, onClose }) {
       timeEntriesDbId,
       projectsDbId,
       roundingEnabled,
+      defaultProjectId,
       propertyMap: {
         timeEntryTitleProp: sel.timeEntryTitleProp,
         timeEntryDateProp: sel.timeEntryDateProp,
@@ -338,6 +359,40 @@ function WorkspaceModal({ workspace, onClose }) {
         <Field label={t('labelProjectsDb')} hint={t('hintProjectsDb')}>
           {dbSelect(projectsDbId, setProjectsDbId)}
         </Field>
+
+        {/* Default project (optional, depends on the Projects database) */}
+        {projectsDbId && (
+          <>
+            {projPages.error && (
+              <div className="text-xs bg-red-950 border border-red-700 text-red-200 rounded-md p-2 flex items-start gap-2">
+                <span className="flex-1">{`${t('toastProjectsError')}: ${projPages.error}`}</span>
+                <button
+                  onClick={() => loadProjPages(projectsDbId)}
+                  className="font-semibold underline shrink-0"
+                >
+                  {t('btnRetry')}
+                </button>
+              </div>
+            )}
+            <Field label={t('labelDefaultProject')} hint={t('hintDefaultProject')}>
+              <select
+                value={defaultProjectId}
+                onChange={(e) => setDefaultProjectId(e.target.value)}
+                disabled={projPages.loading || !!projPages.error}
+                className="w-full bg-zinc-900 border border-zinc-700 rounded-md px-3 py-2 text-sm disabled:opacity-50"
+              >
+                <option value="">
+                  {projPages.loading ? t('placeholderLoading') : t('placeholderNone')}
+                </option>
+                {projPages.items.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          </>
+        )}
 
         {/* Section C — Time entry properties */}
         {timeEntriesDbId && (
