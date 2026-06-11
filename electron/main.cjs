@@ -122,9 +122,11 @@ ipcMain.handle('notion:getDatabaseSchema', (_event, dbId) =>
   notion.getDatabaseSchema(store.get('apiKey'), dbId)
 );
 
-ipcMain.handle('notion:fetchProjects', (_event, dbId, props) =>
-  notion.fetchProjects(store.get('apiKey'), dbId, props)
+ipcMain.handle('notion:fetchDatabasePages', (_event, dbId) =>
+  notion.fetchDatabasePages(store.get('apiKey'), dbId)
 );
+
+ipcMain.handle('notion:listUsers', () => notion.listUsers(store.get('apiKey')));
 
 ipcMain.handle('notion:create', (_event, params) =>
   notion.createTimeEntry(store.get('apiKey'), params)

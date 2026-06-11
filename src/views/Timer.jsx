@@ -2,6 +2,7 @@ import { useStore } from '../store/useStore.js';
 import { computeEndTime } from '../lib/rounding.js';
 import { formatHHMM, formatElapsed } from '../lib/format.js';
 import { t } from '../lib/i18n.js';
+import ExtraFieldInput from '../components/ExtraFieldInput.jsx';
 
 export default function Timer() {
   const apiKey = useStore((s) => s.apiKey);
@@ -14,6 +15,10 @@ export default function Timer() {
   const setSelectedProjectId = useStore((s) => s.setSelectedProjectId);
   const description = useStore((s) => s.description);
   const setDescription = useStore((s) => s.setDescription);
+  const extraFieldDefs = useStore((s) => s.extraFieldDefs);
+  const extrasLoading = useStore((s) => s.extrasLoading);
+  const extraValues = useStore((s) => s.extraValues);
+  const setExtraValue = useStore((s) => s.setExtraValue);
   const timer = useStore((s) => s.timer);
   const startTimer = useStore((s) => s.startTimer);
   const stopTimer = useStore((s) => s.stopTimer);
@@ -79,7 +84,7 @@ export default function Timer() {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex-1 flex flex-col px-5 pt-5 gap-4">
+      <div className="flex-1 flex flex-col px-5 pt-5 gap-4 overflow-y-auto">
         {!apiKey && (
           <div className="text-xs bg-amber-900/40 border border-amber-700 text-amber-200 rounded-md p-2">
             {t('warnNoApiKey')}{' '}
@@ -144,6 +149,20 @@ export default function Timer() {
             className="w-full bg-zinc-800 border border-zinc-700 rounded-md px-3 py-2 text-sm placeholder-zinc-600"
           />
         </div>
+
+        {/* Optional extra fields, shown once a project is chosen */}
+        {selectedProjectId && extrasLoading && (
+          <div className="text-xs text-zinc-500">{t('placeholderLoading')}</div>
+        )}
+        {selectedProjectId &&
+          extraFieldDefs.map((def) => (
+            <ExtraFieldInput
+              key={def.name}
+              def={def}
+              value={extraValues[def.name]}
+              onChange={(value) => setExtraValue(def.name, value)}
+            />
+          ))}
 
         <button
           onClick={startTimer}

@@ -59,7 +59,7 @@ database if your setup requires it):
   start/end range), a *status* property with one option for "running" and one
   for "completed", and a *relation* property that links to your projects.
 - a **Projects database**, whose records appear in the app's project picker.
-  Only its *title* property is used (for display and sorting).
+  Its page titles are used automatically — no configuration needed.
 
 Property names don't matter — when you add a workspace, the app reads the
 database schema and lets you pick each field from a dropdown showing only
@@ -134,10 +134,19 @@ On first launch the app opens on the **Settings** screen:
    - **Time Entries database** and **Projects database** — pick from the
      dropdown of all databases your integration can access. If the list is
      empty, the integration isn't connected to your pages (section 1, step 5).
-   - Once a database is selected its fields appear automatically: pick the
-     title, date range, status and project relation fields, and the status
-     options for "running" and "completed". Each dropdown only shows
-     properties of the right type, and single matches are pre-selected.
+   - Once the Time Entries database is selected its fields appear
+     automatically: pick the title, date range, status and project relation
+     fields, and the status options for "running" and "completed". Each
+     dropdown only shows properties of the right type, and single matches are
+     pre-selected. The Projects database needs no field setup — its page
+     titles are used automatically.
+   - Optionally add up to **three extra fields** from the Time Entries
+     database. These appear in the timer (after picking a project) as manual
+     inputs and are written to the time entry when you press START. All
+     writable Notion property types are supported — text, number, select,
+     multi-select, status, date, checkbox, URL, e-mail, phone, people,
+     relation and files (as a URL); computed fields such as formulas and
+     rollups can't be written and aren't offered.
    - Tick or untick **Round times to nearest 15 minutes** for this workspace.
 3. **Save** stays disabled until everything required is filled in, so a
    half-configured workspace can't be saved.
@@ -158,7 +167,8 @@ versions of the app are migrated automatically on first launch.
 - **Start**: creates a time entry with the "running" status option and your
   description as the title (or `"{Project} — {DD/MM/YYYY}"` if you left it
   empty). With rounding on, the start time is rounded to the nearest
-  15 minutes (14:07 → 14:00, 14:08 → 14:15).
+  15 minutes (14:07 → 14:00, 14:08 → 14:15). Any extra fields you filled in
+  are written too; empty ones are skipped so Notion keeps its defaults.
 - **Stop**: fills in the end time and sets the "completed" status option.
   With rounding on, the end time is rounded to the nearest 15 minutes with a
   minimum duration of 15 minutes.
@@ -183,7 +193,8 @@ versions of the app are migrated automatically on first launch.
 | "Connection failed: API token is invalid" | Re-copy the secret from notion.so/my-integrations; no spaces. |
 | Database dropdowns are empty | The integration isn't connected to the pages containing your databases — see section 1, step 5. |
 | "No suitable field found in this database" | The selected database is missing a property of the required type (e.g. no status property) — add it in Notion, then reopen the workspace modal. |
-| Project dropdown stays empty | Check the Projects database and its title field under Settings → ✏️; the picker only shows records with a non-empty title. |
+| Project dropdown stays empty | The picker only shows records with a non-empty page title — check the Projects database selected under Settings → ✏️. |
+| An extra field no longer appears in the timer | The property was renamed or deleted in Notion, or its type became read-only — re-select it under Settings → ✏️ → Extra fields. |
 | App seems closed but won't restart | It's still in the system tray (bottom-right, behind `^`). Right-click → Quit. |
 | Installer blocked by SmartScreen | More info → Run anyway (unsigned personal build). |
 
@@ -202,6 +213,7 @@ notion-time-tracker/
 │   │   └── Settings.jsx   # API key, workspaces, workspace modal
 │   ├── components/
 │   │   ├── Toasts.jsx     # Error/success toasts (with retry action)
+│   │   ├── ExtraFieldInput.jsx  # Type-specific input for extra fields
 │   │   └── RecoveryModal.jsx  # Orphaned-timer prompt on launch
 │   ├── store/useStore.js  # Zustand store: settings, session, timer, migration
 │   ├── locales/           # en-GB.js + nl-BE.js string tables
@@ -211,6 +223,7 @@ notion-time-tracker/
 │       ├── format.js      # ISO-with-offset, DD/MM/YYYY, HH:MM:SS helpers
 │       ├── i18n.js        # locale detection + t() lookup
 │       ├── schema.js      # database schema helpers (propertiesByType, …)
+│       ├── notionValues.js  # builds property values per Notion type (+tests)
 │       └── errors.js      # strips IPC noise from error messages
 ├── scripts/generate-icons.cjs  # Regenerates assets/ icons (no deps)
 ├── assets/                # icon.ico, window + tray icons (generated)

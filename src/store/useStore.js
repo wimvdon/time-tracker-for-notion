@@ -3,6 +3,7 @@ import { computeStartTime, computeEndTime } from '../lib/rounding.js';
 import { toNotionDateTime, formatDateDDMMYYYY } from '../lib/format.js';
 import { t } from '../lib/i18n.js';
 import { errorMessage } from '../lib/errors.js';
+import { WRITABLE_EXTRA_TYPES, emptyValueFor, buildPropertyValue } from '../lib/notionValues.js';
 
 const api = window.notionAPI;
 
@@ -29,7 +30,6 @@ const migratePropertyMap = (old) => {
     timeEntryStatusRunning: old.tijdsStatusRunning ?? '',
     timeEntryStatusDone: old.tijdsStatusDone ?? '',
     timeEntryRelationProp: old.tijdsRelationProp ?? '',
-    projectTitleProp: old.deelTitleProp ?? '',
   };
 };
 
@@ -68,6 +68,11 @@ export const useStore = create((set, get) => ({
   projectsLoading: false,
   selectedProjectId: null,
   description: '',
+  // Extra fields of the selected workspace, resolved against the live schema:
+  // [{ name, type, options: [{ id?, name }] }] and their current input values
+  extraFieldDefs: [],
+  extrasLoading: false,
+  extraValues: {},
 
   // Timer state
   timer: { ...idleTimer },
@@ -75,6 +80,8 @@ export const useStore = create((set, get) => ({
   setView: (view) => set({ view }),
   setDescription: (description) => set({ description }),
   setSelectedProjectId: (selectedProjectId) => set({ selectedProjectId }),
+  setExtraValue: (name, value) =>
+    set((s) => ({ extraValues: { ...s.extraValues, [name]: value } })),
 
   /** Rounding is configured per workspace; defaults to on. */
   getRoundingEnabled: () => {
@@ -201,11 +208,15 @@ export const useStore = create((set, get) => ({
       projects: [],
       selectedProjectId: null,
       projectsLoading: !!workspace,
+      extraFieldDefs: [],
+      extraValues: {},
+      extrasLoading: !!workspace && (workspace.extraProps?.length ?? 0) > 0,
     });
     api.saveSettings({ lastUsedWorkspaceId: workspaceId });
     if (!workspace) return;
+    get().loadExtraFields(workspace);
     try {
-      const projects = await api.fetchProjects(workspace.projectsDbId, workspace.propertyMap);
+      const projects = await api.fetchDatabasePages(workspace.projectsDbId);
       // Ignore stale responses if the user switched workspaces meanwhile
       if (get().selectedWorkspaceId !== workspaceId) return;
       set({ projects, projectsLoading: false });
@@ -213,6 +224,43 @@ export const useStore = create((set, get) => ({
       if (get().selectedWorkspaceId !== workspaceId) return;
       set({ projectsLoading: false });
       get().addToast({ type: 'error', message: `${t('toastProjectsError')}: ${errorMessage(err)}` });
+    }
+  },
+
+  /**
+   * Resolves the workspace's extra fields against the live database schema:
+   * current property types, select/status option lists, workspace members for
+   * people fields, and pages of the related database for relation fields.
+   * Fields that no longer exist (or are no longer writable) are skipped.
+   */
+  loadExtraFields: async (workspace) => {
+    if (!(workspace.extraProps?.length)) return;
+    try {
+      const schema = await api.getDatabaseSchema(workspace.timeEntriesDbId);
+      let users = null;
+      const defs = [];
+      for (const name of workspace.extraProps) {
+        const prop = schema?.[name];
+        if (!prop || !WRITABLE_EXTRA_TYPES.includes(prop.type)) continue;
+        const def = { name, type: prop.type, options: [] };
+        if (prop.type === 'select' || prop.type === 'multi_select' || prop.type === 'status') {
+          def.options = (prop[prop.type]?.options ?? []).map((o) => ({ name: o.name }));
+        } else if (prop.type === 'people') {
+          users = users ?? (await api.listUsers());
+          def.options = users;
+        } else if (prop.type === 'relation' && prop.relation?.database_id) {
+          def.options = await api.fetchDatabasePages(prop.relation.database_id);
+        }
+        defs.push(def);
+      }
+      if (get().selectedWorkspaceId !== workspace.id) return;
+      const extraValues = {};
+      for (const def of defs) extraValues[def.name] = emptyValueFor(def.type);
+      set({ extraFieldDefs: defs, extraValues, extrasLoading: false });
+    } catch (err) {
+      if (get().selectedWorkspaceId !== workspace.id) return;
+      set({ extrasLoading: false });
+      get().addToast({ type: 'error', message: `${t('errorLoadingExtras')}: ${errorMessage(err)}` });
     }
   },
 
@@ -231,6 +279,13 @@ export const useStore = create((set, get) => ({
     const title =
       state.description.trim() || `${project.name} — ${formatDateDDMMYYYY(roundedStart)}`;
 
+    // Extra fields: empty values are skipped, so Notion keeps its defaults
+    const extra = {};
+    for (const def of state.extraFieldDefs) {
+      const value = buildPropertyValue(def.type, state.extraValues[def.name]);
+      if (value) extra[def.name] = value;
+    }
+
     let pageId;
     try {
       ({ pageId } = await api.createTimeEntry({
@@ -239,6 +294,7 @@ export const useStore = create((set, get) => ({
         startISO,
         projectId: project.id,
         props: workspace.propertyMap,
+        extra,
       }));
     } catch (err) {
       state.addToast({ type: 'error', message: `${t('toastStartError')}: ${errorMessage(err)}` });
@@ -318,7 +374,9 @@ export const useStore = create((set, get) => ({
 
     clearInterval(timer.tickInterval);
     api.saveSettings({ activeTimer: null });
-    set({ timer: { ...idleTimer }, description: '' });
+    const extraValues = {};
+    for (const def of get().extraFieldDefs) extraValues[def.name] = emptyValueFor(def.type);
+    set({ timer: { ...idleTimer }, description: '', extraValues });
     api.setTimerRunning(false);
   },
 

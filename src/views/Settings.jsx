@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useStore } from '../store/useStore.js';
 import { propertiesByType, statusOptions } from '../lib/schema.js';
+import { WRITABLE_EXTRA_TYPES } from '../lib/notionValues.js';
 import { t } from '../lib/i18n.js';
 import { errorMessage } from '../lib/errors.js';
 
@@ -153,8 +154,9 @@ const EMPTY_SELECTION = {
   timeEntryStatusRunning: '',
   timeEntryStatusDone: '',
   timeEntryRelationProp: '',
-  projectTitleProp: '',
 };
+
+const MAX_EXTRA_PROPS = 3;
 
 /** Add (no `workspace` prop) or edit (`workspace` provided) a workspace. */
 function WorkspaceModal({ workspace, onClose }) {
@@ -167,12 +169,14 @@ function WorkspaceModal({ workspace, onClose }) {
   const [projectsDbId, setProjectsDbId] = useState(workspace?.projectsDbId || '');
   const [roundingEnabled, setRoundingEnabled] = useState(workspace?.roundingEnabled ?? true);
   const [sel, setSel] = useState({ ...EMPTY_SELECTION, ...(workspace?.propertyMap || {}) });
+  // Optional extra fields (property names in the Time Entries database);
+  // empty strings are unfilled rows and are dropped on save
+  const [extraProps, setExtraProps] = useState(workspace?.extraProps || []);
 
   // Database list — fetched once per modal lifetime (Retry re-fetches)
   const [dbs, setDbs] = useState({ loading: true, error: null, items: [] });
-  // Schemas of the two selected databases
+  // Schema of the selected Time Entries database
   const [teSchema, setTeSchema] = useState({ loading: false, error: null, schema: null });
-  const [projSchema, setProjSchema] = useState({ loading: false, error: null, schema: null });
 
   const setProp = (key, value) => setSel((s) => ({ ...s, [key]: value }));
 
@@ -199,19 +203,16 @@ function WorkspaceModal({ workspace, onClose }) {
       const schema = await window.notionAPI.getDatabaseSchema(dbId);
       setTeSchema({ loading: false, error: null, schema });
       setSel((s) => validateTeSelection(s, schema));
+      // Drop extra fields that don't exist (or aren't writable) in this schema
+      setExtraProps((prev) =>
+        prev.filter(
+          (propName) =>
+            !propName ||
+            (schema[propName] && WRITABLE_EXTRA_TYPES.includes(schema[propName].type))
+        )
+      );
     } catch (err) {
       setTeSchema({ loading: false, error: errorMessage(err), schema: null });
-    }
-  };
-
-  const loadProjSchema = async (dbId) => {
-    setProjSchema({ loading: true, error: null, schema: null });
-    try {
-      const schema = await window.notionAPI.getDatabaseSchema(dbId);
-      setProjSchema({ loading: false, error: null, schema });
-      setSel((s) => validateProjSelection(s, schema));
-    } catch (err) {
-      setProjSchema({ loading: false, error: errorMessage(err), schema: null });
     }
   };
 
@@ -220,11 +221,6 @@ function WorkspaceModal({ workspace, onClose }) {
     else setTeSchema({ loading: false, error: null, schema: null });
   }, [timeEntriesDbId]);
 
-  useEffect(() => {
-    if (projectsDbId) loadProjSchema(projectsDbId);
-    else setProjSchema({ loading: false, error: null, schema: null });
-  }, [projectsDbId]);
-
   const teTitleOpts = teSchema.schema ? propertiesByType(teSchema.schema, 'title') : [];
   const teDateOpts = teSchema.schema ? propertiesByType(teSchema.schema, 'date') : [];
   const teStatusOpts = teSchema.schema ? propertiesByType(teSchema.schema, 'status') : [];
@@ -232,7 +228,22 @@ function WorkspaceModal({ workspace, onClose }) {
   const teStatusOptions = teSchema.schema
     ? statusOptions(teSchema.schema, sel.timeEntryStatusProp)
     : [];
-  const projTitleOpts = projSchema.schema ? propertiesByType(projSchema.schema, 'title') : [];
+
+  // Candidates for an extra-field row: writable types, minus the managed
+  // properties and the names already chosen in other rows
+  const extraCandidates = (rowIndex) => {
+    if (!teSchema.schema) return [];
+    const taken = new Set([
+      sel.timeEntryTitleProp,
+      sel.timeEntryDateProp,
+      sel.timeEntryStatusProp,
+      sel.timeEntryRelationProp,
+      ...extraProps.filter((_, i) => i !== rowIndex),
+    ]);
+    return Object.entries(teSchema.schema)
+      .filter(([propName, prop]) => WRITABLE_EXTRA_TYPES.includes(prop.type) && !taken.has(propName))
+      .map(([propName, prop]) => ({ name: propName, type: prop.type }));
+  };
 
   const complete =
     !!name.trim() &&
@@ -243,8 +254,7 @@ function WorkspaceModal({ workspace, onClose }) {
     !!sel.timeEntryStatusProp &&
     !!sel.timeEntryStatusRunning &&
     !!sel.timeEntryStatusDone &&
-    !!sel.timeEntryRelationProp &&
-    !!sel.projectTitleProp;
+    !!sel.timeEntryRelationProp;
 
   const handleSave = async () => {
     if (!complete) return;
@@ -261,8 +271,8 @@ function WorkspaceModal({ workspace, onClose }) {
         timeEntryStatusRunning: sel.timeEntryStatusRunning,
         timeEntryStatusDone: sel.timeEntryStatusDone,
         timeEntryRelationProp: sel.timeEntryRelationProp,
-        projectTitleProp: sel.projectTitleProp,
       },
+      extraProps: extraProps.filter(Boolean),
     };
     if (workspace) {
       await updateWorkspace(saved);
@@ -406,28 +416,44 @@ function WorkspaceModal({ workspace, onClose }) {
           </div>
         )}
 
-        {/* Section D — Project properties */}
-        {projectsDbId && (
-          <div className="flex flex-col gap-3 border-t border-zinc-700 pt-3">
-            {projSchema.error && (
-              <div className="text-xs bg-red-950 border border-red-700 text-red-200 rounded-md p-2 flex items-start gap-2">
-                <span className="flex-1">{`${t('errorLoadingSchema')}: ${projSchema.error}`}</span>
-                <button
-                  onClick={() => loadProjSchema(projectsDbId)}
-                  className="font-semibold underline shrink-0"
+        {/* Section D — Extra fields (optional, max 3) */}
+        {timeEntriesDbId && teSchema.schema && (
+          <div className="flex flex-col gap-2 border-t border-zinc-700 pt-3">
+            <p className="text-xs font-semibold text-zinc-300">{t('sectionExtraFields')}</p>
+            <p className="text-xs text-zinc-500">{t('hintExtraFields')}</p>
+            {extraProps.map((propName, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <select
+                  value={propName}
+                  onChange={(e) =>
+                    setExtraProps((prev) => prev.map((p, j) => (j === i ? e.target.value : p)))
+                  }
+                  className="flex-1 bg-zinc-900 border border-zinc-700 rounded-md px-3 py-2 text-sm"
                 >
-                  {t('btnRetry')}
+                  <option value="">{t('placeholderSelectField')}</option>
+                  {extraCandidates(i).map((c) => (
+                    <option key={c.name} value={c.name}>
+                      {c.name} ({c.type})
+                    </option>
+                  ))}
+                </select>
+                <button
+                  onClick={() => setExtraProps((prev) => prev.filter((_, j) => j !== i))}
+                  title={t('titleRemoveExtraField')}
+                  className="text-zinc-500 hover:text-red-400 shrink-0"
+                >
+                  ✕
                 </button>
               </div>
+            ))}
+            {extraProps.length < MAX_EXTRA_PROPS && (
+              <button
+                onClick={() => setExtraProps((prev) => [...prev, ''])}
+                className="self-start px-3 py-1.5 rounded-md bg-zinc-700 hover:bg-zinc-600 text-xs"
+              >
+                {t('btnAddExtraField')}
+              </button>
             )}
-            <PropSelect
-              label={t('labelProjectTitleProp')}
-              hint={t('hintProjectTitleProp')}
-              loading={projSchema.loading}
-              options={projTitleOpts}
-              value={sel.projectTitleProp}
-              onChange={(v) => setProp('projectTitleProp', v)}
-            />
           </div>
         )}
 
@@ -525,14 +551,3 @@ function validateTeSelection(sel, schema) {
   return next;
 }
 
-function validateProjSelection(sel, schema) {
-  const next = { ...sel };
-  const candidates = propertiesByType(schema, 'title');
-  if (next.projectTitleProp && !candidates.some((c) => c.name === next.projectTitleProp)) {
-    next.projectTitleProp = '';
-  }
-  if (!next.projectTitleProp && candidates.length === 1) {
-    next.projectTitleProp = candidates[0].name;
-  }
-  return next;
-}

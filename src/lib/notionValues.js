@@ -1,0 +1,93 @@
+import { toNotionDateTime } from './format.js';
+
+/**
+ * Property types the Notion API can write and the app supports as extra
+ * fields. Read-only/computed types (formula, rollup, created_time, …) and
+ * the managed title are excluded.
+ */
+export const WRITABLE_EXTRA_TYPES = [
+  'rich_text',
+  'number',
+  'select',
+  'multi_select',
+  'status',
+  'date',
+  'checkbox',
+  'url',
+  'email',
+  'phone_number',
+  'people',
+  'relation',
+  'files',
+];
+
+/** The neutral input value for a given property type. */
+export function emptyValueFor(type) {
+  switch (type) {
+    case 'checkbox':
+      return false;
+    case 'multi_select':
+      return [];
+    default:
+      return ''; // text-likes, number, select, status, date, people, relation, files
+  }
+}
+
+/**
+ * Converts a raw input value into a Notion API property value.
+ * Returns null when the value is empty — empty fields are omitted from the
+ * create payload so Notion keeps its own defaults.
+ *
+ * @param {string} type   Notion property type (one of WRITABLE_EXTRA_TYPES)
+ * @param {*} value       Input value: string for most types, boolean for
+ *                        checkbox, string[] for multi_select, page/user id
+ *                        for relation/people, datetime-local string for date
+ */
+export function buildPropertyValue(type, value) {
+  switch (type) {
+    case 'rich_text': {
+      const text = String(value ?? '').trim();
+      return text ? { rich_text: [{ text: { content: text } }] } : null;
+    }
+    case 'number': {
+      const n = parseFloat(value);
+      return Number.isFinite(n) ? { number: n } : null;
+    }
+    case 'select':
+      return value ? { select: { name: value } } : null;
+    case 'status':
+      return value ? { status: { name: value } } : null;
+    case 'multi_select':
+      return Array.isArray(value) && value.length
+        ? { multi_select: value.map((name) => ({ name })) }
+        : null;
+    case 'date':
+      // value comes from an <input type="datetime-local">, which is local time
+      return value ? { date: { start: toNotionDateTime(new Date(value)) } } : null;
+    case 'checkbox':
+      return value ? { checkbox: true } : null;
+    case 'url': {
+      const url = String(value ?? '').trim();
+      return url ? { url } : null;
+    }
+    case 'email': {
+      const email = String(value ?? '').trim();
+      return email ? { email } : null;
+    }
+    case 'phone_number': {
+      const phone = String(value ?? '').trim();
+      return phone ? { phone_number: phone } : null;
+    }
+    case 'people':
+      return value ? { people: [{ id: value }] } : null;
+    case 'relation':
+      return value ? { relation: [{ id: value }] } : null;
+    case 'files': {
+      const url = String(value ?? '').trim();
+      // Notion requires a name; the URL itself is the clearest one available
+      return url ? { files: [{ name: url.slice(0, 100), type: 'external', external: { url } }] } : null;
+    }
+    default:
+      return null;
+  }
+}
