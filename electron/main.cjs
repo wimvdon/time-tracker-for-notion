@@ -10,9 +10,8 @@ const store = new Store({
   defaults: {
     apiKey: '',
     alwaysOnTop: true,
-    roundingEnabled: true,
-    projects: [],
-    lastUsedProjectId: null,
+    workspaces: [],
+    lastUsedWorkspaceId: null,
     activeTimer: null,
   },
 });
@@ -21,6 +20,14 @@ let mainWindow = null;
 let tray = null;
 let timerRunning = false;
 let isQuitting = false;
+
+// Tray menu strings live in the main process, where the renderer's i18n is
+// not available; app.getLocale() reflects the Windows display language.
+const TRAY_STRINGS = {
+  'en-GB': { open: 'Open', stopTimer: 'Stop timer', quit: 'Quit' },
+  'nl-BE': { open: 'Openen', stopTimer: 'Timer stoppen', quit: 'Afsluiten' },
+};
+let trayStrings = TRAY_STRINGS['en-GB'];
 
 const assetPath = (name) => path.join(__dirname, '..', 'assets', name);
 
@@ -64,11 +71,11 @@ function trayIcon() {
 
 function rebuildTrayMenu() {
   const items = [
-    { label: 'Open', click: () => showWindow() },
+    { label: trayStrings.open, click: () => showWindow() },
   ];
   if (timerRunning) {
     items.push({
-      label: 'Stop timer',
+      label: trayStrings.stopTimer,
       click: () => {
         showWindow();
         mainWindow.webContents.send('tray:stop-timer');
@@ -77,7 +84,7 @@ function rebuildTrayMenu() {
   }
   items.push({ type: 'separator' });
   items.push({
-    label: 'Quit',
+    label: trayStrings.quit,
     click: () => {
       isQuitting = true;
       app.quit();
@@ -105,21 +112,36 @@ ipcMain.handle('store:get', () => store.store);
 
 ipcMain.handle('store:set', (_event, data) => {
   for (const [key, value] of Object.entries(data)) {
-    store.set(key, value);
+    // undefined means "remove this key" — used by schema migrations
+    if (value === undefined) {
+      store.delete(key);
+    } else {
+      store.set(key, value);
+    }
   }
   return store.store;
 });
 
-ipcMain.handle('notion:fetchDeelprojecten', (_event, dbId, props) =>
-  notion.fetchDeelprojecten(store.get('apiKey'), dbId, props)
+ipcMain.handle('notion:searchDatabases', () =>
+  notion.searchDatabases(store.get('apiKey'))
 );
 
+ipcMain.handle('notion:getDatabaseSchema', (_event, dbId) =>
+  notion.getDatabaseSchema(store.get('apiKey'), dbId)
+);
+
+ipcMain.handle('notion:fetchDatabasePages', (_event, dbId) =>
+  notion.fetchDatabasePages(store.get('apiKey'), dbId)
+);
+
+ipcMain.handle('notion:listUsers', () => notion.listUsers(store.get('apiKey')));
+
 ipcMain.handle('notion:create', (_event, params) =>
-  notion.createTijdsregistratie(store.get('apiKey'), params)
+  notion.createTimeEntry(store.get('apiKey'), params)
 );
 
 ipcMain.handle('notion:stop', (_event, params) =>
-  notion.stopTijdsregistratie(store.get('apiKey'), params)
+  notion.stopTimeEntry(store.get('apiKey'), params)
 );
 
 // apiKey is passed explicitly here so Settings can test a key before saving it
@@ -151,6 +173,10 @@ if (!gotLock) {
   app.on('second-instance', () => showWindow());
 
   app.whenReady().then(() => {
+    // Same detection rule as the renderer: any Dutch locale maps to nl-BE
+    if (app.getLocale().toLowerCase().startsWith('nl')) {
+      trayStrings = TRAY_STRINGS['nl-BE'];
+    }
     createWindow();
     createTray();
   });

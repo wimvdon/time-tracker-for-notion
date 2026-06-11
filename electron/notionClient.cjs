@@ -1,7 +1,8 @@
 // All Notion REST API calls. Runs in the main process only — the renderer
 // never sees the API key.
 
-const BASE_URL = 'https://api.notion.com/v1';
+// Overridable for integration testing against a local mock server
+const BASE_URL = process.env.NOTION_API_BASE_URL || 'https://api.notion.com/v1';
 const NOTION_VERSION = '2022-06-28';
 
 async function notionFetch(apiKey, method, endpoint, body) {
@@ -44,23 +45,22 @@ async function testConnection(apiKey, dbId) {
 }
 
 /**
- * Fetches all deelprojecten from a Deelprojecten database, sorted by name.
- * @param {object} props - the project's propertyMap
+ * Returns all Notion databases the integration can access.
  * @returns [{ id, name }]
  */
-async function fetchDeelprojecten(apiKey, dbId, props) {
+async function searchDatabases(apiKey) {
   const results = [];
-  let cursor = undefined;
+  let cursor;
   do {
-    const data = await notionFetch(apiKey, 'POST', `/databases/${dbId}/query`, {
-      sorts: [{ property: props.deelTitleProp, direction: 'ascending' }],
-      filter: { property: props.deelTitleProp, title: { is_not_empty: true } },
+    const data = await notionFetch(apiKey, 'POST', '/search', {
+      filter: { value: 'database', property: 'object' },
+      sort: { direction: 'ascending', timestamp: 'last_edited_time' },
+      page_size: 100,
       ...(cursor ? { start_cursor: cursor } : {}),
     });
-    for (const page of data.results) {
-      const titleParts = page.properties?.[props.deelTitleProp]?.title || [];
-      const name = titleParts.map((t) => t.plain_text).join('');
-      if (name) results.push({ id: page.id, name });
+    for (const db of data.results) {
+      const name = (db.title || []).map((t) => t.plain_text).join('').trim() || '(Untitled)';
+      results.push({ id: db.id, name });
     }
     cursor = data.has_more ? data.next_cursor : undefined;
   } while (cursor);
@@ -68,25 +68,90 @@ async function fetchDeelprojecten(apiKey, dbId, props) {
 }
 
 /**
- * Creates a new Tijdsregistratie page (START).
- * @param {object} params { dbId, title, startISO, deelprojectId, props }
+ * Returns the raw `properties` map of a database. Filtering by property type
+ * happens in the renderer (src/lib/schema.js).
+ * Shape: { [propName]: { id, type, status?: { options: [{ name, color, id }] }, ... } }
+ */
+async function getDatabaseSchema(apiKey, dbId) {
+  const data = await notionFetch(apiKey, 'GET', `/databases/${dbId}`);
+  return data.properties;
+}
+
+/**
+ * Fetches all pages of a database as picker options, using whichever property
+ * is the title (every Notion database has exactly one). Used for the project
+ * picker and for relation-type extra fields. Sorted by name.
+ * @returns [{ id, name }]
+ */
+async function fetchDatabasePages(apiKey, dbId) {
+  const results = [];
+  let cursor = undefined;
+  do {
+    const data = await notionFetch(apiKey, 'POST', `/databases/${dbId}/query`, {
+      page_size: 100,
+      ...(cursor ? { start_cursor: cursor } : {}),
+    });
+    for (const page of data.results) {
+      const titleProp = Object.values(page.properties || {}).find((p) => p.type === 'title');
+      const name = (titleProp?.title || [])
+        .map((t) => t.plain_text)
+        .join('')
+        .trim();
+      if (name) results.push({ id: page.id, name });
+    }
+    cursor = data.has_more ? data.next_cursor : undefined;
+  } while (cursor);
+  results.sort((a, b) => a.name.localeCompare(b.name));
+  return results;
+}
+
+/**
+ * Returns the workspace members (for people-type extra fields).
+ * @returns [{ id, name }]
+ */
+async function listUsers(apiKey) {
+  const results = [];
+  let cursor;
+  do {
+    const data = await notionFetch(
+      apiKey,
+      'GET',
+      `/users?page_size=100${cursor ? `&start_cursor=${cursor}` : ''}`
+    );
+    for (const user of data.results) {
+      if (user.type === 'person') {
+        results.push({ id: user.id, name: user.name || user.person?.email || user.id });
+      }
+    }
+    cursor = data.has_more ? data.next_cursor : undefined;
+  } while (cursor);
+  results.sort((a, b) => a.name.localeCompare(b.name));
+  return results;
+}
+
+/**
+ * Creates a new time entry page (START).
+ * @param {object} params { dbId, title, startISO, projectId, props, extra }
+ *   extra: pre-built Notion property values for the workspace's extra fields
+ *   ({ [propName]: value }); managed properties win on a name collision.
  * @returns {{ pageId: string }}
  */
-async function createTijdsregistratie(apiKey, { dbId, title, startISO, deelprojectId, props }) {
+async function createTimeEntry(apiKey, { dbId, title, startISO, projectId, props, extra }) {
   const data = await notionFetch(apiKey, 'POST', '/pages', {
     parent: { database_id: dbId },
     properties: {
-      [props.tijdsTitleProp]: {
+      ...(extra || {}),
+      [props.timeEntryTitleProp]: {
         title: [{ text: { content: title } }],
       },
-      [props.tijdsTijdProp]: {
+      [props.timeEntryDateProp]: {
         date: { start: startISO, end: null },
       },
-      [props.tijdsStatusProp]: {
-        status: { name: props.tijdsStatusRunning },
+      [props.timeEntryStatusProp]: {
+        status: { name: props.timeEntryStatusRunning },
       },
-      [props.tijdsRelationProp]: {
-        relation: [{ id: deelprojectId }],
+      [props.timeEntryRelationProp]: {
+        relation: [{ id: projectId }],
       },
     },
   });
@@ -94,18 +159,18 @@ async function createTijdsregistratie(apiKey, { dbId, title, startISO, deelproje
 }
 
 /**
- * Completes a Tijdsregistratie (STOP). startISO must be the exact value used
- * at creation — it is not re-rounded.
+ * Completes a time entry (STOP). startISO must be the exact value used at
+ * creation — it is not re-rounded.
  * @param {object} params { pageId, startISO, endISO, props }
  */
-async function stopTijdsregistratie(apiKey, { pageId, startISO, endISO, props }) {
+async function stopTimeEntry(apiKey, { pageId, startISO, endISO, props }) {
   await notionFetch(apiKey, 'PATCH', `/pages/${pageId}`, {
     properties: {
-      [props.tijdsTijdProp]: {
+      [props.timeEntryDateProp]: {
         date: { start: startISO, end: endISO },
       },
-      [props.tijdsStatusProp]: {
-        status: { name: props.tijdsStatusDone },
+      [props.timeEntryStatusProp]: {
+        status: { name: props.timeEntryStatusDone },
       },
     },
   });
@@ -114,7 +179,10 @@ async function stopTijdsregistratie(apiKey, { pageId, startISO, endISO, props })
 
 module.exports = {
   testConnection,
-  fetchDeelprojecten,
-  createTijdsregistratie,
-  stopTijdsregistratie,
+  searchDatabases,
+  getDatabaseSchema,
+  fetchDatabasePages,
+  listUsers,
+  createTimeEntry,
+  stopTimeEntry,
 };

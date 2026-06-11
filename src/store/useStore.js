@@ -1,8 +1,9 @@
 import { create } from 'zustand';
 import { computeStartTime, computeEndTime } from '../lib/rounding.js';
 import { toNotionDateTime, formatDateDDMMYYYY } from '../lib/format.js';
-import { DEFAULT_PROPERTY_MAP } from '../lib/constants.js';
 import { t } from '../lib/i18n.js';
+import { errorMessage } from '../lib/errors.js';
+import { WRITABLE_EXTRA_TYPES, emptyValueFor, buildPropertyValue } from '../lib/notionValues.js';
 
 const api = window.notionAPI;
 
@@ -17,20 +18,43 @@ const idleTimer = {
   tickInterval: null,
 };
 
-// Projects saved before property mapping existed have no propertyMap
-const withDefaultPropertyMap = (project) => ({
-  ...project,
-  propertyMap: { ...DEFAULT_PROPERTY_MAP, ...(project.propertyMap || {}) },
-});
+// ---- Migration from the pre-workspace schema ----
+
+const migratePropertyMap = (old) => {
+  if (!old) return {};
+  if (old.timeEntryTitleProp !== undefined) return old; // already new shape
+  return {
+    timeEntryTitleProp: old.tijdsTitleProp ?? '',
+    timeEntryDateProp: old.tijdsTijdProp ?? '',
+    timeEntryStatusProp: old.tijdsStatusProp ?? '',
+    timeEntryStatusRunning: old.tijdsStatusRunning ?? '',
+    timeEntryStatusDone: old.tijdsStatusDone ?? '',
+    timeEntryRelationProp: old.tijdsRelationProp ?? '',
+  };
+};
+
+const migrateActiveTimer = (at) => {
+  if (!at) return null;
+  if (at.workspaceId !== undefined) return at; // already new shape
+  return {
+    notionPageId: at.notionPageId,
+    roundedStart: at.roundedStart,
+    rawStart: at.rawStart,
+    workspaceId: at.projectId ?? null, // "project" used to mean workspace
+    projectId: at.deelprojectId ?? null,
+    projectName: at.deelprojectName ?? '',
+    description: at.description ?? '',
+    propertyMap: migratePropertyMap(at.propertyMap),
+  };
+};
 
 let toastSeq = 0;
 
 export const useStore = create((set, get) => ({
   // Settings (synced from electron-store)
   apiKey: '',
-  projects: [],
+  workspaces: [],
   alwaysOnTop: true,
-  roundingEnabled: true,
 
   // UI
   view: 'timer', // 'timer' | 'settings'
@@ -39,18 +63,31 @@ export const useStore = create((set, get) => ({
   recoveryBusy: false,
 
   // Session state
+  selectedWorkspaceId: null,
+  projects: [],
+  projectsLoading: false,
   selectedProjectId: null,
-  deelprojecten: [],
-  deelprojectenLoading: false,
-  selectedDeelprojectId: null,
   description: '',
+  // Extra fields of the selected workspace, resolved against the live schema:
+  // [{ name, type, options: [{ id?, name }] }] and their current input values
+  extraFieldDefs: [],
+  extrasLoading: false,
+  extraValues: {},
 
   // Timer state
   timer: { ...idleTimer },
 
   setView: (view) => set({ view }),
   setDescription: (description) => set({ description }),
-  setSelectedDeelprojectId: (selectedDeelprojectId) => set({ selectedDeelprojectId }),
+  setSelectedProjectId: (selectedProjectId) => set({ selectedProjectId }),
+  setExtraValue: (name, value) =>
+    set((s) => ({ extraValues: { ...s.extraValues, [name]: value } })),
+
+  /** Rounding is configured per workspace; defaults to on. */
+  getRoundingEnabled: () => {
+    const ws = get().workspaces.find((w) => w.id === get().selectedWorkspaceId);
+    return ws?.roundingEnabled ?? true;
+  },
 
   addToast: (toast) => {
     const id = ++toastSeq;
@@ -67,25 +104,54 @@ export const useStore = create((set, get) => ({
 
   init: async () => {
     const settings = await api.getSettings();
-    const projects = (settings.projects || []).map(withDefaultPropertyMap);
+
+    // Migrate the old "projects as app configs" schema to workspaces.
+    // Note: electron-store injects `workspaces: []` as a default, so the
+    // presence of legacy data is what decides whether to migrate.
+    const hasLegacy =
+      (settings.projects?.length ?? 0) > 0 && !(settings.workspaces?.length);
+    const workspaces = hasLegacy
+      ? settings.projects.map((p) => ({
+          id: p.id,
+          name: p.name,
+          timeEntriesDbId: p.tijdsregistratiesDbId,
+          projectsDbId: p.deelprojectenDbId,
+          roundingEnabled: settings.roundingEnabled ?? true,
+          propertyMap: migratePropertyMap(p.propertyMap),
+        }))
+      : settings.workspaces ?? [];
+    const lastUsedWorkspaceId =
+      settings.lastUsedWorkspaceId ?? settings.lastUsedProjectId ?? null;
+    const activeTimer = migrateActiveTimer(settings.activeTimer);
+    if (hasLegacy || settings.projects !== undefined) {
+      // Save migrated data back so the old keys are gone
+      api.saveSettings({
+        workspaces,
+        lastUsedWorkspaceId,
+        activeTimer,
+        projects: undefined,
+        lastUsedProjectId: undefined,
+        roundingEnabled: undefined,
+      });
+    }
+
     set({
       apiKey: settings.apiKey || '',
-      projects,
+      workspaces,
       alwaysOnTop: settings.alwaysOnTop !== false,
-      roundingEnabled: settings.roundingEnabled !== false,
     });
 
     // First launch: send the user to Settings
-    if (!settings.apiKey || !projects.length) {
+    if (!settings.apiKey || !workspaces.length) {
       set({ view: 'settings' });
     }
 
     // Crash recovery: a timer was running when the app last closed
-    if (settings.activeTimer && settings.activeTimer.notionPageId) {
-      set({ recoveredTimer: settings.activeTimer });
-    } else if (settings.lastUsedProjectId) {
-      const exists = projects.some((p) => p.id === settings.lastUsedProjectId);
-      if (exists) get().selectProject(settings.lastUsedProjectId);
+    if (activeTimer && activeTimer.notionPageId) {
+      set({ recoveredTimer: activeTimer });
+    } else if (lastUsedWorkspaceId) {
+      const exists = workspaces.some((w) => w.id === lastUsedWorkspaceId);
+      if (exists) get().selectWorkspace(lastUsedWorkspaceId);
     }
   },
 
@@ -94,35 +160,36 @@ export const useStore = create((set, get) => ({
     set({ apiKey });
   },
 
-  addProject: async (project) => {
-    const projects = [...get().projects, withDefaultPropertyMap(project)];
-    await api.saveSettings({ projects });
-    set({ projects });
+  addWorkspace: async (workspace) => {
+    const workspaces = [...get().workspaces, workspace];
+    await api.saveSettings({ workspaces });
+    set({ workspaces });
   },
 
-  updateProject: async (updatedProject) => {
-    const projects = get().projects.map((p) =>
-      p.id === updatedProject.id ? withDefaultPropertyMap(updatedProject) : p
+  updateWorkspace: async (updatedWorkspace) => {
+    const workspaces = get().workspaces.map((w) =>
+      w.id === updatedWorkspace.id ? updatedWorkspace : w
     );
-    await api.saveSettings({ projects });
-    set({ projects });
-    // If this is the selected project, re-fetch deelprojecten in case the title prop changed
-    if (get().selectedProjectId === updatedProject.id) {
-      get().selectProject(updatedProject.id);
+    await api.saveSettings({ workspaces });
+    set({ workspaces });
+    // If this is the selected workspace, re-fetch projects in case the
+    // databases or property mapping changed
+    if (get().selectedWorkspaceId === updatedWorkspace.id) {
+      get().selectWorkspace(updatedWorkspace.id);
     }
   },
 
-  deleteProject: async (projectId) => {
-    const projects = get().projects.filter((p) => p.id !== projectId);
-    await api.saveSettings({ projects });
-    const patch = { projects };
-    if (get().selectedProjectId === projectId) {
+  deleteWorkspace: async (workspaceId) => {
+    const workspaces = get().workspaces.filter((w) => w.id !== workspaceId);
+    await api.saveSettings({ workspaces });
+    const patch = { workspaces };
+    if (get().selectedWorkspaceId === workspaceId) {
       Object.assign(patch, {
+        selectedWorkspaceId: null,
+        projects: [],
         selectedProjectId: null,
-        deelprojecten: [],
-        selectedDeelprojectId: null,
       });
-      await api.saveSettings({ lastUsedProjectId: null });
+      await api.saveSettings({ lastUsedWorkspaceId: null });
     }
     set(patch);
   },
@@ -132,35 +199,73 @@ export const useStore = create((set, get) => ({
     set({ alwaysOnTop: value });
   },
 
-  toggleRounding: async (value) => {
-    await api.saveSettings({ roundingEnabled: value });
-    set({ roundingEnabled: value });
+  // ---- Workspace / project selection ----
+
+  selectWorkspace: async (workspaceId) => {
+    const workspace = get().workspaces.find((w) => w.id === workspaceId);
+    set({
+      selectedWorkspaceId: workspaceId,
+      projects: [],
+      selectedProjectId: null,
+      projectsLoading: !!workspace,
+      extraFieldDefs: [],
+      extraValues: {},
+      extrasLoading: !!workspace && (workspace.extraProps?.length ?? 0) > 0,
+    });
+    api.saveSettings({ lastUsedWorkspaceId: workspaceId });
+    if (!workspace) return;
+    get().loadExtraFields(workspace);
+    try {
+      const projects = await api.fetchDatabasePages(workspace.projectsDbId);
+      // Ignore stale responses if the user switched workspaces meanwhile
+      if (get().selectedWorkspaceId !== workspaceId) return;
+      // Pre-select the workspace's default project when it still exists
+      const selectedProjectId =
+        workspace.defaultProjectId && projects.some((p) => p.id === workspace.defaultProjectId)
+          ? workspace.defaultProjectId
+          : null;
+      set({ projects, projectsLoading: false, selectedProjectId });
+    } catch (err) {
+      if (get().selectedWorkspaceId !== workspaceId) return;
+      set({ projectsLoading: false });
+      get().addToast({ type: 'error', message: `${t('toastProjectsError')}: ${errorMessage(err)}` });
+    }
   },
 
-  // ---- Project / deelproject selection ----
-
-  selectProject: async (projectId) => {
-    const project = get().projects.find((p) => p.id === projectId);
-    set({
-      selectedProjectId: projectId,
-      deelprojecten: [],
-      selectedDeelprojectId: null,
-      deelprojectenLoading: !!project,
-    });
-    api.saveSettings({ lastUsedProjectId: projectId });
-    if (!project) return;
+  /**
+   * Resolves the workspace's extra fields against the live database schema:
+   * current property types, select/status option lists, workspace members for
+   * people fields, and pages of the related database for relation fields.
+   * Fields that no longer exist (or are no longer writable) are skipped.
+   */
+  loadExtraFields: async (workspace) => {
+    if (!(workspace.extraProps?.length)) return;
     try {
-      const deelprojecten = await api.fetchDeelprojecten(
-        project.deelprojectenDbId,
-        project.propertyMap
-      );
-      // Ignore stale responses if the user switched projects meanwhile
-      if (get().selectedProjectId !== projectId) return;
-      set({ deelprojecten, deelprojectenLoading: false });
+      const schema = await api.getDatabaseSchema(workspace.timeEntriesDbId);
+      let users = null;
+      const defs = [];
+      for (const name of workspace.extraProps) {
+        const prop = schema?.[name];
+        if (!prop || !WRITABLE_EXTRA_TYPES.includes(prop.type)) continue;
+        const def = { name, type: prop.type, options: [] };
+        if (prop.type === 'select' || prop.type === 'multi_select' || prop.type === 'status') {
+          def.options = (prop[prop.type]?.options ?? []).map((o) => ({ name: o.name }));
+        } else if (prop.type === 'people') {
+          users = users ?? (await api.listUsers());
+          def.options = users;
+        } else if (prop.type === 'relation' && prop.relation?.database_id) {
+          def.options = await api.fetchDatabasePages(prop.relation.database_id);
+        }
+        defs.push(def);
+      }
+      if (get().selectedWorkspaceId !== workspace.id) return;
+      const extraValues = {};
+      for (const def of defs) extraValues[def.name] = emptyValueFor(def.type);
+      set({ extraFieldDefs: defs, extraValues, extrasLoading: false });
     } catch (err) {
-      if (get().selectedProjectId !== projectId) return;
-      set({ deelprojectenLoading: false });
-      get().addToast({ type: 'error', message: `${t('toastDeelprojectenError')}: ${err.message}` });
+      if (get().selectedWorkspaceId !== workspace.id) return;
+      set({ extrasLoading: false });
+      get().addToast({ type: 'error', message: `${t('errorLoadingExtras')}: ${errorMessage(err)}` });
     }
   },
 
@@ -169,28 +274,35 @@ export const useStore = create((set, get) => ({
   startTimer: async () => {
     const state = get();
     if (state.timer.running) return;
+    const workspace = state.workspaces.find((w) => w.id === state.selectedWorkspaceId);
     const project = state.projects.find((p) => p.id === state.selectedProjectId);
-    const deelproject = state.deelprojecten.find((d) => d.id === state.selectedDeelprojectId);
-    if (!project || !deelproject) return;
+    if (!workspace || !project) return;
 
     // With rounding off the exact timestamp is used; no 15-minute logic applies
-    const roundedStart = state.roundingEnabled ? computeStartTime() : new Date();
+    const roundedStart = get().getRoundingEnabled() ? computeStartTime() : new Date();
     const startISO = toNotionDateTime(roundedStart);
     const title =
-      state.description.trim() ||
-      `${deelproject.name} — ${formatDateDDMMYYYY(roundedStart)}`;
+      state.description.trim() || `${project.name} — ${formatDateDDMMYYYY(roundedStart)}`;
+
+    // Extra fields: empty values are skipped, so Notion keeps its defaults
+    const extra = {};
+    for (const def of state.extraFieldDefs) {
+      const value = buildPropertyValue(def.type, state.extraValues[def.name]);
+      if (value) extra[def.name] = value;
+    }
 
     let pageId;
     try {
-      ({ pageId } = await api.createTijdsregistratie({
-        dbId: project.tijdsregistratiesDbId,
+      ({ pageId } = await api.createTimeEntry({
+        dbId: workspace.timeEntriesDbId,
         title,
         startISO,
-        deelprojectId: deelproject.id,
-        props: project.propertyMap,
+        projectId: project.id,
+        props: workspace.propertyMap,
+        extra,
       }));
     } catch (err) {
-      state.addToast({ type: 'error', message: `${t('toastStartError')}: ${err.message}` });
+      state.addToast({ type: 'error', message: `${t('toastStartError')}: ${errorMessage(err)}` });
       return;
     }
 
@@ -201,11 +313,11 @@ export const useStore = create((set, get) => ({
         notionPageId: pageId,
         roundedStart: startISO,
         rawStart: rawStart.toISOString(),
+        workspaceId: workspace.id,
         projectId: project.id,
-        deelprojectId: deelproject.id,
-        deelprojectName: deelproject.name,
+        projectName: project.name,
         description: state.description,
-        propertyMap: project.propertyMap,
+        propertyMap: workspace.propertyMap,
       },
     });
     get().beginTicking({
@@ -213,7 +325,7 @@ export const useStore = create((set, get) => ({
       roundedStart,
       startISO,
       rawStart,
-      propertyMap: project.propertyMap,
+      propertyMap: workspace.propertyMap,
     });
   },
 
@@ -242,24 +354,76 @@ export const useStore = create((set, get) => ({
     api.setTimerRunning(true);
   },
 
-  stopTimer: async () => {
-    const { timer, roundingEnabled, addToast } = get();
+  /**
+   * Applies a manually edited start time to the running timer. The rounding
+   * rules of the workspace apply. The corrected start is persisted for crash
+   * recovery and written to Notion with the PATCH on stop (which always sends
+   * the start).
+   */
+  updateStartTime: (newStart) => {
+    const state = get();
+    if (!state.timer.running) return;
+    const roundedStart = state.getRoundingEnabled() ? computeStartTime(newStart) : newStart;
+    const startISO = toNotionDateTime(roundedStart);
+    set((s) => ({
+      timer: {
+        ...s.timer,
+        roundedStart,
+        startISO,
+        rawStart: newStart,
+        elapsedSeconds: Math.max(0, Math.floor((Date.now() - newStart.getTime()) / 1000)),
+      },
+    }));
+    const project = state.projects.find((p) => p.id === state.selectedProjectId);
+    api.saveSettings({
+      activeTimer: {
+        notionPageId: state.timer.notionPageId,
+        roundedStart: startISO,
+        rawStart: newStart.toISOString(),
+        workspaceId: state.selectedWorkspaceId,
+        projectId: state.selectedProjectId,
+        projectName: project?.name ?? '',
+        description: state.description,
+        propertyMap: state.timer.propertyMap,
+      },
+    });
+  },
+
+  /**
+   * Stops the timer. With a manually entered end time (`manualEnd`), that
+   * time is used instead of "now" — still subject to the workspace's
+   * rounding rules (nearest 15 minutes, minimum duration of 15 minutes).
+   */
+  stopTimer: async (manualEnd = null) => {
+    const { timer, addToast } = get();
     if (!timer.running) return;
 
-    const endTime = roundingEnabled ? computeEndTime(timer.roundedStart) : new Date();
+    const rounding = get().getRoundingEnabled();
+    if (manualEnd) {
+      // Reject ends before the timer began; with rounding the minimum-
+      // duration rule handles ends between the raw and rounded start
+      const earliest = Math.min(timer.rawStart.getTime(), timer.roundedStart.getTime());
+      if (manualEnd.getTime() < earliest || (!rounding && manualEnd.getTime() <= earliest)) {
+        addToast({ type: 'error', message: t('toastEndBeforeStart') });
+        return;
+      }
+    }
+    const endTime = rounding
+      ? computeEndTime(timer.roundedStart, manualEnd ?? new Date())
+      : manualEnd ?? new Date();
     try {
-      await api.stopTijdsregistratie({
+      await api.stopTimeEntry({
         pageId: timer.notionPageId,
         startISO: timer.startISO, // exact value from creation, never re-rounded
         endISO: toNotionDateTime(endTime),
-        props: timer.propertyMap || DEFAULT_PROPERTY_MAP,
+        props: timer.propertyMap,
       });
     } catch (err) {
       // Keep the timer state intact so the user can retry
       addToast({
         type: 'error',
         sticky: true,
-        message: `${t('toastStopError')}: ${err.message}`,
+        message: `${t('toastStopError')}: ${errorMessage(err)}`,
         action: { label: t('toastStopRetry'), run: () => get().stopTimer() },
       });
       return;
@@ -267,7 +431,9 @@ export const useStore = create((set, get) => ({
 
     clearInterval(timer.tickInterval);
     api.saveSettings({ activeTimer: null });
-    set({ timer: { ...idleTimer }, description: '' });
+    const extraValues = {};
+    for (const def of get().extraFieldDefs) extraValues[def.name] = emptyValueFor(def.type);
+    set({ timer: { ...idleTimer }, description: '', extraValues });
     api.setTimerRunning(false);
   },
 
@@ -277,16 +443,16 @@ export const useStore = create((set, get) => ({
     const recovered = get().recoveredTimer;
     if (!recovered) return;
     set({ recoveredTimer: null, description: recovered.description || '', view: 'timer' });
-    if (recovered.projectId) {
-      await get().selectProject(recovered.projectId);
-      set({ selectedDeelprojectId: recovered.deelprojectId || null });
+    if (recovered.workspaceId) {
+      await get().selectWorkspace(recovered.workspaceId);
+      set({ selectedProjectId: recovered.projectId || null });
     }
     get().beginTicking({
       pageId: recovered.notionPageId,
       roundedStart: new Date(recovered.roundedStart),
       startISO: recovered.roundedStart,
       rawStart: new Date(recovered.rawStart || recovered.roundedStart),
-      propertyMap: recovered.propertyMap || DEFAULT_PROPERTY_MAP,
+      propertyMap: recovered.propertyMap,
     });
   },
 
@@ -294,19 +460,21 @@ export const useStore = create((set, get) => ({
     const recovered = get().recoveredTimer;
     if (!recovered) return;
     set({ recoveryBusy: true });
-    const endTime = get().roundingEnabled
+    // Rounding follows the workspace the timer belongs to
+    const workspace = get().workspaces.find((w) => w.id === recovered.workspaceId);
+    const endTime = (workspace?.roundingEnabled ?? true)
       ? computeEndTime(new Date(recovered.roundedStart))
       : new Date();
     try {
-      await api.stopTijdsregistratie({
+      await api.stopTimeEntry({
         pageId: recovered.notionPageId,
         startISO: recovered.roundedStart,
         endISO: toNotionDateTime(endTime),
-        props: recovered.propertyMap || DEFAULT_PROPERTY_MAP,
+        props: recovered.propertyMap,
       });
     } catch (err) {
       set({ recoveryBusy: false });
-      get().addToast({ type: 'error', message: `${t('toastRecoveryStopError')}: ${err.message}` });
+      get().addToast({ type: 'error', message: `${t('toastRecoveryStopError')}: ${errorMessage(err)}` });
       return;
     }
     api.saveSettings({ activeTimer: null });
@@ -314,7 +482,7 @@ export const useStore = create((set, get) => ({
   },
 
   discardRecoveredTimer: () => {
-    // Forgets the timer locally; the Notion page stays as-is ("Lopende")
+    // Forgets the timer locally; the Notion page keeps its running status
     api.saveSettings({ activeTimer: null });
     set({ recoveredTimer: null });
   },
