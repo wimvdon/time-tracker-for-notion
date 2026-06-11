@@ -304,14 +304,15 @@ export const useStore = create((set, get) => ({
     const state = get();
     if (state.timer.running) return;
     const workspace = state.workspaces.find((w) => w.id === state.selectedWorkspaceId);
+    if (!workspace) return;
     const project = state.projects.find((p) => p.id === state.selectedProjectId);
-    if (!workspace || !project) return;
 
     const rm = get().getRoundingMinutes();
     const roundedStart = rm > 0 ? computeStartTime(new Date(), rm) : new Date();
     const startISO = toNotionDateTime(roundedStart);
     const title =
-      state.description.trim() || `${project.name} — ${formatDateDDMMYYYY(roundedStart)}`;
+      state.description.trim() ||
+      (project ? `${project.name} — ${formatDateDDMMYYYY(roundedStart)}` : formatDateDDMMYYYY(roundedStart));
 
     // Extra fields: empty values are skipped, so Notion keeps its defaults
     const extra = {};
@@ -326,7 +327,7 @@ export const useStore = create((set, get) => ({
         dbId: workspace.timeEntriesDbId,
         title,
         startISO,
-        projectId: project.id,
+        projectId: project?.id,
         props: workspace.propertyMap,
         extra,
       }));
@@ -343,8 +344,8 @@ export const useStore = create((set, get) => ({
         roundedStart: startISO,
         rawStart: rawStart.toISOString(),
         workspaceId: workspace.id,
-        projectId: project.id,
-        projectName: project.name,
+        projectId: project?.id,
+        projectName: project?.name ?? '',
         description: state.description,
         propertyMap: workspace.propertyMap,
       },
