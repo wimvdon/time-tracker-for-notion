@@ -148,15 +148,13 @@ export default function Settings() {
 }
 
 const EMPTY_SELECTION = {
-  timeEntryTitleProp: '',
   timeEntryDateProp: '',
   timeEntryStatusProp: '',
   timeEntryStatusRunning: '',
   timeEntryStatusDone: '',
-  timeEntryRelationProp: '',
 };
 
-const MAX_EXTRA_PROPS = 3;
+const MAX_EXTRA_PROPS = 5;
 
 /** Add (no `workspace` prop) or edit (`workspace` provided) a workspace. */
 function WorkspaceModal({ workspace, onClose }) {
@@ -166,20 +164,20 @@ function WorkspaceModal({ workspace, onClose }) {
 
   const [name, setName] = useState(workspace?.name || '');
   const [timeEntriesDbId, setTimeEntriesDbId] = useState(workspace?.timeEntriesDbId || '');
-  const [projectsDbId, setProjectsDbId] = useState(workspace?.projectsDbId || '');
-  const [roundingEnabled, setRoundingEnabled] = useState(workspace?.roundingEnabled ?? true);
-  const [defaultProjectId, setDefaultProjectId] = useState(workspace?.defaultProjectId || '');
+  const [roundingMinutes, setRoundingMinutes] = useState(
+    workspace?.roundingMinutes ?? (workspace?.roundingEnabled === false ? 0 : 15)
+  );
   const [sel, setSel] = useState({ ...EMPTY_SELECTION, ...(workspace?.propertyMap || {}) });
-  // Optional extra fields (property names in the Time Entries database);
-  // empty strings are unfilled rows and are dropped on save
-  const [extraProps, setExtraProps] = useState(workspace?.extraProps || []);
+  const [extraProps, setExtraProps] = useState(
+    (workspace?.extraProps || []).map((ep) =>
+      typeof ep === 'string' ? { propName: ep, defaultValue: null } : ep
+    )
+  );
 
   // Database list — fetched once per modal lifetime (Retry re-fetches)
   const [dbs, setDbs] = useState({ loading: true, error: null, items: [] });
   // Schema of the selected Time Entries database
   const [teSchema, setTeSchema] = useState({ loading: false, error: null, schema: null });
-  // Pages of the selected Projects database (for the default project picker)
-  const [projPages, setProjPages] = useState({ loading: false, error: null, items: [] });
 
   const setProp = (key, value) => setSel((s) => ({ ...s, [key]: value }));
 
@@ -209,9 +207,9 @@ function WorkspaceModal({ workspace, onClose }) {
       // Drop extra fields that don't exist (or aren't writable) in this schema
       setExtraProps((prev) =>
         prev.filter(
-          (propName) =>
-            !propName ||
-            (schema[propName] && WRITABLE_EXTRA_TYPES.includes(schema[propName].type))
+          (ep) =>
+            !ep.propName ||
+            (schema[ep.propName] && WRITABLE_EXTRA_TYPES.includes(schema[ep.propName].type))
         )
       );
     } catch (err) {
@@ -224,27 +222,8 @@ function WorkspaceModal({ workspace, onClose }) {
     else setTeSchema({ loading: false, error: null, schema: null });
   }, [timeEntriesDbId]);
 
-  const loadProjPages = async (dbId) => {
-    setProjPages({ loading: true, error: null, items: [] });
-    try {
-      const items = await window.notionAPI.fetchDatabasePages(dbId);
-      setProjPages({ loading: false, error: null, items });
-      // A default project from another database is no longer valid
-      setDefaultProjectId((prev) => (items.some((p) => p.id === prev) ? prev : ''));
-    } catch (err) {
-      setProjPages({ loading: false, error: errorMessage(err), items: [] });
-    }
-  };
-
-  useEffect(() => {
-    if (projectsDbId) loadProjPages(projectsDbId);
-    else setProjPages({ loading: false, error: null, items: [] });
-  }, [projectsDbId]);
-
-  const teTitleOpts = teSchema.schema ? propertiesByType(teSchema.schema, 'title') : [];
   const teDateOpts = teSchema.schema ? propertiesByType(teSchema.schema, 'date') : [];
   const teStatusOpts = teSchema.schema ? propertiesByType(teSchema.schema, 'status') : [];
-  const teRelationOpts = teSchema.schema ? propertiesByType(teSchema.schema, 'relation') : [];
   const teStatusOptions = teSchema.schema
     ? statusOptions(teSchema.schema, sel.timeEntryStatusProp)
     : [];
@@ -254,11 +233,12 @@ function WorkspaceModal({ workspace, onClose }) {
   const extraCandidates = (rowIndex) => {
     if (!teSchema.schema) return [];
     const taken = new Set([
-      sel.timeEntryTitleProp,
       sel.timeEntryDateProp,
       sel.timeEntryStatusProp,
-      sel.timeEntryRelationProp,
-      ...extraProps.filter((_, i) => i !== rowIndex),
+      ...extraProps
+        .filter((_, i) => i !== rowIndex)
+        .map((ep) => ep.propName)
+        .filter(Boolean),
     ]);
     return Object.entries(teSchema.schema)
       .filter(([propName, prop]) => WRITABLE_EXTRA_TYPES.includes(prop.type) && !taken.has(propName))
@@ -268,32 +248,32 @@ function WorkspaceModal({ workspace, onClose }) {
   const complete =
     !!name.trim() &&
     !!timeEntriesDbId &&
-    !!projectsDbId &&
-    !!sel.timeEntryTitleProp &&
+    !!teSchema.schema &&
     !!sel.timeEntryDateProp &&
     !!sel.timeEntryStatusProp &&
     !!sel.timeEntryStatusRunning &&
-    !!sel.timeEntryStatusDone &&
-    !!sel.timeEntryRelationProp;
+    !!sel.timeEntryStatusDone;
 
   const handleSave = async () => {
     if (!complete) return;
+    const relPropName = propertiesByType(teSchema.schema, 'relation')[0]?.name ?? '';
+    const titlePropName = propertiesByType(teSchema.schema, 'title')[0]?.name ?? '';
+    const projectsDbId = teSchema.schema[relPropName]?.relation?.database_id ?? '';
     const saved = {
       id: workspace?.id || crypto.randomUUID(),
       name: name.trim(),
       timeEntriesDbId,
       projectsDbId,
-      roundingEnabled,
-      defaultProjectId,
+      roundingMinutes,
       propertyMap: {
-        timeEntryTitleProp: sel.timeEntryTitleProp,
+        timeEntryTitleProp: titlePropName,
         timeEntryDateProp: sel.timeEntryDateProp,
         timeEntryStatusProp: sel.timeEntryStatusProp,
         timeEntryStatusRunning: sel.timeEntryStatusRunning,
         timeEntryStatusDone: sel.timeEntryStatusDone,
-        timeEntryRelationProp: sel.timeEntryRelationProp,
+        timeEntryRelationProp: relPropName,
       },
-      extraProps: extraProps.filter(Boolean),
+      extraProps: extraProps.filter((ep) => !!ep.propName),
     };
     if (workspace) {
       await updateWorkspace(saved);
@@ -339,7 +319,7 @@ function WorkspaceModal({ workspace, onClose }) {
           />
         </Field>
 
-        {/* Section B — Databases */}
+        {/* Section B — Time Entries database */}
         {dbs.error && (
           <div className="text-xs bg-red-950 border border-red-700 text-red-200 rounded-md p-2 flex items-start gap-2">
             <span className="flex-1">{`${t('errorLoadingDatabases')}: ${dbs.error}`}</span>
@@ -356,43 +336,6 @@ function WorkspaceModal({ workspace, onClose }) {
         <Field label={t('labelTimeEntriesDb')} hint={t('hintTimeEntriesDb')}>
           {dbSelect(timeEntriesDbId, setTimeEntriesDbId)}
         </Field>
-        <Field label={t('labelProjectsDb')} hint={t('hintProjectsDb')}>
-          {dbSelect(projectsDbId, setProjectsDbId)}
-        </Field>
-
-        {/* Default project (optional, depends on the Projects database) */}
-        {projectsDbId && (
-          <>
-            {projPages.error && (
-              <div className="text-xs bg-red-950 border border-red-700 text-red-200 rounded-md p-2 flex items-start gap-2">
-                <span className="flex-1">{`${t('toastProjectsError')}: ${projPages.error}`}</span>
-                <button
-                  onClick={() => loadProjPages(projectsDbId)}
-                  className="font-semibold underline shrink-0"
-                >
-                  {t('btnRetry')}
-                </button>
-              </div>
-            )}
-            <Field label={t('labelDefaultProject')} hint={t('hintDefaultProject')}>
-              <select
-                value={defaultProjectId}
-                onChange={(e) => setDefaultProjectId(e.target.value)}
-                disabled={projPages.loading || !!projPages.error}
-                className="w-full bg-zinc-900 border border-zinc-700 rounded-md px-3 py-2 text-sm disabled:opacity-50"
-              >
-                <option value="">
-                  {projPages.loading ? t('placeholderLoading') : t('placeholderNone')}
-                </option>
-                {projPages.items.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
-              </select>
-            </Field>
-          </>
-        )}
 
         {/* Section C — Time entry properties */}
         {timeEntriesDbId && (
@@ -408,14 +351,6 @@ function WorkspaceModal({ workspace, onClose }) {
                 </button>
               </div>
             )}
-            <PropSelect
-              label={t('labelTimeEntryTitleProp')}
-              hint={t('hintTimeEntryTitleProp')}
-              loading={teSchema.loading}
-              options={teTitleOpts}
-              value={sel.timeEntryTitleProp}
-              onChange={(v) => setProp('timeEntryTitleProp', v)}
-            />
             <PropSelect
               label={t('labelTimeEntryDateProp')}
               hint={t('hintTimeEntryDateProp')}
@@ -460,50 +395,66 @@ function WorkspaceModal({ workspace, onClose }) {
                 />
               </div>
             )}
-            <PropSelect
-              label={t('labelTimeEntryRelationProp')}
-              hint={t('hintTimeEntryRelationProp')}
-              loading={teSchema.loading}
-              options={teRelationOpts}
-              value={sel.timeEntryRelationProp}
-              onChange={(v) => setProp('timeEntryRelationProp', v)}
-            />
           </div>
         )}
 
-        {/* Section D — Extra fields (optional, max 3) */}
+        {/* Section D — Extra fields (optional, max 5) */}
         {timeEntriesDbId && teSchema.schema && (
           <div className="flex flex-col gap-2 border-t border-zinc-700 pt-3">
             <p className="text-xs font-semibold text-zinc-300">{t('sectionExtraFields')}</p>
             <p className="text-xs text-zinc-500">{t('hintExtraFields')}</p>
-            {extraProps.map((propName, i) => (
-              <div key={i} className="flex items-center gap-2">
-                <select
-                  value={propName}
-                  onChange={(e) =>
-                    setExtraProps((prev) => prev.map((p, j) => (j === i ? e.target.value : p)))
-                  }
-                  className="flex-1 bg-zinc-900 border border-zinc-700 rounded-md px-3 py-2 text-sm"
-                >
-                  <option value="">{t('placeholderSelectField')}</option>
-                  {extraCandidates(i).map((c) => (
-                    <option key={c.name} value={c.name}>
-                      {c.name} ({c.type})
-                    </option>
-                  ))}
-                </select>
-                <button
-                  onClick={() => setExtraProps((prev) => prev.filter((_, j) => j !== i))}
-                  title={t('titleRemoveExtraField')}
-                  className="text-zinc-500 hover:text-red-400 shrink-0"
-                >
-                  ✕
-                </button>
-              </div>
-            ))}
+            {extraProps.map((ep, i) => {
+              const propDef = teSchema.schema?.[ep.propName];
+              const propOptions = propDef
+                ? (propDef[propDef.type]?.options ?? []).map((o) => ({ name: o.name }))
+                : [];
+              return (
+                <div key={i} className="flex flex-col">
+                  <div className="flex items-center gap-2">
+                    <select
+                      value={ep.propName}
+                      onChange={(e) =>
+                        setExtraProps((prev) =>
+                          prev.map((p, j) =>
+                            j === i ? { propName: e.target.value, defaultValue: null } : p
+                          )
+                        )
+                      }
+                      className="flex-1 bg-zinc-900 border border-zinc-700 rounded-md px-3 py-2 text-sm"
+                    >
+                      <option value="">{t('placeholderSelectField')}</option>
+                      {extraCandidates(i).map((c) => (
+                        <option key={c.name} value={c.name}>
+                          {c.name} ({c.type})
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      onClick={() => setExtraProps((prev) => prev.filter((_, j) => j !== i))}
+                      title={t('titleRemoveExtraField')}
+                      className="text-zinc-500 hover:text-red-400 shrink-0"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                  {ep.propName && propDef && (
+                    <DefaultValueInput
+                      type={propDef.type}
+                      options={propOptions}
+                      value={ep.defaultValue}
+                      onChange={(v) =>
+                        setExtraProps((prev) =>
+                          prev.map((p, j) => (j === i ? { ...p, defaultValue: v } : p))
+                        )
+                      }
+                    />
+                  )}
+                </div>
+              );
+            })}
             {extraProps.length < MAX_EXTRA_PROPS && (
               <button
-                onClick={() => setExtraProps((prev) => [...prev, ''])}
+                onClick={() => setExtraProps((prev) => [...prev, { propName: '', defaultValue: null }])}
                 className="self-start px-3 py-1.5 rounded-md bg-zinc-700 hover:bg-zinc-600 text-xs"
               >
                 {t('btnAddExtraField')}
@@ -514,16 +465,18 @@ function WorkspaceModal({ workspace, onClose }) {
 
         {/* Section E — Rounding */}
         <div className="border-t border-zinc-700 pt-3">
-          <label className="flex items-center gap-2 text-sm cursor-pointer">
-            <input
-              type="checkbox"
-              checked={roundingEnabled}
-              onChange={(e) => setRoundingEnabled(e.target.checked)}
-              className="accent-emerald-500"
-            />
-            {t('labelWorkspaceRounding')}
-          </label>
-          <p className="text-xs text-zinc-500 mt-1 ml-5">{t('workspaceRoundingHint')}</p>
+          <label className="block text-xs text-zinc-400 mb-1">{t('labelWorkspaceRounding')}</label>
+          <select
+            value={roundingMinutes}
+            onChange={(e) => setRoundingMinutes(Number(e.target.value))}
+            className="w-full bg-zinc-900 border border-zinc-700 rounded-md px-3 py-2 text-sm"
+          >
+            <option value={0}>{t('roundingOff')}</option>
+            <option value={5}>{t('rounding5')}</option>
+            <option value={10}>{t('rounding10')}</option>
+            <option value={15}>{t('rounding15')}</option>
+          </select>
+          <p className="text-xs text-zinc-500 mt-1">{t('workspaceRoundingHint')}</p>
         </div>
 
         {/* Section F — Buttons */}
@@ -583,6 +536,125 @@ function PropSelect({ label, hint, loading, options, value, onChange }) {
   );
 }
 
+/** Inline default-value editor rendered below the field-name selector. */
+function DefaultValueInput({ type, options, value, onChange }) {
+  const containerClass = 'ml-2 mt-1 border-l-2 border-zinc-700 pl-2';
+  const inputClass =
+    'bg-zinc-900 border border-zinc-700 rounded-md px-2 py-1 text-sm w-full';
+
+  if (['people', 'relation', 'files'].includes(type)) {
+    return (
+      <div className={containerClass}>
+        <p className="text-xs text-zinc-500">{t('defaultValueUnsupported')}</p>
+      </div>
+    );
+  }
+
+  if (type === 'checkbox') {
+    return (
+      <div className={containerClass}>
+        <label className="flex items-center gap-2 text-xs text-zinc-400 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={!!value}
+            onChange={(e) => onChange(e.target.checked)}
+            className="accent-emerald-500"
+          />
+          {t('labelDefaultValue')}
+        </label>
+      </div>
+    );
+  }
+
+  if (type === 'select' || type === 'status') {
+    return (
+      <div className={containerClass}>
+        <label className="block text-xs text-zinc-400 mb-1">{t('labelDefaultValue')}</label>
+        <select
+          value={value ?? ''}
+          onChange={(e) => onChange(e.target.value || null)}
+          className={inputClass}
+        >
+          <option value="">{t('placeholderSelect')}</option>
+          {options.map((o) => (
+            <option key={o.name} value={o.name}>
+              {o.name}
+            </option>
+          ))}
+        </select>
+      </div>
+    );
+  }
+
+  if (type === 'multi_select') {
+    const selected = Array.isArray(value) ? value : [];
+    return (
+      <div className={containerClass}>
+        <label className="block text-xs text-zinc-400 mb-1">{t('labelDefaultValue')}</label>
+        <div className="flex flex-wrap gap-2">
+          {options.map((o) => (
+            <label key={o.name} className="flex items-center gap-1 text-xs text-zinc-300 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={selected.includes(o.name)}
+                onChange={(e) => {
+                  const next = e.target.checked
+                    ? [...selected, o.name]
+                    : selected.filter((n) => n !== o.name);
+                  onChange(next.length ? next : null);
+                }}
+                className="accent-emerald-500"
+              />
+              {o.name}
+            </label>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (type === 'number') {
+    return (
+      <div className={containerClass}>
+        <label className="block text-xs text-zinc-400 mb-1">{t('labelDefaultValue')}</label>
+        <input
+          type="number"
+          value={value ?? ''}
+          onChange={(e) => onChange(e.target.value === '' ? null : Number(e.target.value))}
+          className={inputClass}
+        />
+      </div>
+    );
+  }
+
+  if (type === 'date') {
+    return (
+      <div className={containerClass}>
+        <label className="block text-xs text-zinc-400 mb-1">{t('labelDefaultValue')}</label>
+        <input
+          type="datetime-local"
+          value={value ?? ''}
+          onChange={(e) => onChange(e.target.value || null)}
+          className={inputClass}
+        />
+      </div>
+    );
+  }
+
+  // rich_text, url, email, phone_number
+  return (
+    <div className={containerClass}>
+      <label className="block text-xs text-zinc-400 mb-1">{t('labelDefaultValue')}</label>
+      <input
+        type="text"
+        value={value ?? ''}
+        onChange={(e) => onChange(e.target.value || null)}
+        className={inputClass}
+      />
+    </div>
+  );
+}
+
 // Clears selections that don't exist in the freshly loaded schema, and
 // auto-selects when a property type has exactly one candidate.
 function validateTeSelection(sel, schema) {
@@ -592,10 +664,8 @@ function validateTeSelection(sel, schema) {
     if (next[key] && !candidates.some((c) => c.name === next[key])) next[key] = '';
     if (!next[key] && candidates.length === 1) next[key] = candidates[0].name;
   };
-  pick('timeEntryTitleProp', 'title');
   pick('timeEntryDateProp', 'date');
   pick('timeEntryStatusProp', 'status');
-  pick('timeEntryRelationProp', 'relation');
   const opts = statusOptions(schema, next.timeEntryStatusProp);
   if (next.timeEntryStatusRunning && !opts.some((o) => o.name === next.timeEntryStatusRunning)) {
     next.timeEntryStatusRunning = '';
@@ -605,4 +675,3 @@ function validateTeSelection(sel, schema) {
   }
   return next;
 }
-

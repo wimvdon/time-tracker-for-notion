@@ -3,43 +3,36 @@
  * formulas.
  */
 
-const MS_15 = 15 * 60 * 1000;
-
 /**
- * Rounds a Date to the nearest 15-minute boundary.
+ * Rounds a Date to the nearest N-minute boundary (N must be a divisor of 60).
  * Uses standard mathematical rounding (0.5 rounds up).
- *
- * Examples:
- *   14:07 → 14:00   14:08 → 14:15
- *   14:22 → 14:15   14:23 → 14:30
- *   14:52 → 14:45   14:53 → 15:00
  */
-export function roundToNearest15(date) {
-  return new Date(Math.round(date.getTime() / MS_15) * MS_15);
+export function roundToNearestN(date, minutes) {
+  const ms = minutes * 60 * 1000;
+  return new Date(Math.round(date.getTime() / ms) * ms);
 }
 
 /**
  * Computes the rounded start time for a new time entry.
- * Mirrors the Notion Start button formula exactly.
  */
-export function computeStartTime(now = new Date()) {
-  return roundToNearest15(now);
+export function computeStartTime(now = new Date(), minutes = 15) {
+  return roundToNearestN(now, minutes);
 }
 
 /**
- * Computes the rounded end time, enforcing a minimum duration of 15 minutes.
- * Mirrors the Notion Stop button formula exactly.
- *
- * Rule:
- *   endTime = roundToNearest15(now)
- *   if (endTime - startTime) < 15 minutes → endTime = startTime + 15 minutes
+ * Computes the rounded end time, enforcing a minimum duration of `minutes`.
  *
  * @param {Date} startTime - the already-rounded start time stored when the
  *   timer began (NOT the raw timestamp)
+ * @param {Date} now
+ * @param {number} minutes - rounding interval
  * @returns {Date}
  */
-export function computeEndTime(startTime, now = new Date()) {
-  const roundedNow = roundToNearest15(now);
-  const minEnd = new Date(startTime.getTime() + MS_15);
+export function computeEndTime(startTime, now = new Date(), minutes = 15) {
+  const roundedNow = roundToNearestN(now, minutes);
+  const minEnd = new Date(startTime.getTime() + minutes * 60 * 1000);
   return roundedNow < minEnd ? minEnd : roundedNow;
 }
+
+// Backwards compat alias
+export const roundToNearest15 = (date) => roundToNearestN(date, 15);
