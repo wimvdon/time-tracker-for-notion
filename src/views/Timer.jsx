@@ -161,7 +161,7 @@ function RunningView({ workspaceName, projectName, settingsButton }) {
   const description = useStore((s) => s.description);
   const stopTimer = useStore((s) => s.stopTimer);
   const updateStartTime = useStore((s) => s.updateStartTime);
-  const getRoundingEnabled = useStore((s) => s.getRoundingEnabled);
+  const getRoundingMinutes = useStore((s) => s.getRoundingMinutes);
 
   const [startInput, setStartInput] = useState(() => formatHHMM(timer.roundedStart));
   const [endInput, setEndInput] = useState('');
@@ -193,7 +193,8 @@ function RunningView({ workspaceName, projectName, settingsButton }) {
 
   // Recomputed on every tick render, so the projected end refreshes as time
   // passes. Without rounding the end is simply "now".
-  const projectedEnd = getRoundingEnabled() ? computeEndTime(timer.roundedStart) : new Date();
+  const rm = getRoundingMinutes();
+  const projectedEnd = rm > 0 ? computeEndTime(timer.roundedStart, new Date(), rm) : new Date();
 
   const timeInputClass =
     'w-full bg-zinc-800 border border-zinc-700 rounded-md px-2 py-1.5 text-sm tabular-nums text-center';

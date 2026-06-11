@@ -83,11 +83,14 @@ export const useStore = create((set, get) => ({
   setExtraValue: (name, value) =>
     set((s) => ({ extraValues: { ...s.extraValues, [name]: value } })),
 
-  /** Rounding is configured per workspace; defaults to on. */
-  getRoundingEnabled: () => {
+  /** Returns the rounding interval in minutes; 0 means rounding is off. */
+  getRoundingMinutes: () => {
     const ws = get().workspaces.find((w) => w.id === get().selectedWorkspaceId);
-    return ws?.roundingEnabled ?? true;
+    return ws?.roundingMinutes ?? 15;
   },
+
+  /** Convenience helper: true when any rounding is configured. */
+  getRoundingEnabled: () => get().getRoundingMinutes() > 0,
 
   addToast: (toast) => {
     const id = ++toastSeq;
@@ -110,7 +113,7 @@ export const useStore = create((set, get) => ({
     // presence of legacy data is what decides whether to migrate.
     const hasLegacy =
       (settings.projects?.length ?? 0) > 0 && !(settings.workspaces?.length);
-    const workspaces = hasLegacy
+    const rawWorkspaces = hasLegacy
       ? settings.projects.map((p) => ({
           id: p.id,
           name: p.name,
@@ -120,11 +123,35 @@ export const useStore = create((set, get) => ({
           propertyMap: migratePropertyMap(p.propertyMap),
         }))
       : settings.workspaces ?? [];
+
+    // Migrate extraProps from string[] to { propName, defaultValue }[]
+    // and roundingEnabled boolean to roundingMinutes number.
+    const workspaces = rawWorkspaces.map((ws) => {
+      const extraProps = (ws.extraProps || []).map((ep) =>
+        typeof ep === 'string' ? { propName: ep, defaultValue: null } : ep
+      );
+      const roundingMinutes =
+        ws.roundingMinutes !== undefined
+          ? ws.roundingMinutes
+          : ws.roundingEnabled === false
+          ? 0
+          : 15;
+      return { ...ws, extraProps, roundingMinutes };
+    });
+
     const lastUsedWorkspaceId =
       settings.lastUsedWorkspaceId ?? settings.lastUsedProjectId ?? null;
     const activeTimer = migrateActiveTimer(settings.activeTimer);
-    if (hasLegacy || settings.projects !== undefined) {
-      // Save migrated data back so the old keys are gone
+
+    const needsMigrationSave =
+      hasLegacy ||
+      settings.projects !== undefined ||
+      rawWorkspaces.some(
+        (ws) =>
+          ws.roundingMinutes === undefined ||
+          (ws.extraProps || []).some((ep) => typeof ep === 'string')
+      );
+    if (needsMigrationSave) {
       api.saveSettings({
         workspaces,
         lastUsedWorkspaceId,
@@ -219,12 +246,7 @@ export const useStore = create((set, get) => ({
       const projects = await api.fetchDatabasePages(workspace.projectsDbId);
       // Ignore stale responses if the user switched workspaces meanwhile
       if (get().selectedWorkspaceId !== workspaceId) return;
-      // Pre-select the workspace's default project when it still exists
-      const selectedProjectId =
-        workspace.defaultProjectId && projects.some((p) => p.id === workspace.defaultProjectId)
-          ? workspace.defaultProjectId
-          : null;
-      set({ projects, projectsLoading: false, selectedProjectId });
+      set({ projects, projectsLoading: false, selectedProjectId: null });
     } catch (err) {
       if (get().selectedWorkspaceId !== workspaceId) return;
       set({ projectsLoading: false });
@@ -244,7 +266,7 @@ export const useStore = create((set, get) => ({
       const schema = await api.getDatabaseSchema(workspace.timeEntriesDbId);
       let users = null;
       const defs = [];
-      for (const name of workspace.extraProps) {
+      for (const { propName: name } of workspace.extraProps) {
         const prop = schema?.[name];
         if (!prop || !WRITABLE_EXTRA_TYPES.includes(prop.type)) continue;
         const def = { name, type: prop.type, options: [] };
@@ -260,7 +282,14 @@ export const useStore = create((set, get) => ({
       }
       if (get().selectedWorkspaceId !== workspace.id) return;
       const extraValues = {};
-      for (const def of defs) extraValues[def.name] = emptyValueFor(def.type);
+      for (const def of defs) {
+        const workspace_ep = workspace.extraProps.find((ep) => ep.propName === def.name);
+        const configuredDefault = workspace_ep?.defaultValue ?? null;
+        extraValues[def.name] =
+          configuredDefault !== null && configuredDefault !== ''
+            ? configuredDefault
+            : emptyValueFor(def.type);
+      }
       set({ extraFieldDefs: defs, extraValues, extrasLoading: false });
     } catch (err) {
       if (get().selectedWorkspaceId !== workspace.id) return;
@@ -278,8 +307,8 @@ export const useStore = create((set, get) => ({
     const project = state.projects.find((p) => p.id === state.selectedProjectId);
     if (!workspace || !project) return;
 
-    // With rounding off the exact timestamp is used; no 15-minute logic applies
-    const roundedStart = get().getRoundingEnabled() ? computeStartTime() : new Date();
+    const rm = get().getRoundingMinutes();
+    const roundedStart = rm > 0 ? computeStartTime(new Date(), rm) : new Date();
     const startISO = toNotionDateTime(roundedStart);
     const title =
       state.description.trim() || `${project.name} — ${formatDateDDMMYYYY(roundedStart)}`;
@@ -363,7 +392,8 @@ export const useStore = create((set, get) => ({
   updateStartTime: (newStart) => {
     const state = get();
     if (!state.timer.running) return;
-    const roundedStart = state.getRoundingEnabled() ? computeStartTime(newStart) : newStart;
+    const rm = state.getRoundingMinutes();
+    const roundedStart = rm > 0 ? computeStartTime(newStart, rm) : newStart;
     const startISO = toNotionDateTime(roundedStart);
     set((s) => ({
       timer: {
@@ -392,13 +422,14 @@ export const useStore = create((set, get) => ({
   /**
    * Stops the timer. With a manually entered end time (`manualEnd`), that
    * time is used instead of "now" — still subject to the workspace's
-   * rounding rules (nearest 15 minutes, minimum duration of 15 minutes).
+   * rounding rules.
    */
   stopTimer: async (manualEnd = null) => {
     const { timer, addToast } = get();
     if (!timer.running) return;
 
-    const rounding = get().getRoundingEnabled();
+    const rm = get().getRoundingMinutes();
+    const rounding = rm > 0;
     if (manualEnd) {
       // Reject ends before the timer began; with rounding the minimum-
       // duration rule handles ends between the raw and rounded start
@@ -409,7 +440,7 @@ export const useStore = create((set, get) => ({
       }
     }
     const endTime = rounding
-      ? computeEndTime(timer.roundedStart, manualEnd ?? new Date())
+      ? computeEndTime(timer.roundedStart, manualEnd ?? new Date(), rm)
       : manualEnd ?? new Date();
     try {
       await api.stopTimeEntry({
@@ -462,9 +493,11 @@ export const useStore = create((set, get) => ({
     set({ recoveryBusy: true });
     // Rounding follows the workspace the timer belongs to
     const workspace = get().workspaces.find((w) => w.id === recovered.workspaceId);
-    const endTime = (workspace?.roundingEnabled ?? true)
-      ? computeEndTime(new Date(recovered.roundedStart))
-      : new Date();
+    const rm = workspace?.roundingMinutes ?? 15;
+    const endTime =
+      rm > 0
+        ? computeEndTime(new Date(recovered.roundedStart), new Date(), rm)
+        : new Date();
     try {
       await api.stopTimeEntry({
         pageId: recovered.notionPageId,
