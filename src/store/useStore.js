@@ -266,10 +266,10 @@ export const useStore = create((set, get) => ({
       const schema = await api.getDatabaseSchema(workspace.timeEntriesDbId);
       let users = null;
       const defs = [];
-      for (const { propName: name } of workspace.extraProps) {
+      for (const { propName: name, required } of workspace.extraProps) {
         const prop = schema?.[name];
         if (!prop || !WRITABLE_EXTRA_TYPES.includes(prop.type)) continue;
-        const def = { name, type: prop.type, options: [] };
+        const def = { name, type: prop.type, options: [], required: !!required };
         if (prop.type === 'select' || prop.type === 'multi_select' || prop.type === 'status') {
           def.options = (prop[prop.type]?.options ?? []).map((o) => ({ name: o.name }));
         } else if (prop.type === 'people') {
@@ -463,8 +463,14 @@ export const useStore = create((set, get) => ({
 
     clearInterval(timer.tickInterval);
     api.saveSettings({ activeTimer: null });
+    const workspace = get().workspaces.find((w) => w.id === get().selectedWorkspaceId);
     const extraValues = {};
-    for (const def of get().extraFieldDefs) extraValues[def.name] = emptyValueFor(def.type);
+    for (const def of get().extraFieldDefs) {
+      const ep = workspace?.extraProps?.find((p) => p.propName === def.name);
+      const configured = ep?.defaultValue ?? null;
+      extraValues[def.name] =
+        configured !== null && configured !== '' ? configured : emptyValueFor(def.type);
+    }
     set({ timer: { ...idleTimer }, description: '', extraValues });
     api.setTimerRunning(false);
   },

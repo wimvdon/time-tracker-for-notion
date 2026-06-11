@@ -62,6 +62,8 @@ export default {
   btnAddExtraField: '+ Add field',
   titleRemoveExtraField: 'Remove field',
   placeholderSelectField: 'Select field…',
+  labelRequiredField: 'Required',
+  toastRequiredFieldsMissing: 'Please fill in all required fields before starting.',
   errorLoadingExtras: 'Could not load extra fields',
   noPropertiesOfType: 'No suitable field found in this database.',
   labelDefaultValue: 'Default value',
