@@ -54,7 +54,7 @@ async function searchDatabases(apiKey) {
   do {
     const data = await notionFetch(apiKey, 'POST', '/search', {
       filter: { value: 'database', property: 'object' },
-      sort: { direction: 'ascending', timestamp: 'last_edited_time' },
+      sort: { direction: 'descending', timestamp: 'last_edited_time' },
       page_size: 100,
       ...(cursor ? { start_cursor: cursor } : {}),
     });
