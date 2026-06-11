@@ -3,6 +3,7 @@ import { useStore } from '../store/useStore.js';
 import { computeEndTime } from '../lib/rounding.js';
 import { formatHHMM, formatElapsed } from '../lib/format.js';
 import { t } from '../lib/i18n.js';
+import { buildPropertyValue } from '../lib/notionValues.js';
 import ExtraFieldInput from '../components/ExtraFieldInput.jsx';
 
 /** Combines the date of `base` with an "HH:MM" string from a time input. */
@@ -53,7 +54,10 @@ export default function Timer() {
   }
 
   // ---- Idle state ----
-  const canStart = !!apiKey && !!selectedWorkspaceId;
+  const requiredFieldsFilled = extraFieldDefs
+    .filter((def) => def.required)
+    .every((def) => buildPropertyValue(def.type, extraValues[def.name]) !== null);
+  const canStart = !!apiKey && !!selectedWorkspaceId && requiredFieldsFilled;
 
   return (
     <div className="flex flex-col h-full">

@@ -170,7 +170,7 @@ function WorkspaceModal({ workspace, onClose }) {
   const [sel, setSel] = useState({ ...EMPTY_SELECTION, ...(workspace?.propertyMap || {}) });
   const [extraProps, setExtraProps] = useState(
     (workspace?.extraProps || []).map((ep) =>
-      typeof ep === 'string' ? { propName: ep, defaultValue: null } : ep
+      typeof ep === 'string' ? { propName: ep, defaultValue: null, required: false } : ep
     )
   );
 
@@ -418,7 +418,7 @@ function WorkspaceModal({ workspace, onClose }) {
                       onChange={(e) =>
                         setExtraProps((prev) =>
                           prev.map((p, j) =>
-                            j === i ? { propName: e.target.value, defaultValue: null } : p
+                            j === i ? { propName: e.target.value, defaultValue: null, required: p.required } : p
                           )
                         )
                       }
@@ -431,6 +431,19 @@ function WorkspaceModal({ workspace, onClose }) {
                         </option>
                       ))}
                     </select>
+                    <label className="flex items-center gap-1 text-xs text-zinc-400 shrink-0 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={!!ep.required}
+                        onChange={(e) =>
+                          setExtraProps((prev) =>
+                            prev.map((p, j) => (j === i ? { ...p, required: e.target.checked } : p))
+                          )
+                        }
+                        className="accent-emerald-500"
+                      />
+                      {t('labelRequiredField')}
+                    </label>
                     <button
                       onClick={() => setExtraProps((prev) => prev.filter((_, j) => j !== i))}
                       title={t('titleRemoveExtraField')}
@@ -457,7 +470,7 @@ function WorkspaceModal({ workspace, onClose }) {
             })}
             {extraProps.length < MAX_EXTRA_PROPS && (
               <button
-                onClick={() => setExtraProps((prev) => [...prev, { propName: '', defaultValue: null }])}
+                onClick={() => setExtraProps((prev) => [...prev, { propName: '', defaultValue: null, required: false }])}
                 className="self-start px-3 py-1.5 rounded-md bg-zinc-700 hover:bg-zinc-600 text-xs"
               >
                 {t('btnAddExtraField')}

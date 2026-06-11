@@ -62,6 +62,8 @@ export default {
   btnAddExtraField: '+ Veld toevoegen',
   titleRemoveExtraField: 'Veld verwijderen',
   placeholderSelectField: 'Kies veld…',
+  labelRequiredField: 'Verplicht',
+  toastRequiredFieldsMissing: 'Vul alle verplichte velden in voor je start.',
   errorLoadingExtras: 'Kon extra velden niet laden',
   noPropertiesOfType: 'Geen geschikt veld gevonden in deze database.',
   labelDefaultValue: 'Standaardwaarde',
