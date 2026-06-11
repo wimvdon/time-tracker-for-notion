@@ -1,6 +1,7 @@
 import { useStore } from '../store/useStore.js';
 import { computeEndTime } from '../lib/rounding.js';
 import { formatHHMM, formatElapsed } from '../lib/format.js';
+import { t } from '../lib/i18n.js';
 
 export default function Timer() {
   const apiKey = useStore((s) => s.apiKey);
@@ -16,6 +17,7 @@ export default function Timer() {
   const timer = useStore((s) => s.timer);
   const startTimer = useStore((s) => s.startTimer);
   const stopTimer = useStore((s) => s.stopTimer);
+  const roundingEnabled = useStore((s) => s.roundingEnabled);
   const setView = useStore((s) => s.setView);
 
   const selectedProject = projects.find((p) => p.id === selectedProjectId);
@@ -25,7 +27,7 @@ export default function Timer() {
     <div className="flex justify-end px-4 pb-3">
       <button
         onClick={() => setView('settings')}
-        title="Settings"
+        title={t('titleSettings')}
         className="text-zinc-500 hover:text-zinc-200 text-xl leading-none transition-colors"
       >
         ⚙️
@@ -35,8 +37,9 @@ export default function Timer() {
 
   // ---- Running state ----
   if (timer.running) {
-    // Recomputed on every tick render, so the projected end refreshes as time passes
-    const projectedEnd = computeEndTime(timer.roundedStart);
+    // Recomputed on every tick render, so the projected end refreshes as time
+    // passes. Without rounding the end is simply "now".
+    const projectedEnd = roundingEnabled ? computeEndTime(timer.roundedStart) : new Date();
     return (
       <div className="flex flex-col h-full">
         <div className="flex-1 flex flex-col items-center px-6 pt-8 gap-1">
@@ -63,7 +66,7 @@ export default function Timer() {
             onClick={stopTimer}
             className="mt-10 w-full py-3 rounded-lg bg-red-600 hover:bg-red-500 active:bg-red-700 font-semibold text-lg transition-colors"
           >
-            ⏹ STOP
+            {t('btnStop')}
           </button>
         </div>
         {settingsButton}
@@ -79,31 +82,31 @@ export default function Timer() {
       <div className="flex-1 flex flex-col px-5 pt-5 gap-4">
         {!apiKey && (
           <div className="text-xs bg-amber-900/40 border border-amber-700 text-amber-200 rounded-md p-2">
-            No Notion API key set.{' '}
+            {t('warnNoApiKey')}{' '}
             <button onClick={() => setView('settings')} className="underline font-semibold">
-              Open Settings
+              {t('warnNoApiKeyLink')}
             </button>
           </div>
         )}
         {apiKey && projects.length === 0 && (
           <div className="text-xs bg-zinc-800 border border-zinc-700 text-zinc-300 rounded-md p-2">
-            Add a project in{' '}
+            {t('warnNoProjects')}{' '}
             <button onClick={() => setView('settings')} className="underline font-semibold">
-              Settings
+              {t('warnNoProjectsLink')}
             </button>{' '}
-            to get started.
+            {t('warnNoProjectsSuffix')}
           </div>
         )}
 
         <div>
-          <label className="block text-xs text-zinc-400 mb-1">Project</label>
+          <label className="block text-xs text-zinc-400 mb-1">{t('labelProject')}</label>
           <select
             value={selectedProjectId || ''}
             onChange={(e) => selectProject(e.target.value || null)}
             disabled={projects.length === 0}
             className="w-full bg-zinc-800 border border-zinc-700 rounded-md px-3 py-2 text-sm disabled:opacity-50"
           >
-            <option value="">Select project…</option>
+            <option value="">{t('placeholderSelectProject')}</option>
             {projects.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.name}
@@ -113,7 +116,7 @@ export default function Timer() {
         </div>
 
         <div>
-          <label className="block text-xs text-zinc-400 mb-1">Deelproject</label>
+          <label className="block text-xs text-zinc-400 mb-1">{t('labelDeelproject')}</label>
           <select
             value={selectedDeelprojectId || ''}
             onChange={(e) => setSelectedDeelprojectId(e.target.value || null)}
@@ -121,7 +124,7 @@ export default function Timer() {
             className="w-full bg-zinc-800 border border-zinc-700 rounded-md px-3 py-2 text-sm disabled:opacity-50"
           >
             <option value="">
-              {deelprojectenLoading ? 'Loading…' : 'Select…'}
+              {deelprojectenLoading ? t('placeholderLoading') : t('placeholderSelectSubproject')}
             </option>
             {deelprojecten.map((d) => (
               <option key={d.id} value={d.id}>
@@ -132,12 +135,12 @@ export default function Timer() {
         </div>
 
         <div>
-          <label className="block text-xs text-zinc-400 mb-1">Bezig met…</label>
+          <label className="block text-xs text-zinc-400 mb-1">{t('labelDescription')}</label>
           <input
             type="text"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder="Optional description"
+            placeholder={t('placeholderDescription')}
             className="w-full bg-zinc-800 border border-zinc-700 rounded-md px-3 py-2 text-sm placeholder-zinc-600"
           />
         </div>
@@ -147,7 +150,7 @@ export default function Timer() {
           disabled={!canStart}
           className="mt-2 w-full py-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 disabled:bg-zinc-800 disabled:text-zinc-600 font-semibold text-lg transition-colors"
         >
-          ▶ START
+          {t('btnStart')}
         </button>
       </div>
       {settingsButton}

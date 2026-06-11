@@ -70,6 +70,10 @@ The databases must have these properties (the existing ones already do):
 | Tijdsregistraties | `Tijdsregistratie` (title), `Tijd` (date), `Status` (status, with options "Lopende tijdsregistratie" and "Voltooide tijdsregistratie"), `Gekoppeld deelproject` (relation) |
 | Deelprojecten | `Deelproject` (title) |
 
+If you have renamed any of these properties in Notion, you don't need to rename
+them back: open the project in the app (Settings → ✏️) and adjust the names
+under **Property name mapping**.
+
 ## 3. Running the app in development
 
 You need [Node.js](https://nodejs.org) LTS (v20 or newer) installed. Then, in a
@@ -138,9 +142,15 @@ On first launch the app opens on the **Settings** screen:
    - **Display name** — anything you like, e.g. `Schrijf-ze-VRIJdag`
    - **Tijdsregistraties DB ID** — see [section 2](#2-finding-your-database-ids)
    - **Deelprojecten DB ID** — same
-3. Click **Save & Test** — the app verifies both databases are reachable with
+3. Optionally expand **Property name mapping** if your Notion property names
+   differ from the defaults (only needed if you renamed properties in Notion).
+4. Click **Save & Test** — the app verifies both databases are reachable with
    your key before saving. If this fails, re-check section 1 step 5.
-4. Repeat for each project, then click `←` to go to the timer.
+5. Repeat for each project, then click `←` to go to the timer. You can edit a
+   project later via the ✏️ button next to it.
+
+The app's language follows your Windows display language: Dutch for `nl-*`
+locales, English (UK) for everything else. There is no manual toggle.
 
 All settings are stored locally in an encrypted file
 (`%APPDATA%/notion-timer/config.json`). Nothing is sent anywhere except to the
@@ -155,6 +165,9 @@ hard security boundary — the key lives in the app source.
   you left it empty.
 - **Stop**: rounds the end time to the nearest 15 minutes, with a minimum
   duration of 15 minutes, and sets status *Voltooide tijdsregistratie*.
+- **Rounding is optional**: untick *Round times to nearest 15 minutes* in
+  Settings to record exact timestamps instead (the 15-minute minimum no longer
+  applies either).
 - While running you see the live elapsed time and the projected rounded
   interval (e.g. `14:00 → 14:15`), which updates as time passes.
 - **Closing the window minimises to the system tray** — the app keeps running.
@@ -173,8 +186,8 @@ hard security boundary — the key lives in the app source.
 |---|---|
 | "Connection failed: API token is invalid" | Re-copy the secret from notion.so/my-integrations; no spaces. |
 | "Database test failed: Could not find database" | The integration isn't connected to the page containing the database — see section 1, step 5. |
-| Deelproject dropdown stays empty | The Deelprojecten database must have a **title property named exactly `Deelproject`**. |
-| Start fails with a property error | The Tijdsregistraties database property names/options must match the table in section 2 exactly (including the Status option names). |
+| Deelproject dropdown stays empty | The Deelprojecten title property name doesn't match — fix it under Settings → ✏️ → Property name mapping. |
+| Start fails with a property error | A Tijdsregistraties property name or Status option doesn't match — fix it under Settings → ✏️ → Property name mapping. |
 | App seems closed but won't restart | It's still in the system tray (bottom-right, behind `^`). Right-click → Quit. |
 | Installer blocked by SmartScreen | More info → Run anyway (unsigned personal build). |
 
@@ -195,10 +208,13 @@ notion-time-tracker/
 │   │   ├── Toasts.jsx     # Error/success toasts (with retry action)
 │   │   └── RecoveryModal.jsx  # Orphaned-timer prompt on launch
 │   ├── store/useStore.js  # Zustand store: settings, session, timer
+│   ├── locales/           # en-GB.js + nl-BE.js string tables
 │   └── lib/
 │       ├── rounding.js    # 15-minute rounding (mirrors Notion buttons)
 │       ├── rounding.test.js
-│       └── format.js      # ISO-with-offset, DD/MM/YYYY, HH:MM:SS helpers
+│       ├── format.js      # ISO-with-offset, DD/MM/YYYY, HH:MM:SS helpers
+│       ├── i18n.js        # locale detection + t() lookup
+│       └── constants.js   # DEFAULT_PROPERTY_MAP (Notion property names)
 ├── scripts/generate-icons.cjs  # Regenerates assets/ icons (no deps)
 ├── assets/                # icon.ico, window + tray icons (generated)
 └── package.json           # incl. electron-builder config

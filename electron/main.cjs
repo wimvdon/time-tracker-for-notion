@@ -10,6 +10,7 @@ const store = new Store({
   defaults: {
     apiKey: '',
     alwaysOnTop: true,
+    roundingEnabled: true,
     projects: [],
     lastUsedProjectId: null,
     activeTimer: null,
@@ -109,8 +110,8 @@ ipcMain.handle('store:set', (_event, data) => {
   return store.store;
 });
 
-ipcMain.handle('notion:fetchDeelprojecten', (_event, dbId) =>
-  notion.fetchDeelprojecten(store.get('apiKey'), dbId)
+ipcMain.handle('notion:fetchDeelprojecten', (_event, dbId, props) =>
+  notion.fetchDeelprojecten(store.get('apiKey'), dbId, props)
 );
 
 ipcMain.handle('notion:create', (_event, params) =>

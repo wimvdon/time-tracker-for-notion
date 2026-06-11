@@ -1,4 +1,5 @@
 import { useStore } from '../store/useStore.js';
+import { t } from '../lib/i18n.js';
 
 export default function Toasts() {
   const toasts = useStore((s) => s.toasts);
@@ -32,7 +33,7 @@ export default function Toasts() {
           <button
             onClick={() => dismissToast(toast.id)}
             className="shrink-0 opacity-70 hover:opacity-100"
-            title="Dismiss"
+            title={t('titleDismiss')}
           >
             ✕
           </button>
