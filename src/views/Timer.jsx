@@ -5,6 +5,7 @@ import { formatHHMM, formatElapsed } from '../lib/format.js';
 import { t } from '../lib/i18n.js';
 import { buildPropertyValue } from '../lib/notionValues.js';
 import ExtraFieldInput from '../components/ExtraFieldInput.jsx';
+import SearchableSelect from '../components/SearchableSelect.jsx';
 
 /** Combines the date of `base` with an "HH:MM" string from a time input. */
 function timeOnDate(base, hhmm) {
@@ -57,7 +58,8 @@ export default function Timer() {
   const requiredFieldsFilled = extraFieldDefs
     .filter((def) => def.required)
     .every((def) => buildPropertyValue(def.type, extraValues[def.name]) !== null);
-  const canStart = !!apiKey && !!selectedWorkspaceId && requiredFieldsFilled;
+  // Also disabled while extra fields are still loading — required fields aren't known yet
+  const canStart = !!apiKey && !!selectedWorkspaceId && !extrasLoading && requiredFieldsFilled;
 
   return (
     <div className="flex flex-col h-full">
@@ -82,19 +84,15 @@ export default function Timer() {
 
         <div>
           <label className="block text-xs text-zinc-400 mb-1">{t('labelWorkspace')}</label>
-          <select
+          <SearchableSelect
             value={selectedWorkspaceId || ''}
-            onChange={(e) => selectWorkspace(e.target.value || null)}
+            onChange={(v) => selectWorkspace(v || null)}
+            options={workspaces.map((w) => ({ value: w.id, label: w.name }))}
+            placeholder={t('placeholderSelectWorkspace')}
             disabled={workspaces.length === 0}
-            className="w-full bg-zinc-800 border border-zinc-700 rounded-md px-3 py-2 text-sm disabled:opacity-50"
-          >
-            <option value="">{t('placeholderSelectWorkspace')}</option>
-            {workspaces.map((w) => (
-              <option key={w.id} value={w.id}>
-                {w.name}
-              </option>
-            ))}
-          </select>
+            triggerClass="bg-zinc-800"
+            className="w-full"
+          />
         </div>
 
         <div>

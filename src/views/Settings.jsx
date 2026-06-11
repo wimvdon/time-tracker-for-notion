@@ -4,6 +4,7 @@ import { propertiesByType, statusOptions } from '../lib/schema.js';
 import { WRITABLE_EXTRA_TYPES } from '../lib/notionValues.js';
 import { t } from '../lib/i18n.js';
 import { errorMessage } from '../lib/errors.js';
+import SearchableSelect from '../components/SearchableSelect.jsx';
 
 export default function Settings() {
   const apiKey = useStore((s) => s.apiKey);
@@ -11,6 +12,7 @@ export default function Settings() {
   const alwaysOnTop = useStore((s) => s.alwaysOnTop);
   const saveApiKey = useStore((s) => s.saveApiKey);
   const deleteWorkspace = useStore((s) => s.deleteWorkspace);
+  const moveWorkspace = useStore((s) => s.moveWorkspace);
   const toggleAlwaysOnTop = useStore((s) => s.toggleAlwaysOnTop);
   const setView = useStore((s) => s.setView);
   const addToast = useStore((s) => s.addToast);
@@ -90,17 +92,33 @@ export default function Settings() {
           {workspaces.length === 0 && (
             <div className="text-xs text-zinc-600 italic py-1">{t('noWorkspacesYet')}</div>
           )}
-          {workspaces.map((w) => (
+          {workspaces.map((w, i) => (
             <div
               key={w.id}
               className="flex items-center justify-between bg-zinc-800 border border-zinc-700 rounded-md px-3 py-2"
             >
               <span className="text-sm truncate">{w.name}</span>
-              <span className="flex items-center gap-2 ml-2 shrink-0">
+              <span className="flex items-center gap-1 ml-2 shrink-0">
+                <button
+                  onClick={() => moveWorkspace(w.id, 'up')}
+                  disabled={i === 0}
+                  title={t('titleMoveUp')}
+                  className="text-zinc-500 hover:text-zinc-200 disabled:opacity-30 px-0.5"
+                >
+                  ↑
+                </button>
+                <button
+                  onClick={() => moveWorkspace(w.id, 'down')}
+                  disabled={i === workspaces.length - 1}
+                  title={t('titleMoveDown')}
+                  className="text-zinc-500 hover:text-zinc-200 disabled:opacity-30 px-0.5"
+                >
+                  ↓
+                </button>
                 <button
                   onClick={() => setEditingWorkspace(w)}
                   title={t('modalTitleEditWorkspace')}
-                  className="text-zinc-500 hover:text-zinc-200"
+                  className="text-zinc-500 hover:text-zinc-200 ml-1"
                 >
                   ✏️
                 </button>
@@ -174,7 +192,7 @@ function WorkspaceModal({ workspace, onClose }) {
     )
   );
 
-  // Database list — fetched once per modal lifetime (Retry re-fetches)
+  // Database list — fetched once per modal lifetime (Retry/Refresh re-fetches)
   const [dbs, setDbs] = useState({ loading: true, error: null, items: [] });
   // Schema of the selected Time Entries database
   const [teSchema, setTeSchema] = useState({ loading: false, error: null, schema: null });
@@ -284,23 +302,14 @@ function WorkspaceModal({ workspace, onClose }) {
     onClose();
   };
 
-  const dbSelect = (value, onChange) => (
-    <select
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      disabled={dbs.loading || !!dbs.error}
-      className="w-full bg-zinc-900 border border-zinc-700 rounded-md px-3 py-2 text-sm disabled:opacity-50"
-    >
-      <option value="">
-        {dbs.loading ? t('loadingDatabases') : t('placeholderSelectDatabase')}
-      </option>
-      {dbs.items.map((db) => (
-        <option key={db.id} value={db.id}>
-          {db.name}
-        </option>
-      ))}
-    </select>
-  );
+  const dbOptions = dbs.items.map((db) => ({ value: db.id, label: db.name }));
+
+  const roundingOptions = [
+    { value: '0', label: t('roundingOff') },
+    { value: '5', label: t('rounding5') },
+    { value: '10', label: t('rounding10') },
+    { value: '15', label: t('rounding15') },
+  ];
 
   return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-40 p-4">
@@ -333,9 +342,31 @@ function WorkspaceModal({ workspace, onClose }) {
             {t('noDatabasesFound')}
           </div>
         )}
-        <Field label={t('labelTimeEntriesDb')} hint={t('hintTimeEntriesDb')}>
-          {dbSelect(timeEntriesDbId, setTimeEntriesDbId)}
-        </Field>
+        <div>
+          <div className="flex items-center justify-between mb-1">
+            <label className="text-xs text-zinc-400">{t('labelTimeEntriesDb')}</label>
+            <button
+              onClick={loadDatabases}
+              disabled={dbs.loading}
+              className="text-xs text-zinc-500 hover:text-zinc-300 disabled:opacity-50 flex items-center gap-1"
+              title={t('btnRefreshDatabases')}
+            >
+              ↻ {t('btnRefreshDatabases')}
+            </button>
+          </div>
+          <SearchableSelect
+            value={timeEntriesDbId}
+            onChange={setTimeEntriesDbId}
+            options={dbOptions}
+            placeholder={dbs.loading ? t('loadingDatabases') : t('placeholderSelectDatabase')}
+            disabled={dbs.loading || !!dbs.error}
+            loading={dbs.loading}
+            className="w-full"
+          />
+          {t('hintTimeEntriesDb') && (
+            <p className="text-xs text-zinc-600 mt-1">{t('hintTimeEntriesDb')}</p>
+          )}
+        </div>
 
         {/* Section C — Time entry properties */}
         {timeEntriesDbId && (
@@ -410,27 +441,26 @@ function WorkspaceModal({ workspace, onClose }) {
                 : [];
               const propRelDbId =
                 propDef?.type === 'relation' ? (propDef.relation?.database_id ?? null) : null;
+              const candidateOptions = extraCandidates(i).map((c) => ({
+                value: c.name,
+                label: `${c.name} (${c.type})`,
+              }));
               return (
                 <div key={i} className="flex flex-col">
                   <div className="flex items-center gap-2">
-                    <select
+                    <SearchableSelect
                       value={ep.propName}
-                      onChange={(e) =>
+                      onChange={(v) =>
                         setExtraProps((prev) =>
                           prev.map((p, j) =>
-                            j === i ? { propName: e.target.value, defaultValue: null, required: p.required } : p
+                            j === i ? { propName: v, defaultValue: null, required: p.required } : p
                           )
                         )
                       }
-                      className="flex-1 bg-zinc-900 border border-zinc-700 rounded-md px-3 py-2 text-sm"
-                    >
-                      <option value="">{t('placeholderSelectField')}</option>
-                      {extraCandidates(i).map((c) => (
-                        <option key={c.name} value={c.name}>
-                          {c.name} ({c.type})
-                        </option>
-                      ))}
-                    </select>
+                      options={candidateOptions}
+                      placeholder={t('placeholderSelectField')}
+                      className="flex-1"
+                    />
                     <label className="flex items-center gap-1 text-xs text-zinc-400 shrink-0 cursor-pointer">
                       <input
                         type="checkbox"
@@ -482,16 +512,13 @@ function WorkspaceModal({ workspace, onClose }) {
         {/* Section E — Rounding */}
         <div className="border-t border-zinc-700 pt-3">
           <label className="block text-xs text-zinc-400 mb-1">{t('labelWorkspaceRounding')}</label>
-          <select
-            value={roundingMinutes}
-            onChange={(e) => setRoundingMinutes(Number(e.target.value))}
-            className="w-full bg-zinc-900 border border-zinc-700 rounded-md px-3 py-2 text-sm"
-          >
-            <option value={0}>{t('roundingOff')}</option>
-            <option value={5}>{t('rounding5')}</option>
-            <option value={10}>{t('rounding10')}</option>
-            <option value={15}>{t('rounding15')}</option>
-          </select>
+          <SearchableSelect
+            value={String(roundingMinutes)}
+            onChange={(v) => setRoundingMinutes(Number(v))}
+            options={roundingOptions}
+            allowClear={false}
+            className="w-full"
+          />
           <p className="text-xs text-zinc-500 mt-1">{t('workspaceRoundingHint')}</p>
         </div>
 
@@ -529,24 +556,21 @@ function Field({ label, hint, children }) {
   );
 }
 
-/** Dropdown over a list of { name } options, with loading and empty states. */
+/** Searchable dropdown over a list of { name } options, with loading and empty states. */
 function PropSelect({ label, hint, loading, options, value, onChange }) {
   const empty = !loading && options.length === 0;
+  const selectOptions = options.map((o) => ({ value: o.name, label: o.name }));
   return (
     <Field label={label} hint={hint}>
-      <select
+      <SearchableSelect
         value={value}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={onChange}
+        options={selectOptions}
+        placeholder={loading ? t('loadingProperties') : t('placeholderSelect')}
         disabled={loading || empty}
-        className="w-full bg-zinc-900 border border-zinc-700 rounded-md px-3 py-2 text-sm disabled:opacity-50"
-      >
-        <option value="">{loading ? t('loadingProperties') : t('placeholderSelect')}</option>
-        {options.map((o) => (
-          <option key={o.name} value={o.name}>
-            {o.name}
-          </option>
-        ))}
-      </select>
+        loading={loading}
+        className="w-full"
+      />
       {empty && <p className="text-xs text-red-400 mt-1">{t('noPropertiesOfType')}</p>}
     </Field>
   );
@@ -579,22 +603,19 @@ function DefaultValueInput({ type, options, value, onChange, relDbId }) {
   }
 
   if (type === 'relation') {
+    const relOptions = relPages.map((p) => ({ value: p.id, label: p.name }));
     return (
       <div className={containerClass}>
         <label className="block text-xs text-zinc-400 mb-1">{t('labelDefaultValue')}</label>
-        <select
+        <SearchableSelect
           value={value ?? ''}
-          onChange={(e) => onChange(e.target.value || null)}
+          onChange={(v) => onChange(v || null)}
+          options={relOptions}
+          placeholder={relLoading ? t('placeholderLoading') : t('placeholderSelect')}
           disabled={relLoading}
-          className={`${inputClass} disabled:opacity-50`}
-        >
-          <option value="">
-            {relLoading ? t('placeholderLoading') : t('placeholderSelect')}
-          </option>
-          {relPages.map((p) => (
-            <option key={p.id} value={p.id}>{p.name}</option>
-          ))}
-        </select>
+          loading={relLoading}
+          className="w-full"
+        />
       </div>
     );
   }
@@ -616,21 +637,17 @@ function DefaultValueInput({ type, options, value, onChange, relDbId }) {
   }
 
   if (type === 'select' || type === 'status') {
+    const selectOptions = options.map((o) => ({ value: o.name, label: o.name }));
     return (
       <div className={containerClass}>
         <label className="block text-xs text-zinc-400 mb-1">{t('labelDefaultValue')}</label>
-        <select
+        <SearchableSelect
           value={value ?? ''}
-          onChange={(e) => onChange(e.target.value || null)}
-          className={inputClass}
-        >
-          <option value="">{t('placeholderSelect')}</option>
-          {options.map((o) => (
-            <option key={o.name} value={o.name}>
-              {o.name}
-            </option>
-          ))}
-        </select>
+          onChange={(v) => onChange(v || null)}
+          options={selectOptions}
+          placeholder={t('placeholderSelect')}
+          className="w-full"
+        />
       </div>
     );
   }

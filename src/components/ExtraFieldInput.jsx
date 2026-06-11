@@ -1,4 +1,5 @@
 import { t } from '../lib/i18n.js';
+import SearchableSelect from './SearchableSelect.jsx';
 
 const inputClass =
   'w-full bg-zinc-800 border border-zinc-700 rounded-md px-3 py-2 text-sm placeholder-zinc-600';
@@ -47,20 +48,20 @@ export default function ExtraFieldInput({ def, value, onChange, disabled }) {
       case 'relation': {
         // select/status are stored by option name; people/relation by id
         const byId = def.type === 'people' || def.type === 'relation';
+        const selectOpts = def.options.map((o) => ({
+          value: byId ? o.id : o.name,
+          label: o.name,
+        }));
         return (
-          <select
+          <SearchableSelect
             value={value}
-            onChange={(e) => onChange(e.target.value)}
+            onChange={onChange}
+            options={selectOpts}
+            placeholder={t('placeholderSelect')}
             disabled={disabled}
-            className={inputClass}
-          >
-            <option value="">{t('placeholderSelect')}</option>
-            {def.options.map((o) => (
-              <option key={byId ? o.id : o.name} value={byId ? o.id : o.name}>
-                {o.name}
-              </option>
-            ))}
-          </select>
+            triggerClass="bg-zinc-800"
+            className="w-full"
+          />
         );
       }
       case 'multi_select':
