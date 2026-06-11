@@ -408,6 +408,8 @@ function WorkspaceModal({ workspace, onClose }) {
               const propOptions = propDef
                 ? (propDef[propDef.type]?.options ?? []).map((o) => ({ name: o.name }))
                 : [];
+              const propRelDbId =
+                propDef?.type === 'relation' ? (propDef.relation?.database_id ?? null) : null;
               return (
                 <div key={i} className="flex flex-col">
                   <div className="flex items-center gap-2">
@@ -442,6 +444,7 @@ function WorkspaceModal({ workspace, onClose }) {
                       type={propDef.type}
                       options={propOptions}
                       value={ep.defaultValue}
+                      relDbId={propRelDbId}
                       onChange={(v) =>
                         setExtraProps((prev) =>
                           prev.map((p, j) => (j === i ? { ...p, defaultValue: v } : p))
@@ -537,15 +540,48 @@ function PropSelect({ label, hint, loading, options, value, onChange }) {
 }
 
 /** Inline default-value editor rendered below the field-name selector. */
-function DefaultValueInput({ type, options, value, onChange }) {
+function DefaultValueInput({ type, options, value, onChange, relDbId }) {
+  const [relPages, setRelPages] = useState([]);
+  const [relLoading, setRelLoading] = useState(false);
+
+  useEffect(() => {
+    if (type !== 'relation' || !relDbId) return;
+    setRelLoading(true);
+    window.notionAPI
+      .fetchDatabasePages(relDbId)
+      .then((pages) => { setRelPages(pages); setRelLoading(false); })
+      .catch(() => setRelLoading(false));
+  }, [type, relDbId]);
+
   const containerClass = 'ml-2 mt-1 border-l-2 border-zinc-700 pl-2';
   const inputClass =
     'bg-zinc-900 border border-zinc-700 rounded-md px-2 py-1 text-sm w-full';
 
-  if (['people', 'relation', 'files'].includes(type)) {
+  if (['people', 'files'].includes(type)) {
     return (
       <div className={containerClass}>
         <p className="text-xs text-zinc-500">{t('defaultValueUnsupported')}</p>
+      </div>
+    );
+  }
+
+  if (type === 'relation') {
+    return (
+      <div className={containerClass}>
+        <label className="block text-xs text-zinc-400 mb-1">{t('labelDefaultValue')}</label>
+        <select
+          value={value ?? ''}
+          onChange={(e) => onChange(e.target.value || null)}
+          disabled={relLoading}
+          className={`${inputClass} disabled:opacity-50`}
+        >
+          <option value="">
+            {relLoading ? t('placeholderLoading') : t('placeholderSelect')}
+          </option>
+          {relPages.map((p) => (
+            <option key={p.id} value={p.id}>{p.name}</option>
+          ))}
+        </select>
       </div>
     );
   }
