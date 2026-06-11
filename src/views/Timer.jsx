@@ -18,10 +18,6 @@ export default function Timer() {
   const workspaces = useStore((s) => s.workspaces);
   const selectedWorkspaceId = useStore((s) => s.selectedWorkspaceId);
   const selectWorkspace = useStore((s) => s.selectWorkspace);
-  const projects = useStore((s) => s.projects);
-  const projectsLoading = useStore((s) => s.projectsLoading);
-  const selectedProjectId = useStore((s) => s.selectedProjectId);
-  const setSelectedProjectId = useStore((s) => s.setSelectedProjectId);
   const description = useStore((s) => s.description);
   const setDescription = useStore((s) => s.setDescription);
   const extraFieldDefs = useStore((s) => s.extraFieldDefs);
@@ -33,7 +29,6 @@ export default function Timer() {
   const setView = useStore((s) => s.setView);
 
   const selectedWorkspace = workspaces.find((w) => w.id === selectedWorkspaceId);
-  const selectedProject = projects.find((p) => p.id === selectedProjectId);
 
   const settingsButton = (
     <div className="flex justify-end px-4 pb-3">
@@ -52,14 +47,13 @@ export default function Timer() {
     return (
       <RunningView
         workspaceName={selectedWorkspace?.name || '—'}
-        projectName={selectedProject?.name || '—'}
         settingsButton={settingsButton}
       />
     );
   }
 
   // ---- Idle state ----
-  const canStart = !!apiKey && !!selectedProjectId;
+  const canStart = !!apiKey && !!selectedWorkspaceId;
 
   return (
     <div className="flex flex-col h-full">
@@ -100,25 +94,6 @@ export default function Timer() {
         </div>
 
         <div>
-          <label className="block text-xs text-zinc-400 mb-1">{t('labelProject')}</label>
-          <select
-            value={selectedProjectId || ''}
-            onChange={(e) => setSelectedProjectId(e.target.value || null)}
-            disabled={!selectedWorkspaceId || projectsLoading}
-            className="w-full bg-zinc-800 border border-zinc-700 rounded-md px-3 py-2 text-sm disabled:opacity-50"
-          >
-            <option value="">
-              {projectsLoading ? t('placeholderLoading') : t('placeholderSelectProject')}
-            </option>
-            {projects.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div>
           <label className="block text-xs text-zinc-400 mb-1">{t('labelDescription')}</label>
           <input
             type="text"
@@ -129,11 +104,10 @@ export default function Timer() {
           />
         </div>
 
-        {/* Optional extra fields, shown once a project is chosen */}
-        {selectedProjectId && extrasLoading && (
+        {selectedWorkspaceId && extrasLoading && (
           <div className="text-xs text-zinc-500">{t('placeholderLoading')}</div>
         )}
-        {selectedProjectId &&
+        {selectedWorkspaceId &&
           extraFieldDefs.map((def) => (
             <ExtraFieldInput
               key={def.name}
@@ -156,7 +130,7 @@ export default function Timer() {
   );
 }
 
-function RunningView({ workspaceName, projectName, settingsButton }) {
+function RunningView({ workspaceName, settingsButton }) {
   const timer = useStore((s) => s.timer);
   const description = useStore((s) => s.description);
   const stopTimer = useStore((s) => s.stopTimer);
@@ -205,7 +179,6 @@ function RunningView({ workspaceName, projectName, settingsButton }) {
         <div className="text-sm font-semibold text-zinc-300 truncate max-w-full">
           {workspaceName}
         </div>
-        <div className="text-sm text-zinc-400 truncate max-w-full">{projectName}</div>
         {description.trim() && (
           <div className="text-xs text-zinc-500 italic truncate max-w-full">{description}</div>
         )}

@@ -150,9 +150,9 @@ async function createTimeEntry(apiKey, { dbId, title, startISO, projectId, props
       [props.timeEntryStatusProp]: {
         status: { name: props.timeEntryStatusRunning },
       },
-      [props.timeEntryRelationProp]: {
-        relation: [{ id: projectId }],
-      },
+      ...(projectId && props.timeEntryRelationProp
+        ? { [props.timeEntryRelationProp]: { relation: [{ id: projectId }] } }
+        : {}),
     },
   });
   return { pageId: data.id };
