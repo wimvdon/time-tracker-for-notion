@@ -80,7 +80,7 @@ async function getDatabaseSchema(apiKey, dbId) {
 /**
  * Fetches all pages of a database as picker options, using whichever property
  * is the title (every Notion database has exactly one). Used for the project
- * picker and for relation-type extra fields. Sorted by name.
+ * picker and for relation-type extra fields. Sorted by most recently edited.
  * @returns [{ id, name }]
  */
 async function fetchDatabasePages(apiKey, dbId) {
@@ -89,6 +89,7 @@ async function fetchDatabasePages(apiKey, dbId) {
   do {
     const data = await notionFetch(apiKey, 'POST', `/databases/${dbId}/query`, {
       page_size: 100,
+      sorts: [{ timestamp: 'last_edited_time', direction: 'descending' }],
       ...(cursor ? { start_cursor: cursor } : {}),
     });
     for (const page of data.results) {
@@ -101,7 +102,6 @@ async function fetchDatabasePages(apiKey, dbId) {
     }
     cursor = data.has_more ? data.next_cursor : undefined;
   } while (cursor);
-  results.sort((a, b) => a.name.localeCompare(b.name));
   return results;
 }
 

@@ -32,6 +32,8 @@ export default {
   noWorkspacesYet: 'Nog geen werkruimtes.',
   titleDeleteWorkspace: 'Werkruimte verwijderen',
   titleDeleteWorkspaceDisabled: 'Stop de timer eerst',
+  titleMoveUp: 'Omhoog',
+  titleMoveDown: 'Omlaag',
   btnAddWorkspace: '+ Werkruimte toevoegen',
   labelAlwaysOnTop: 'Venster altijd bovenaan houden',
 
@@ -43,6 +45,9 @@ export default {
   hintTimeEntriesDb: 'Tijdsregistraties worden hier aangemaakt. Vereiste eigenschappen: één datumbereik-veld, één statusveld, en bij voorkeur één koppelveld naar een projectendatabase.',
   placeholderSelectDatabase: 'Kies database…',
   placeholderSelect: 'Kies…',
+  placeholderSearch: 'Zoeken…',
+  searchNoResults: 'Geen resultaten',
+  btnRefreshDatabases: 'Vernieuwen',
   loadingDatabases: 'Databases laden…',
   errorLoadingDatabases: 'Kon databases niet laden',
   errorLoadingSchema: 'Kon database-eigenschappen niet laden',

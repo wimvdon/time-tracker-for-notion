@@ -206,6 +206,16 @@ export const useStore = create((set, get) => ({
     }
   },
 
+  moveWorkspace: async (id, direction) => {
+    const workspaces = [...get().workspaces];
+    const idx = workspaces.findIndex((w) => w.id === id);
+    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+    if (swapIdx < 0 || swapIdx >= workspaces.length) return;
+    [workspaces[idx], workspaces[swapIdx]] = [workspaces[swapIdx], workspaces[idx]];
+    await api.saveSettings({ workspaces });
+    set({ workspaces });
+  },
+
   deleteWorkspace: async (workspaceId) => {
     const workspaces = get().workspaces.filter((w) => w.id !== workspaceId);
     await api.saveSettings({ workspaces });

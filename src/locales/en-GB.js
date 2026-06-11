@@ -32,6 +32,8 @@ export default {
   noWorkspacesYet: 'No workspaces yet.',
   titleDeleteWorkspace: 'Delete workspace',
   titleDeleteWorkspaceDisabled: 'Stop the timer first',
+  titleMoveUp: 'Move up',
+  titleMoveDown: 'Move down',
   btnAddWorkspace: '+ Add workspace',
   labelAlwaysOnTop: 'Keep window on top',
 
@@ -43,6 +45,9 @@ export default {
   hintTimeEntriesDb: 'Time entries are created here. Required properties: one date-range field, one status field, and ideally one relation field linking to a projects database.',
   placeholderSelectDatabase: 'Select database…',
   placeholderSelect: 'Select…',
+  placeholderSearch: 'Search…',
+  searchNoResults: 'No results',
+  btnRefreshDatabases: 'Refresh',
   loadingDatabases: 'Loading databases…',
   errorLoadingDatabases: 'Could not load databases',
   errorLoadingSchema: 'Could not load database properties',
