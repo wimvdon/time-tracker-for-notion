@@ -671,7 +671,10 @@ export const useStore = create((set, get) => ({
     });
 
     set((s) => {
-      const others = s.runningTimers.filter((x) => x.pageId !== rt.pageId);
+      const activePageId = state.timer.notionPageId;
+      const others = s.runningTimers.filter(
+        (x) => x.pageId !== rt.pageId && x.pageId !== activePageId,
+      );
       if (previouslyActive) others.push(previouslyActive);
       return { runningTimers: others, description: rt.title };
     });

@@ -105,7 +105,6 @@ export default function Timer() {
         deleteConfirm={deleteConfirm}
         onLoadRunningTimer={loadRunningTimer}
         onStopOtherRunningTimer={stopOtherRunningTimer}
-        onRefreshTimers={loadRunningTimers}
         onSuspendActiveToNewTimer={suspendActiveToNewTimer}
         onConfirmDelete={confirmDelete}
         onCancelDelete={cancelDelete}
@@ -222,7 +221,6 @@ export default function Timer() {
           onStop={stopOtherRunningTimer}
           onDelete={(rt) => confirmDelete(rt, 'running')}
           onOpenUrl={openNotionPage}
-          onRefresh={loadRunningTimers}
         />
         <RecentEntries
           entries={recentEntries}
@@ -257,7 +255,6 @@ function RunningView({
   deleteConfirm,
   onLoadRunningTimer,
   onStopOtherRunningTimer,
-  onRefreshTimers,
   onSuspendActiveToNewTimer: _onSuspendActiveToNewTimer,
   onConfirmDelete,
   onCancelDelete,
@@ -392,7 +389,6 @@ function RunningView({
           onStop={onStopOtherRunningTimer}
           onDelete={(rt) => onConfirmDelete(rt, rt.pageId === activePageId ? 'active' : 'running')}
           onOpenUrl={onOpenUrl}
-          onRefresh={onRefreshTimers}
         />
         <RecentEntries
           entries={recentEntries}
@@ -438,20 +434,12 @@ function DeletedPageDialog({ info, onDismiss }) {
   );
 }
 
-function OtherRunningTimers({ timers, loading, activePageId, onLoad, onStop, onDelete, onOpenUrl, onRefresh }) {
+function OtherRunningTimers({ timers, loading, activePageId, onLoad, onStop, onDelete, onOpenUrl }) {
   if (!timers.length && !loading) return null;
   return (
     <div className="w-full mt-2 pt-3 border-t border-zinc-700">
-      <div className="flex items-center justify-between mb-2">
+      <div className="mb-2">
         <span className="text-xs text-zinc-500">{t('runningTimersHeading')}</span>
-        <button
-          onClick={onRefresh}
-          disabled={loading}
-          title={t('titleRefreshTimers')}
-          className="text-zinc-600 hover:text-zinc-300 disabled:opacity-40 text-sm leading-none transition-colors"
-        >
-          {loading ? '…' : '↺'}
-        </button>
       </div>
       {timers.map((rt) => {
         const isActive = rt.pageId === activePageId;
