@@ -119,7 +119,9 @@ private fun AppNavigation(
                 onClearError = timerViewModel::clearError,
                 onRetryStop = { timerViewModel.stopTimer() },
                 onLoadRunningTimer = timerViewModel::loadRunningTimer,
-                onStopOtherRunningTimer = timerViewModel::stopOtherRunningTimer
+                onStopOtherRunningTimer = timerViewModel::stopOtherRunningTimer,
+                onSuspendActiveToNewTimer = timerViewModel::suspendActiveToNewTimer,
+                onRefreshRunningTimers = { timerViewModel.loadRunningTimers(false) }
             )
         }
 

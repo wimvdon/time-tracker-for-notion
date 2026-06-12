@@ -371,10 +371,11 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
         loadRunningTimers()
     }
 
-    fun loadRunningTimers() {
+    fun loadRunningTimers(autoLoad: Boolean = true) {
         val state = _uiState.value
-        if (state.running || state.recoveredTimer != null || state.apiKey.isBlank() ||
+        if (state.recoveredTimer != null || state.apiKey.isBlank() ||
             state.workspaces.isEmpty() || state.runningTimersLoading) return
+        if (autoLoad && state.running) return
 
         _uiState.update { it.copy(runningTimersLoading = true) }
 
@@ -401,9 +402,41 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
                 }
             }
             allRunning.sortByDescending { it.startISO }
-            _uiState.update { it.copy(runningTimersLoading = false, runningTimers = allRunning) }
-            if (allRunning.isNotEmpty()) loadRunningTimer(allRunning[0])
+
+            // Exclude the timer currently active in the UI
+            val activePageId = _uiState.value.activeTimer?.notionPageId
+            val others = if (activePageId != null) allRunning.filter { it.pageId != activePageId } else allRunning
+
+            _uiState.update { it.copy(runningTimersLoading = false, runningTimers = others) }
+            if (autoLoad && !_uiState.value.running && others.isNotEmpty()) loadRunningTimer(others[0])
         }
+    }
+
+    fun suspendActiveToNewTimer() {
+        val state = _uiState.value
+        if (!state.running || state.activeTimer == null) return
+
+        val aside = RunningTimerInfo(
+            pageId = state.activeTimer.notionPageId,
+            title = state.activeTimer.description,
+            startISO = state.activeTimer.roundedStart,
+            workspaceId = state.activeTimer.workspaceId,
+            workspaceName = state.workspaces.firstOrNull { it.id == state.activeTimer.workspaceId }?.name ?: "",
+            propertyMap = state.activeTimer.propertyMap
+        )
+
+        tickJob?.cancel()
+        app.stopService(Intent(app, TimerForegroundService::class.java))
+
+        _uiState.update { it.copy(
+            running = false,
+            activeTimer = null,
+            elapsedSeconds = 0L,
+            description = "",
+            runningTimers = it.runningTimers + aside
+        )}
+
+        viewModelScope.launch { settingsRepo.clearActiveTimer() }
     }
 
     fun loadRunningTimer(rt: RunningTimerInfo) {

@@ -499,12 +499,13 @@ export const useStore = create((set, get) => ({
 
   /**
    * Queries every configured workspace for pages with the running status.
-   * With 1 result: auto-loads it. With 2+: loads most recent, stores others.
-   * Skipped if a local timer is active, crash recovery is pending, or already loading.
+   * autoLoad=true (default): auto-loads the most recent; skipped when a timer is running.
+   * autoLoad=false (manual refresh): updates the list while a timer is running, no auto-load.
    */
-  loadRunningTimers: async () => {
+  loadRunningTimers: async (autoLoad = true) => {
     const { workspaces, apiKey, timer, recoveredTimer, runningTimersLoading } = get();
-    if (!apiKey || !workspaces.length || timer.running || recoveredTimer || runningTimersLoading) return;
+    if (!apiKey || !workspaces.length || recoveredTimer || runningTimersLoading) return;
+    if (autoLoad && timer.running) return;
 
     set({ runningTimersLoading: true });
     const allRunning = [];
@@ -528,11 +529,45 @@ export const useStore = create((set, get) => ({
     }
 
     allRunning.sort((a, b) => new Date(b.startISO) - new Date(a.startISO));
-    set({ runningTimersLoading: false, runningTimers: allRunning });
 
-    if (allRunning.length >= 1) {
-      get().loadRunningTimer(allRunning[0]);
+    // Exclude whichever timer is currently active in the UI
+    const activePageId = get().timer.running ? get().timer.notionPageId : null;
+    const others = allRunning.filter((r) => r.pageId !== activePageId);
+
+    set({ runningTimersLoading: false, runningTimers: others });
+
+    if (autoLoad && !get().timer.running && others.length >= 1) {
+      get().loadRunningTimer(others[0]);
     }
+  },
+
+  /**
+   * Puts the active timer aside (into runningTimers) without stopping it in Notion,
+   * so the user can start a fresh timer on top of it.
+   */
+  suspendActiveToNewTimer: () => {
+    const state = get();
+    if (!state.timer.running) return;
+
+    const aside = {
+      pageId: state.timer.notionPageId,
+      title: state.description || '',
+      startISO: state.timer.startISO,
+      workspaceId: state.selectedWorkspaceId || '',
+      workspaceName: state.workspaces.find((w) => w.id === state.selectedWorkspaceId)?.name || '',
+      propertyMap: state.timer.propertyMap,
+    };
+
+    clearInterval(state.timer.tickInterval);
+    api.saveSettings({ activeTimer: null });
+
+    set((s) => ({
+      timer: { ...idleTimer },
+      description: '',
+      runningTimers: [...s.runningTimers, aside],
+    }));
+
+    api.setTimerRunning(false);
   },
 
   /** Loads a Notion-running timer into the UI as the active timer. */

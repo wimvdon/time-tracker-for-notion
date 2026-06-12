@@ -7,6 +7,8 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -48,7 +50,9 @@ fun TimerScreen(
     onClearError: () -> Unit,
     onRetryStop: () -> Unit,
     onLoadRunningTimer: (RunningTimerInfo) -> Unit,
-    onStopOtherRunningTimer: (RunningTimerInfo) -> Unit
+    onStopOtherRunningTimer: (RunningTimerInfo) -> Unit,
+    onSuspendActiveToNewTimer: () -> Unit,
+    onRefreshRunningTimers: () -> Unit
 ) {
     if (uiState.recoveredTimer != null) {
         RecoveryDialog(
@@ -68,7 +72,9 @@ fun TimerScreen(
             onNavigateToSettings = onNavigateToSettings,
             onRetryStop = onRetryStop,
             onLoadRunningTimer = onLoadRunningTimer,
-            onStopOtherRunningTimer = onStopOtherRunningTimer
+            onStopOtherRunningTimer = onStopOtherRunningTimer,
+            onSuspendActiveToNewTimer = onSuspendActiveToNewTimer,
+            onRefreshRunningTimers = onRefreshRunningTimers
         )
     } else {
         IdleView(
@@ -81,7 +87,8 @@ fun TimerScreen(
             onNavigateToSettings = onNavigateToSettings,
             onClearError = onClearError,
             onLoadRunningTimer = onLoadRunningTimer,
-            onStopOtherRunningTimer = onStopOtherRunningTimer
+            onStopOtherRunningTimer = onStopOtherRunningTimer,
+            onRefreshRunningTimers = onRefreshRunningTimers
         )
     }
 }
@@ -97,7 +104,8 @@ private fun IdleView(
     onNavigateToSettings: () -> Unit,
     onClearError: () -> Unit,
     onLoadRunningTimer: (RunningTimerInfo) -> Unit,
-    onStopOtherRunningTimer: (RunningTimerInfo) -> Unit
+    onStopOtherRunningTimer: (RunningTimerInfo) -> Unit,
+    onRefreshRunningTimers: () -> Unit
 ) {
     val scrollState = rememberScrollState()
 
@@ -239,8 +247,10 @@ private fun IdleView(
 
             OtherRunningTimers(
                 timers = uiState.runningTimers,
+                loading = uiState.runningTimersLoading,
                 onLoad = onLoadRunningTimer,
-                onStop = onStopOtherRunningTimer
+                onStop = onStopOtherRunningTimer,
+                onRefresh = onRefreshRunningTimers
             )
 
             Spacer(Modifier.height(16.dp))
@@ -256,7 +266,9 @@ private fun RunningView(
     onNavigateToSettings: () -> Unit,
     onRetryStop: () -> Unit,
     onLoadRunningTimer: (RunningTimerInfo) -> Unit,
-    onStopOtherRunningTimer: (RunningTimerInfo) -> Unit
+    onStopOtherRunningTimer: (RunningTimerInfo) -> Unit,
+    onSuspendActiveToNewTimer: () -> Unit,
+    onRefreshRunningTimers: () -> Unit
 ) {
     val timer = uiState.activeTimer ?: return
     val workspace = uiState.workspaces.firstOrNull { it.id == timer.workspaceId }
@@ -279,6 +291,9 @@ private fun RunningView(
                     .padding(horizontal = 8.dp, vertical = 4.dp),
                 horizontalArrangement = Arrangement.End
             ) {
+                IconButton(onClick = onSuspendActiveToNewTimer) {
+                    Icon(Icons.Default.Add, contentDescription = stringResource(R.string.start_new_timer))
+                }
                 IconButton(onClick = onNavigateToSettings) {
                     Icon(Icons.Default.Settings, contentDescription = stringResource(R.string.title_settings))
                 }
@@ -399,8 +414,10 @@ private fun RunningView(
 
             OtherRunningTimers(
                 timers = uiState.runningTimers,
+                loading = uiState.runningTimersLoading,
                 onLoad = onLoadRunningTimer,
-                onStop = onStopOtherRunningTimer
+                onStop = onStopOtherRunningTimer,
+                onRefresh = onRefreshRunningTimers
             )
 
             Spacer(Modifier.height(16.dp))
@@ -411,18 +428,36 @@ private fun RunningView(
 @Composable
 private fun OtherRunningTimers(
     timers: List<RunningTimerInfo>,
+    loading: Boolean,
     onLoad: (RunningTimerInfo) -> Unit,
-    onStop: (RunningTimerInfo) -> Unit
+    onStop: (RunningTimerInfo) -> Unit,
+    onRefresh: () -> Unit
 ) {
-    if (timers.isEmpty()) return
+    if (timers.isEmpty() && !loading) return
 
     HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-    Text(
-        stringResource(R.string.running_timers_heading),
-        style = MaterialTheme.typography.labelSmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.fillMaxWidth()
-    )
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            stringResource(R.string.running_timers_heading),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        IconButton(onClick = onRefresh, enabled = !loading, modifier = Modifier.size(32.dp)) {
+            if (loading) {
+                CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+            } else {
+                Icon(
+                    Icons.Default.Refresh,
+                    contentDescription = stringResource(R.string.refresh_running_timers),
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+        }
+    }
     timers.forEach { rt ->
         Card(
             modifier = Modifier

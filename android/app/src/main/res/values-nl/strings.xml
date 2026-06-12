@@ -111,6 +111,8 @@
     <!-- Running timers list -->
     <string name="running_timers_heading">Andere actieve timers</string>
     <string name="stop_running_timer">Timer stoppen</string>
+    <string name="refresh_running_timers">Lopende timers vernieuwen</string>
+    <string name="start_new_timer">Nieuwe timer starten</string>
 
     <!-- Notification -->
     <string name="notification_channel_name">Timer</string>
