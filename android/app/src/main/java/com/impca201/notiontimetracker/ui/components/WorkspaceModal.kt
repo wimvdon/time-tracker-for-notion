@@ -16,6 +16,7 @@ import androidx.compose.ui.unit.dp
 import com.impca201.notiontimetracker.R
 import com.impca201.notiontimetracker.data.models.ExtraProp
 import com.impca201.notiontimetracker.data.models.NamedOption
+import com.impca201.notiontimetracker.data.models.Preset
 import com.impca201.notiontimetracker.data.models.READ_ONLY_TYPES
 import com.impca201.notiontimetracker.data.models.SchemaProperty
 import com.impca201.notiontimetracker.data.models.StatusOption
@@ -41,6 +42,9 @@ fun WorkspaceModal(
     onExtraPropNameChange: (Int, String) -> Unit,
     onExtraPropRequiredChange: (Int, Boolean) -> Unit,
     onExtraPropDefaultChange: (Int, String?) -> Unit,
+    onAddPreset: () -> Unit = {},
+    onRemovePreset: (Int) -> Unit = {},
+    onUpdatePreset: (Int, Preset) -> Unit = { _, _ -> },
     isValid: Boolean
 ) {
     val scrollState = rememberScrollState()
@@ -182,6 +186,34 @@ fun WorkspaceModal(
                 }
             }
 
+            // Presets
+            Spacer(Modifier.height(16.dp))
+            Text(stringResource(R.string.section_presets), style = MaterialTheme.typography.titleSmall)
+            Text(
+                stringResource(R.string.hint_presets),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(Modifier.height(8.dp))
+
+            state.presets.forEachIndexed { index, preset ->
+                PresetRow(
+                    preset = preset,
+                    workspaceName = state.name,
+                    extraProps = state.extraProps.filter { it.propName.isNotBlank() },
+                    schema = state.schema,
+                    onUpdate = { onUpdatePreset(index, it) },
+                    onRemove = { onRemovePreset(index) }
+                )
+                Spacer(Modifier.height(8.dp))
+            }
+
+            if (state.presets.size < 5) {
+                TextButton(onClick = onAddPreset) {
+                    Text(stringResource(R.string.btn_add_preset))
+                }
+            }
+
             // Rounding
             Spacer(Modifier.height(16.dp))
             Text(stringResource(R.string.label_workspace_rounding), style = MaterialTheme.typography.titleSmall)
@@ -302,26 +334,6 @@ private fun ExtraPropRow(
                     Checkbox(checked = prop.required, onCheckedChange = onRequiredChange)
                     Text(stringResource(R.string.label_required_field), style = MaterialTheme.typography.bodyMedium)
                 }
-
-                val schemaProp = schema[prop.propName]
-                val propType = schemaProp?.type ?: "rich_text"
-
-                if (propType !in setOf("people", "files")) {
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        stringResource(R.string.label_default_value),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    SmartDefaultValueInput(
-                        type = propType,
-                        value = prop.defaultValue,
-                        selectOptions = schemaProp?.selectOptions ?: schemaProp?.statusOptions ?: emptyList(),
-                        relationPages = relationPages,
-                        relationLoading = relationLoading,
-                        onChange = onDefaultChange
-                    )
-                }
             }
         }
     }
@@ -406,6 +418,89 @@ private fun SmartDefaultValueInput(
                 singleLine = true,
                 placeholder = { Text(stringResource(R.string.label_default_value)) }
             )
+        }
+    }
+}
+
+@Composable
+private fun PresetRow(
+    preset: Preset,
+    workspaceName: String,
+    extraProps: List<ExtraProp>,
+    schema: Map<String, SchemaProperty>,
+    onUpdate: (Preset) -> Unit,
+    onRemove: () -> Unit
+) {
+    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    "$workspaceName — ",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.widthIn(max = 100.dp)
+                )
+                OutlinedTextField(
+                    value = preset.name,
+                    onValueChange = { onUpdate(preset.copy(name = it)) },
+                    modifier = Modifier.weight(1f),
+                    singleLine = true,
+                    placeholder = { Text(stringResource(R.string.preset_name_placeholder), style = MaterialTheme.typography.bodySmall) },
+                    textStyle = MaterialTheme.typography.bodySmall
+                )
+                Spacer(Modifier.width(4.dp))
+                IconButton(onClick = onRemove) {
+                    Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.title_remove_preset))
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+            Text(stringResource(R.string.label_preset_title), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            OutlinedTextField(
+                value = preset.pageTitle,
+                onValueChange = { onUpdate(preset.copy(pageTitle = it)) },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                placeholder = { Text(stringResource(R.string.preset_title_placeholder), style = MaterialTheme.typography.bodySmall) },
+                textStyle = MaterialTheme.typography.bodySmall
+            )
+            extraProps.forEach { ep ->
+                val schemaProp = schema[ep.propName] ?: return@forEach
+                val type = schemaProp.type
+                if (type in setOf("people", "files", "relation")) return@forEach
+                Spacer(Modifier.height(4.dp))
+                Text(ep.propName, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                val currentVal = preset.extraValues[ep.propName] ?: ""
+                when (type) {
+                    "checkbox" -> {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Switch(
+                                checked = currentVal == "true",
+                                onCheckedChange = { onUpdate(preset.copy(extraValues = preset.extraValues + (ep.propName to if (it) "true" else "false"))) }
+                            )
+                        }
+                    }
+                    "select", "status" -> {
+                        val opts = (schemaProp.selectOptions.ifEmpty { schemaProp.statusOptions }).map { NamedOption(it.name, it.name) }
+                        SearchableDropdown(
+                            options = opts,
+                            selected = opts.firstOrNull { it.id == currentVal },
+                            placeholder = stringResource(R.string.placeholder_select),
+                            onSelect = { opt -> onUpdate(preset.copy(extraValues = preset.extraValues + (ep.propName to (opt?.name ?: "")))) },
+                            allowClear = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                    else -> {
+                        OutlinedTextField(
+                            value = currentVal,
+                            onValueChange = { onUpdate(preset.copy(extraValues = preset.extraValues + (ep.propName to it))) },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true,
+                            textStyle = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                }
+            }
         }
     }
 }

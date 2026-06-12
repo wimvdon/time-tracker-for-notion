@@ -25,24 +25,24 @@ export default function Settings() {
   const [testing, setTesting] = useState(false);
   const [showAddWorkspace, setShowAddWorkspace] = useState(false);
   const [editingWorkspace, setEditingWorkspace] = useState(null);
-  const [qrDataUrl, setQrDataUrl] = useState(null);
-  const [qrExpanded, setQrExpanded] = useState(false);
+  // Per-workspace QR: { workspaceId, dataUrl } or null
+  const [activeQr, setActiveQr] = useState(null);
   const qrDismissTimer = useRef(null);
 
   const firstLaunch = !apiKey || workspaces.length === 0;
 
-  const generateQr = async () => {
-    const payload = JSON.stringify({ apiKey, workspaces, theme });
+  const generateWorkspaceQr = async (workspace) => {
+    if (qrDismissTimer.current) clearTimeout(qrDismissTimer.current);
+    if (activeQr?.workspaceId === workspace.id) {
+      setActiveQr(null);
+      return;
+    }
     try {
+      const payload = JSON.stringify({ workspace });
       const QRCode = (await import('qrcode')).default;
-      const url = await QRCode.toDataURL(payload, { width: 256, margin: 2 });
-      setQrDataUrl(url);
-      setQrExpanded(true);
-      if (qrDismissTimer.current) clearTimeout(qrDismissTimer.current);
-      qrDismissTimer.current = setTimeout(() => {
-        setQrExpanded(false);
-        setQrDataUrl(null);
-      }, 30_000);
+      const dataUrl = await QRCode.toDataURL(payload, { width: 256, margin: 2 });
+      setActiveQr({ workspaceId: workspace.id, dataUrl });
+      qrDismissTimer.current = setTimeout(() => setActiveQr(null), 30_000);
     } catch (err) {
       addToast({ type: 'error', message: `QR: ${errorMessage(err)}` });
     }
@@ -50,8 +50,7 @@ export default function Settings() {
 
   const dismissQr = () => {
     if (qrDismissTimer.current) clearTimeout(qrDismissTimer.current);
-    setQrExpanded(false);
-    setQrDataUrl(null);
+    setActiveQr(null);
   };
 
   const handleSaveAndTestKey = async () => {
@@ -121,44 +120,57 @@ export default function Settings() {
             <div className="text-xs text-zinc-600 italic py-1">{t('noWorkspacesYet')}</div>
           )}
           {workspaces.map((w, i) => (
-            <div
-              key={w.id}
-              className="flex items-center justify-between bg-zinc-800 border border-zinc-700 rounded-md px-3 py-2"
-            >
-              <span className="text-sm truncate">{w.name}</span>
-              <span className="flex items-center gap-1 ml-2 shrink-0">
-                <button
-                  onClick={() => moveWorkspace(w.id, 'up')}
-                  disabled={i === 0}
-                  title={t('titleMoveUp')}
-                  className="text-zinc-500 hover:text-zinc-200 disabled:opacity-30 px-0.5"
-                >
-                  ↑
-                </button>
-                <button
-                  onClick={() => moveWorkspace(w.id, 'down')}
-                  disabled={i === workspaces.length - 1}
-                  title={t('titleMoveDown')}
-                  className="text-zinc-500 hover:text-zinc-200 disabled:opacity-30 px-0.5"
-                >
-                  ↓
-                </button>
-                <button
-                  onClick={() => setEditingWorkspace(w)}
-                  title={t('modalTitleEditWorkspace')}
-                  className="text-zinc-500 hover:text-zinc-200 ml-1"
-                >
-                  ✏️
-                </button>
-                <button
-                  onClick={() => deleteWorkspace(w.id)}
-                  disabled={timerRunning}
-                  title={timerRunning ? t('titleDeleteWorkspaceDisabled') : t('titleDeleteWorkspace')}
-                  className="text-zinc-500 hover:text-red-400 disabled:opacity-40"
-                >
-                  🗑
-                </button>
-              </span>
+            <div key={w.id}>
+              <div className="flex items-center justify-between bg-zinc-800 border border-zinc-700 rounded-md px-3 py-2">
+                <span className="text-sm truncate">{w.name}</span>
+                <span className="flex items-center gap-1 ml-2 shrink-0">
+                  <button
+                    onClick={() => moveWorkspace(w.id, 'up')}
+                    disabled={i === 0}
+                    title={t('titleMoveUp')}
+                    className="text-zinc-500 hover:text-zinc-200 disabled:opacity-30 px-0.5"
+                  >
+                    ↑
+                  </button>
+                  <button
+                    onClick={() => moveWorkspace(w.id, 'down')}
+                    disabled={i === workspaces.length - 1}
+                    title={t('titleMoveDown')}
+                    className="text-zinc-500 hover:text-zinc-200 disabled:opacity-30 px-0.5"
+                  >
+                    ↓
+                  </button>
+                  <button
+                    onClick={() => generateWorkspaceQr(w)}
+                    title={t('labelWorkspaceQr')}
+                    className="text-zinc-500 hover:text-zinc-200 ml-1 text-base leading-none"
+                  >
+                    {activeQr?.workspaceId === w.id ? '✕' : '▦'}
+                  </button>
+                  <button
+                    onClick={() => setEditingWorkspace(w)}
+                    title={t('modalTitleEditWorkspace')}
+                    className="text-zinc-500 hover:text-zinc-200"
+                  >
+                    ✏️
+                  </button>
+                  <button
+                    onClick={() => deleteWorkspace(w.id)}
+                    disabled={timerRunning}
+                    title={timerRunning ? t('titleDeleteWorkspaceDisabled') : t('titleDeleteWorkspace')}
+                    className="text-zinc-500 hover:text-red-400 disabled:opacity-40"
+                  >
+                    🗑
+                  </button>
+                </span>
+              </div>
+              {activeQr?.workspaceId === w.id && (
+                <div className="mt-1 ml-2 flex flex-col gap-1">
+                  <p className="text-xs text-zinc-500">{t('qrWorkspaceNote')}</p>
+                  <img src={activeQr.dataUrl} alt="QR code" className="w-32 h-32 rounded border border-zinc-600" />
+                  <p className="text-xs text-zinc-600">{t('qrAutoDismiss')}</p>
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -202,31 +214,6 @@ export default function Settings() {
         </div>
       </div>
 
-      {/* QR code export */}
-      <div>
-        <div className="flex items-center justify-between">
-          <label className="text-xs text-zinc-400">{t('labelQrExport')}</label>
-          {qrExpanded ? (
-            <button onClick={dismissQr} className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors">✕ {t('btnClose')}</button>
-          ) : (
-            <button
-              onClick={generateQr}
-              disabled={!apiKey}
-              className="text-xs px-2 py-1 bg-zinc-700 hover:bg-zinc-600 disabled:opacity-40 rounded transition-colors"
-            >
-              {t('btnShowQr')}
-            </button>
-          )}
-        </div>
-        {qrExpanded && qrDataUrl && (
-          <div className="mt-2">
-            <p className="text-xs text-amber-400 mb-2">⚠️ {t('qrSecurityWarning')}</p>
-            <img src={qrDataUrl} alt="QR code" className="w-40 h-40 rounded border border-zinc-600" />
-            <p className="text-xs text-zinc-600 mt-1">{t('qrAutoDismiss')}</p>
-          </div>
-        )}
-      </div>
-
       {showAddWorkspace && <WorkspaceModal onClose={() => setShowAddWorkspace(false)} />}
       {editingWorkspace && (
         <WorkspaceModal
@@ -261,9 +248,10 @@ function WorkspaceModal({ workspace, onClose }) {
   const [sel, setSel] = useState({ ...EMPTY_SELECTION, ...(workspace?.propertyMap || {}) });
   const [extraProps, setExtraProps] = useState(
     (workspace?.extraProps || []).map((ep) =>
-      typeof ep === 'string' ? { propName: ep, defaultValue: null, required: false } : ep
+      typeof ep === 'string' ? { propName: ep, required: false } : ep
     )
   );
+  const [presets, setPresets] = useState(workspace?.presets || []);
 
   // Database list — fetched once per modal lifetime (Retry/Refresh re-fetches)
   const [dbs, setDbs] = useState({ loading: true, error: null, items: [] });
@@ -364,7 +352,20 @@ function WorkspaceModal({ workspace, onClose }) {
         timeEntryStatusDone: sel.timeEntryStatusDone,
         timeEntryRelationProp: relPropName,
       },
-      extraProps: extraProps.filter((ep) => !!ep.propName),
+      extraProps: extraProps.filter((ep) => !!ep.propName).map((ep) => ({
+        propName: ep.propName,
+        required: !!ep.required,
+      })),
+      presets: presets
+        .filter((p) => p.name.trim())
+        .map((p) => ({
+          ...p,
+          name: p.name.trim(),
+          pageTitle: (p.pageTitle || '').trim(),
+          extraValues: Object.fromEntries(
+            Object.entries(p.extraValues || {}).filter(([, v]) => v !== '' && v != null)
+          ),
+        })),
     };
     if (workspace) {
       await updateWorkspace(saved);
@@ -508,66 +509,45 @@ function WorkspaceModal({ workspace, onClose }) {
             <p className="text-xs font-semibold text-zinc-300">{t('sectionExtraFields')}</p>
             <p className="text-xs text-zinc-500">{t('hintExtraFields')}</p>
             {extraProps.map((ep, i) => {
-              const propDef = teSchema.schema?.[ep.propName];
-              const propOptions = propDef
-                ? (propDef[propDef.type]?.options ?? []).map((o) => ({ name: o.name }))
-                : [];
-              const propRelDbId =
-                propDef?.type === 'relation' ? (propDef.relation?.database_id ?? null) : null;
               const candidateOptions = extraCandidates(i).map((c) => ({
                 value: c.name,
                 label: `${c.name} (${c.type})`,
               }));
               return (
-                <div key={i} className="flex flex-col">
-                  <div className="flex items-center gap-2">
-                    <SearchableSelect
-                      value={ep.propName}
-                      onChange={(v) =>
+                <div key={i} className="flex items-center gap-2">
+                  <SearchableSelect
+                    value={ep.propName}
+                    onChange={(v) =>
+                      setExtraProps((prev) =>
+                        prev.map((p, j) =>
+                          j === i ? { propName: v, required: p.required } : p
+                        )
+                      )
+                    }
+                    options={candidateOptions}
+                    placeholder={t('placeholderSelectField')}
+                    className="flex-1"
+                  />
+                  <label className="flex items-center gap-1 text-xs text-zinc-400 shrink-0 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={!!ep.required}
+                      onChange={(e) =>
                         setExtraProps((prev) =>
-                          prev.map((p, j) =>
-                            j === i ? { propName: v, defaultValue: null, required: p.required } : p
-                          )
+                          prev.map((p, j) => (j === i ? { ...p, required: e.target.checked } : p))
                         )
                       }
-                      options={candidateOptions}
-                      placeholder={t('placeholderSelectField')}
-                      className="flex-1"
+                      className="accent-emerald-500"
                     />
-                    <label className="flex items-center gap-1 text-xs text-zinc-400 shrink-0 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={!!ep.required}
-                        onChange={(e) =>
-                          setExtraProps((prev) =>
-                            prev.map((p, j) => (j === i ? { ...p, required: e.target.checked } : p))
-                          )
-                        }
-                        className="accent-emerald-500"
-                      />
-                      {t('labelRequiredField')}
-                    </label>
-                    <button
-                      onClick={() => setExtraProps((prev) => prev.filter((_, j) => j !== i))}
-                      title={t('titleRemoveExtraField')}
-                      className="text-zinc-500 hover:text-red-400 shrink-0"
-                    >
-                      ✕
-                    </button>
-                  </div>
-                  {ep.propName && propDef && (
-                    <DefaultValueInput
-                      type={propDef.type}
-                      options={propOptions}
-                      value={ep.defaultValue}
-                      relDbId={propRelDbId}
-                      onChange={(v) =>
-                        setExtraProps((prev) =>
-                          prev.map((p, j) => (j === i ? { ...p, defaultValue: v } : p))
-                        )
-                      }
-                    />
-                  )}
+                    {t('labelRequiredField')}
+                  </label>
+                  <button
+                    onClick={() => setExtraProps((prev) => prev.filter((_, j) => j !== i))}
+                    title={t('titleRemoveExtraField')}
+                    className="text-zinc-500 hover:text-red-400 shrink-0"
+                  >
+                    ✕
+                  </button>
                 </div>
               );
             })}
@@ -582,7 +562,39 @@ function WorkspaceModal({ workspace, onClose }) {
           </div>
         )}
 
-        {/* Section E — Rounding */}
+        {/* Section E — Presets (optional, max 5) */}
+        <div className="flex flex-col gap-2 border-t border-zinc-700 pt-3">
+          <p className="text-xs font-semibold text-zinc-300">{t('sectionPresets')}</p>
+          <p className="text-xs text-zinc-500">{t('hintPresets')}</p>
+          {presets.map((preset, i) => (
+            <PresetRow
+              key={preset.id || i}
+              preset={preset}
+              workspaceName={name}
+              extraProps={extraProps.filter((ep) => !!ep.propName)}
+              schema={teSchema.schema}
+              onChange={(updated) =>
+                setPresets((prev) => prev.map((p, j) => (j === i ? updated : p)))
+              }
+              onRemove={() => setPresets((prev) => prev.filter((_, j) => j !== i))}
+            />
+          ))}
+          {presets.length < 5 && (
+            <button
+              onClick={() =>
+                setPresets((prev) => [
+                  ...prev,
+                  { id: crypto.randomUUID(), name: '', pageTitle: '', extraValues: {} },
+                ])
+              }
+              className="self-start px-3 py-1.5 rounded-md bg-zinc-700 hover:bg-zinc-600 text-xs"
+            >
+              {t('btnAddPreset')}
+            </button>
+          )}
+        </div>
+
+        {/* Section F — Rounding */}
         <div className="border-t border-zinc-700 pt-3">
           <label className="block text-xs text-zinc-400 mb-1">{t('labelWorkspaceRounding')}</label>
           <SearchableSelect
@@ -791,6 +803,115 @@ function DefaultValueInput({ type, options, value, onChange, relDbId }) {
         className={inputClass}
       />
     </div>
+  );
+}
+
+function PresetRow({ preset, workspaceName, extraProps, schema, onChange, onRemove }) {
+  const propDefs = extraProps
+    .filter((ep) => ep.propName && schema?.[ep.propName])
+    .map((ep) => {
+      const prop = schema[ep.propName];
+      return {
+        name: ep.propName,
+        type: prop.type,
+        options: (prop[prop.type]?.options ?? []).map((o) => ({ name: o.name })),
+      };
+    });
+
+  return (
+    <div className="border border-zinc-700 rounded-md p-2 flex flex-col gap-2">
+      <div className="flex items-center gap-2">
+        <span className="text-xs text-zinc-500 shrink-0 truncate max-w-[80px]">{workspaceName} —</span>
+        <input
+          type="text"
+          value={preset.name}
+          onChange={(e) => onChange({ ...preset, name: e.target.value })}
+          placeholder={t('presetNamePlaceholder')}
+          className="flex-1 bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-xs min-w-0"
+        />
+        <button
+          onClick={onRemove}
+          title={t('titleRemovePreset')}
+          className="text-zinc-500 hover:text-red-400 shrink-0"
+        >
+          ✕
+        </button>
+      </div>
+      <div>
+        <label className="block text-xs text-zinc-500 mb-0.5">{t('labelPresetTitle')}</label>
+        <input
+          type="text"
+          value={preset.pageTitle || ''}
+          onChange={(e) => onChange({ ...preset, pageTitle: e.target.value })}
+          placeholder={t('presetTitlePlaceholder')}
+          className="w-full bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-xs"
+        />
+      </div>
+      {propDefs.map((def) => (
+        <div key={def.name}>
+          <label className="block text-xs text-zinc-500 mb-0.5">{def.name}</label>
+          <PresetFieldInput
+            type={def.type}
+            options={def.options}
+            value={preset.extraValues?.[def.name] ?? ''}
+            onChange={(v) =>
+              onChange({
+                ...preset,
+                extraValues: { ...(preset.extraValues || {}), [def.name]: v },
+              })
+            }
+          />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function PresetFieldInput({ type, options, value, onChange }) {
+  if (type === 'checkbox') {
+    return (
+      <label className="flex items-center gap-2 text-xs text-zinc-300 cursor-pointer">
+        <input
+          type="checkbox"
+          checked={value === 'true' || value === true}
+          onChange={(e) => onChange(String(e.target.checked))}
+          className="accent-emerald-500"
+        />
+        {t('labelDefaultValue')}
+      </label>
+    );
+  }
+  if (type === 'select' || type === 'status') {
+    return (
+      <select
+        value={value ?? ''}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-full bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-xs text-zinc-200"
+      >
+        <option value="">{t('placeholderSelect')}</option>
+        {options.map((o) => (
+          <option key={o.name} value={o.name}>{o.name}</option>
+        ))}
+      </select>
+    );
+  }
+  if (type === 'number') {
+    return (
+      <input
+        type="number"
+        value={value ?? ''}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-full bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-xs"
+      />
+    );
+  }
+  return (
+    <input
+      type={type === 'date' ? 'datetime-local' : 'text'}
+      value={value ?? ''}
+      onChange={(e) => onChange(e.target.value)}
+      className="w-full bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-xs"
+    />
   );
 }
 

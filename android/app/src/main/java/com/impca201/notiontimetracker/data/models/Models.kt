@@ -21,6 +21,14 @@ data class ExtraProp(
 )
 
 @Serializable
+data class Preset(
+    val id: String,
+    val name: String,
+    val pageTitle: String = "",
+    val extraValues: Map<String, String> = emptyMap()
+)
+
+@Serializable
 data class Workspace(
     val id: String,
     val name: String,
@@ -28,7 +36,8 @@ data class Workspace(
     val projectsDbId: String = "",
     val roundingMinutes: Int = 15,
     val propertyMap: PropertyMap = PropertyMap(),
-    val extraProps: List<ExtraProp> = emptyList()
+    val extraProps: List<ExtraProp> = emptyList(),
+    val presets: List<Preset> = emptyList()
 )
 
 @Serializable
@@ -46,7 +55,6 @@ data class ActiveTimer(
 
 data class NamedOption(val id: String, val name: String)
 
-/** Raw result from Notion — workspace info is added by the ViewModel. */
 data class RunningTimerResult(
     val pageId: String,
     val title: String,
@@ -54,7 +62,6 @@ data class RunningTimerResult(
     val url: String = ""
 )
 
-/** Full running-timer descriptor used in the UI, enriched with workspace data. */
 data class RunningTimerInfo(
     val pageId: String,
     val title: String,
@@ -65,7 +72,6 @@ data class RunningTimerInfo(
     val propertyMap: PropertyMap
 )
 
-/** Raw completed entry from Notion. */
 data class RecentEntryResult(
     val pageId: String,
     val title: String,
@@ -74,7 +80,6 @@ data class RecentEntryResult(
     val url: String
 )
 
-/** Completed time entry shown in the "Recent" section. */
 data class RecentEntryInfo(
     val pageId: String,
     val title: String,
@@ -86,7 +91,6 @@ data class RecentEntryInfo(
     val propertyMap: PropertyMap
 )
 
-/** Carries the entry to be confirmed for deletion. */
 data class DeleteConfirmInfo(
     val pageId: String,
     val title: String,

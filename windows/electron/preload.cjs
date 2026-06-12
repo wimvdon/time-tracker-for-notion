@@ -19,9 +19,15 @@ contextBridge.exposeInMainWorld('notionAPI', {
   openExternal: (url) => ipcRenderer.invoke('shell:openExternal', url),
   setAlwaysOnTop: (val) => ipcRenderer.invoke('window:alwaysOnTop', val),
   setTimerRunning: (running) => ipcRenderer.send('timer:state', running),
+  notifySettingsChanged: () => ipcRenderer.send('settings:changed'),
   onTrayStopTimer: (callback) => {
     const listener = () => callback();
     ipcRenderer.on('tray:stop-timer', listener);
     return () => ipcRenderer.removeListener('tray:stop-timer', listener);
+  },
+  onTrayApplyPreset: (callback) => {
+    const listener = (_event, data) => callback(data);
+    ipcRenderer.on('tray:apply-preset', listener);
+    return () => ipcRenderer.removeListener('tray:apply-preset', listener);
   },
 });

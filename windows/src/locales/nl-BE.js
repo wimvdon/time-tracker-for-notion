@@ -127,9 +127,32 @@ export default {
   theme_light: 'Licht',
   theme_dark: 'Donker',
 
-  labelQrExport: 'Instellingen exporteren via QR-code',
-  btnShowQr: 'QR-code tonen',
+  // QR-code per werkruimte
+  labelWorkspaceQr: 'Werkruimte exporteren via QR',
+  qrWorkspaceNote: 'Scan om deze werkruimte te importeren op een ander apparaat. API-sleutel niet inbegrepen.',
+  btnShowQr: 'QR-code',
   btnClose: 'Sluiten',
-  qrSecurityWarning: 'Houd dit privé — het bevat uw Notion API-sleutel.',
   qrAutoDismiss: 'Verdwijnt automatisch na 30 seconden.',
+
+  // Snelstarters
+  sectionPresets: 'Snelstarters (optioneel)',
+  hintPresets: 'Tot 5 snelstartconfiguraties. Klik op een chip om de timer direct te starten.',
+  btnAddPreset: '+ Snelstarter toevoegen',
+  titleRemovePreset: 'Snelstarter verwijderen',
+  presetNamePlaceholder: 'bijv. Ochtendoverleg',
+  labelPresetTitle: 'Standaardtitel',
+  presetTitlePlaceholder: 'Optionele standaardtitel…',
+
+  // Timer gestopt elders
+  timerStoppedElsewhere: 'Timer gestopt op een ander apparaat.',
+
+  // Bijwerkfout
+  toastUpdateError: 'Kon timer niet bijwerken',
+
+  // Verwijderde pagina
+  toastDeletedPageDiscarded: 'Pagina niet gevonden — registratie verwijderd.',
+  deletedPageTitle: 'Pagina niet gevonden in Notion',
+  deletedPageBody: 'De tijdsregistratie kon niet worden opgeslagen omdat de pagina is verwijderd of niet meer toegankelijk is.',
+  deletedPageHint: 'Zet de pagina terug vanuit de Notion-prullenbak of maak hem opnieuw aan als de registratie nodig is.',
+  deletedPageConfirm: 'Sluiten',
 };

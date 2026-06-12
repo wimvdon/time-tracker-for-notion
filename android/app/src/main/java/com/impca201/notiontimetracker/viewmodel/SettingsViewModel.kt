@@ -44,6 +44,7 @@ class SettingsViewModel(private val app: Application) : AndroidViewModel(app) {
         val timeEntryStatusDone: String = "",
         val extraProps: List<ExtraProp> = emptyList(),
         val roundingMinutes: Int = 15,
+        val presets: List<Preset> = emptyList(),
         val saving: Boolean = false,
         val saveError: String? = null,
         val extraPropRelationPages: Map<Int, List<NamedOption>> = emptyMap(),
@@ -87,6 +88,15 @@ class SettingsViewModel(private val app: Application) : AndroidViewModel(app) {
 
     fun importWorkspaces(workspaces: List<Workspace>) {
         viewModelScope.launch { settingsRepo.saveWorkspaces(workspaces) }
+    }
+
+    fun importWorkspace(workspace: Workspace) {
+        viewModelScope.launch {
+            val existing = settingsRepo.getWorkspaces().toMutableList()
+            val idx = existing.indexOfFirst { it.id == workspace.id }
+            if (idx >= 0) existing[idx] = workspace else existing.add(workspace)
+            settingsRepo.saveWorkspaces(existing)
+        }
     }
 
     fun setTimerRunning(running: Boolean) = _uiState.update { it.copy(timerRunning = running) }
@@ -154,7 +164,8 @@ class SettingsViewModel(private val app: Application) : AndroidViewModel(app) {
             timeEntryStatusRunning = workspace.propertyMap.timeEntryStatusRunning,
             timeEntryStatusDone = workspace.propertyMap.timeEntryStatusDone,
             extraProps = workspace.extraProps,
-            roundingMinutes = workspace.roundingMinutes
+            roundingMinutes = workspace.roundingMinutes,
+            presets = workspace.presets
         )
         loadDatabases()
         if (workspace.timeEntriesDbId.isNotBlank()) loadSchema(workspace.timeEntriesDbId)
@@ -241,6 +252,24 @@ class SettingsViewModel(private val app: Application) : AndroidViewModel(app) {
         }
     }
 
+    fun addPreset() {
+        val current = _editState.value ?: return
+        if (current.presets.size >= 5) return
+        _editState.update { it?.copy(presets = it.presets + Preset(id = UUID.randomUUID().toString())) }
+    }
+
+    fun removePreset(index: Int) {
+        _editState.update { it?.copy(presets = it.presets.toMutableList().also { l -> if (index < l.size) l.removeAt(index) }) }
+    }
+
+    fun updatePreset(index: Int, preset: Preset) {
+        _editState.update { state ->
+            state?.copy(presets = state.presets.toMutableList().also { list ->
+                if (index < list.size) list[index] = preset
+            })
+        }
+    }
+
     fun saveWorkspace() {
         val edit = _editState.value ?: return
         if (!isEditValid(edit)) { _editState.update { it?.copy(saveError = "incomplete") }; return }
@@ -262,7 +291,10 @@ class SettingsViewModel(private val app: Application) : AndroidViewModel(app) {
                 timeEntryRelationProp = relPropName,
                 timeEntryStatusDone = edit.timeEntryStatusDone
             ),
-            extraProps = validExtraProps
+            extraProps = validExtraProps,
+            presets = edit.presets.filter { it.name.isNotBlank() }.map { p ->
+                p.copy(name = p.name.trim(), pageTitle = p.pageTitle.trim())
+            }
         )
 
         _editState.update { it?.copy(saving = true) }

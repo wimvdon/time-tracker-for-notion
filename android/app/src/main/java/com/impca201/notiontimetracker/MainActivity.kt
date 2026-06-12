@@ -137,7 +137,10 @@ private fun AppNavigation(
                 onConfirmDelete = { pageId, title, isRunning -> timerViewModel.confirmDelete(pageId, title, isRunning) },
                 onCancelDelete = timerViewModel::cancelDelete,
                 onDeleteEntry = timerViewModel::deleteEntry,
-                onOpenUrl = { url -> context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
+                onOpenUrl = { url -> context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) },
+                onApplyPreset = timerViewModel::applyPreset,
+                onDismissDeletedPage = timerViewModel::dismissDeletedPage,
+                onClearInfoToast = timerViewModel::clearInfoToast
             )
         }
 
@@ -173,6 +176,9 @@ private fun AppNavigation(
                 onExtraPropNameChange = settingsViewModel::setExtraPropName,
                 onExtraPropRequiredChange = settingsViewModel::setExtraPropRequired,
                 onExtraPropDefaultChange = settingsViewModel::setExtraPropDefault,
+                onAddPreset = settingsViewModel::addPreset,
+                onRemovePreset = settingsViewModel::removePreset,
+                onUpdatePreset = settingsViewModel::updatePreset,
                 onThemeModeChange = settingsViewModel::setThemeMode,
                 onScanQr = { navController.navigate("qr_scan") },
                 onSnackbarDismiss = settingsViewModel::clearSnackbar
@@ -186,6 +192,10 @@ private fun AppNavigation(
                     if (apiKey != null) settingsViewModel.importApiKey(apiKey)
                     if (workspaces != null) settingsViewModel.importWorkspaces(workspaces)
                     if (theme != null) settingsViewModel.setThemeMode(theme)
+                    navController.popBackStack()
+                },
+                onImportWorkspace = { workspace ->
+                    settingsViewModel.importWorkspace(workspace)
                     navController.popBackStack()
                 }
             )
