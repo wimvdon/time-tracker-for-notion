@@ -13,6 +13,7 @@ const store = new Store({
     workspaces: [],
     lastUsedWorkspaceId: null,
     activeTimer: null,
+    theme: 'auto',
   },
 });
 
@@ -154,6 +155,10 @@ ipcMain.handle('notion:fetchRecentEntries', (_event, dbId, statusProp, statusDon
 
 ipcMain.handle('notion:deletePage', (_event, pageId) =>
   notion.deletePage(store.get('apiKey'), pageId)
+);
+
+ipcMain.handle('notion:updatePage', (_event, pageId, properties) =>
+  notion.updatePageProperties(store.get('apiKey'), pageId, properties)
 );
 
 ipcMain.handle('shell:openExternal', (_event, url) => shell.openExternal(url));

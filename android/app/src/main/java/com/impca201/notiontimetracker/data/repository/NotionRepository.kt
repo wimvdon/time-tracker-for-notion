@@ -57,5 +57,8 @@ class NotionRepository(
         dateProp: String
     ): List<RecentEntryResult> = client.fetchRecentEntries(apiKey(), dbId, statusProp, statusDone, dateProp)
 
+    suspend fun updatePageProperties(pageId: String, properties: Map<String, Any?>) =
+        client.updatePageProperties(apiKey(), pageId, properties)
+
     suspend fun deletePage(pageId: String) = client.deletePage(apiKey(), pageId)
 }

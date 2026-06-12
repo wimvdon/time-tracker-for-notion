@@ -5,6 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.impca201.notiontimetracker.NotionTimeTrackerApp
 import com.impca201.notiontimetracker.data.models.*
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -22,7 +23,8 @@ class SettingsViewModel(private val app: Application) : AndroidViewModel(app) {
         val testingKey: Boolean = false,
         val keyTestSuccess: Boolean = false,
         val keyTestError: String? = null,
-        val snackbarMessage: String? = null
+        val snackbarMessage: String? = null,
+        val themeMode: ThemeMode = ThemeMode.AUTO
     )
 
     data class WorkspaceEditState(
@@ -33,7 +35,6 @@ class SettingsViewModel(private val app: Application) : AndroidViewModel(app) {
         val databasesLoading: Boolean = false,
         val databasesError: String? = null,
         val timeEntriesDbId: String = "",
-        val projectsDbId: String = "",
         val schema: Map<String, SchemaProperty> = emptyMap(),
         val schemaLoading: Boolean = false,
         val schemaError: String? = null,
@@ -41,11 +42,12 @@ class SettingsViewModel(private val app: Application) : AndroidViewModel(app) {
         val timeEntryStatusProp: String = "",
         val timeEntryStatusRunning: String = "",
         val timeEntryStatusDone: String = "",
-        val timeEntryRelationProp: String = "",
         val extraProps: List<ExtraProp> = emptyList(),
         val roundingMinutes: Int = 15,
         val saving: Boolean = false,
-        val saveError: String? = null
+        val saveError: String? = null,
+        val extraPropRelationPages: Map<Int, List<NamedOption>> = emptyMap(),
+        val extraPropRelationLoading: Set<Int> = emptySet()
     )
 
     private val _uiState = MutableStateFlow(UiState())
@@ -69,7 +71,22 @@ class SettingsViewModel(private val app: Application) : AndroidViewModel(app) {
     private suspend fun loadSettings() {
         val apiKey = settingsRepo.getApiKey()
         val workspaces = settingsRepo.getWorkspaces()
-        _uiState.update { it.copy(apiKey = apiKey, workspaces = workspaces) }
+        val themeMode = settingsRepo.themeModeFlow.first()
+        _uiState.update { it.copy(apiKey = apiKey, workspaces = workspaces, themeMode = themeMode) }
+    }
+
+    fun setThemeMode(mode: ThemeMode) {
+        _uiState.update { it.copy(themeMode = mode) }
+        viewModelScope.launch { settingsRepo.saveThemeMode(mode) }
+    }
+
+    fun importApiKey(key: String) {
+        _uiState.update { it.copy(apiKey = key) }
+        viewModelScope.launch { settingsRepo.saveApiKey(key) }
+    }
+
+    fun importWorkspaces(workspaces: List<Workspace>) {
+        viewModelScope.launch { settingsRepo.saveWorkspaces(workspaces) }
     }
 
     fun setTimerRunning(running: Boolean) = _uiState.update { it.copy(timerRunning = running) }
@@ -132,12 +149,10 @@ class SettingsViewModel(private val app: Application) : AndroidViewModel(app) {
             workspaceId = workspace.id,
             name = workspace.name,
             timeEntriesDbId = workspace.timeEntriesDbId,
-            projectsDbId = workspace.projectsDbId,
             timeEntryDateProp = workspace.propertyMap.timeEntryDateProp,
             timeEntryStatusProp = workspace.propertyMap.timeEntryStatusProp,
             timeEntryStatusRunning = workspace.propertyMap.timeEntryStatusRunning,
             timeEntryStatusDone = workspace.propertyMap.timeEntryStatusDone,
-            timeEntryRelationProp = workspace.propertyMap.timeEntryRelationProp,
             extraProps = workspace.extraProps,
             roundingMinutes = workspace.roundingMinutes
         )
@@ -159,11 +174,9 @@ class SettingsViewModel(private val app: Application) : AndroidViewModel(app) {
     fun setWorkspaceName(name: String) = _editState.update { it?.copy(name = name) }
 
     fun setTimeEntriesDb(dbId: String) {
-        _editState.update { it?.copy(timeEntriesDbId = dbId, schema = emptyMap(), timeEntryDateProp = "", timeEntryStatusProp = "", timeEntryStatusRunning = "", timeEntryStatusDone = "", timeEntryRelationProp = "") }
+        _editState.update { it?.copy(timeEntriesDbId = dbId, schema = emptyMap(), timeEntryDateProp = "", timeEntryStatusProp = "", timeEntryStatusRunning = "", timeEntryStatusDone = "") }
         if (dbId.isNotBlank()) loadSchema(dbId)
     }
-
-    fun setProjectsDb(dbId: String) = _editState.update { it?.copy(projectsDbId = dbId) }
 
     fun loadSchema(dbId: String) {
         _editState.update { it?.copy(schemaLoading = true, schemaError = null) } ?: return
@@ -178,7 +191,6 @@ class SettingsViewModel(private val app: Application) : AndroidViewModel(app) {
     fun setStatusProp(prop: String) = _editState.update { it?.copy(timeEntryStatusProp = prop, timeEntryStatusRunning = "", timeEntryStatusDone = "") }
     fun setStatusRunning(opt: String) = _editState.update { it?.copy(timeEntryStatusRunning = opt) }
     fun setStatusDone(opt: String) = _editState.update { it?.copy(timeEntryStatusDone = opt) }
-    fun setRelationProp(prop: String) = _editState.update { it?.copy(timeEntryRelationProp = prop) }
     fun setRounding(minutes: Int) = _editState.update { it?.copy(roundingMinutes = minutes) }
 
     fun addExtraProp() {
@@ -194,8 +206,22 @@ class SettingsViewModel(private val app: Application) : AndroidViewModel(app) {
     fun setExtraPropName(index: Int, name: String) {
         _editState.update { state ->
             state?.copy(extraProps = state.extraProps.toMutableList().also { list ->
-                if (index < list.size) list[index] = list[index].copy(propName = name, type = state.schema[name]?.type ?: "rich_text")
+                if (index < list.size) list[index] = list[index].copy(propName = name, type = state.schema[name]?.type ?: "rich_text", defaultValue = null)
             })
+        }
+        val state = _editState.value ?: return
+        if (state.schema[name]?.type == "relation") {
+            val relDbId = state.schema[name]?.relationDatabaseId
+            if (!relDbId.isNullOrBlank()) {
+                _editState.update { it?.copy(extraPropRelationLoading = it.extraPropRelationLoading + index) }
+                viewModelScope.launch {
+                    val pages = runCatching { notionRepo.fetchDatabasePages(relDbId) }.getOrDefault(emptyList())
+                    _editState.update { it?.copy(
+                        extraPropRelationPages = it.extraPropRelationPages + (index to pages),
+                        extraPropRelationLoading = it.extraPropRelationLoading - index
+                    )}
+                }
+            }
         }
     }
 
@@ -220,18 +246,20 @@ class SettingsViewModel(private val app: Application) : AndroidViewModel(app) {
         if (!isEditValid(edit)) { _editState.update { it?.copy(saveError = "incomplete") }; return }
 
         val validExtraProps = edit.extraProps.filter { it.propName.isNotBlank() }
+        val relPropName = edit.schema.entries.firstOrNull { it.value.type == "relation" }?.key ?: ""
+        val projectsDbId = edit.schema[relPropName]?.relationDatabaseId ?: ""
         val workspace = Workspace(
             id = edit.workspaceId,
             name = edit.name.trim(),
             timeEntriesDbId = edit.timeEntriesDbId,
-            projectsDbId = edit.projectsDbId,
+            projectsDbId = projectsDbId,
             roundingMinutes = edit.roundingMinutes,
             propertyMap = PropertyMap(
                 timeEntryTitleProp = edit.schema.entries.firstOrNull { it.value.type == "title" }?.key ?: "Name",
                 timeEntryDateProp = edit.timeEntryDateProp,
                 timeEntryStatusProp = edit.timeEntryStatusProp,
                 timeEntryStatusRunning = edit.timeEntryStatusRunning,
-                timeEntryRelationProp = edit.timeEntryRelationProp,
+                timeEntryRelationProp = relPropName,
                 timeEntryStatusDone = edit.timeEntryStatusDone
             ),
             extraProps = validExtraProps
@@ -255,7 +283,6 @@ class SettingsViewModel(private val app: Application) : AndroidViewModel(app) {
             edit.timeEntryDateProp.isNotBlank() &&
             edit.timeEntryStatusProp.isNotBlank() &&
             edit.timeEntryStatusRunning.isNotBlank() &&
-            edit.timeEntryStatusDone.isNotBlank() &&
-            edit.extraProps.filter { it.propName.isNotBlank() }.none { it.propName.isBlank() }
+            edit.timeEntryStatusDone.isNotBlank()
     }
 }

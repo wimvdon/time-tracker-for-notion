@@ -15,6 +15,7 @@ contextBridge.exposeInMainWorld('notionAPI', {
   fetchRecentEntries: (dbId, statusProp, statusDone, dateProp) =>
     ipcRenderer.invoke('notion:fetchRecentEntries', dbId, statusProp, statusDone, dateProp),
   deletePage: (pageId) => ipcRenderer.invoke('notion:deletePage', pageId),
+  updatePage: (pageId, properties) => ipcRenderer.invoke('notion:updatePage', pageId, properties),
   openExternal: (url) => ipcRenderer.invoke('shell:openExternal', url),
   setAlwaysOnTop: (val) => ipcRenderer.invoke('window:alwaysOnTop', val),
   setTimerRunning: (running) => ipcRenderer.send('timer:state', running),

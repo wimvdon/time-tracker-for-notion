@@ -29,13 +29,11 @@ fun WorkspaceModal(
     onSave: () -> Unit,
     onNameChange: (String) -> Unit,
     onTimeEntriesDbChange: (String) -> Unit,
-    onProjectsDbChange: (String) -> Unit,
     onRefreshDatabases: () -> Unit,
     onDatePropChange: (String) -> Unit,
     onStatusPropChange: (String) -> Unit,
     onStatusRunningChange: (String) -> Unit,
     onStatusDoneChange: (String) -> Unit,
-    onRelationPropChange: (String) -> Unit,
     onRoundingChange: (Int) -> Unit,
     onAddExtraProp: () -> Unit,
     onRemoveExtraProp: (Int) -> Unit,
@@ -89,7 +87,7 @@ fun WorkspaceModal(
 
             Spacer(Modifier.height(16.dp))
 
-            // Databases
+            // Time Entries database
             Row(verticalAlignment = Alignment.CenterVertically) {
                 SectionLabel(stringResource(R.string.label_time_entries_db), modifier = Modifier.weight(1f))
                 TextButton(onClick = onRefreshDatabases, enabled = !state.databasesLoading) {
@@ -116,20 +114,12 @@ fun WorkspaceModal(
                     modifier = Modifier.fillMaxWidth()
                 )
             }
-
-            Spacer(Modifier.height(12.dp))
-
-            SectionLabel(stringResource(R.string.label_projects_db))
-            if (!state.databasesLoading && state.databases.isNotEmpty()) {
-                SearchableDropdown(
-                    options = state.databases,
-                    selected = state.databases.firstOrNull { it.id == state.projectsDbId },
-                    placeholder = stringResource(R.string.placeholder_select_database),
-                    onSelect = { onProjectsDbChange(it?.id ?: "") },
-                    allowClear = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
+            Spacer(Modifier.height(4.dp))
+            Text(
+                stringResource(R.string.hint_database_integration),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
 
             // Schema-based fields (visible once timeEntriesDbId is set)
             if (state.timeEntriesDbId.isNotBlank()) {
@@ -147,12 +137,10 @@ fun WorkspaceModal(
                         statusProp = state.timeEntryStatusProp,
                         statusRunning = state.timeEntryStatusRunning,
                         statusDone = state.timeEntryStatusDone,
-                        relationProp = state.timeEntryRelationProp,
                         onDatePropChange = onDatePropChange,
                         onStatusPropChange = onStatusPropChange,
                         onStatusRunningChange = onStatusRunningChange,
-                        onStatusDoneChange = onStatusDoneChange,
-                        onRelationPropChange = onRelationPropChange
+                        onStatusDoneChange = onStatusDoneChange
                     )
                 }
             }
@@ -177,6 +165,8 @@ fun WorkspaceModal(
                     prop = prop,
                     availableProps = editableProps,
                     schema = state.schema,
+                    relationPages = state.extraPropRelationPages[index] ?: emptyList(),
+                    relationLoading = index in state.extraPropRelationLoading,
                     onNameChange = { onExtraPropNameChange(index, it) },
                     onRequiredChange = { onExtraPropRequiredChange(index, it) },
                     onDefaultChange = { onExtraPropDefaultChange(index, it) },
@@ -200,10 +190,7 @@ fun WorkspaceModal(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Spacer(Modifier.height(8.dp))
-            RoundingSelector(
-                selected = state.roundingMinutes,
-                onSelect = onRoundingChange
-            )
+            RoundingSelector(selected = state.roundingMinutes, onSelect = onRoundingChange)
 
             if (!isValid) {
                 Spacer(Modifier.height(8.dp))
@@ -226,16 +213,13 @@ private fun SchemaFields(
     statusProp: String,
     statusRunning: String,
     statusDone: String,
-    relationProp: String,
     onDatePropChange: (String) -> Unit,
     onStatusPropChange: (String) -> Unit,
     onStatusRunningChange: (String) -> Unit,
-    onStatusDoneChange: (String) -> Unit,
-    onRelationPropChange: (String) -> Unit
+    onStatusDoneChange: (String) -> Unit
 ) {
     val dateProps = schema.entries.filter { it.value.type == "date" }.map { NamedOption(it.key, it.key) }
     val statusProps = schema.entries.filter { it.value.type == "status" }.map { NamedOption(it.key, it.key) }
-    val relationProps = schema.entries.filter { it.value.type == "relation" }.map { NamedOption(it.key, it.key) }
     val statusOptions = schema[statusProp]?.statusOptions ?: emptyList()
 
     SectionLabel(stringResource(R.string.label_time_entry_date_prop))
@@ -279,19 +263,6 @@ private fun SchemaFields(
             onSelect = { onStatusDoneChange(it?.id ?: "") },
             modifier = Modifier.fillMaxWidth()
         )
-        Spacer(Modifier.height(12.dp))
-    }
-
-    if (relationProps.isNotEmpty()) {
-        SectionLabel(stringResource(R.string.label_relation_prop))
-        SearchableDropdown(
-            options = relationProps,
-            selected = relationProps.firstOrNull { it.id == relationProp },
-            placeholder = stringResource(R.string.placeholder_select),
-            onSelect = { onRelationPropChange(it?.id ?: "") },
-            allowClear = true,
-            modifier = Modifier.fillMaxWidth()
-        )
     }
 }
 
@@ -301,6 +272,8 @@ private fun ExtraPropRow(
     prop: ExtraProp,
     availableProps: List<NamedOption>,
     schema: Map<String, SchemaProperty>,
+    relationPages: List<NamedOption>,
+    relationLoading: Boolean,
     onNameChange: (String) -> Unit,
     onRequiredChange: (Boolean) -> Unit,
     onDefaultChange: (String?) -> Unit,
@@ -329,19 +302,108 @@ private fun ExtraPropRow(
                     Text(stringResource(R.string.label_required_field), style = MaterialTheme.typography.bodyMedium)
                 }
 
-                val propType = schema[prop.propName]?.type ?: "rich_text"
+                val schemaProp = schema[prop.propName]
+                val propType = schemaProp?.type ?: "rich_text"
+
                 if (propType !in setOf("people", "files")) {
                     Spacer(Modifier.height(4.dp))
-                    Text(stringResource(R.string.label_default_value), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    OutlinedTextField(
-                        value = prop.defaultValue ?: "",
-                        onValueChange = { onDefaultChange(it.ifBlank { null }) },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true,
-                        placeholder = { Text(stringResource(R.string.label_default_value)) }
+                    Text(
+                        stringResource(R.string.label_default_value),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    SmartDefaultValueInput(
+                        type = propType,
+                        value = prop.defaultValue,
+                        selectOptions = schemaProp?.selectOptions ?: schemaProp?.statusOptions ?: emptyList(),
+                        relationPages = relationPages,
+                        relationLoading = relationLoading,
+                        onChange = onDefaultChange
                     )
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun SmartDefaultValueInput(
+    type: String,
+    value: String?,
+    selectOptions: List<StatusOption>,
+    relationPages: List<NamedOption>,
+    relationLoading: Boolean,
+    onChange: (String?) -> Unit
+) {
+    when (type) {
+        "checkbox" -> {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Switch(
+                    checked = value == "true",
+                    onCheckedChange = { onChange(if (it) "true" else "false") }
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    if (value == "true") "On" else "Off",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
+        }
+        "select", "status" -> {
+            val options = selectOptions.map { NamedOption(it.name, it.name) }
+            SearchableDropdown(
+                options = options,
+                selected = options.firstOrNull { it.name == value },
+                placeholder = stringResource(R.string.placeholder_select),
+                onSelect = { onChange(it?.name) },
+                allowClear = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+        "multi_select" -> {
+            val selected = value?.split(",")?.map { it.trim() }?.filter { it.isNotBlank() }?.toSet() ?: emptySet()
+            androidx.compose.foundation.layout.FlowRow(horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp), verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(4.dp)) {
+                selectOptions.forEach { opt ->
+                    val isSelected = opt.name in selected
+                    FilterChip(
+                        selected = isSelected,
+                        onClick = {
+                            val next = if (isSelected) selected - opt.name else selected + opt.name
+                            onChange(if (next.isEmpty()) null else next.joinToString(","))
+                        },
+                        label = { Text(opt.name) }
+                    )
+                }
+            }
+        }
+        "relation" -> {
+            SearchableDropdown(
+                options = relationPages,
+                selected = relationPages.firstOrNull { it.id == value },
+                placeholder = if (relationLoading) stringResource(R.string.placeholder_loading) else stringResource(R.string.placeholder_select),
+                onSelect = { onChange(it?.id) },
+                allowClear = true,
+                loading = relationLoading,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+        "number" -> {
+            OutlinedTextField(
+                value = value ?: "",
+                onValueChange = { v -> onChange(v.ifBlank { null }) },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                placeholder = { Text("0") }
+            )
+        }
+        else -> {
+            OutlinedTextField(
+                value = value ?: "",
+                onValueChange = { v -> onChange(v.ifBlank { null }) },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                placeholder = { Text(stringResource(R.string.label_default_value)) }
+            )
         }
     }
 }

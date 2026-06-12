@@ -98,8 +98,12 @@ data class StatusOption(val name: String, val color: String = "")
 data class SchemaProperty(
     val name: String,
     val type: String,
-    val statusOptions: List<StatusOption> = emptyList()
+    val statusOptions: List<StatusOption> = emptyList(),
+    val selectOptions: List<StatusOption> = emptyList(),
+    val relationDatabaseId: String? = null
 )
+
+enum class ThemeMode { AUTO, LIGHT, DARK }
 
 data class ExtraFieldDef(
     val propName: String,

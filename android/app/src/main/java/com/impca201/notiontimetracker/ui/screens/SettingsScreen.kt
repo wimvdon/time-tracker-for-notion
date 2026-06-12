@@ -18,6 +18,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import com.impca201.notiontimetracker.R
+import com.impca201.notiontimetracker.data.models.ThemeMode
 import com.impca201.notiontimetracker.data.models.Workspace
 import com.impca201.notiontimetracker.ui.components.WorkspaceModal
 import com.impca201.notiontimetracker.viewmodel.SettingsViewModel
@@ -41,24 +42,23 @@ fun SettingsScreen(
     onSaveWorkspace: () -> Unit,
     onWorkspaceNameChange: (String) -> Unit,
     onTimeEntriesDbChange: (String) -> Unit,
-    onProjectsDbChange: (String) -> Unit,
     onRefreshDatabases: () -> Unit,
     onDatePropChange: (String) -> Unit,
     onStatusPropChange: (String) -> Unit,
     onStatusRunningChange: (String) -> Unit,
     onStatusDoneChange: (String) -> Unit,
-    onRelationPropChange: (String) -> Unit,
     onRoundingChange: (Int) -> Unit,
     onAddExtraProp: () -> Unit,
     onRemoveExtraProp: (Int) -> Unit,
     onExtraPropNameChange: (Int, String) -> Unit,
     onExtraPropRequiredChange: (Int, Boolean) -> Unit,
     onExtraPropDefaultChange: (Int, String?) -> Unit,
+    onThemeModeChange: (ThemeMode) -> Unit,
+    onScanQr: () -> Unit,
     onSnackbarDismiss: () -> Unit
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
 
-    // Show snackbar messages
     LaunchedEffect(uiState.snackbarMessage) {
         uiState.snackbarMessage?.let { msg ->
             val text = when {
@@ -72,7 +72,6 @@ fun SettingsScreen(
         }
     }
 
-    // Workspace edit modal
     if (editState != null) {
         WorkspaceModal(
             state = editState,
@@ -80,13 +79,11 @@ fun SettingsScreen(
             onSave = onSaveWorkspace,
             onNameChange = onWorkspaceNameChange,
             onTimeEntriesDbChange = onTimeEntriesDbChange,
-            onProjectsDbChange = onProjectsDbChange,
             onRefreshDatabases = onRefreshDatabases,
             onDatePropChange = onDatePropChange,
             onStatusPropChange = onStatusPropChange,
             onStatusRunningChange = onStatusRunningChange,
             onStatusDoneChange = onStatusDoneChange,
-            onRelationPropChange = onRelationPropChange,
             onRoundingChange = onRoundingChange,
             onAddExtraProp = onAddExtraProp,
             onRemoveExtraProp = onRemoveExtraProp,
@@ -173,6 +170,16 @@ fun SettingsScreen(
                 }
             }
 
+            // QR code import
+            OutlinedButton(
+                onClick = onScanQr,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(Icons.Default.QrCodeScanner, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text(stringResource(R.string.btn_scan_qr))
+            }
+
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
             // --- Workspaces section ---
@@ -212,7 +219,34 @@ fun SettingsScreen(
                 Text(stringResource(R.string.btn_add_workspace))
             }
 
+            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+
+            // --- Theme section ---
+            Text(stringResource(R.string.label_theme), style = MaterialTheme.typography.titleSmall)
+            ThemePicker(selected = uiState.themeMode, onSelect = onThemeModeChange)
+
             Spacer(Modifier.height(16.dp))
+        }
+    }
+}
+
+@Composable
+private fun ThemePicker(selected: ThemeMode, onSelect: (ThemeMode) -> Unit) {
+    val options = listOf(
+        ThemeMode.AUTO to R.string.theme_auto,
+        ThemeMode.LIGHT to R.string.theme_light,
+        ThemeMode.DARK to R.string.theme_dark,
+    )
+    Column {
+        options.forEach { (mode, labelRes) ->
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                RadioButton(selected = selected == mode, onClick = { onSelect(mode) })
+                Spacer(Modifier.width(8.dp))
+                Text(stringResource(labelRes), style = MaterialTheme.typography.bodyMedium)
+            }
         }
     }
 }

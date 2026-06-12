@@ -98,13 +98,19 @@ class NotionClient {
                     ?.getAsJsonArray("options")
                     ?.map { opt ->
                         val o = opt.asJsonObject
-                        StatusOption(
-                            name = o.get("name")?.asString ?: "",
-                            color = o.get("color")?.asString ?: ""
-                        )
+                        StatusOption(name = o.get("name")?.asString ?: "", color = o.get("color")?.asString ?: "")
                     } ?: emptyList()
             } else emptyList()
-            name to SchemaProperty(name = name, type = type, statusOptions = statusOptions)
+            val selectOptions = when (type) {
+                "select" -> prop.getAsJsonObject("select")?.getAsJsonArray("options")
+                    ?.map { opt -> val o = opt.asJsonObject; StatusOption(name = o.get("name")?.asString ?: "", color = o.get("color")?.asString ?: "") } ?: emptyList()
+                "multi_select" -> prop.getAsJsonObject("multi_select")?.getAsJsonArray("options")
+                    ?.map { opt -> val o = opt.asJsonObject; StatusOption(name = o.get("name")?.asString ?: "", color = o.get("color")?.asString ?: "") } ?: emptyList()
+                else -> emptyList()
+            }
+            val relationDatabaseId = if (type == "relation")
+                prop.getAsJsonObject("relation")?.get("database_id")?.asString else null
+            name to SchemaProperty(name = name, type = type, statusOptions = statusOptions, selectOptions = selectOptions, relationDatabaseId = relationDatabaseId)
         }
     }
 
@@ -245,7 +251,7 @@ class NotionClient {
             if (dateProp.isNotBlank()) {
                 put("sorts", listOf(mapOf("property" to dateProp, "direction" to "descending")))
             }
-            put("page_size", 5)
+            put("page_size", 15)
         }
         val data = fetch(apiKey, "POST", "/databases/$dbId/query", body)
         val results = mutableListOf<RecentEntryResult>()
@@ -265,6 +271,10 @@ class NotionClient {
             results.add(RecentEntryResult(pageId = page.get("id").asString, title = title, startISO = startISO, endISO = endISO, url = url))
         }
         return results
+    }
+
+    suspend fun updatePageProperties(apiKey: String, pageId: String, properties: Map<String, Any?>) {
+        fetch(apiKey, "PATCH", "/pages/$pageId", mapOf("properties" to properties.filterValues { it != null }))
     }
 
     suspend fun deletePage(apiKey: String, pageId: String) {

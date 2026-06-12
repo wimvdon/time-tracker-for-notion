@@ -209,7 +209,7 @@ async function fetchRunningTimers(apiKey, dbId, statusProp, statusRunning, dateP
 async function fetchRecentEntries(apiKey, dbId, statusProp, statusDone, dateProp) {
   const body = {
     filter: { property: statusProp, status: { equals: statusDone } },
-    page_size: 5,
+    page_size: 15,
     ...(dateProp ? { sorts: [{ property: dateProp, direction: 'descending' }] } : {}),
   };
   const data = await notionFetch(apiKey, 'POST', `/databases/${dbId}/query`, body);
@@ -231,6 +231,12 @@ async function deletePage(apiKey, pageId) {
   return { ok: true };
 }
 
+async function updatePageProperties(apiKey, pageId, properties) {
+  const filtered = Object.fromEntries(Object.entries(properties).filter(([, v]) => v != null));
+  await notionFetch(apiKey, 'PATCH', `/pages/${pageId}`, { properties: filtered });
+  return { ok: true };
+}
+
 module.exports = {
   testConnection,
   searchDatabases,
@@ -242,4 +248,5 @@ module.exports = {
   fetchRunningTimers,
   fetchRecentEntries,
   deletePage,
+  updatePageProperties,
 };

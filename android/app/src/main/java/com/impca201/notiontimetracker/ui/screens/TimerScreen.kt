@@ -28,6 +28,7 @@ import com.impca201.notiontimetracker.R
 import com.impca201.notiontimetracker.data.models.NamedOption
 import com.impca201.notiontimetracker.data.models.RecentEntryInfo
 import com.impca201.notiontimetracker.data.models.RunningTimerInfo
+import com.impca201.notiontimetracker.ui.components.EditTimerModal
 import com.impca201.notiontimetracker.ui.components.ExtraFieldInput
 import com.impca201.notiontimetracker.ui.components.RecoveryDialog
 import com.impca201.notiontimetracker.ui.components.SearchableDropdown
@@ -57,6 +58,10 @@ fun TimerScreen(
     onStopOtherRunningTimer: (RunningTimerInfo) -> Unit,
     onSuspendActiveToNewTimer: () -> Unit,
     onRefreshRunningTimers: () -> Unit,
+    onRefreshAll: () -> Unit,
+    onOpenEditTimer: () -> Unit,
+    onCloseEditTimer: () -> Unit,
+    onUpdateTimerDetails: (String?, String, Map<String, String>) -> Unit,
     onConfirmDelete: (String, String, Boolean) -> Unit,
     onCancelDelete: () -> Unit,
     onDeleteEntry: () -> Unit,
@@ -90,6 +95,15 @@ fun TimerScreen(
         )
     }
 
+    if (uiState.editTimerOpen && uiState.activeTimer != null) {
+        EditTimerModal(
+            uiState = uiState,
+            onDismiss = onCloseEditTimer,
+            onSave = onUpdateTimerDetails
+        )
+        return
+    }
+
     if (uiState.running && uiState.activeTimer != null) {
         RunningView(
             uiState = uiState,
@@ -101,6 +115,8 @@ fun TimerScreen(
             onStopOtherRunningTimer = onStopOtherRunningTimer,
             onSuspendActiveToNewTimer = onSuspendActiveToNewTimer,
             onRefreshRunningTimers = onRefreshRunningTimers,
+            onRefreshAll = onRefreshAll,
+            onOpenEditTimer = onOpenEditTimer,
             onConfirmDelete = onConfirmDelete,
             onOpenUrl = onOpenUrl
         )
@@ -117,6 +133,7 @@ fun TimerScreen(
             onLoadRunningTimer = onLoadRunningTimer,
             onStopOtherRunningTimer = onStopOtherRunningTimer,
             onRefreshRunningTimers = onRefreshRunningTimers,
+            onRefreshAll = onRefreshAll,
             onConfirmDelete = onConfirmDelete,
             onOpenUrl = onOpenUrl
         )
@@ -136,6 +153,7 @@ private fun IdleView(
     onLoadRunningTimer: (RunningTimerInfo) -> Unit,
     onStopOtherRunningTimer: (RunningTimerInfo) -> Unit,
     onRefreshRunningTimers: () -> Unit,
+    onRefreshAll: () -> Unit,
     onConfirmDelete: (String, String, Boolean) -> Unit,
     onOpenUrl: (String) -> Unit
 ) {
@@ -150,6 +168,9 @@ private fun IdleView(
                     .padding(horizontal = 8.dp, vertical = 4.dp),
                 horizontalArrangement = Arrangement.End
             ) {
+                IconButton(onClick = onRefreshAll) {
+                    Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.btn_refresh_all))
+                }
                 IconButton(onClick = onNavigateToSettings) {
                     Icon(Icons.Default.Settings, contentDescription = stringResource(R.string.title_settings))
                 }
@@ -312,6 +333,8 @@ private fun RunningView(
     onStopOtherRunningTimer: (RunningTimerInfo) -> Unit,
     onSuspendActiveToNewTimer: () -> Unit,
     onRefreshRunningTimers: () -> Unit,
+    onRefreshAll: () -> Unit,
+    onOpenEditTimer: () -> Unit,
     onConfirmDelete: (String, String, Boolean) -> Unit,
     onOpenUrl: (String) -> Unit
 ) {
@@ -337,6 +360,9 @@ private fun RunningView(
                     .padding(horizontal = 8.dp, vertical = 4.dp),
                 horizontalArrangement = Arrangement.End
             ) {
+                IconButton(onClick = onRefreshAll) {
+                    Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.btn_refresh_all))
+                }
                 IconButton(onClick = onSuspendActiveToNewTimer) {
                     Icon(Icons.Default.Add, contentDescription = stringResource(R.string.start_new_timer))
                 }
@@ -362,12 +388,24 @@ private fun RunningView(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
-            if (timer.description.isNotBlank()) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
                 Text(
-                    timer.description,
-                    style = MaterialTheme.typography.bodyMedium.copy(fontStyle = FontStyle.Italic),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    timer.description.ifBlank { "—" },
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
+                Spacer(Modifier.width(4.dp))
+                IconButton(onClick = onOpenEditTimer, modifier = Modifier.size(32.dp)) {
+                    Icon(
+                        Icons.Default.Edit,
+                        contentDescription = stringResource(R.string.btn_edit_timer),
+                        modifier = Modifier.size(16.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
 
             Spacer(Modifier.height(8.dp))
