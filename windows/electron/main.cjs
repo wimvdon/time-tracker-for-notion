@@ -1,7 +1,97 @@
 const { app, BrowserWindow, Tray, Menu, ipcMain, nativeImage, shell } = require('electron');
 const path = require('path');
+const zlib = require('zlib');
 const Store = require('electron-store');
 const notion = require('./notionClient.cjs');
+
+// ---- Minimal PNG encoder (for colored tray icons) ----
+
+const CRC_TABLE = (() => {
+  const table = new Int32Array(256);
+  for (let n = 0; n < 256; n++) {
+    let c = n;
+    for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+    table[n] = c;
+  }
+  return table;
+})();
+
+function crc32(buf) {
+  let c = 0xffffffff;
+  for (const byte of buf) c = CRC_TABLE[(c ^ byte) & 0xff] ^ (c >>> 8);
+  return (c ^ 0xffffffff) >>> 0;
+}
+
+function pngChunk(type, data) {
+  const len = Buffer.alloc(4);
+  len.writeUInt32BE(data.length);
+  const body = Buffer.concat([Buffer.from(type, 'ascii'), data]);
+  const crc = Buffer.alloc(4);
+  crc.writeUInt32BE(crc32(body));
+  return Buffer.concat([len, body, crc]);
+}
+
+function encodePNG(width, height, rgba) {
+  const ihdr = Buffer.alloc(13);
+  ihdr.writeUInt32BE(width, 0);
+  ihdr.writeUInt32BE(height, 4);
+  ihdr[8] = 8; ihdr[9] = 6;
+  const raw = Buffer.alloc(height * (1 + width * 4));
+  for (let y = 0; y < height; y++) {
+    rgba.copy(raw, y * (1 + width * 4) + 1, y * width * 4, (y + 1) * width * 4);
+  }
+  return Buffer.concat([
+    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+    pngChunk('IHDR', ihdr),
+    pngChunk('IDAT', zlib.deflateSync(raw, { level: 9 })),
+    pngChunk('IEND', Buffer.alloc(0)),
+  ]);
+}
+
+function drawColoredDot(size, [r, g, b]) {
+  const SS = 4;
+  const dim = size * SS;
+  const data = Buffer.alloc(dim * dim * 4);
+  const mid = dim / 2;
+  const radius = mid * 0.82;
+  for (let y = 0; y < dim; y++) {
+    for (let x = 0; x < dim; x++) {
+      const dist = Math.hypot(x + 0.5 - mid, y + 0.5 - mid);
+      const a = Math.min(1, Math.max(0, radius - dist + 0.5));
+      if (a <= 0) continue;
+      const i = (y * dim + x) * 4;
+      data[i] = r; data[i + 1] = g; data[i + 2] = b; data[i + 3] = Math.round(a * 255);
+    }
+  }
+  // Downsample SS:1
+  const out = Buffer.alloc(size * size * 4);
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      let pr = 0, pg = 0, pb = 0, pa = 0;
+      for (let sy = 0; sy < SS; sy++) {
+        for (let sx = 0; sx < SS; sx++) {
+          const i = ((y * SS + sy) * dim + x * SS + sx) * 4;
+          const alpha = data[i + 3];
+          pr += data[i] * alpha; pg += data[i + 1] * alpha; pb += data[i + 2] * alpha; pa += alpha;
+        }
+      }
+      const o = (y * size + x) * 4;
+      if (pa > 0) {
+        out[o] = Math.round(pr / pa); out[o + 1] = Math.round(pg / pa);
+        out[o + 2] = Math.round(pb / pa); out[o + 3] = Math.round(pa / (SS * SS));
+      }
+    }
+  }
+  return encodePNG(size, size, out);
+}
+
+function makeColoredTrayIcon(hexColor) {
+  const r = parseInt(hexColor.slice(1, 3), 16);
+  const g = parseInt(hexColor.slice(3, 5), 16);
+  const b = parseInt(hexColor.slice(5, 7), 16);
+  if (isNaN(r) || isNaN(g) || isNaN(b)) return null;
+  return nativeImage.createFromBuffer(drawColoredDot(32, [r, g, b]));
+}
 
 // encryptionKey obfuscates the config file at rest (it is not a hard security
 // boundary — anyone with access to this source can derive it, see README).
@@ -20,6 +110,7 @@ const store = new Store({
 let mainWindow = null;
 let tray = null;
 let timerRunning = false;
+let timerColor = null;
 let isQuitting = false;
 let cachedWorkspaces = [];
 
@@ -66,9 +157,12 @@ function createWindow() {
 }
 
 function trayIcon() {
-  return nativeImage.createFromPath(
-    assetPath(timerRunning ? 'tray-running.png' : 'tray-idle.png')
-  );
+  if (!timerRunning) return nativeImage.createFromPath(assetPath('tray-idle.png'));
+  if (timerColor) {
+    const colored = makeColoredTrayIcon(timerColor);
+    if (colored) return colored;
+  }
+  return nativeImage.createFromPath(assetPath('tray-running.png'));
 }
 
 function rebuildTrayMenu() {
@@ -198,8 +292,9 @@ ipcMain.handle('window:alwaysOnTop', (_event, value) => {
 });
 
 // Renderer reports timer state so the tray icon/menu can reflect it
-ipcMain.on('timer:state', (_event, running) => {
-  timerRunning = running;
+ipcMain.on('timer:state', (_event, data) => {
+  timerRunning = typeof data === 'object' ? !!data.running : !!data;
+  timerColor = typeof data === 'object' ? (data.color || null) : null;
   if (tray) {
     tray.setImage(trayIcon());
     rebuildTrayMenu();

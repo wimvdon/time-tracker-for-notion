@@ -18,7 +18,7 @@ contextBridge.exposeInMainWorld('notionAPI', {
   updatePage: (pageId, properties) => ipcRenderer.invoke('notion:updatePage', pageId, properties),
   openExternal: (url) => ipcRenderer.invoke('shell:openExternal', url),
   setAlwaysOnTop: (val) => ipcRenderer.invoke('window:alwaysOnTop', val),
-  setTimerRunning: (running) => ipcRenderer.send('timer:state', running),
+  setTimerRunning: (running, color) => ipcRenderer.send('timer:state', { running, color: color || null }),
   notifySettingsChanged: () => ipcRenderer.send('settings:changed'),
   onTrayStopTimer: (callback) => {
     const listener = () => callback();
