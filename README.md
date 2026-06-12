@@ -1,237 +1,215 @@
-# Notion Timer
+# Notion Time Tracker
 
-A lightweight, always-on-top Windows desktop widget for time tracking in Notion.
-Pick a workspace and project, press **START**, and the app creates a time entry
-page in your Notion database. Press **STOP** and it fills in the end time —
-optionally rounded to the nearest 15 minutes (with a 15-minute minimum
-duration), configurable per workspace.
+Lightweight time-tracking app for Notion — available as a Windows desktop widget and an Android app.
 
-The app makes no assumptions about how your Notion is structured: you pick the
-databases and the fields to use from dropdowns, straight from your own Notion
-workspace.
+## Platforms
+
+- [Windows (Electron)](#windows-electron) — always-visible widget with system tray
+- [Android](#android) — native app with a sticky foreground notification as the active indicator
+
+---
+
+## Windows (Electron)
+
+A lightweight, always-on-top Windows desktop widget. Pick a workspace and project, press **START**, and the app creates a time entry page in your Notion database. Press **STOP** and it fills in the end time — optionally rounded to the nearest 15 minutes (configurable per workspace).
 
 Built with Electron, React, Vite, Tailwind CSS and Zustand.
 
----
+### One-time setup: Notion API key
 
-## Table of contents
+The app talks directly to the Notion API. You need a (free) internal integration:
 
-1. [One-time setup: Notion API key](#1-one-time-setup-notion-api-key)
-2. [What your databases need](#2-what-your-databases-need)
-3. [Running the app in development](#3-running-the-app-in-development)
-4. [Building the Windows installer (.exe)](#4-building-the-windows-installer-exe)
-5. [First launch & configuring workspaces](#5-first-launch--configuring-workspaces)
-6. [How the app behaves](#6-how-the-app-behaves)
-7. [Troubleshooting](#7-troubleshooting)
-8. [Project structure](#8-project-structure)
-
----
-
-## 1. One-time setup: Notion API key
-
-The app talks directly to the Notion API. You need a (free) internal
-integration:
-
-1. Go to [notion.so/my-integrations](https://www.notion.so/my-integrations) and
-   click **New integration**.
+1. Go to [notion.so/my-integrations](https://www.notion.so/my-integrations) and click **New integration**.
 2. Name it **Notion Timer**, type **Internal**, and pick your Notion workspace.
-3. Under *Capabilities*, make sure **Read content**, **Insert content** and
-   **Update content** are enabled.
-4. Copy the **Internal Integration Secret** — this is the API key you'll paste
-   into the app's Settings. It starts with `secret_` or `ntn_`.
-5. **Important — give the integration access to your pages.** In Notion, open
-   each page that contains the databases you want to use:
-   - Click `···` in the top-right corner
-   - Choose **Connections** → **Connect to** → **Notion Timer**
-   - Do this on the **parent page that contains the databases**, not just on
-     the databases themselves. Child databases inherit the connection.
+3. Under *Capabilities*, make sure **Read content**, **Insert content** and **Update content** are enabled.
+4. Copy the **Internal Integration Secret** — this is the API key you paste into Settings. It starts with `secret_` or `ntn_`.
+5. **Give the integration access to your pages.** In Notion, open each page that contains the databases you want to use → `···` → **Connections → Connect to → Notion Timer**. Do this on the **parent page containing the databases** — child databases inherit the connection.
 
-Without step 5 the API key is valid but the app's database dropdowns will be
-empty — the integration can only see databases it has been connected to.
+### What your databases need
 
-## 2. What your databases need
+- a **Time Entries database**: needs a title property, a date property (start/end range), a status property (one option for "running", one for "completed"), and a relation property linking to projects.
+- a **Projects database**: page titles are used as picker options — no configuration needed.
 
-Each workspace in the app points at two Notion databases (they may be the same
-database if your setup requires it):
-
-- a **Time Entries database**, where the timer creates and completes entries.
-  It needs at least: a *title* property, a *date* property (stores the
-  start/end range), a *status* property with one option for "running" and one
-  for "completed", and a *relation* property that links to your projects.
-- a **Projects database**, whose records appear in the app's project picker.
-  Its page titles are used automatically — no configuration needed.
-
-Property names don't matter — when you add a workspace, the app reads the
-database schema and lets you pick each field from a dropdown showing only
-properties of the right type.
-
-## 3. Running the app in development
-
-You need [Node.js](https://nodejs.org) LTS (v20 or newer) installed. Then, in a
-terminal (PowerShell or Command Prompt on Windows):
+### Developing
 
 ```bash
-cd notion-time-tracker
-npm install        # one time, downloads dependencies (~2 min)
-npm run dev        # starts Vite + Electron with hot reload
+cd windows
+npm install
+npm run dev
 ```
 
-The widget window opens automatically. Code changes in `src/` reload live.
-
-Other useful commands:
+Other commands:
 
 ```bash
 npm test           # run the time-rounding unit tests
-npm run icons      # regenerate the app/tray icons in assets/
+npm run icons      # regenerate icons in assets/
 ```
 
-## 4. Building the Windows installer (.exe)
-
-> You only do this when you want a "real" installable app instead of running
-> from the terminal. Build on a Windows machine for the smoothest experience.
-
-**Easiest way — double-click `build.bat`** in the project folder. It installs
-or updates dependencies automatically, then builds the installer. Works for
-both the first build and every subsequent update.
-
-Alternatively, run the same steps manually in a terminal:
+### Building the Windows installer (.exe)
 
 ```bash
-npm install        # installs / updates dependencies
-npm run dist
+cd windows
+build.bat          # or: npm run dist
 ```
 
-What happens:
+The installer ends up in `windows/release/Notion Timer Setup 1.0.0.exe`.
 
-1. Vite bundles the UI into `dist/`.
-2. `electron-builder` packages everything into a one-click NSIS installer.
+### First launch & workspace configuration
 
-When it finishes, look in the **`release/`** folder:
+On first launch the app opens on Settings:
 
-```
-release/
-└── Notion Timer Setup 1.0.0.exe   ← double-click this to install
-```
+1. Paste your Notion API key and click **Test connection & save**.
+2. Click **+ Add workspace** and follow the step-by-step modal.
+3. Optionally add up to five extra fields from the Time Entries database (text, number, select, multi-select, status, date, checkbox, URL, e-mail, phone, people, relation).
+4. Click `←` to go to the timer.
 
-The installer is "one-click": it installs per-user (no admin rights needed),
-creates a Start Menu + desktop shortcut, and launches the app. To uninstall,
-use Windows *Settings → Apps* like any other program.
+### How it behaves
 
-**Notes:**
+- **Start**: creates a time entry with status = running and the description as the title (or `"{Project} — {DD/MM/YYYY}"` if left empty). Start time is rounded to the nearest configured interval.
+- **Stop**: fills in the end time and sets status = completed. End time is rounded with a minimum duration equal to one interval.
+- **Closing the window** minimises to the system tray. The tray icon turns red while a timer runs.
+- **Crash recovery**: if force-quit while a timer runs, next launch asks whether to stop, resume, or discard.
 
-- The first build downloads Electron binaries and NSIS tooling (a few hundred
-  MB); later builds are much faster.
-- Windows SmartScreen may warn "unrecognized app" when you run the installer,
-  because it isn't code-signed. Click **More info → Run anyway**. Code signing
-  certificates cost money and are not needed for personal use.
-- If the build fails with a symlink/permissions error on Windows, run the
-  terminal **as administrator** once, or enable Windows *Developer Mode*
-  (Settings → System → For developers).
-- To bump the version shown in the installer, change `"version"` in
-  `package.json`.
-
-## 5. First launch & configuring workspaces
-
-On first launch the app opens on the **Settings** screen:
-
-1. Paste your **Notion API key** and click **Test connection & save**.
-2. Click **+ Add workspace**. The modal walks you through it:
-   - **Name** — anything you like.
-   - **Time Entries database** and **Projects database** — pick from the
-     dropdown of all databases your integration can access. If the list is
-     empty, the integration isn't connected to your pages (section 1, step 5).
-   - Once the Time Entries database is selected its fields appear
-     automatically: pick the title, date range, status and project relation
-     fields, and the status options for "running" and "completed". Each
-     dropdown only shows properties of the right type, and single matches are
-     pre-selected. The Projects database needs no field setup — its page
-     titles are used automatically.
-   - Optionally add up to **three extra fields** from the Time Entries
-     database. These appear in the timer (after picking a project) as manual
-     inputs and are written to the time entry when you press START. All
-     writable Notion property types are supported — text, number, select,
-     multi-select, status, date, checkbox, URL, e-mail, phone, people,
-     relation and files (as a URL); computed fields such as formulas and
-     rollups can't be written and aren't offered.
-   - Tick or untick **Round times to nearest 15 minutes** for this workspace.
-3. **Save** stays disabled until everything required is filled in, so a
-   half-configured workspace can't be saved.
-4. Repeat for each workspace, then click `←` to go to the timer. You can edit
-   a workspace later via the ✏️ button next to it.
-
-The app's language follows your Windows display language: Dutch for `nl-*`
-locales, English (UK) for everything else. There is no manual toggle.
-
-All settings are stored locally in an encrypted file
-(`%APPDATA%/notion-timer/config.json`). Nothing is sent anywhere except to the
-Notion API. Note: the encryption is obfuscation against casual snooping, not a
-hard security boundary — the key lives in the app source. Settings from older
-versions of the app are migrated automatically on first launch.
-
-## 6. How the app behaves
-
-- **Start**: creates a time entry with the "running" status option and your
-  description as the title (or `"{Project} — {DD/MM/YYYY}"` if you left it
-  empty). With rounding on, the start time is rounded to the nearest
-  15 minutes (14:07 → 14:00, 14:08 → 14:15). Any extra fields you filled in
-  are written too; empty ones are skipped so Notion keeps its defaults.
-- **Stop**: fills in the end time and sets the "completed" status option.
-  With rounding on, the end time is rounded to the nearest 15 minutes with a
-  minimum duration of 15 minutes.
-- **Rounding is per workspace**: configure it in the workspace's settings.
-  With rounding off, exact timestamps are recorded and no minimum applies.
-- While running you see the live elapsed time and the projected interval
-  (e.g. `14:00 → 14:15`), which updates as time passes.
-- **Closing the window minimises to the system tray** — the app keeps running.
-  The tray icon turns into a red dot while a timer runs. Right-click the tray
-  icon for *Open*, *Stop timer* and *Quit*.
-- **Always on top** is on by default; toggle it in Settings.
-- **Crash recovery**: if the app is force-quit while a timer runs, the next
-  launch asks whether to stop it (at the current time), keep it running, or
-  discard it.
-- If stopping fails (e.g. you're offline), the timer state is kept and you can
-  retry — nothing is lost.
-
-## 7. Troubleshooting
+### Troubleshooting
 
 | Problem | Fix |
 |---|---|
 | "Connection failed: API token is invalid" | Re-copy the secret from notion.so/my-integrations; no spaces. |
-| Database dropdowns are empty | The integration isn't connected to the pages containing your databases — see section 1, step 5. |
-| "No suitable field found in this database" | The selected database is missing a property of the required type (e.g. no status property) — add it in Notion, then reopen the workspace modal. |
-| Project dropdown stays empty | The picker only shows records with a non-empty page title — check the Projects database selected under Settings → ✏️. |
-| An extra field no longer appears in the timer | The property was renamed or deleted in Notion, or its type became read-only — re-select it under Settings → ✏️ → Extra fields. |
-| App seems closed but won't restart | It's still in the system tray (bottom-right, behind `^`). Right-click → Quit. |
+| Database dropdowns are empty | Integration isn't connected to the pages — see setup step 5. |
+| Project dropdown stays empty | Only records with a non-empty page title are shown — check the Projects database in the workspace settings. |
+| App seems closed but won't restart | It's in the system tray (bottom-right, behind `^`). Right-click → Quit. |
 | Installer blocked by SmartScreen | More info → Run anyway (unsigned personal build). |
 
-## 8. Project structure
+### Windows project structure
 
 ```
-notion-time-tracker/
+windows/
 ├── electron/
 │   ├── main.cjs           # Main process: window, tray, IPC, electron-store
-│   ├── preload.cjs        # contextBridge: safe API exposed to the renderer
-│   └── notionClient.cjs   # All Notion REST calls (API key never leaves main)
+│   ├── preload.cjs        # contextBridge: safe API exposed to renderer
+│   └── notionClient.cjs   # All Notion REST calls
 ├── src/
-│   ├── App.jsx            # Root component, view switching
-│   ├── views/
-│   │   ├── Timer.jsx      # Idle + running timer screens
-│   │   └── Settings.jsx   # API key, workspaces, workspace modal
-│   ├── components/
-│   │   ├── Toasts.jsx     # Error/success toasts (with retry action)
-│   │   ├── ExtraFieldInput.jsx  # Type-specific input for extra fields
-│   │   └── RecoveryModal.jsx  # Orphaned-timer prompt on launch
-│   ├── store/useStore.js  # Zustand store: settings, session, timer, migration
-│   ├── locales/           # en-GB.js + nl-BE.js string tables
-│   └── lib/
-│       ├── rounding.js    # 15-minute rounding (mirrors Notion buttons)
-│       ├── rounding.test.js
-│       ├── format.js      # ISO-with-offset, DD/MM/YYYY, HH:MM:SS helpers
-│       ├── i18n.js        # locale detection + t() lookup
-│       ├── schema.js      # database schema helpers (propertiesByType, …)
-│       ├── notionValues.js  # builds property values per Notion type (+tests)
-│       └── errors.js      # strips IPC noise from error messages
-├── scripts/generate-icons.cjs  # Regenerates assets/ icons (no deps)
-├── assets/                # icon.ico, window + tray icons (generated)
-└── package.json           # incl. electron-builder config
+│   ├── App.jsx
+│   ├── views/             # Timer.jsx, Settings.jsx
+│   ├── components/        # ExtraFieldInput, SearchableSelect, Toasts, RecoveryModal
+│   ├── store/useStore.js  # Zustand store (settings, session, timer, migrations)
+│   ├── locales/           # en-GB.js, nl-BE.js
+│   └── lib/               # rounding.js, format.js, i18n.js, schema.js, notionValues.js
+├── assets/
+└── package.json
+```
+
+---
+
+## Android
+
+A native Android app built with Kotlin + Jetpack Compose. Functionally identical to the Windows app, with Android-native UX:
+
+- A **sticky foreground notification** replaces the system tray while a timer is running
+- Tap **Stop** in the notification to stop the timer even when the app is closed
+- **Android 16+**: uses `Notification.ProgressStyle` (Live Updates) for a visual progress bar
+- Crash recovery, identical rounding logic, and bilingual support (nl/en) — all ported 1:1
+
+### Tech stack
+
+| Component | Choice |
+|---|---|
+| Language | Kotlin |
+| UI | Jetpack Compose + Material You (Material 3) |
+| State | ViewModel + StateFlow |
+| Storage | DataStore (Preferences) + EncryptedSharedPreferences (API key) |
+| HTTP | OkHttp + Gson |
+| Background | Foreground Service |
+| Notifications | NotificationCompat + `Notification.ProgressStyle` (API 36+) |
+| Min SDK | 26 (Android 8) |
+| Target SDK | 36 (Android 16) |
+
+### Building the APK
+
+#### Option A — Debug APK (fastest, for personal use)
+
+1. Install [Android Studio](https://developer.android.com/studio)
+2. Open the `android/` folder as a project
+3. Wait for Gradle sync to complete
+4. **Build → Build Bundle(s) / APK(s) → Build APK(s)**
+5. Click **locate** in the popup — APK is at `android/app/build/outputs/apk/debug/app-debug.apk`
+6. Install: `adb install android/app/build/outputs/apk/debug/app-debug.apk`  
+   Or copy the file to your device and open it (enable *Install from unknown sources* if prompted)
+
+#### Option B — Release APK (optimised, for daily use)
+
+**First time: create a keystore**
+
+1. Android Studio → **Build → Generate Signed Bundle / APK**
+2. Choose **APK** → Next → **Create new…**
+3. Save as `android/my-keystore.jks` (add this to `.gitignore` — also keep a backup!)
+4. Fill in passwords and alias, click Finish
+
+**Build**
+
+1. Android Studio → **Build → Generate Signed Bundle / APK** → APK → Next
+2. Enter your keystore path and passwords → choose **release** → Finish
+3. APK is at `android/app/release/app-release.apk`
+
+#### Option C — Direct install via Android Studio (easiest during development)
+
+1. Connect your device via USB (or start the emulator)
+2. Select your device in the device dropdown at the top of Android Studio
+3. Press the green ▶ button (`Shift+F10`)
+
+#### Prerequisites for USB installation
+
+- **Developer options**: Settings → About phone → tap **Build number** 7 times → Settings → Developer options → **USB debugging** ON
+- `adb` not found: add `$ANDROID_HOME/platform-tools` to your PATH
+
+#### Gradle wrapper note
+
+The `gradlew` scripts require `gradle/wrapper/gradle-wrapper.jar` (a binary not stored in git). Android Studio handles this automatically on first sync. To generate it from the command line:
+
+```bash
+cd android
+gradle wrapper --gradle-version 8.11.1
+```
+
+### Troubleshooting (Android)
+
+| Problem | Fix |
+|---|---|
+| "App not installed" on manual install | Enable *Install from unknown sources* for your file manager |
+| `adb: command not found` | Add Android SDK platform-tools to PATH, or use the full path |
+| Gradle sync fails | File → Sync Project with Gradle Files; check internet connection |
+| Device not recognised via USB | Try another cable; toggle USB debugging off/on |
+| Notification not showing | Grant notification permission in Settings → Apps → Notion Time Tracker → Notifications |
+
+### Android project structure
+
+```
+android/
+├── app/
+│   ├── build.gradle.kts
+│   └── src/main/
+│       ├── AndroidManifest.xml
+│       ├── java/com/impca201/notiontimetracker/
+│       │   ├── MainActivity.kt
+│       │   ├── NotionTimeTrackerApp.kt
+│       │   ├── data/
+│       │   │   ├── models/Models.kt          # Workspace, ActiveTimer, ExtraProp, …
+│       │   │   ├── api/NotionClient.kt        # OkHttp Notion REST client (7 endpoints)
+│       │   │   └── repository/
+│       │   │       ├── SettingsRepository.kt  # DataStore + EncryptedSharedPreferences
+│       │   │       └── NotionRepository.kt
+│       │   ├── service/TimerForegroundService.kt  # Ongoing notification, stop action
+│       │   ├── ui/
+│       │   │   ├── theme/                    # Material 3 dark theme
+│       │   │   ├── screens/                  # TimerScreen.kt, SettingsScreen.kt
+│       │   │   └── components/               # SearchableDropdown, ExtraFieldInput,
+│       │   │                                 # WorkspaceModal, RecoveryDialog
+│       │   └── viewmodel/
+│       │       ├── TimerViewModel.kt         # Timer state, rounding, start/stop
+│       │       └── SettingsViewModel.kt      # API key, workspace CRUD
+│       └── res/
+│           ├── values/strings.xml            # English (UK)
+│           └── values-nl/strings.xml         # Dutch (NL/BE)
+├── build.gradle.kts
+└── settings.gradle.kts
 ```

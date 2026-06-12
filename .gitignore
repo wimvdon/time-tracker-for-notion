@@ -1,5 +1,16 @@
-node_modules/
-dist/
-release/
-*.log
+# Windows app
+windows/node_modules/
+windows/dist/
+windows/release/
+
+# Android app
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+*.keystore
+*.jks
+
+# OS
 .DS_Store
+Thumbs.db

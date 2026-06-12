@@ -1,0 +1,5 @@
+-keep class com.impca201.notiontimetracker.data.models.** { *; }
+-keepattributes Signature
+-keepattributes *Annotation*
+-dontwarn okhttp3.**
+-dontwarn okio.**
