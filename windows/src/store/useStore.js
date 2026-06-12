@@ -61,6 +61,8 @@ export const useStore = create((set, get) => ({
   toasts: [],
   recoveredTimer: null, // orphaned activeTimer found on launch
   recoveryBusy: false,
+  editTimerOpen: false,
+  theme: 'auto', // 'auto' | 'light' | 'dark'
 
   // Session state
   selectedWorkspaceId: null,
@@ -173,6 +175,7 @@ export const useStore = create((set, get) => ({
       apiKey: settings.apiKey || '',
       workspaces,
       alwaysOnTop: settings.alwaysOnTop !== false,
+      theme: settings.theme || 'auto',
     });
 
     // First launch: send the user to Settings
@@ -193,6 +196,18 @@ export const useStore = create((set, get) => ({
       get().loadRunningTimers();
       get().loadRecentEntries();
     }
+
+    // Apply saved theme
+    get().applyTheme();
+
+    // 60s auto-refresh
+    setInterval(() => {
+      const s = get();
+      if (s.apiKey && s.workspaces.length && !s.recoveredTimer) {
+        get().loadRunningTimers();
+        get().loadRecentEntries();
+      }
+    }, 60_000);
   },
 
   saveApiKey: async (apiKey) => {
@@ -555,7 +570,7 @@ export const useStore = create((set, get) => ({
       }
     }
     allRecent.sort((a, b) => (b.endISO || b.startISO || '').localeCompare(a.endISO || a.startISO || ''));
-    set({ recentEntriesLoading: false, recentEntries: allRecent.slice(0, 5) });
+    set({ recentEntriesLoading: false, recentEntries: allRecent.slice(0, 15) });
   },
 
   confirmDelete: (entry, context) => set({ deleteConfirm: { pageId: entry.pageId, title: entry.title, context } }),
@@ -746,5 +761,97 @@ export const useStore = create((set, get) => ({
     set({ recoveredTimer: null });
     get().loadRunningTimers();
     get().loadRecentEntries();
+  },
+
+  // ---- Theme ----
+
+  setTheme: async (theme) => {
+    await api.saveSettings({ theme });
+    set({ theme });
+    const root = document.documentElement;
+    if (theme === 'dark') {
+      root.classList.add('dark');
+      root.classList.remove('light');
+    } else if (theme === 'light') {
+      root.classList.add('light');
+      root.classList.remove('dark');
+    } else {
+      root.classList.remove('dark', 'light');
+    }
+  },
+
+  applyTheme: () => {
+    const { theme } = get();
+    const root = document.documentElement;
+    if (theme === 'dark') {
+      root.classList.add('dark');
+      root.classList.remove('light');
+    } else if (theme === 'light') {
+      root.classList.add('light');
+      root.classList.remove('dark');
+    } else {
+      root.classList.remove('dark', 'light');
+    }
+  },
+
+  // ---- Refresh ----
+
+  refreshAll: () => {
+    get().loadRunningTimers();
+    get().loadRecentEntries();
+  },
+
+  // ---- Edit running timer ----
+
+  openEditTimer: () => set({ editTimerOpen: true }),
+  closeEditTimer: () => set({ editTimerOpen: false }),
+
+  updateTimerDetails: async (projectId, description, extraValues) => {
+    const state = get();
+    if (!state.timer.running) return;
+    const workspace = state.workspaces.find((w) => w.id === state.selectedWorkspaceId);
+    const pm = state.timer.propertyMap;
+    const project = state.projects.find((p) => p.id === projectId);
+    const projectName = project?.name ?? '';
+    const newTitle = description.trim() || projectName || state.description || 'Time entry';
+
+    const properties = {};
+    if (pm?.timeEntryTitleProp) {
+      properties[pm.timeEntryTitleProp] = {
+        title: [{ text: { content: newTitle } }],
+      };
+    }
+    if (pm?.timeEntryRelationProp) {
+      properties[pm.timeEntryRelationProp] = projectId
+        ? { relation: [{ id: projectId }] }
+        : { relation: [] };
+    }
+    for (const def of state.extraFieldDefs) {
+      const value = buildPropertyValue(def.type, extraValues[def.name]);
+      if (value) properties[def.name] = value;
+    }
+
+    try {
+      await api.updatePage(state.timer.notionPageId, properties);
+      set({
+        description: newTitle,
+        selectedProjectId: projectId,
+        extraValues,
+        editTimerOpen: false,
+      });
+      const updatedTimer = {
+        notionPageId: state.timer.notionPageId,
+        roundedStart: state.timer.startISO,
+        rawStart: state.timer.rawStart?.toISOString?.() ?? state.timer.startISO,
+        workspaceId: state.selectedWorkspaceId,
+        projectId,
+        projectName,
+        description: newTitle,
+        propertyMap: pm,
+      };
+      api.saveSettings({ activeTimer: updatedTimer });
+    } catch (err) {
+      get().addToast({ type: 'error', message: `Could not update timer: ${errorMessage(err)}` });
+    }
   },
 }));

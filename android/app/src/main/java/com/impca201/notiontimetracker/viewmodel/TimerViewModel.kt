@@ -45,7 +45,8 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
         val runningTimersLoading: Boolean = false,
         val recentEntries: List<RecentEntryInfo> = emptyList(),
         val recentEntriesLoading: Boolean = false,
-        val deleteConfirmInfo: DeleteConfirmInfo? = null
+        val deleteConfirmInfo: DeleteConfirmInfo? = null,
+        val editTimerOpen: Boolean = false
     )
 
     private val _uiState = MutableStateFlow(UiState())
@@ -59,6 +60,20 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
 
     init {
         viewModelScope.launch { loadInitialState() }
+        // Auto-refresh every 60s while a timer is running
+        viewModelScope.launch {
+            while (true) {
+                delay(60_000L)
+                val state = _uiState.value
+                if (state.running && state.recoveredTimer == null && state.apiKey.isNotBlank()) {
+                    checkActiveTimerStillRunning()
+                    if (_uiState.value.running) {
+                        loadRunningTimers()
+                        loadRecentEntries()
+                    }
+                }
+            }
+        }
     }
 
     private suspend fun loadInitialState() {
@@ -191,6 +206,63 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
 
     fun clearError() = _uiState.update { it.copy(error = null) }
     fun clearStopError() = _uiState.update { it.copy(stopError = null) }
+
+    fun openEditTimer() = _uiState.update { it.copy(editTimerOpen = true) }
+    fun closeEditTimer() = _uiState.update { it.copy(editTimerOpen = false) }
+
+    fun refreshAll() {
+        val state = _uiState.value
+        if (state.recoveredTimer != null || state.apiKey.isBlank() || state.workspaces.isEmpty()) return
+        if (state.running && state.activeTimer != null) {
+            viewModelScope.launch { checkActiveTimerStillRunning() }
+        }
+        loadRunningTimers()
+        loadRecentEntries()
+    }
+
+    private suspend fun checkActiveTimerStillRunning() {
+        val timer = _uiState.value.activeTimer ?: return
+        val workspace = _uiState.value.workspaces.firstOrNull { it.id == timer.workspaceId } ?: return
+        val pm = workspace.propertyMap
+        if (workspace.timeEntriesDbId.isBlank() || pm.timeEntryStatusProp.isBlank() || pm.timeEntryStatusRunning.isBlank()) return
+        val running = runCatching {
+            notionRepo.fetchRunningTimers(workspace.timeEntriesDbId, pm.timeEntryStatusProp, pm.timeEntryStatusRunning, pm.timeEntryDateProp)
+        }.getOrDefault(emptyList())
+        if (running.none { it.pageId == timer.notionPageId }) {
+            tickJob?.cancel()
+            stopService()
+            settingsRepo.clearActiveTimer()
+            _uiState.update { it.copy(running = false, activeTimer = null, elapsedSeconds = 0L) }
+        }
+    }
+
+    fun updateTimerDetails(projectId: String?, description: String, extraValues: Map<String, String>) {
+        val state = _uiState.value
+        val timer = state.activeTimer ?: return
+        val workspace = state.workspaces.firstOrNull { it.id == timer.workspaceId } ?: return
+        viewModelScope.launch {
+            val extraNotionValues = buildExtraNotionValues(state.extraFieldDefs, extraValues)
+            val properties = mutableMapOf<String, Any?>()
+            val projectName = state.projects.firstOrNull { it.id == projectId }?.name ?: ""
+            val newTitle = description.trim().ifBlank { projectName.ifBlank { timer.description } }
+            properties[timer.propertyMap.timeEntryTitleProp] = mapOf(
+                "title" to listOf(mapOf("text" to mapOf("content" to newTitle)))
+            )
+            if (timer.propertyMap.timeEntryRelationProp.isNotBlank()) {
+                properties[timer.propertyMap.timeEntryRelationProp] = if (!projectId.isNullOrBlank())
+                    mapOf("relation" to listOf(mapOf("id" to projectId)))
+                else mapOf("relation" to emptyList<Any>())
+            }
+            extraNotionValues.forEach { (k, v) -> properties[k] = v }
+            runCatching { notionRepo.updatePageProperties(timer.notionPageId, properties) }
+                .onSuccess {
+                    val updated = timer.copy(description = newTitle, projectId = projectId, projectName = projectName, extraValues = extraValues)
+                    _uiState.update { it.copy(activeTimer = updated, description = newTitle, selectedProjectId = projectId, extraValues = extraValues, editTimerOpen = false) }
+                    settingsRepo.saveActiveTimer(updated)
+                }
+                .onFailure { err -> _uiState.update { it.copy(error = err.message) } }
+        }
+    }
 
     fun startTimer() {
         val state = _uiState.value
@@ -447,7 +519,7 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
                 }
             }
             allRecent.sortByDescending { it.endISO ?: it.startISO ?: "" }
-            _uiState.update { it.copy(recentEntriesLoading = false, recentEntries = allRecent.take(5)) }
+            _uiState.update { it.copy(recentEntriesLoading = false, recentEntries = allRecent.take(15)) }
         }
     }
 

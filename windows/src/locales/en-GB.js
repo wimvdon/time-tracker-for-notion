@@ -116,4 +116,25 @@ export default {
   confirmDeleteTitle: 'Archive this entry in Notion?',
   confirmDeleteConfirm: 'Archive',
   toastDeleteError: 'Could not delete entry',
+
+  // Refresh
+  btnRefreshAll: 'Refresh',
+
+  // Edit running timer
+  btnEditTimer: 'Edit timer',
+  titleEditTimer: 'Edit timer',
+  btnSaveChanges: 'Save',
+
+  // Theme
+  labelTheme: 'Appearance',
+  theme_auto: 'Auto',
+  theme_light: 'Light',
+  theme_dark: 'Dark',
+
+  // QR code
+  labelQrExport: 'Export settings via QR code',
+  btnShowQr: 'Show QR code',
+  btnClose: 'Close',
+  qrSecurityWarning: 'Keep this private — it contains your Notion API key.',
+  qrAutoDismiss: 'Auto-hides after 30 seconds.',
 };

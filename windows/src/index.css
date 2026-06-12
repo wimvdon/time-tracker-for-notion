@@ -11,6 +11,38 @@ body {
   font-family: 'Segoe UI', system-ui, sans-serif;
 }
 
+/* Light theme */
+html.light body {
+  @apply bg-zinc-50 text-zinc-900;
+}
+
+/* Auto mode: follow system preference */
+@media (prefers-color-scheme: light) {
+  html:not(.dark):not(.light) body {
+    @apply bg-zinc-50 text-zinc-900;
+  }
+  html:not(.dark):not(.light) .bg-zinc-900 { @apply bg-zinc-50; }
+  html:not(.dark):not(.light) .bg-zinc-800 { @apply bg-zinc-100; }
+  html:not(.dark):not(.light) .bg-zinc-700 { @apply bg-zinc-200; }
+  html:not(.dark):not(.light) .text-zinc-100 { @apply text-zinc-900; }
+  html:not(.dark):not(.light) .text-zinc-200 { @apply text-zinc-800; }
+  html:not(.dark):not(.light) .text-zinc-400 { @apply text-zinc-500; }
+  html:not(.dark):not(.light) .text-zinc-500 { @apply text-zinc-600; }
+  html:not(.dark):not(.light) .border-zinc-700 { @apply border-zinc-300; }
+  html:not(.dark):not(.light) .border-zinc-600 { @apply border-zinc-400; }
+}
+
+/* Explicit light class */
+html.light .bg-zinc-900 { @apply bg-zinc-50; }
+html.light .bg-zinc-800 { @apply bg-zinc-100; }
+html.light .bg-zinc-700 { @apply bg-zinc-200; }
+html.light .text-zinc-100 { @apply text-zinc-900; }
+html.light .text-zinc-200 { @apply text-zinc-800; }
+html.light .text-zinc-400 { @apply text-zinc-500; }
+html.light .text-zinc-500 { @apply text-zinc-600; }
+html.light .border-zinc-700 { @apply border-zinc-300; }
+html.light .border-zinc-600 { @apply border-zinc-400; }
+
 input,
 textarea,
 select {

@@ -17,7 +17,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
@@ -86,6 +87,7 @@ fun SearchableDropdown(
         }
 
         if (expanded) {
+            val focusRequester = remember { FocusRequester() }
             Popup(onDismissRequest = { expanded = false; query = "" }) {
                 Card(
                     modifier = Modifier
@@ -104,12 +106,14 @@ fun SearchableDropdown(
                                 cursorBrush = SolidColor(colors.primary),
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                                    .padding(horizontal = 12.dp, vertical = 8.dp)
+                                    .focusRequester(focusRequester),
                                 decorationBox = { inner ->
                                     if (query.isEmpty()) Text("Search…", color = colors.onSurfaceVariant, fontSize = 14.sp)
                                     inner()
                                 }
                             )
+                            LaunchedEffect(Unit) { focusRequester.requestFocus() }
                             HorizontalDivider(color = colors.outline)
                         }
 

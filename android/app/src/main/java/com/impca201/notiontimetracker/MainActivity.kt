@@ -20,7 +20,9 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.impca201.notiontimetracker.data.models.ThemeMode
 import com.impca201.notiontimetracker.service.TimerForegroundService
+import com.impca201.notiontimetracker.ui.screens.QrScannerScreen
 import com.impca201.notiontimetracker.ui.screens.SettingsScreen
 import com.impca201.notiontimetracker.ui.screens.TimerScreen
 import com.impca201.notiontimetracker.ui.theme.NotionTimeTrackerTheme
@@ -61,7 +63,8 @@ class MainActivity : ComponentActivity() {
         requestNotificationPermissionIfNeeded()
 
         setContent {
-            NotionTimeTrackerTheme {
+            val settingsUiState by settingsViewModel.uiState.collectAsState()
+            NotionTimeTrackerTheme(themeMode = settingsUiState.themeMode) {
                 AppNavigation(timerViewModel, settingsViewModel)
             }
         }
@@ -127,6 +130,10 @@ private fun AppNavigation(
                 onStopOtherRunningTimer = timerViewModel::stopOtherRunningTimer,
                 onSuspendActiveToNewTimer = timerViewModel::suspendActiveToNewTimer,
                 onRefreshRunningTimers = { timerViewModel.loadRunningTimers() },
+                onRefreshAll = timerViewModel::refreshAll,
+                onOpenEditTimer = timerViewModel::openEditTimer,
+                onCloseEditTimer = timerViewModel::closeEditTimer,
+                onUpdateTimerDetails = timerViewModel::updateTimerDetails,
                 onConfirmDelete = { pageId, title, isRunning -> timerViewModel.confirmDelete(pageId, title, isRunning) },
                 onCancelDelete = timerViewModel::cancelDelete,
                 onDeleteEntry = timerViewModel::deleteEntry,
@@ -155,20 +162,32 @@ private fun AppNavigation(
                 onSaveWorkspace = settingsViewModel::saveWorkspace,
                 onWorkspaceNameChange = settingsViewModel::setWorkspaceName,
                 onTimeEntriesDbChange = settingsViewModel::setTimeEntriesDb,
-                onProjectsDbChange = settingsViewModel::setProjectsDb,
                 onRefreshDatabases = settingsViewModel::loadDatabases,
                 onDatePropChange = settingsViewModel::setDateProp,
                 onStatusPropChange = settingsViewModel::setStatusProp,
                 onStatusRunningChange = settingsViewModel::setStatusRunning,
                 onStatusDoneChange = settingsViewModel::setStatusDone,
-                onRelationPropChange = settingsViewModel::setRelationProp,
                 onRoundingChange = settingsViewModel::setRounding,
                 onAddExtraProp = settingsViewModel::addExtraProp,
                 onRemoveExtraProp = settingsViewModel::removeExtraProp,
                 onExtraPropNameChange = settingsViewModel::setExtraPropName,
                 onExtraPropRequiredChange = settingsViewModel::setExtraPropRequired,
                 onExtraPropDefaultChange = settingsViewModel::setExtraPropDefault,
+                onThemeModeChange = settingsViewModel::setThemeMode,
+                onScanQr = { navController.navigate("qr_scan") },
                 onSnackbarDismiss = settingsViewModel::clearSnackbar
+            )
+        }
+
+        composable("qr_scan") {
+            QrScannerScreen(
+                onBack = { navController.popBackStack() },
+                onImport = { apiKey, workspaces, theme ->
+                    if (apiKey != null) settingsViewModel.importApiKey(apiKey)
+                    if (workspaces != null) settingsViewModel.importWorkspaces(workspaces)
+                    if (theme != null) settingsViewModel.setThemeMode(theme)
+                    navController.popBackStack()
+                }
             )
         }
     }

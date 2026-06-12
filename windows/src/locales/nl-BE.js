@@ -116,4 +116,20 @@ export default {
   confirmDeleteTitle: 'Deze tijdsregistratie archiveren in Notion?',
   confirmDeleteConfirm: 'Archiveren',
   toastDeleteError: 'Kon tijdsregistratie niet verwijderen',
+
+  btnRefreshAll: 'Vernieuwen',
+  btnEditTimer: 'Timer bewerken',
+  titleEditTimer: 'Timer bewerken',
+  btnSaveChanges: 'Opslaan',
+
+  labelTheme: 'Weergave',
+  theme_auto: 'Automatisch',
+  theme_light: 'Licht',
+  theme_dark: 'Donker',
+
+  labelQrExport: 'Instellingen exporteren via QR-code',
+  btnShowQr: 'QR-code tonen',
+  btnClose: 'Sluiten',
+  qrSecurityWarning: 'Houd dit privé — het bevat uw Notion API-sleutel.',
+  qrAutoDismiss: 'Verdwijnt automatisch na 30 seconden.',
 };

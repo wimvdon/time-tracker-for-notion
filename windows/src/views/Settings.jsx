@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useStore } from '../store/useStore.js';
 import { propertiesByType, statusOptions } from '../lib/schema.js';
 import { WRITABLE_EXTRA_TYPES } from '../lib/notionValues.js';
@@ -10,10 +10,12 @@ export default function Settings() {
   const apiKey = useStore((s) => s.apiKey);
   const workspaces = useStore((s) => s.workspaces);
   const alwaysOnTop = useStore((s) => s.alwaysOnTop);
+  const theme = useStore((s) => s.theme);
   const saveApiKey = useStore((s) => s.saveApiKey);
   const deleteWorkspace = useStore((s) => s.deleteWorkspace);
   const moveWorkspace = useStore((s) => s.moveWorkspace);
   const toggleAlwaysOnTop = useStore((s) => s.toggleAlwaysOnTop);
+  const setTheme = useStore((s) => s.setTheme);
   const setView = useStore((s) => s.setView);
   const addToast = useStore((s) => s.addToast);
   const timerRunning = useStore((s) => s.timer.running);
@@ -23,8 +25,34 @@ export default function Settings() {
   const [testing, setTesting] = useState(false);
   const [showAddWorkspace, setShowAddWorkspace] = useState(false);
   const [editingWorkspace, setEditingWorkspace] = useState(null);
+  const [qrDataUrl, setQrDataUrl] = useState(null);
+  const [qrExpanded, setQrExpanded] = useState(false);
+  const qrDismissTimer = useRef(null);
 
   const firstLaunch = !apiKey || workspaces.length === 0;
+
+  const generateQr = async () => {
+    const payload = JSON.stringify({ apiKey, workspaces, theme });
+    try {
+      const QRCode = (await import('qrcode')).default;
+      const url = await QRCode.toDataURL(payload, { width: 256, margin: 2 });
+      setQrDataUrl(url);
+      setQrExpanded(true);
+      if (qrDismissTimer.current) clearTimeout(qrDismissTimer.current);
+      qrDismissTimer.current = setTimeout(() => {
+        setQrExpanded(false);
+        setQrDataUrl(null);
+      }, 30_000);
+    } catch (err) {
+      addToast({ type: 'error', message: `QR: ${errorMessage(err)}` });
+    }
+  };
+
+  const dismissQr = () => {
+    if (qrDismissTimer.current) clearTimeout(qrDismissTimer.current);
+    setQrExpanded(false);
+    setQrDataUrl(null);
+  };
 
   const handleSaveAndTestKey = async () => {
     const key = keyInput.trim();
@@ -153,6 +181,51 @@ export default function Settings() {
         />
         {t('labelAlwaysOnTop')}
       </label>
+
+      {/* Theme */}
+      <div>
+        <label className="block text-xs text-zinc-400 mb-1">{t('labelTheme')}</label>
+        <div className="flex gap-3">
+          {['auto', 'light', 'dark'].map((opt) => (
+            <label key={opt} className="flex items-center gap-1.5 text-sm cursor-pointer">
+              <input
+                type="radio"
+                name="theme"
+                value={opt}
+                checked={theme === opt}
+                onChange={() => setTheme(opt)}
+                className="accent-emerald-500"
+              />
+              {t(`theme_${opt}`)}
+            </label>
+          ))}
+        </div>
+      </div>
+
+      {/* QR code export */}
+      <div>
+        <div className="flex items-center justify-between">
+          <label className="text-xs text-zinc-400">{t('labelQrExport')}</label>
+          {qrExpanded ? (
+            <button onClick={dismissQr} className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors">✕ {t('btnClose')}</button>
+          ) : (
+            <button
+              onClick={generateQr}
+              disabled={!apiKey}
+              className="text-xs px-2 py-1 bg-zinc-700 hover:bg-zinc-600 disabled:opacity-40 rounded transition-colors"
+            >
+              {t('btnShowQr')}
+            </button>
+          )}
+        </div>
+        {qrExpanded && qrDataUrl && (
+          <div className="mt-2">
+            <p className="text-xs text-amber-400 mb-2">⚠️ {t('qrSecurityWarning')}</p>
+            <img src={qrDataUrl} alt="QR code" className="w-40 h-40 rounded border border-zinc-600" />
+            <p className="text-xs text-zinc-600 mt-1">{t('qrAutoDismiss')}</p>
+          </div>
+        )}
+      </div>
 
       {showAddWorkspace && <WorkspaceModal onClose={() => setShowAddWorkspace(false)} />}
       {editingWorkspace && (

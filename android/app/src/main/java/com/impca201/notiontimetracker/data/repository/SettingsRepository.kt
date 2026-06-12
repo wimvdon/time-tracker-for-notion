@@ -12,6 +12,7 @@ import androidx.security.crypto.MasterKey
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.impca201.notiontimetracker.data.models.ActiveTimer
+import com.impca201.notiontimetracker.data.models.ThemeMode
 import com.impca201.notiontimetracker.data.models.Workspace
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -26,6 +27,7 @@ class SettingsRepository(private val context: Context) {
     private val WORKSPACES_KEY = stringPreferencesKey("workspaces_json")
     private val LAST_WORKSPACE_KEY = stringPreferencesKey("last_workspace_id")
     private val ACTIVE_TIMER_KEY = stringPreferencesKey("active_timer_json")
+    private val THEME_MODE_KEY = stringPreferencesKey("theme_mode")
 
     private val encryptedPrefs: SharedPreferences by lazy {
         val masterKey = MasterKey.Builder(context)
@@ -89,5 +91,17 @@ class SettingsRepository(private val context: Context) {
         context.dataStore.edit { prefs ->
             prefs[ACTIVE_TIMER_KEY] = ""
         }
+    }
+
+    val themeModeFlow: Flow<ThemeMode> = context.dataStore.data.map { prefs ->
+        when (prefs[THEME_MODE_KEY]) {
+            "LIGHT" -> ThemeMode.LIGHT
+            "DARK" -> ThemeMode.DARK
+            else -> ThemeMode.AUTO
+        }
+    }
+
+    suspend fun saveThemeMode(mode: ThemeMode) {
+        context.dataStore.edit { prefs -> prefs[THEME_MODE_KEY] = mode.name }
     }
 }
