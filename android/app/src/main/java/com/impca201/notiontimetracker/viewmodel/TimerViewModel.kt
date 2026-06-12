@@ -13,6 +13,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.Instant
@@ -60,7 +61,7 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
     private suspend fun loadInitialState() {
         val apiKey = settingsRepo.getApiKey()
         val workspaces = settingsRepo.getWorkspaces()
-        val lastId = settingsRepo.lastWorkspaceIdFlow.value
+        val lastId = settingsRepo.lastWorkspaceIdFlow.first()
         val activeTimer = settingsRepo.getActiveTimer()
 
         _uiState.update { state ->
