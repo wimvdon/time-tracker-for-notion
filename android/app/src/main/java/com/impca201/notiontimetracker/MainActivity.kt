@@ -121,7 +121,7 @@ private fun AppNavigation(
                 onLoadRunningTimer = timerViewModel::loadRunningTimer,
                 onStopOtherRunningTimer = timerViewModel::stopOtherRunningTimer,
                 onSuspendActiveToNewTimer = timerViewModel::suspendActiveToNewTimer,
-                onRefreshRunningTimers = { timerViewModel.loadRunningTimers(false) }
+                onRefreshRunningTimers = { timerViewModel.loadRunningTimers() }
             )
         }
 

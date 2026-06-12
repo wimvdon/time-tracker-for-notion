@@ -109,7 +109,7 @@
     <string name="title_settings">Settings</string>
 
     <!-- Running timers list -->
-    <string name="running_timers_heading">Other running timers</string>
+    <string name="running_timers_heading">Active timers</string>
     <string name="stop_running_timer">Stop timer</string>
     <string name="refresh_running_timers">Refresh running timers</string>
     <string name="start_new_timer">Start new timer</string>

@@ -371,11 +371,10 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
         loadRunningTimers()
     }
 
-    fun loadRunningTimers(autoLoad: Boolean = true) {
+    fun loadRunningTimers() {
         val state = _uiState.value
         if (state.recoveredTimer != null || state.apiKey.isBlank() ||
             state.workspaces.isEmpty() || state.runningTimersLoading) return
-        if (autoLoad && state.running) return
 
         _uiState.update { it.copy(runningTimersLoading = true) }
 
@@ -402,13 +401,7 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
                 }
             }
             allRunning.sortByDescending { it.startISO }
-
-            // Exclude the timer currently active in the UI
-            val activePageId = _uiState.value.activeTimer?.notionPageId
-            val others = if (activePageId != null) allRunning.filter { it.pageId != activePageId } else allRunning
-
-            _uiState.update { it.copy(runningTimersLoading = false, runningTimers = others) }
-            if (autoLoad && !_uiState.value.running && others.isNotEmpty()) loadRunningTimer(others[0])
+            _uiState.update { it.copy(runningTimersLoading = false, runningTimers = allRunning) }
         }
     }
 
