@@ -19,7 +19,6 @@ import com.impca201.notiontimetracker.data.models.NamedOption
 import com.impca201.notiontimetracker.data.models.Preset
 import com.impca201.notiontimetracker.data.models.READ_ONLY_TYPES
 import com.impca201.notiontimetracker.data.models.SchemaProperty
-import com.impca201.notiontimetracker.data.models.StatusOption
 import com.impca201.notiontimetracker.data.models.WRITABLE_EXTRA_TYPES
 import com.impca201.notiontimetracker.viewmodel.SettingsViewModel
 
@@ -339,88 +338,6 @@ private fun ExtraPropRow(
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-private fun SmartDefaultValueInput(
-    type: String,
-    value: String?,
-    selectOptions: List<StatusOption>,
-    relationPages: List<NamedOption>,
-    relationLoading: Boolean,
-    onChange: (String?) -> Unit
-) {
-    when (type) {
-        "checkbox" -> {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Switch(
-                    checked = value == "true",
-                    onCheckedChange = { onChange(if (it) "true" else "false") }
-                )
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    if (value == "true") "On" else "Off",
-                    style = MaterialTheme.typography.bodyMedium
-                )
-            }
-        }
-        "select", "status" -> {
-            val options = selectOptions.map { NamedOption(it.name, it.name) }
-            SearchableDropdown(
-                options = options,
-                selected = options.firstOrNull { it.name == value },
-                placeholder = stringResource(R.string.placeholder_select),
-                onSelect = { onChange(it?.name) },
-                allowClear = true,
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
-        "multi_select" -> {
-            val selected = value?.split(",")?.map { it.trim() }?.filter { it.isNotBlank() }?.toSet() ?: emptySet()
-            androidx.compose.foundation.layout.FlowRow(horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp), verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(4.dp)) {
-                selectOptions.forEach { opt ->
-                    val isSelected = opt.name in selected
-                    FilterChip(
-                        selected = isSelected,
-                        onClick = {
-                            val next = if (isSelected) selected - opt.name else selected + opt.name
-                            onChange(if (next.isEmpty()) null else next.joinToString(","))
-                        },
-                        label = { Text(opt.name) }
-                    )
-                }
-            }
-        }
-        "relation" -> {
-            SearchableDropdown(
-                options = relationPages,
-                selected = relationPages.firstOrNull { it.id == value },
-                placeholder = if (relationLoading) stringResource(R.string.placeholder_loading) else stringResource(R.string.placeholder_select),
-                onSelect = { onChange(it?.id) },
-                allowClear = true,
-                loading = relationLoading,
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
-        "number" -> {
-            OutlinedTextField(
-                value = value ?: "",
-                onValueChange = { v -> onChange(v.ifBlank { null }) },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                placeholder = { Text("0") }
-            )
-        }
-        else -> {
-            OutlinedTextField(
-                value = value ?: "",
-                onValueChange = { v -> onChange(v.ifBlank { null }) },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                placeholder = { Text(stringResource(R.string.label_default_value)) }
-            )
-        }
-    }
-}
 
 @Composable
 private fun PresetRow(

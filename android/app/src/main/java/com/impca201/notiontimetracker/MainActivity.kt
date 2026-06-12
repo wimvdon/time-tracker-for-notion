@@ -61,6 +61,7 @@ class MainActivity : ComponentActivity() {
         )[SettingsViewModel::class.java]
 
         requestNotificationPermissionIfNeeded()
+        handlePresetShortcut(intent)
 
         setContent {
             val settingsUiState by settingsViewModel.uiState.collectAsState()
@@ -70,17 +71,27 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        handlePresetShortcut(intent)
+    }
+
     override fun onResume() {
         super.onResume()
         val filter = IntentFilter(TimerForegroundService.ACTION_TIMER_STOPPED)
         registerReceiver(timerStoppedReceiver, filter, RECEIVER_NOT_EXPORTED)
-        // Refresh settings in case user changed them while settings were open
         timerViewModel.refreshSettings()
     }
 
     override fun onPause() {
         super.onPause()
         runCatching { unregisterReceiver(timerStoppedReceiver) }
+    }
+
+    private fun handlePresetShortcut(intent: Intent?) {
+        val workspaceId = intent?.getStringExtra(ShortcutHelper.EXTRA_WORKSPACE_ID) ?: return
+        val presetId = intent.getStringExtra(ShortcutHelper.EXTRA_PRESET_ID) ?: return
+        timerViewModel.applyPresetById(workspaceId, presetId)
     }
 
     private fun requestNotificationPermissionIfNeeded() {

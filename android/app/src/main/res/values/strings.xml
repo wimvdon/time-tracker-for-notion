@@ -75,8 +75,6 @@
     <string name="toast_required_fields_missing">Please fill in all required fields before starting.</string>
     <string name="error_loading_extras">Could not load extra fields</string>
     <string name="no_properties_of_type">No suitable field found in this database.</string>
-    <string name="label_default_value">Default value</string>
-    <string name="default_value_unsupported">Default value not supported for this type</string>
     <string name="label_workspace_rounding">Time rounding</string>
     <string name="rounding_off">No rounding</string>
     <string name="rounding_5">Round to nearest 5 minutes</string>
