@@ -391,13 +391,13 @@ private fun PresetRow(
                 textStyle = MaterialTheme.typography.bodySmall
             )
             extraProps.forEach { ep ->
-                val schemaProp = schema[ep.propName] ?: return@forEach
-                val type = schemaProp.type
+                val type = ep.type.ifBlank { "rich_text" }
                 if (type == "files") return@forEach
                 Spacer(Modifier.height(4.dp))
+                val schemaProp = schema[ep.propName]
                 val options = when (type) {
-                    "select", "multi_select" -> schemaProp.selectOptions.map { NamedOption(it.name, it.name) }
-                    "status" -> schemaProp.statusOptions.map { NamedOption(it.name, it.name) }
+                    "select", "multi_select" -> schemaProp?.selectOptions?.map { NamedOption(it.name, it.name) } ?: emptyList()
+                    "status" -> schemaProp?.statusOptions?.map { NamedOption(it.name, it.name) } ?: emptyList()
                     "relation" -> relationOptions[ep.propName] ?: emptyList()
                     else -> emptyList()
                 }
@@ -407,7 +407,7 @@ private fun PresetRow(
                     required = ep.required,
                     defaultValue = ep.defaultValue,
                     options = options,
-                    statusOptions = schemaProp.statusOptions
+                    statusOptions = schemaProp?.statusOptions ?: emptyList()
                 )
                 ExtraFieldInput(
                     fieldDef = fieldDef,

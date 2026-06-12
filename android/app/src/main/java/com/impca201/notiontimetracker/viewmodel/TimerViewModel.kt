@@ -258,6 +258,11 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
         }
     }
 
+    fun quickSaveDescription(description: String) {
+        val timer = _uiState.value.activeTimer ?: return
+        updateTimerDetails(timer.projectId, description, timer.extraValues)
+    }
+
     fun updateTimerDetails(projectId: String?, description: String, extraValues: Map<String, String>) {
         val state = _uiState.value
         val timer = state.activeTimer ?: return

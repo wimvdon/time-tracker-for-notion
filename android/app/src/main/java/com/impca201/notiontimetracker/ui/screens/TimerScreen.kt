@@ -9,6 +9,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.OpenInNew
@@ -64,6 +65,7 @@ fun TimerScreen(
     onRefreshAll: () -> Unit,
     onOpenEditTimer: () -> Unit,
     onCloseEditTimer: () -> Unit,
+    onQuickSaveDescription: (String) -> Unit = {},
     onUpdateTimerDetails: (String?, String, Map<String, String>) -> Unit,
     onConfirmDelete: (String, String, Boolean) -> Unit,
     onCancelDelete: () -> Unit,
@@ -148,6 +150,7 @@ fun TimerScreen(
             onRefreshRunningTimers = onRefreshRunningTimers,
             onRefreshAll = onRefreshAll,
             onOpenEditTimer = onOpenEditTimer,
+            onQuickSaveDescription = onQuickSaveDescription,
             onConfirmDelete = onConfirmDelete,
             onOpenUrl = onOpenUrl
         )
@@ -385,6 +388,7 @@ private fun RunningView(
     onRefreshRunningTimers: () -> Unit,
     onRefreshAll: () -> Unit,
     onOpenEditTimer: () -> Unit,
+    onQuickSaveDescription: (String) -> Unit = {},
     onConfirmDelete: (String, String, Boolean) -> Unit,
     onOpenUrl: (String) -> Unit
 ) {
@@ -438,21 +442,37 @@ private fun RunningView(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
+            var titleDraft by remember(timer.description) { mutableStateOf(timer.description) }
+            val isTitleDirty = titleDraft.trim() != timer.description.trim()
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center
+                modifier = Modifier.fillMaxWidth()
             ) {
-                Text(
-                    timer.description.ifBlank { "—" },
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurface
+                OutlinedTextField(
+                    value = titleDraft,
+                    onValueChange = { titleDraft = it },
+                    modifier = Modifier.weight(1f),
+                    singleLine = true,
+                    placeholder = { Text(stringResource(R.string.hint_timer_title), style = MaterialTheme.typography.bodySmall) },
+                    textStyle = MaterialTheme.typography.bodyMedium,
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(onDone = { onQuickSaveDescription(titleDraft.trim()) })
                 )
-                Spacer(Modifier.width(4.dp))
-                IconButton(onClick = onOpenEditTimer, modifier = Modifier.size(32.dp)) {
+                if (isTitleDirty) {
+                    IconButton(onClick = { onQuickSaveDescription(titleDraft.trim()) }, modifier = Modifier.size(36.dp)) {
+                        Icon(
+                            Icons.Default.Check,
+                            contentDescription = stringResource(R.string.btn_save_changes),
+                            modifier = Modifier.size(18.dp),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+                IconButton(onClick = onOpenEditTimer, modifier = Modifier.size(36.dp)) {
                     Icon(
                         Icons.Default.Edit,
                         contentDescription = stringResource(R.string.btn_edit_timer),
-                        modifier = Modifier.size(16.dp),
+                        modifier = Modifier.size(18.dp),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
