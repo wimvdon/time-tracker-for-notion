@@ -1,5 +1,6 @@
 package com.impca201.notiontimetracker.ui.screens
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
@@ -20,6 +21,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.impca201.notiontimetracker.R
 import com.impca201.notiontimetracker.data.models.NamedOption
+import com.impca201.notiontimetracker.data.models.RunningTimerInfo
 import com.impca201.notiontimetracker.ui.components.ExtraFieldInput
 import com.impca201.notiontimetracker.ui.components.RecoveryDialog
 import com.impca201.notiontimetracker.ui.components.SearchableDropdown
@@ -44,9 +46,10 @@ fun TimerScreen(
     onRecoveryResume: () -> Unit,
     onRecoveryDiscard: () -> Unit,
     onClearError: () -> Unit,
-    onRetryStop: () -> Unit
+    onRetryStop: () -> Unit,
+    onLoadRunningTimer: (RunningTimerInfo) -> Unit,
+    onStopOtherRunningTimer: (RunningTimerInfo) -> Unit
 ) {
-    // Show crash recovery dialog first if needed
     if (uiState.recoveredTimer != null) {
         RecoveryDialog(
             timer = uiState.recoveredTimer,
@@ -63,7 +66,9 @@ fun TimerScreen(
             onStop = onStop,
             onUpdateStartTime = onUpdateStartTime,
             onNavigateToSettings = onNavigateToSettings,
-            onRetryStop = onRetryStop
+            onRetryStop = onRetryStop,
+            onLoadRunningTimer = onLoadRunningTimer,
+            onStopOtherRunningTimer = onStopOtherRunningTimer
         )
     } else {
         IdleView(
@@ -74,7 +79,9 @@ fun TimerScreen(
             onExtraValueChange = onExtraValueChange,
             onStart = onStart,
             onNavigateToSettings = onNavigateToSettings,
-            onClearError = onClearError
+            onClearError = onClearError,
+            onLoadRunningTimer = onLoadRunningTimer,
+            onStopOtherRunningTimer = onStopOtherRunningTimer
         )
     }
 }
@@ -88,7 +95,9 @@ private fun IdleView(
     onExtraValueChange: (String, String) -> Unit,
     onStart: () -> Unit,
     onNavigateToSettings: () -> Unit,
-    onClearError: () -> Unit
+    onClearError: () -> Unit,
+    onLoadRunningTimer: (RunningTimerInfo) -> Unit,
+    onStopOtherRunningTimer: (RunningTimerInfo) -> Unit
 ) {
     val scrollState = rememberScrollState()
 
@@ -113,7 +122,6 @@ private fun IdleView(
                 .verticalScroll(scrollState),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Warnings
             if (uiState.apiKey.isBlank()) {
                 WarningCard {
                     Text(
@@ -143,7 +151,6 @@ private fun IdleView(
                 }
             }
 
-            // Error
             uiState.error?.let { err ->
                 val message = when (err) {
                     "required_fields_missing" -> stringResource(R.string.toast_required_fields_missing)
@@ -157,7 +164,6 @@ private fun IdleView(
                 }
             }
 
-            // Workspace selector
             FieldLabel(stringResource(R.string.label_workspace))
             val workspaceOptions = uiState.workspaces.map { NamedOption(it.id, it.name) }
             SearchableDropdown(
@@ -170,7 +176,6 @@ private fun IdleView(
                 enabled = uiState.workspaces.isNotEmpty()
             )
 
-            // Project selector
             if (uiState.selectedWorkspaceId != null) {
                 FieldLabel(stringResource(R.string.label_project))
                 SearchableDropdown(
@@ -186,7 +191,6 @@ private fun IdleView(
                 )
             }
 
-            // Description
             FieldLabel(stringResource(R.string.label_description))
             OutlinedTextField(
                 value = uiState.description,
@@ -198,7 +202,6 @@ private fun IdleView(
                 keyboardActions = KeyboardActions(onDone = { })
             )
 
-            // Extra fields
             uiState.extraFieldDefs.forEach { def ->
                 ExtraFieldInput(
                     fieldDef = def,
@@ -210,7 +213,6 @@ private fun IdleView(
 
             Spacer(Modifier.height(8.dp))
 
-            // START button
             val canStart = uiState.apiKey.isNotBlank() &&
                     uiState.selectedWorkspaceId != null &&
                     !uiState.isStarting &&
@@ -235,6 +237,12 @@ private fun IdleView(
                 }
             }
 
+            OtherRunningTimers(
+                timers = uiState.runningTimers,
+                onLoad = onLoadRunningTimer,
+                onStop = onStopOtherRunningTimer
+            )
+
             Spacer(Modifier.height(16.dp))
         }
     }
@@ -246,7 +254,9 @@ private fun RunningView(
     onStop: () -> Unit,
     onUpdateStartTime: (String) -> Unit,
     onNavigateToSettings: () -> Unit,
-    onRetryStop: () -> Unit
+    onRetryStop: () -> Unit,
+    onLoadRunningTimer: (RunningTimerInfo) -> Unit,
+    onStopOtherRunningTimer: (RunningTimerInfo) -> Unit
 ) {
     val timer = uiState.activeTimer ?: return
     val workspace = uiState.workspaces.firstOrNull { it.id == timer.workspaceId }
@@ -258,6 +268,8 @@ private fun RunningView(
 
     var startTimeInput by remember(timer.roundedStart) { mutableStateOf(formatHHMM(timer.roundedStart)) }
     var endTimeInput by remember { mutableStateOf("") }
+
+    val scrollState = rememberScrollState()
 
     Scaffold(
         topBar = {
@@ -276,20 +288,19 @@ private fun RunningView(
         Column(
             modifier = Modifier
                 .padding(padding)
-                .padding(horizontal = 16.dp),
+                .padding(horizontal = 16.dp)
+                .verticalScroll(scrollState),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Spacer(Modifier.height(8.dp))
 
-            // Workspace name
             Text(
                 workspace?.name ?: "",
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
-            // Description
             if (timer.description.isNotBlank()) {
                 Text(
                     timer.description,
@@ -300,7 +311,6 @@ private fun RunningView(
 
             Spacer(Modifier.height(8.dp))
 
-            // Elapsed time — large, monospace, red
             Text(
                 formatElapsed(uiState.elapsedSeconds),
                 style = MaterialTheme.typography.displayMedium.copy(
@@ -311,7 +321,6 @@ private fun RunningView(
                 textAlign = TextAlign.Center
             )
 
-            // Projected interval
             Text(
                 intervalText,
                 style = MaterialTheme.typography.bodyLarge,
@@ -320,7 +329,6 @@ private fun RunningView(
 
             Spacer(Modifier.height(8.dp))
 
-            // Start time input
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                 Text(
                     stringResource(R.string.label_start_time),
@@ -341,7 +349,6 @@ private fun RunningView(
                 )
             }
 
-            // End time input
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                 Text(
                     stringResource(R.string.label_end_time),
@@ -372,8 +379,6 @@ private fun RunningView(
                 }
             }
 
-            Spacer(Modifier.weight(1f))
-
             Button(
                 onClick = {
                     val manualEnd = endTimeInput.takeIf { it.isNotBlank() }?.let {
@@ -392,7 +397,63 @@ private fun RunningView(
                 }
             }
 
+            OtherRunningTimers(
+                timers = uiState.runningTimers,
+                onLoad = onLoadRunningTimer,
+                onStop = onStopOtherRunningTimer
+            )
+
             Spacer(Modifier.height(16.dp))
+        }
+    }
+}
+
+@Composable
+private fun OtherRunningTimers(
+    timers: List<RunningTimerInfo>,
+    onLoad: (RunningTimerInfo) -> Unit,
+    onStop: (RunningTimerInfo) -> Unit
+) {
+    if (timers.isEmpty()) return
+
+    HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+    Text(
+        stringResource(R.string.running_timers_heading),
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.fillMaxWidth()
+    )
+    timers.forEach { rt ->
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onLoad(rt) },
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        rt.title,
+                        style = MaterialTheme.typography.bodyMedium,
+                        maxLines = 1
+                    )
+                    Text(
+                        rt.workspaceName,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                IconButton(onClick = { onStop(rt) }) {
+                    Text(
+                        "⏹",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
         }
     }
 }

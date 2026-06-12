@@ -177,6 +177,35 @@ async function stopTimeEntry(apiKey, { pageId, startISO, endISO, props }) {
   return { ok: true };
 }
 
+/**
+ * Queries a time-entries database for pages that have the "running" status.
+ * Returns [{ pageId, title, startISO }], sorted by startISO descending.
+ */
+async function fetchRunningTimers(apiKey, dbId, statusProp, statusRunning, dateProp) {
+  const results = [];
+  let cursor;
+  do {
+    const body = {
+      filter: { property: statusProp, status: { equals: statusRunning } },
+      page_size: 100,
+      ...(dateProp ? { sorts: [{ property: dateProp, direction: 'descending' }] } : {}),
+      ...(cursor ? { start_cursor: cursor } : {}),
+    };
+    const data = await notionFetch(apiKey, 'POST', `/databases/${dbId}/query`, body);
+    for (const page of data.results) {
+      const props = page.properties || {};
+      const titlePropObj = Object.values(props).find((p) => p.type === 'title');
+      const title = (titlePropObj?.title || []).map((t) => t.plain_text).join('').trim() || 'Untitled';
+      const datePropObj = dateProp ? props[dateProp] : null;
+      const startISO = datePropObj?.date?.start ?? null;
+      if (!startISO) continue;
+      results.push({ pageId: page.id, title, startISO });
+    }
+    cursor = data.has_more ? data.next_cursor : undefined;
+  } while (cursor);
+  return results;
+}
+
 module.exports = {
   testConnection,
   searchDatabases,
@@ -185,4 +214,5 @@ module.exports = {
   listUsers,
   createTimeEntry,
   stopTimeEntry,
+  fetchRunningTimers,
 };

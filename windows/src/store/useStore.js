@@ -77,6 +77,10 @@ export const useStore = create((set, get) => ({
   // Timer state
   timer: { ...idleTimer },
 
+  // Running timers fetched from Notion (excludes the currently active UI timer)
+  runningTimers: [],
+  runningTimersLoading: false,
+
   setView: (view) => set({ view }),
   setDescription: (description) => set({ description }),
   setSelectedProjectId: (selectedProjectId) => set({ selectedProjectId }),
@@ -179,6 +183,11 @@ export const useStore = create((set, get) => ({
     } else if (lastUsedWorkspaceId) {
       const exists = workspaces.some((w) => w.id === lastUsedWorkspaceId);
       if (exists) get().selectWorkspace(lastUsedWorkspaceId);
+    }
+
+    // Load running timers from Notion (skipped if crash recovery is pending)
+    if (settings.apiKey && workspaces.length && !(activeTimer && activeTimer.notionPageId)) {
+      get().loadRunningTimers();
     }
   },
 
@@ -483,6 +492,121 @@ export const useStore = create((set, get) => ({
     }
     set({ timer: { ...idleTimer }, description: '', extraValues });
     api.setTimerRunning(false);
+    get().loadRunningTimers();
+  },
+
+  // ---- Running timers loaded from Notion ----
+
+  /**
+   * Queries every configured workspace for pages with the running status.
+   * With 1 result: auto-loads it. With 2+: loads most recent, stores others.
+   * Skipped if a local timer is active, crash recovery is pending, or already loading.
+   */
+  loadRunningTimers: async () => {
+    const { workspaces, apiKey, timer, recoveredTimer, runningTimersLoading } = get();
+    if (!apiKey || !workspaces.length || timer.running || recoveredTimer || runningTimersLoading) return;
+
+    set({ runningTimersLoading: true });
+    const allRunning = [];
+
+    for (const ws of workspaces) {
+      const pm = ws.propertyMap;
+      if (!ws.timeEntriesDbId || !pm?.timeEntryStatusProp || !pm?.timeEntryStatusRunning) continue;
+      try {
+        const pages = await api.fetchRunningTimers(
+          ws.timeEntriesDbId,
+          pm.timeEntryStatusProp,
+          pm.timeEntryStatusRunning,
+          pm.timeEntryDateProp,
+        );
+        for (const page of pages) {
+          allRunning.push({ ...page, workspaceId: ws.id, workspaceName: ws.name, propertyMap: pm });
+        }
+      } catch {
+        // silently ignore per-workspace errors
+      }
+    }
+
+    allRunning.sort((a, b) => new Date(b.startISO) - new Date(a.startISO));
+    set({ runningTimersLoading: false, runningTimers: allRunning });
+
+    if (allRunning.length >= 1) {
+      get().loadRunningTimer(allRunning[0]);
+    }
+  },
+
+  /** Loads a Notion-running timer into the UI as the active timer. */
+  loadRunningTimer: (rt) => {
+    const state = get();
+
+    // Stop previous UI tick without touching Notion (that timer is still running there)
+    if (state.timer.running && state.timer.tickInterval) {
+      clearInterval(state.timer.tickInterval);
+    }
+
+    // If a timer was active in the UI, put it back into the runningTimers list
+    const previouslyActive = state.timer.running
+      ? {
+          pageId: state.timer.notionPageId,
+          title: state.description || '',
+          startISO: state.timer.startISO,
+          workspaceId: state.selectedWorkspaceId || '',
+          workspaceName: state.workspaces.find((w) => w.id === state.selectedWorkspaceId)?.name || '',
+          propertyMap: state.timer.propertyMap,
+        }
+      : null;
+
+    // Switch workspace (loads projects/extras in background)
+    get().selectWorkspace(rt.workspaceId);
+
+    // Persist as the active timer for crash recovery
+    api.saveSettings({
+      activeTimer: {
+        notionPageId: rt.pageId,
+        roundedStart: rt.startISO,
+        rawStart: rt.startISO,
+        workspaceId: rt.workspaceId,
+        projectId: null,
+        projectName: '',
+        description: rt.title,
+        propertyMap: rt.propertyMap,
+      },
+    });
+
+    // Update the "other running timers" list
+    set((s) => {
+      const others = s.runningTimers.filter((x) => x.pageId !== rt.pageId);
+      if (previouslyActive) others.push(previouslyActive);
+      return { runningTimers: others, description: rt.title };
+    });
+
+    // Begin ticking — also triggers systray update via api.setTimerRunning(true)
+    get().beginTicking({
+      pageId: rt.pageId,
+      roundedStart: new Date(rt.startISO),
+      startISO: rt.startISO,
+      rawStart: new Date(rt.startISO),
+      propertyMap: rt.propertyMap,
+    });
+  },
+
+  /** Stops one of the non-active running timers and removes it from the list. */
+  stopOtherRunningTimer: async (rt) => {
+    const ws = get().workspaces.find((w) => w.id === rt.workspaceId);
+    const rm = ws?.roundingMinutes ?? 15;
+    const roundedStart = new Date(rt.startISO);
+    const endTime = rm > 0 ? computeEndTime(roundedStart, new Date(), rm) : new Date();
+    try {
+      await api.stopTimeEntry({
+        pageId: rt.pageId,
+        startISO: rt.startISO,
+        endISO: toNotionDateTime(endTime),
+        props: rt.propertyMap,
+      });
+      set((s) => ({ runningTimers: s.runningTimers.filter((x) => x.pageId !== rt.pageId) }));
+    } catch (err) {
+      get().addToast({ type: 'error', message: `${t('toastStopError')}: ${errorMessage(err)}` });
+    }
   },
 
   // ---- Crash recovery ----
@@ -529,11 +653,13 @@ export const useStore = create((set, get) => ({
     }
     api.saveSettings({ activeTimer: null });
     set({ recoveredTimer: null, recoveryBusy: false });
+    get().loadRunningTimers();
   },
 
   discardRecoveredTimer: () => {
     // Forgets the timer locally; the Notion page keeps its running status
     api.saveSettings({ activeTimer: null });
     set({ recoveredTimer: null });
+    get().loadRunningTimers();
   },
 }));

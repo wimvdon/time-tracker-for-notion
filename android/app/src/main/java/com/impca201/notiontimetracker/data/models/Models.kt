@@ -46,6 +46,23 @@ data class ActiveTimer(
 
 data class NamedOption(val id: String, val name: String)
 
+/** Raw result from Notion — workspace info is added by the ViewModel. */
+data class RunningTimerResult(
+    val pageId: String,
+    val title: String,
+    val startISO: String
+)
+
+/** Full running-timer descriptor used in the UI, enriched with workspace data. */
+data class RunningTimerInfo(
+    val pageId: String,
+    val title: String,
+    val startISO: String,
+    val workspaceId: String,
+    val workspaceName: String,
+    val propertyMap: PropertyMap
+)
+
 data class StatusOption(val name: String, val color: String = "")
 
 data class SchemaProperty(

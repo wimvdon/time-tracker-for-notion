@@ -39,7 +39,9 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
         val error: String? = null,
         val stopError: String? = null,
         val isStarting: Boolean = false,
-        val isStopping: Boolean = false
+        val isStopping: Boolean = false,
+        val runningTimers: List<RunningTimerInfo> = emptyList(),
+        val runningTimersLoading: Boolean = false
     )
 
     private val _uiState = MutableStateFlow(UiState())
@@ -72,6 +74,7 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
         if (activeTimer == null) {
             val firstId = (workspaces.firstOrNull { it.id == lastId } ?: workspaces.firstOrNull())?.id
             if (firstId != null) selectWorkspace(firstId)
+            if (apiKey.isNotBlank() && workspaces.isNotEmpty()) loadRunningTimers()
         }
     }
 
@@ -85,6 +88,7 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
                 val firstId = workspaces.firstOrNull()?.id
                 if (firstId != null) selectWorkspace(firstId)
             }
+            loadRunningTimers()
         }
     }
 
@@ -282,6 +286,7 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
                 tickJob?.cancel()
                 stopService()
                 _uiState.update { it.copy(running = false, activeTimer = null, elapsedSeconds = 0L, isStopping = false, stopError = null) }
+                loadRunningTimers()
             }.onFailure { err ->
                 _uiState.update { it.copy(isStopping = false, stopError = err.message ?: "Could not stop timer") }
             }
@@ -326,6 +331,7 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
                 _uiState.update { it.copy(recoveredTimer = null, recoveryBusy = false) }
                 val firstId = _uiState.value.workspaces.firstOrNull()?.id
                 if (firstId != null) selectWorkspace(firstId)
+                loadRunningTimers()
             }.onFailure { err ->
                 _uiState.update { it.copy(recoveryBusy = false, error = err.message) }
             }
@@ -355,12 +361,129 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
             _uiState.update { it.copy(recoveredTimer = null) }
             val firstId = _uiState.value.workspaces.firstOrNull()?.id
             if (firstId != null) selectWorkspace(firstId)
+            loadRunningTimers()
         }
     }
 
     fun handleTimerStoppedFromService() {
         tickJob?.cancel()
         _uiState.update { it.copy(running = false, activeTimer = null, elapsedSeconds = 0L, isStopping = false) }
+        loadRunningTimers()
+    }
+
+    fun loadRunningTimers() {
+        val state = _uiState.value
+        if (state.running || state.recoveredTimer != null || state.apiKey.isBlank() ||
+            state.workspaces.isEmpty() || state.runningTimersLoading) return
+
+        _uiState.update { it.copy(runningTimersLoading = true) }
+
+        viewModelScope.launch {
+            val allRunning = mutableListOf<RunningTimerInfo>()
+            for (ws in state.workspaces) {
+                val pm = ws.propertyMap
+                if (ws.timeEntriesDbId.isBlank() || pm.timeEntryStatusProp.isBlank() ||
+                    pm.timeEntryStatusRunning.isBlank()) continue
+                runCatching {
+                    notionRepo.fetchRunningTimers(
+                        ws.timeEntriesDbId, pm.timeEntryStatusProp,
+                        pm.timeEntryStatusRunning, pm.timeEntryDateProp
+                    )
+                }.getOrDefault(emptyList()).forEach { result ->
+                    allRunning.add(RunningTimerInfo(
+                        pageId = result.pageId,
+                        title = result.title,
+                        startISO = result.startISO,
+                        workspaceId = ws.id,
+                        workspaceName = ws.name,
+                        propertyMap = pm
+                    ))
+                }
+            }
+            allRunning.sortByDescending { it.startISO }
+            _uiState.update { it.copy(runningTimersLoading = false, runningTimers = allRunning) }
+            if (allRunning.isNotEmpty()) loadRunningTimer(allRunning[0])
+        }
+    }
+
+    fun loadRunningTimer(rt: RunningTimerInfo) {
+        val state = _uiState.value
+        val workspace = state.workspaces.firstOrNull { it.id == rt.workspaceId } ?: return
+
+        // If another timer was active in UI, put it back in the list (it still runs in Notion)
+        val previouslyActive = if (state.running && state.activeTimer != null) {
+            RunningTimerInfo(
+                pageId = state.activeTimer.notionPageId,
+                title = state.activeTimer.description,
+                startISO = state.activeTimer.roundedStart,
+                workspaceId = state.activeTimer.workspaceId,
+                workspaceName = state.workspaces.firstOrNull { it.id == state.activeTimer.workspaceId }?.name ?: "",
+                propertyMap = state.activeTimer.propertyMap
+            )
+        } else null
+
+        tickJob?.cancel()
+
+        val timer = ActiveTimer(
+            notionPageId = rt.pageId,
+            roundedStart = rt.startISO,
+            rawStart = rt.startISO,
+            workspaceId = rt.workspaceId,
+            projectId = null,
+            projectName = "",
+            description = rt.title,
+            propertyMap = rt.propertyMap
+        )
+
+        // Switch foreground service to show the loaded timer
+        if (state.running) app.stopService(Intent(app, TimerForegroundService::class.java))
+        app.startForegroundService(
+            TimerForegroundService.buildStartIntent(app, timer, workspace.name, workspace.roundingMinutes)
+        )
+
+        val startMs = runCatching { parseIso(rt.startISO) }.getOrElse { System.currentTimeMillis() }
+        tickStartMs = startMs
+
+        val others = state.runningTimers.filter { it.pageId != rt.pageId }.toMutableList()
+        if (previouslyActive != null) others.add(previouslyActive)
+
+        _uiState.update { it.copy(
+            running = true,
+            activeTimer = timer,
+            elapsedSeconds = 0L,
+            runningTimers = others,
+            description = rt.title,
+            selectedWorkspaceId = rt.workspaceId
+        )}
+        startTicking(startMs)
+        viewModelScope.launch { settingsRepo.saveActiveTimer(timer) }
+        selectWorkspace(rt.workspaceId)
+    }
+
+    fun stopOtherRunningTimer(rt: RunningTimerInfo) {
+        val workspace = _uiState.value.workspaces.firstOrNull { it.id == rt.workspaceId }
+        val rounding = workspace?.roundingMinutes ?: 15
+        viewModelScope.launch {
+            runCatching {
+                val startMs = parseIso(rt.startISO)
+                val nowMs = System.currentTimeMillis()
+                val endMs = if (rounding == 0) nowMs else {
+                    val minEnd = startMs + rounding * 60_000L
+                    val rounded = roundToNearest(nowMs, rounding)
+                    if (rounded < minEnd) minEnd else rounded
+                }
+                notionRepo.stopTimeEntry(
+                    pageId = rt.pageId,
+                    startISO = rt.startISO,
+                    endISO = toNotionDateTime(endMs),
+                    propertyMap = rt.propertyMap
+                )
+            }.onSuccess {
+                _uiState.update { it.copy(runningTimers = it.runningTimers.filter { t -> t.pageId != rt.pageId }) }
+            }.onFailure { err ->
+                _uiState.update { it.copy(error = err.message ?: "Could not stop timer") }
+            }
+        }
     }
 
     private fun startTicking(startMs: Long) {
