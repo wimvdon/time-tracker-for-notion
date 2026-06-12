@@ -81,6 +81,9 @@
     <string name="rounding_10">Round to nearest 10 minutes</string>
     <string name="rounding_15">Round to nearest 15 minutes</string>
     <string name="workspace_rounding_hint">Rounds start and stop times (including manual edits) to the nearest interval.</string>
+    <string name="label_workspace_color">Workspace colour</string>
+    <string name="label_custom_color">Custom hex</string>
+    <string name="btn_apply_color">Apply</string>
     <string name="save_incomplete_hint">Fill in all fields before saving.</string>
     <string name="btn_cancel">Cancel</string>
     <string name="btn_save">Save</string>

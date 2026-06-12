@@ -257,6 +257,7 @@ function WorkspaceModal({ workspace, onClose }) {
     )
   );
   const [presets, setPresets] = useState(workspace?.presets || []);
+  const [color, setColor] = useState(workspace?.color || '');
 
   // Relation field options for presets: { [propName]: [{ value, label }] }
   const [relationOptions, setRelationOptions] = useState({});
@@ -386,6 +387,7 @@ function WorkspaceModal({ workspace, onClose }) {
     const saved = {
       id: workspace?.id || crypto.randomUUID(),
       name: name.trim(),
+      color: color.trim(),
       timeEntriesDbId,
       projectsDbId,
       roundingMinutes,
@@ -654,7 +656,13 @@ function WorkspaceModal({ workspace, onClose }) {
           <p className="text-xs text-zinc-500 mt-1">{t('workspaceRoundingHint')}</p>
         </div>
 
-        {/* Section F — Buttons */}
+        {/* Section G — Colour */}
+        <div className="border-t border-zinc-700 pt-3">
+          <label className="block text-xs text-zinc-400 mb-2">{t('labelWorkspaceColor')}</label>
+          <WorkspaceColorPicker value={color} onChange={setColor} />
+        </div>
+
+        {/* Section H — Buttons */}
         {!complete && (
           <p className="text-xs text-zinc-500">{t('saveIncompleteHint')}</p>
         )}
@@ -873,6 +881,82 @@ function PresetFieldInput({ type, options, value, onChange }) {
       onChange={(e) => onChange(e.target.value)}
       className="w-full bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-xs"
     />
+  );
+}
+
+const PRESET_PALETTE = [
+  '#ef4444', '#f97316', '#eab308', '#22c55e',
+  '#06b6d4', '#3b82f6', '#8b5cf6', '#ec4899',
+];
+
+function WorkspaceColorPicker({ value, onChange }) {
+  const [customHex, setCustomHex] = useState(
+    value && !PRESET_PALETTE.includes(value) ? value : ''
+  );
+
+  const applyCustom = () => {
+    const hex = customHex.trim().startsWith('#') ? customHex.trim() : `#${customHex.trim()}`;
+    if (/^#[0-9a-fA-F]{6}$/.test(hex)) onChange(hex);
+  };
+
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex flex-wrap gap-2 items-center">
+        {/* None swatch */}
+        <button
+          type="button"
+          onClick={() => onChange('')}
+          title="None"
+          className={`w-7 h-7 rounded-full border-2 bg-zinc-700 flex items-center justify-center text-xs transition-colors ${
+            !value ? 'border-emerald-500' : 'border-zinc-600 hover:border-zinc-400'
+          }`}
+        >
+          {!value && <span className="text-zinc-300">✓</span>}
+        </button>
+        {PRESET_PALETTE.map((hex) => (
+          <button
+            key={hex}
+            type="button"
+            onClick={() => { onChange(hex); setCustomHex(''); }}
+            title={hex}
+            style={{ backgroundColor: hex }}
+            className={`w-7 h-7 rounded-full border-2 flex items-center justify-center transition-colors ${
+              value === hex ? 'border-white' : 'border-transparent hover:border-white/50'
+            }`}
+          >
+            {value === hex && <span className="text-white text-xs">✓</span>}
+          </button>
+        ))}
+      </div>
+      <div className="flex items-center gap-2">
+        <input
+          type="text"
+          value={customHex}
+          onChange={(e) => setCustomHex(e.target.value)}
+          placeholder="#RRGGBB"
+          className="flex-1 bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-xs font-mono"
+          onKeyDown={(e) => e.key === 'Enter' && applyCustom()}
+        />
+        {customHex && (
+          <div
+            className="w-6 h-6 rounded border border-zinc-600 shrink-0"
+            style={{
+              backgroundColor: /^#?[0-9a-fA-F]{6}$/.test(customHex.trim())
+                ? (customHex.trim().startsWith('#') ? customHex.trim() : `#${customHex.trim()}`)
+                : 'transparent',
+            }}
+          />
+        )}
+        <button
+          type="button"
+          onClick={applyCustom}
+          disabled={!customHex.trim()}
+          className="px-2 py-1 text-xs rounded bg-zinc-700 hover:bg-zinc-600 disabled:opacity-40"
+        >
+          {t('btnApplyColor')}
+        </button>
+      </div>
+    </div>
   );
 }
 

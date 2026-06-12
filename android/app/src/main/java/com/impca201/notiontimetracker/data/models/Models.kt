@@ -37,7 +37,8 @@ data class Workspace(
     val roundingMinutes: Int = 15,
     val propertyMap: PropertyMap = PropertyMap(),
     val extraProps: List<ExtraProp> = emptyList(),
-    val presets: List<Preset> = emptyList()
+    val presets: List<Preset> = emptyList(),
+    val color: String = ""
 )
 
 @Serializable

@@ -1,16 +1,23 @@
 package com.impca201.notiontimetracker.ui.components
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.impca201.notiontimetracker.R
@@ -36,6 +43,7 @@ fun WorkspaceModal(
     onStatusRunningChange: (String) -> Unit,
     onStatusDoneChange: (String) -> Unit,
     onRoundingChange: (Int) -> Unit,
+    onColorChange: (String) -> Unit = {},
     onAddExtraProp: () -> Unit,
     onRemoveExtraProp: (Int) -> Unit,
     onExtraPropNameChange: (Int, String) -> Unit,
@@ -232,6 +240,12 @@ fun WorkspaceModal(
             )
             Spacer(Modifier.height(8.dp))
             RoundingSelector(selected = state.roundingMinutes, onSelect = onRoundingChange)
+
+            // Colour
+            Spacer(Modifier.height(16.dp))
+            Text(stringResource(R.string.label_workspace_color), style = MaterialTheme.typography.titleSmall)
+            Spacer(Modifier.height(8.dp))
+            ColorPicker(selected = state.color, onSelect = onColorChange)
 
             if (!isValid) {
                 Spacer(Modifier.height(8.dp))
@@ -492,6 +506,79 @@ private fun RoundingSelector(selected: Int, onSelect: (Int) -> Unit) {
                 RadioButton(selected = selected == minutes, onClick = { onSelect(minutes) })
                 Spacer(Modifier.width(8.dp))
                 Text(stringResource(labelRes), style = MaterialTheme.typography.bodyMedium)
+            }
+        }
+    }
+}
+
+val PRESET_PALETTE = listOf(
+    "#ef4444", "#f97316", "#eab308", "#22c55e",
+    "#06b6d4", "#3b82f6", "#8b5cf6", "#ec4899"
+)
+
+fun parseWorkspaceColor(hex: String): Color? = runCatching {
+    if (hex.isBlank()) null
+    else Color(android.graphics.Color.parseColor(if (hex.startsWith("#")) hex else "#$hex"))
+}.getOrNull()
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun ColorPicker(selected: String, onSelect: (String) -> Unit) {
+    var customHex by remember(selected) {
+        mutableStateOf(if (selected.isNotBlank() && selected !in PRESET_PALETTE) selected else "")
+    }
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            // "None" swatch
+            val noneSelected = selected.isBlank()
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                    .border(2.dp, if (noneSelected) MaterialTheme.colorScheme.primary else Color.Transparent, CircleShape)
+                    .clickable { onSelect("") },
+                contentAlignment = Alignment.Center
+            ) {
+                if (noneSelected) Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp))
+            }
+            PRESET_PALETTE.forEach { hex ->
+                val color = parseWorkspaceColor(hex) ?: return@forEach
+                val isSelected = selected == hex
+                Box(
+                    modifier = Modifier
+                        .size(32.dp)
+                        .clip(CircleShape)
+                        .background(color)
+                        .border(2.dp, if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent, CircleShape)
+                        .clickable { onSelect(hex); customHex = "" },
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (isSelected) Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp), tint = Color.White)
+                }
+            }
+        }
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedTextField(
+                value = customHex,
+                onValueChange = { customHex = it },
+                modifier = Modifier.weight(1f),
+                singleLine = true,
+                placeholder = { Text("#RRGGBB", style = MaterialTheme.typography.bodySmall) },
+                textStyle = MaterialTheme.typography.bodySmall,
+                label = { Text(stringResource(R.string.label_custom_color), style = MaterialTheme.typography.labelSmall) }
+            )
+            TextButton(
+                onClick = {
+                    val hex = customHex.trim().let { if (it.startsWith("#")) it else "#$it" }
+                    if (parseWorkspaceColor(hex) != null) onSelect(hex)
+                },
+                enabled = customHex.isNotBlank()
+            ) {
+                Text(stringResource(R.string.btn_apply_color))
             }
         }
     }

@@ -78,6 +78,8 @@ export default {
   rounding10: 'Round to nearest 10 minutes',
   rounding15: 'Round to nearest 15 minutes',
   workspaceRoundingHint: 'Rounds start and stop times (including manual edits) to the nearest interval.',
+  labelWorkspaceColor: 'Workspace colour',
+  btnApplyColor: 'Apply',
   saveIncompleteHint: 'Fill in all fields before saving.',
   btnCancel: 'Cancel',
   btnSave: 'Save',

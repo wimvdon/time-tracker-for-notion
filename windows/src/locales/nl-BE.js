@@ -78,6 +78,8 @@ export default {
   rounding10: 'Afronden naar 10 minuten',
   rounding15: 'Afronden naar 15 minuten',
   workspaceRoundingHint: 'Rondt start- en stoptijden af, inclusief manueel ingevulde tijden.',
+  labelWorkspaceColor: 'Werkruimtekleur',
+  btnApplyColor: 'Toepassen',
   saveIncompleteHint: 'Vul alle velden in voor je kan opslaan.',
   btnCancel: 'Annuleer',
   btnSave: 'Opslaan',
