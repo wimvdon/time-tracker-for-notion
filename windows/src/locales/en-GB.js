@@ -131,10 +131,32 @@ export default {
   theme_light: 'Light',
   theme_dark: 'Dark',
 
-  // QR code
-  labelQrExport: 'Export settings via QR code',
-  btnShowQr: 'Show QR code',
+  // Per-workspace QR code
+  labelWorkspaceQr: 'Export workspace via QR',
+  qrWorkspaceNote: 'Scan to import this workspace on another device. API key not included.',
+  btnShowQr: 'QR code',
   btnClose: 'Close',
-  qrSecurityWarning: 'Keep this private — it contains your Notion API key.',
   qrAutoDismiss: 'Auto-hides after 30 seconds.',
+
+  // Presets
+  sectionPresets: 'Presets (optional)',
+  hintPresets: 'Up to 5 quick-start configurations. Click a preset chip to start the timer immediately.',
+  btnAddPreset: '+ Add preset',
+  titleRemovePreset: 'Remove preset',
+  presetNamePlaceholder: 'e.g. Morning standup',
+  labelPresetTitle: 'Default title',
+  presetTitlePlaceholder: 'Optional default title…',
+
+  // Timer stopped elsewhere
+  timerStoppedElsewhere: 'Timer was stopped on another device.',
+
+  // Update error
+  toastUpdateError: 'Could not update timer',
+
+  // Deleted page
+  toastDeletedPageDiscarded: 'Page not found — entry discarded.',
+  deletedPageTitle: 'Page not found in Notion',
+  deletedPageBody: 'The time entry could not be saved because the page was deleted or is no longer accessible.',
+  deletedPageHint: 'If this entry is needed, restore the page from Notion trash or recreate it manually.',
+  deletedPageConfirm: 'Dismiss',
 };

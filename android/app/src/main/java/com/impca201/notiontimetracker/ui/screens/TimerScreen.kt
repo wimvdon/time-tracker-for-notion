@@ -2,6 +2,7 @@ package com.impca201.notiontimetracker.ui.screens
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -27,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.impca201.notiontimetracker.R
 import com.impca201.notiontimetracker.data.models.NamedOption
+import com.impca201.notiontimetracker.data.models.Preset
 import com.impca201.notiontimetracker.data.models.RecentEntryInfo
 import com.impca201.notiontimetracker.data.models.RunningTimerInfo
 import com.impca201.notiontimetracker.ui.components.EditTimerModal
@@ -66,7 +68,10 @@ fun TimerScreen(
     onConfirmDelete: (String, String, Boolean) -> Unit,
     onCancelDelete: () -> Unit,
     onDeleteEntry: () -> Unit,
-    onOpenUrl: (String) -> Unit
+    onOpenUrl: (String) -> Unit,
+    onApplyPreset: (String, Preset) -> Unit = { _, _ -> },
+    onDismissDeletedPage: () -> Unit = {},
+    onClearInfoToast: () -> Unit = {}
 ) {
     if (uiState.recoveredTimer != null) {
         RecoveryDialog(
@@ -94,6 +99,31 @@ fun TimerScreen(
                 }
             }
         )
+    }
+
+    if (uiState.deletedPageDialogVisible) {
+        AlertDialog(
+            onDismissRequest = onDismissDeletedPage,
+            title = { Text(stringResource(R.string.deleted_page_title)) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(stringResource(R.string.deleted_page_body))
+                    Text(stringResource(R.string.deleted_page_hint), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = onDismissDeletedPage) {
+                    Text(stringResource(R.string.deleted_page_confirm))
+                }
+            }
+        )
+    }
+
+    uiState.infoToast?.let { msg ->
+        LaunchedEffect(msg) {
+            kotlinx.coroutines.delay(3000)
+            onClearInfoToast()
+        }
     }
 
     if (uiState.editTimerOpen && uiState.activeTimer != null) {
@@ -136,11 +166,13 @@ fun TimerScreen(
             onRefreshRunningTimers = onRefreshRunningTimers,
             onRefreshAll = onRefreshAll,
             onConfirmDelete = onConfirmDelete,
-            onOpenUrl = onOpenUrl
+            onOpenUrl = onOpenUrl,
+            onApplyPreset = onApplyPreset
         )
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun IdleView(
     uiState: TimerViewModel.UiState,
@@ -156,7 +188,8 @@ private fun IdleView(
     onRefreshRunningTimers: () -> Unit,
     onRefreshAll: () -> Unit,
     onConfirmDelete: (String, String, Boolean) -> Unit,
-    onOpenUrl: (String) -> Unit
+    onOpenUrl: (String) -> Unit,
+    onApplyPreset: (String, Preset) -> Unit = { _, _ -> }
 ) {
     val scrollState = rememberScrollState()
 
@@ -223,6 +256,22 @@ private fun IdleView(
                     Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                         Text(message, modifier = Modifier.weight(1f), color = MaterialTheme.colorScheme.onErrorContainer)
                         TextButton(onClick = onClearError) { Text("×") }
+                    }
+                }
+            }
+
+            // Preset chips
+            val allPresets = uiState.workspaces.flatMap { ws -> ws.presets.map { ws to it } }
+            if (allPresets.isNotEmpty() && uiState.apiKey.isNotBlank()) {
+                androidx.compose.foundation.layout.FlowRow(
+                    horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp),
+                    verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(4.dp)
+                ) {
+                    allPresets.forEach { (ws, preset) ->
+                        SuggestionChip(
+                            onClick = { onApplyPreset(ws.id, preset) },
+                            label = { Text("▶ ${ws.name} — ${preset.name}", style = MaterialTheme.typography.labelMedium) }
+                        )
                     }
                 }
             }

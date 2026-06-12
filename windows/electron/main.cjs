@@ -21,6 +21,7 @@ let mainWindow = null;
 let tray = null;
 let timerRunning = false;
 let isQuitting = false;
+let cachedWorkspaces = [];
 
 // Tray menu strings live in the main process, where the renderer's i18n is
 // not available; app.getLocale() reflects the Windows display language.
@@ -82,6 +83,28 @@ function rebuildTrayMenu() {
         mainWindow.webContents.send('tray:stop-timer');
       },
     });
+  } else {
+    // Preset quick-start items
+    const presetItems = [];
+    for (const ws of cachedWorkspaces) {
+      for (const preset of (ws.presets || [])) {
+        if (preset.name) {
+          presetItems.push({ workspace: ws, preset });
+        }
+      }
+    }
+    if (presetItems.length > 0) {
+      items.push({ type: 'separator' });
+      for (const { workspace, preset } of presetItems.slice(0, 10)) {
+        items.push({
+          label: `▶ ${workspace.name} — ${preset.name}`,
+          click: () => {
+            showWindow();
+            mainWindow.webContents.send('tray:apply-preset', { workspaceId: workspace.id, preset });
+          },
+        });
+      }
+    }
   }
   items.push({ type: 'separator' });
   items.push({
@@ -183,6 +206,12 @@ ipcMain.on('timer:state', (_event, running) => {
   }
 });
 
+// Renderer notifies that workspace settings changed (e.g. presets added)
+ipcMain.on('settings:changed', () => {
+  cachedWorkspaces = store.get('workspaces') || [];
+  if (tray) rebuildTrayMenu();
+});
+
 // ---- App lifecycle ----
 
 const gotLock = app.requestSingleInstanceLock();
@@ -196,6 +225,7 @@ if (!gotLock) {
     if (app.getLocale().toLowerCase().startsWith('nl')) {
       trayStrings = TRAY_STRINGS['nl-BE'];
     }
+    cachedWorkspaces = store.get('workspaces') || [];
     createWindow();
     createTray();
   });

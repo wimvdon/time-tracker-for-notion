@@ -153,4 +153,29 @@
     <string name="notification_channel_name">Timer</string>
     <string name="notification_channel_description">Shows the active timer</string>
     <string name="notification_action_stop">Stop</string>
+
+    <!-- Presets -->
+    <string name="section_presets">Presets (optional)</string>
+    <string name="hint_presets">Up to 5 quick-start configurations. Tap a preset to start the timer immediately.</string>
+    <string name="btn_add_preset">+ Add preset</string>
+    <string name="title_remove_preset">Remove preset</string>
+    <string name="preset_name_placeholder">e.g. Morning standup</string>
+    <string name="label_preset_title">Default title</string>
+    <string name="preset_title_placeholder">Optional default title…</string>
+
+    <!-- Timer stopped elsewhere -->
+    <string name="timer_stopped_elsewhere">Timer was stopped on another device.</string>
+
+    <!-- Deleted page dialog -->
+    <string name="deleted_page_title">Page not found in Notion</string>
+    <string name="deleted_page_body">The time entry could not be saved because the page was deleted or is no longer accessible.</string>
+    <string name="deleted_page_hint">If this entry is needed, restore the page from Notion trash or recreate it manually.</string>
+    <string name="deleted_page_confirm">Dismiss</string>
+    <string name="toast_deleted_page_discarded">Page not found — entry discarded.</string>
+    <string name="toast_update_error">Could not update timer</string>
+
+    <!-- Per-workspace QR -->
+    <string name="btn_workspace_qr">Export workspace QR</string>
+    <string name="qr_workspace_note">Scan to import this workspace on another device. API key not included.</string>
+    <string name="qr_scan_hint_workspace">Point the camera at a workspace QR code from the Windows app.</string>
 </resources>

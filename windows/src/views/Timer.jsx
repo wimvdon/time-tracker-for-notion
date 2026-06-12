@@ -50,6 +50,10 @@ export default function Timer() {
   const closeEditTimer = useStore((s) => s.closeEditTimer);
   const updateTimerDetails = useStore((s) => s.updateTimerDetails);
 
+  const applyPreset = useStore((s) => s.applyPreset);
+  const deletedPageInfo = useStore((s) => s.deletedPageInfo);
+  const dismissDeletedPage = useStore((s) => s.dismissDeletedPage);
+
   const selectedWorkspace = workspaces.find((w) => w.id === selectedWorkspaceId);
 
   // Reload running timers and recent entries on every state transition (except during crash recovery)
@@ -153,6 +157,26 @@ export default function Timer() {
           </div>
         )}
 
+        {/* Preset chips — shown when any workspace has presets */}
+        {workspaces.some((w) => (w.presets?.length ?? 0) > 0) && (
+          <div className="flex flex-wrap gap-1.5">
+            {workspaces.flatMap((w) =>
+              (w.presets || []).map((preset) => (
+                <button
+                  key={`${w.id}:${preset.id}`}
+                  onClick={() => applyPreset(w.id, preset)}
+                  disabled={!apiKey}
+                  title={`${w.name} — ${preset.name}`}
+                  className="flex items-center gap-1 px-2.5 py-1 bg-zinc-800 hover:bg-emerald-700 border border-zinc-700 hover:border-emerald-600 rounded-full text-xs text-zinc-300 hover:text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <span className="text-emerald-400 leading-none">▶</span>
+                  <span className="max-w-[140px] truncate">{w.name} — {preset.name}</span>
+                </button>
+              ))
+            )}
+          </div>
+        )}
+
         <div>
           <label className="block text-xs text-zinc-400 mb-1">{t('labelWorkspace')}</label>
           <SearchableSelect
@@ -222,6 +246,9 @@ export default function Timer() {
           onConfirm={deleteEntry}
           onCancel={cancelDelete}
         />
+      )}
+      {deletedPageInfo && (
+        <DeletedPageDialog info={deletedPageInfo} onDismiss={dismissDeletedPage} />
       )}
     </div>
   );
@@ -364,6 +391,31 @@ function RunningView({
           onCancel={onCancelDelete}
         />
       )}
+    </div>
+  );
+}
+
+function DeletedPageDialog({ info, onDismiss }) {
+  return (
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 px-4">
+      <div className="bg-zinc-800 border border-zinc-600 rounded-lg p-4 max-w-xs w-full">
+        <p className="text-sm font-semibold text-zinc-200 mb-2">{t('deletedPageTitle')}</p>
+        <p className="text-xs text-zinc-400 mb-2">{t('deletedPageBody')}</p>
+        {info.title && (
+          <p className="text-xs text-zinc-300 bg-zinc-900 rounded px-2 py-1 mb-2 truncate">
+            &ldquo;{info.title}&rdquo;
+          </p>
+        )}
+        <p className="text-xs text-zinc-500 mb-4">{t('deletedPageHint')}</p>
+        <div className="flex justify-end">
+          <button
+            onClick={onDismiss}
+            className="px-3 py-1.5 text-sm bg-zinc-700 hover:bg-zinc-600 rounded-md transition-colors"
+          >
+            {t('deletedPageConfirm')}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

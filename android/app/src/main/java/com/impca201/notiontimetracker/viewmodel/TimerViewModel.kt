@@ -7,6 +7,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.impca201.notiontimetracker.NotionTimeTrackerApp
 import com.impca201.notiontimetracker.data.models.*
+import com.impca201.notiontimetracker.data.models.Preset
 import com.impca201.notiontimetracker.service.TimerForegroundService
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -46,7 +47,9 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
         val recentEntries: List<RecentEntryInfo> = emptyList(),
         val recentEntriesLoading: Boolean = false,
         val deleteConfirmInfo: DeleteConfirmInfo? = null,
-        val editTimerOpen: Boolean = false
+        val editTimerOpen: Boolean = false,
+        val deletedPageDialogVisible: Boolean = false,
+        val infoToast: String? = null
     )
 
     private val _uiState = MutableStateFlow(UiState())
@@ -206,9 +209,24 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
 
     fun clearError() = _uiState.update { it.copy(error = null) }
     fun clearStopError() = _uiState.update { it.copy(stopError = null) }
+    fun clearInfoToast() = _uiState.update { it.copy(infoToast = null) }
 
     fun openEditTimer() = _uiState.update { it.copy(editTimerOpen = true) }
     fun closeEditTimer() = _uiState.update { it.copy(editTimerOpen = false) }
+
+    fun dismissDeletedPage() {
+        val state = _uiState.value
+        if (state.running) {
+            tickJob?.cancel()
+            stopService()
+            viewModelScope.launch { settingsRepo.clearActiveTimer() }
+            _uiState.update { it.copy(running = false, activeTimer = null, elapsedSeconds = 0L, deletedPageDialogVisible = false) }
+        } else {
+            _uiState.update { it.copy(deletedPageDialogVisible = false) }
+        }
+        loadRunningTimers()
+        loadRecentEntries()
+    }
 
     fun refreshAll() {
         val state = _uiState.value
@@ -232,19 +250,19 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
             tickJob?.cancel()
             stopService()
             settingsRepo.clearActiveTimer()
-            _uiState.update { it.copy(running = false, activeTimer = null, elapsedSeconds = 0L) }
+            _uiState.update { it.copy(running = false, activeTimer = null, elapsedSeconds = 0L, infoToast = "timer_stopped_elsewhere") }
         }
     }
 
     fun updateTimerDetails(projectId: String?, description: String, extraValues: Map<String, String>) {
         val state = _uiState.value
         val timer = state.activeTimer ?: return
-        val workspace = state.workspaces.firstOrNull { it.id == timer.workspaceId } ?: return
         viewModelScope.launch {
             val extraNotionValues = buildExtraNotionValues(state.extraFieldDefs, extraValues)
             val properties = mutableMapOf<String, Any?>()
             val projectName = state.projects.firstOrNull { it.id == projectId }?.name ?: ""
-            val newTitle = description.trim().ifBlank { projectName.ifBlank { timer.description } }
+            // Allow empty title — no fallback to default
+            val newTitle = description.trim()
             properties[timer.propertyMap.timeEntryTitleProp] = mapOf(
                 "title" to listOf(mapOf("text" to mapOf("content" to newTitle)))
             )
@@ -259,8 +277,18 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
                     val updated = timer.copy(description = newTitle, projectId = projectId, projectName = projectName, extraValues = extraValues)
                     _uiState.update { it.copy(activeTimer = updated, description = newTitle, selectedProjectId = projectId, extraValues = extraValues, editTimerOpen = false) }
                     settingsRepo.saveActiveTimer(updated)
+                    // Refresh to ensure consistency
+                    loadRunningTimers()
+                    loadRecentEntries()
                 }
-                .onFailure { err -> _uiState.update { it.copy(error = err.message) } }
+                .onFailure { err ->
+                    val msg = err.message ?: ""
+                    if (isPageDeletedError(msg)) {
+                        _uiState.update { it.copy(editTimerOpen = false, deletedPageDialogVisible = true) }
+                    } else {
+                        _uiState.update { it.copy(error = msg) }
+                    }
+                }
         }
     }
 
@@ -366,7 +394,15 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
                 loadRunningTimers()
                 loadRecentEntries()
             }.onFailure { err ->
-                _uiState.update { it.copy(isStopping = false, stopError = err.message ?: "Could not stop timer") }
+                val msg = err.message ?: ""
+                if (isPageDeletedError(msg)) {
+                    tickJob?.cancel()
+                    stopService()
+                    settingsRepo.clearActiveTimer()
+                    _uiState.update { it.copy(isStopping = false, running = false, activeTimer = null, elapsedSeconds = 0L, deletedPageDialogVisible = true) }
+                } else {
+                    _uiState.update { it.copy(isStopping = false, stopError = msg.ifBlank { "Could not stop timer" }) }
+                }
             }
         }
     }
@@ -670,6 +706,33 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
         }
     }
 
+    fun applyPreset(workspaceId: String, preset: Preset) {
+        if (_uiState.value.running) return
+        viewModelScope.launch {
+            val state = _uiState.value
+            if (state.selectedWorkspaceId != workspaceId) {
+                val workspace = state.workspaces.firstOrNull { it.id == workspaceId } ?: return@launch
+                _uiState.update { it.copy(
+                    selectedWorkspaceId = workspaceId,
+                    projects = emptyList(),
+                    projectsLoading = true,
+                    extraFieldDefs = emptyList()
+                )}
+                settingsRepo.saveLastWorkspaceId(workspaceId)
+                launch { loadProjects(workspace) }
+                loadExtraFieldDefs(workspace)
+            }
+            // Apply preset values on top of loaded defaults
+            _uiState.update { it.copy(
+                description = preset.pageTitle,
+                extraValues = it.extraValues.toMutableMap().also { map ->
+                    preset.extraValues.forEach { (k, v) -> map[k] = v }
+                }
+            )}
+            startTimer()
+        }
+    }
+
     private fun startTicking(startMs: Long) {
         tickJob?.cancel()
         tickJob = viewModelScope.launch {
@@ -696,6 +759,13 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
             result[def.propName] = notionValue
         }
         return result
+    }
+
+    private fun isPageDeletedError(msg: String): Boolean {
+        val lower = msg.lowercase()
+        return lower.contains("404") || lower.contains("not_found") ||
+               lower.contains("object_not_found") || lower.contains("could not find page") ||
+               lower.contains("page not found")
     }
 
     // --- Utilities (ported from JS) ---

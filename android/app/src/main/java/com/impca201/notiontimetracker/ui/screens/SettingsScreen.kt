@@ -53,6 +53,9 @@ fun SettingsScreen(
     onExtraPropNameChange: (Int, String) -> Unit,
     onExtraPropRequiredChange: (Int, Boolean) -> Unit,
     onExtraPropDefaultChange: (Int, String?) -> Unit,
+    onAddPreset: () -> Unit = {},
+    onRemovePreset: (Int) -> Unit = {},
+    onUpdatePreset: (Int, com.impca201.notiontimetracker.data.models.Preset) -> Unit = { _, _ -> },
     onThemeModeChange: (ThemeMode) -> Unit,
     onScanQr: () -> Unit,
     onSnackbarDismiss: () -> Unit
@@ -90,6 +93,9 @@ fun SettingsScreen(
             onExtraPropNameChange = onExtraPropNameChange,
             onExtraPropRequiredChange = onExtraPropRequiredChange,
             onExtraPropDefaultChange = onExtraPropDefaultChange,
+            onAddPreset = onAddPreset,
+            onRemovePreset = onRemovePreset,
+            onUpdatePreset = onUpdatePreset,
             isValid = isEditValid
         )
         return

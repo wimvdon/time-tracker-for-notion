@@ -39,11 +39,16 @@ data class QrSettingsPayload(
     val theme: String? = null
 )
 
+data class QrWorkspacePayload(
+    val workspace: Workspace? = null
+)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun QrScannerScreen(
     onBack: () -> Unit,
-    onImport: (apiKey: String?, workspaces: List<Workspace>?, theme: ThemeMode?) -> Unit
+    onImport: (apiKey: String?, workspaces: List<Workspace>?, theme: ThemeMode?) -> Unit,
+    onImportWorkspace: ((Workspace) -> Unit)? = null
 ) {
     val context = LocalContext.current
     var hasCameraPermission by remember {
@@ -122,14 +127,26 @@ fun QrScannerScreen(
                             if (!scanned) {
                                 scanned = true
                                 try {
-                                    val payload = Gson().fromJson(raw, QrSettingsPayload::class.java)
-                                    val theme = when (payload.theme?.uppercase()) {
-                                        "LIGHT" -> ThemeMode.LIGHT
-                                        "DARK" -> ThemeMode.DARK
-                                        "AUTO" -> ThemeMode.AUTO
-                                        else -> null
+                                    val gson = Gson()
+                                    // Try per-workspace format first
+                                    val workspacePayload = runCatching { gson.fromJson(raw, QrWorkspacePayload::class.java) }.getOrNull()
+                                    if (workspacePayload?.workspace != null) {
+                                        if (onImportWorkspace != null) {
+                                            onImportWorkspace(workspacePayload.workspace)
+                                        } else {
+                                            onImport(null, listOf(workspacePayload.workspace), null)
+                                        }
+                                    } else {
+                                        // Fall back to legacy global settings format
+                                        val payload = gson.fromJson(raw, QrSettingsPayload::class.java)
+                                        val theme = when (payload.theme?.uppercase()) {
+                                            "LIGHT" -> ThemeMode.LIGHT
+                                            "DARK" -> ThemeMode.DARK
+                                            "AUTO" -> ThemeMode.AUTO
+                                            else -> null
+                                        }
+                                        onImport(payload.apiKey, payload.workspaces, theme)
                                     }
-                                    onImport(payload.apiKey, payload.workspaces, theme)
                                 } catch (e: Exception) {
                                     errorMsg = context.getString(R.string.qr_import_error)
                                 }
