@@ -124,59 +124,59 @@ A native Android app built with Kotlin + Jetpack Compose. Functionally identical
 | Min SDK | 26 (Android 8) |
 | Target SDK | 36 (Android 16) |
 
-### Volledige setup & build
+### Setup & build
 
-#### 1. Android Studio installeren
+#### 1. Install Android Studio
 
-1. Download [Android Studio](https://developer.android.com/studio) — klik de grote downloadknop
-2. Voer de installer uit, klik overal **Next**, standaardinstellingen zijn goed
-3. Bij eerste launch: doorloop de setup-wizard, kies **Standard** installatie
-4. Android Studio downloadt nu automatisch de JDK en SDK (~1,5 GB, even wachten)
-5. Zodra het hoofdscherm verschijnt: klaar
+1. Download [Android Studio](https://developer.android.com/studio) — click the big download button
+2. Run the installer, click **Next** throughout — default settings are fine
+3. On first launch: step through the setup wizard, choose **Standard** installation
+4. Android Studio will automatically download the JDK and SDK (~1.5 GB, takes a few minutes)
+5. Once the main screen appears: done
 
 ---
 
-#### 2. Android 16 SDK aanzetten
+#### 2. Enable the Android 16 SDK
 
 In Android Studio:
 
-1. Menubalk → **Tools → SDK Manager**
-2. Tab **SDK Platforms** → vink **Android 16 (API Level 36)** aan
-3. Klik **Apply → OK** → wacht tot het download klaar is
-4. Sluit SDK Manager
+1. Menu bar → **Tools → SDK Manager**
+2. **SDK Platforms** tab → tick **Android 16 (API Level 36)**
+3. Click **Apply → OK** → wait for the download to finish
+4. Close SDK Manager
 
 ---
 
-#### 3. APK bouwen
+#### 3. Build the APK
 
-Dubbelklik `android/build.bat`. De eerste keer duurt het wat langer omdat Gradle zichzelf opzet. Daarna zie je:
+Double-click `android/build.bat`. The first run takes a bit longer as Gradle sets itself up. You'll then see:
 
 ```
 Klaar! APK staat in:
   release\NotionTimeTracker.apk
 ```
 
-Het bestand staat in de `release/` map in de root van het repo.
+The file is placed in the `release/` folder at the root of the repo.
 
 ---
 
-#### 4. APK op je toestel installeren
+#### 4. Install the APK on your device
 
-**Eenmalig op je toestel (één keer instellen):**
+**One-time setup on your device:**
 
-1. Ga naar **Instellingen → Apps**
-2. Zoek je bestandsbeheerder (bijv. *Mijn bestanden*, *Files*, of *Google Files*)
-3. Tik erop → **Installeer onbekende apps** → zet aan
+1. Go to **Settings → Apps**
+2. Find your file manager (e.g. *My Files*, *Files*, or *Google Files*)
+3. Tap it → **Install unknown apps** → turn on
 
-**Bij elke nieuwe build:**
+**For each new build:**
 
-1. Kopieer `release/NotionTimeTracker.apk` naar je toestel via één van:
-   - Google Drive / OneDrive uploaden op pc, downloaden op toestel
-   - USB-kabel: sluit aan, kies **Bestandsoverdracht** in de melding op je toestel, sleep het APK-bestand naar een map
-2. Open de bestandsbeheerder op je toestel
-3. Navigeer naar het APK-bestand
-4. Tik erop → **Installeren**
-5. Bij een update van een bestaande versie gewoon opnieuw installeren — je instellingen blijven bewaard
+1. Copy `release/NotionTimeTracker.apk` to your device via one of:
+   - Upload to Google Drive / OneDrive on your PC, download on your device
+   - USB cable: connect, choose **File Transfer** in the notification on your device, drag the APK to a folder
+2. Open the file manager on your device
+3. Navigate to the APK file
+4. Tap it → **Install**
+5. Reinstalling over an existing version keeps your settings intact
 
 ### Troubleshooting (Android)
 
