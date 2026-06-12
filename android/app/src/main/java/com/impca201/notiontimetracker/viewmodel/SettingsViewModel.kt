@@ -331,11 +331,25 @@ class SettingsViewModel(private val app: Application) : AndroidViewModel(app) {
 
     fun isEditValid(edit: WorkspaceEditState? = _editState.value): Boolean {
         edit ?: return false
-        return edit.name.isNotBlank() &&
-            edit.timeEntriesDbId.isNotBlank() &&
-            edit.timeEntryDateProp.isNotBlank() &&
-            edit.timeEntryStatusProp.isNotBlank() &&
-            edit.timeEntryStatusRunning.isNotBlank() &&
-            edit.timeEntryStatusDone.isNotBlank()
+        if (edit.name.isBlank() ||
+            edit.timeEntriesDbId.isBlank() ||
+            edit.timeEntryDateProp.isBlank() ||
+            edit.timeEntryStatusProp.isBlank() ||
+            edit.timeEntryStatusRunning.isBlank() ||
+            edit.timeEntryStatusDone.isBlank()
+        ) return false
+        val requiredProps = edit.extraProps.filter { it.required && it.propName.isNotBlank() }
+        if (requiredProps.isNotEmpty()) {
+            edit.presets.filter { it.name.isNotBlank() }.forEach { preset ->
+                if (requiredProps.any { ep -> preset.extraValues[ep.propName].isNullOrBlank() }) return false
+            }
+        }
+        return true
+    }
+
+    fun isPresetValid(preset: Preset, extraProps: List<ExtraProp>): Boolean {
+        if (preset.name.isBlank()) return true
+        val required = extraProps.filter { it.required && it.propName.isNotBlank() }
+        return required.all { ep -> !preset.extraValues[ep.propName].isNullOrBlank() }
     }
 }

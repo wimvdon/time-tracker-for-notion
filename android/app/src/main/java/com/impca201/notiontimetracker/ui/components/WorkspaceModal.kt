@@ -202,11 +202,12 @@ fun WorkspaceModal(
                 }
                 .toMap()
 
+            val filteredExtraProps = state.extraProps.filter { it.propName.isNotBlank() }
             state.presets.forEachIndexed { index, preset ->
                 PresetRow(
                     preset = preset,
                     workspaceName = state.name,
-                    extraProps = state.extraProps.filter { it.propName.isNotBlank() },
+                    extraProps = filteredExtraProps,
                     schema = state.schema,
                     relationOptions = relationOptionsByName,
                     onUpdate = { onUpdatePreset(index, it) },
@@ -389,13 +390,32 @@ private fun PresetRow(
                 placeholder = { Text(stringResource(R.string.preset_title_placeholder), style = MaterialTheme.typography.bodySmall) },
                 textStyle = MaterialTheme.typography.bodySmall
             )
+            val presetNamed = preset.name.isNotBlank()
+            val missingRequired = presetNamed && extraProps.any { ep ->
+                ep.required && ep.propName.isNotBlank() && preset.extraValues[ep.propName].isNullOrBlank()
+            }
+            if (missingRequired) {
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    stringResource(R.string.toast_required_fields_missing),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
             extraProps.forEach { ep ->
                 val type = ep.type.ifBlank { "rich_text" }
                 if (type == "files") return@forEach
                 Spacer(Modifier.height(4.dp))
                 val schemaProp = schema[ep.propName]
                 val currentVal = preset.extraValues[ep.propName] ?: ""
-                Text(ep.propName, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                val fieldMissing = ep.required && presetNamed && currentVal.isBlank()
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        ep.propName + if (ep.required) " *" else "",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (fieldMissing) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
                 when (type) {
                     "checkbox" -> {
                         Row(verticalAlignment = Alignment.CenterVertically) {
