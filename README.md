@@ -124,52 +124,59 @@ A native Android app built with Kotlin + Jetpack Compose. Functionally identical
 | Min SDK | 26 (Android 8) |
 | Target SDK | 36 (Android 16) |
 
-### Building the APK
+### Volledige setup & build
 
-#### Option A — Debug APK (fastest, for personal use)
+#### 1. Android Studio installeren
 
-1. Install [Android Studio](https://developer.android.com/studio)
-2. Open the `android/` folder as a project
-3. Wait for Gradle sync to complete
-4. **Build → Build Bundle(s) / APK(s) → Build APK(s)**
-5. Click **locate** in the popup — APK is at `android/app/build/outputs/apk/debug/app-debug.apk`
-6. Install: `adb install android/app/build/outputs/apk/debug/app-debug.apk`  
-   Or copy the file to your device and open it (enable *Install from unknown sources* if prompted)
+1. Download [Android Studio](https://developer.android.com/studio) — klik de grote downloadknop
+2. Voer de installer uit, klik overal **Next**, standaardinstellingen zijn goed
+3. Bij eerste launch: doorloop de setup-wizard, kies **Standard** installatie
+4. Android Studio downloadt nu automatisch de JDK en SDK (~1,5 GB, even wachten)
+5. Zodra het hoofdscherm verschijnt: klaar
 
-#### Option B — Release APK (optimised, for daily use)
+---
 
-**First time: create a keystore**
+#### 2. Android 16 SDK aanzetten
 
-1. Android Studio → **Build → Generate Signed Bundle / APK**
-2. Choose **APK** → Next → **Create new…**
-3. Save as `android/my-keystore.jks` (add this to `.gitignore` — also keep a backup!)
-4. Fill in passwords and alias, click Finish
+In Android Studio:
 
-**Build**
+1. Menubalk → **Tools → SDK Manager**
+2. Tab **SDK Platforms** → vink **Android 16 (API Level 36)** aan
+3. Klik **Apply → OK** → wacht tot het download klaar is
+4. Sluit SDK Manager
 
-1. Android Studio → **Build → Generate Signed Bundle / APK** → APK → Next
-2. Enter your keystore path and passwords → choose **release** → Finish
-3. APK is at `android/app/release/app-release.apk`
+---
 
-#### Option C — Direct install via Android Studio (easiest during development)
+#### 3. APK bouwen
 
-1. Connect your device via USB (or start the emulator)
-2. Select your device in the device dropdown at the top of Android Studio
-3. Press the green ▶ button (`Shift+F10`)
+Dubbelklik `android/build.bat`. De eerste keer duurt het wat langer omdat Gradle zichzelf opzet. Daarna zie je:
 
-#### Prerequisites for USB installation
-
-- **Developer options**: Settings → About phone → tap **Build number** 7 times → Settings → Developer options → **USB debugging** ON
-- `adb` not found: add `$ANDROID_HOME/platform-tools` to your PATH
-
-#### Gradle wrapper note
-
-The `gradlew` scripts require `gradle/wrapper/gradle-wrapper.jar` (a binary not stored in git). Android Studio handles this automatically on first sync. To generate it from the command line:
-
-```bash
-cd android
-gradle wrapper --gradle-version 8.11.1
 ```
+Klaar! APK staat in:
+  release\NotionTimeTracker.apk
+```
+
+Het bestand staat in de `release/` map in de root van het repo.
+
+---
+
+#### 4. APK op je toestel installeren
+
+**Eenmalig op je toestel (één keer instellen):**
+
+1. Ga naar **Instellingen → Apps**
+2. Zoek je bestandsbeheerder (bijv. *Mijn bestanden*, *Files*, of *Google Files*)
+3. Tik erop → **Installeer onbekende apps** → zet aan
+
+**Bij elke nieuwe build:**
+
+1. Kopieer `release/NotionTimeTracker.apk` naar je toestel via één van:
+   - Google Drive / OneDrive uploaden op pc, downloaden op toestel
+   - USB-kabel: sluit aan, kies **Bestandsoverdracht** in de melding op je toestel, sleep het APK-bestand naar een map
+2. Open de bestandsbeheerder op je toestel
+3. Navigeer naar het APK-bestand
+4. Tik erop → **Installeren**
+5. Bij een update van een bestaande versie gewoon opnieuw installeren — je instellingen blijven bewaard
 
 ### Troubleshooting (Android)
 
