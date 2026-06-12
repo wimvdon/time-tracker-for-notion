@@ -31,9 +31,11 @@ export default function Timer() {
   const setView = useStore((s) => s.setView);
   const recoveredTimer = useStore((s) => s.recoveredTimer);
   const runningTimers = useStore((s) => s.runningTimers);
+  const runningTimersLoading = useStore((s) => s.runningTimersLoading);
   const loadRunningTimers = useStore((s) => s.loadRunningTimers);
   const loadRunningTimer = useStore((s) => s.loadRunningTimer);
   const stopOtherRunningTimer = useStore((s) => s.stopOtherRunningTimer);
+  const suspendActiveToNewTimer = useStore((s) => s.suspendActiveToNewTimer);
 
   const selectedWorkspace = workspaces.find((w) => w.id === selectedWorkspaceId);
 
@@ -48,7 +50,16 @@ export default function Timer() {
   }, [timerRunning, hasRecovery]);
 
   const settingsButton = (
-    <div className="flex justify-end px-4 pb-3">
+    <div className="flex justify-end gap-2 px-4 pb-3">
+      {timer.running && (
+        <button
+          onClick={suspendActiveToNewTimer}
+          title={t('titleStartNewTimer')}
+          className="text-zinc-500 hover:text-zinc-200 text-xl leading-none transition-colors"
+        >
+          ➕
+        </button>
+      )}
       <button
         onClick={() => setView('settings')}
         title={t('titleSettings')}
@@ -66,8 +77,10 @@ export default function Timer() {
         workspaceName={selectedWorkspace?.name || '—'}
         settingsButton={settingsButton}
         runningTimers={runningTimers}
+        runningTimersLoading={runningTimersLoading}
         onLoadRunningTimer={loadRunningTimer}
         onStopOtherRunningTimer={stopOtherRunningTimer}
+        onRefreshTimers={() => loadRunningTimers(false)}
       />
     );
   }
@@ -146,8 +159,10 @@ export default function Timer() {
 
         <OtherRunningTimers
           timers={runningTimers}
+          loading={runningTimersLoading}
           onLoad={loadRunningTimer}
           onStop={stopOtherRunningTimer}
+          onRefresh={() => loadRunningTimers(false)}
         />
       </div>
       {settingsButton}
@@ -155,7 +170,7 @@ export default function Timer() {
   );
 }
 
-function RunningView({ workspaceName, settingsButton, runningTimers, onLoadRunningTimer, onStopOtherRunningTimer }) {
+function RunningView({ workspaceName, settingsButton, runningTimers, runningTimersLoading, onLoadRunningTimer, onStopOtherRunningTimer, onRefreshTimers }) {
   const timer = useStore((s) => s.timer);
   const description = useStore((s) => s.description);
   const stopTimer = useStore((s) => s.stopTimer);
@@ -244,8 +259,10 @@ function RunningView({ workspaceName, settingsButton, runningTimers, onLoadRunni
 
         <OtherRunningTimers
           timers={runningTimers}
+          loading={runningTimersLoading}
           onLoad={onLoadRunningTimer}
           onStop={onStopOtherRunningTimer}
+          onRefresh={onRefreshTimers}
         />
       </div>
       {settingsButton}
@@ -253,11 +270,21 @@ function RunningView({ workspaceName, settingsButton, runningTimers, onLoadRunni
   );
 }
 
-function OtherRunningTimers({ timers, onLoad, onStop }) {
-  if (!timers.length) return null;
+function OtherRunningTimers({ timers, loading, onLoad, onStop, onRefresh }) {
+  if (!timers.length && !loading) return null;
   return (
     <div className="w-full mt-2 pt-3 border-t border-zinc-700">
-      <div className="text-xs text-zinc-500 mb-2">{t('runningTimersHeading')}</div>
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-xs text-zinc-500">{t('runningTimersHeading')}</span>
+        <button
+          onClick={onRefresh}
+          disabled={loading}
+          title={t('titleRefreshTimers')}
+          className="text-zinc-600 hover:text-zinc-300 disabled:opacity-40 text-sm leading-none transition-colors"
+        >
+          {loading ? '…' : '↺'}
+        </button>
+      </div>
       {timers.map((rt) => (
         <div
           key={rt.pageId}

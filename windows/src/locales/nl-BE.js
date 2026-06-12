@@ -101,6 +101,8 @@ export default {
   toastRecoveryStopError: 'Kon de herstelde timer niet stoppen',
   runningTimersHeading: 'Andere actieve timers',
   titleStopRunningTimer: 'Timer stoppen',
+  titleRefreshTimers: 'Lopende timers vernieuwen',
+  titleStartNewTimer: 'Nieuwe timer starten',
   titleDismiss: 'Sluiten',
 
   // Back button
