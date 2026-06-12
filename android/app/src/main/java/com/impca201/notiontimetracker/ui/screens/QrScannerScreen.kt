@@ -4,7 +4,6 @@ import android.Manifest
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.annotation.OptIn
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ExperimentalGetImage
 import androidx.camera.core.ImageAnalysis
@@ -39,7 +38,7 @@ data class QrSettingsPayload(
     val theme: String? = null
 )
 
-@OptIn(ExperimentalMaterial3Api::class)
+@androidx.compose.runtime.OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun QrScannerScreen(
     onBack: () -> Unit,
@@ -142,7 +141,7 @@ fun QrScannerScreen(
     }
 }
 
-@OptIn(ExperimentalGetImage::class)
+@androidx.annotation.OptIn(ExperimentalGetImage::class)
 @Composable
 private fun CameraPreview(
     modifier: Modifier = Modifier,
