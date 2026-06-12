@@ -1,10 +1,10 @@
 @echo off
 cd /d "%~dp0"
 
-:: Genereer local.properties als die ontbreekt
+:: Generate local.properties if missing (forward slashes required by Gradle)
 if not exist "local.properties" (
-    echo sdk.dir=%LOCALAPPDATA%\\Android\\Sdk> local.properties
-    echo local.properties aangemaakt.
+    powershell -Command "$p = $env:LOCALAPPDATA + '\Android\Sdk'; Set-Content local.properties ('sdk.dir=' + $p.Replace('\', '/'))"
+    echo local.properties created.
 )
 
 :: Locate Java — use JAVA_HOME if set, otherwise find Android Studio's bundled JDK
