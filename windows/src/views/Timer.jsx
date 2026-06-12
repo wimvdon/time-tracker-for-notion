@@ -45,10 +45,6 @@ export default function Timer() {
   const deleteEntry = useStore((s) => s.deleteEntry);
   const openNotionPage = useStore((s) => s.openNotionPage);
   const refreshAll = useStore((s) => s.refreshAll);
-  const editTimerOpen = useStore((s) => s.editTimerOpen);
-  const openEditTimer = useStore((s) => s.openEditTimer);
-  const closeEditTimer = useStore((s) => s.closeEditTimer);
-  const updateTimerDetails = useStore((s) => s.updateTimerDetails);
 
   const applyPreset = useStore((s) => s.applyPreset);
   const deletedPageInfo = useStore((s) => s.deletedPageInfo);
@@ -95,16 +91,6 @@ export default function Timer() {
     </div>
   );
 
-  // ---- Edit timer modal ----
-  if (editTimerOpen && timer.running) {
-    return (
-      <EditTimerModal
-        onClose={closeEditTimer}
-        onSave={updateTimerDetails}
-      />
-    );
-  }
-
   // ---- Running state ----
   if (timer.running) {
     return (
@@ -125,7 +111,6 @@ export default function Timer() {
         onCancelDelete={cancelDelete}
         onDeleteEntry={deleteEntry}
         onOpenUrl={openNotionPage}
-        onOpenEditTimer={openEditTimer}
       />
     );
   }
@@ -278,20 +263,30 @@ function RunningView({
   onCancelDelete,
   onDeleteEntry,
   onOpenUrl,
-  onOpenEditTimer,
 }) {
   const timer = useStore((s) => s.timer);
   const description = useStore((s) => s.description);
+  const extraFieldDefs = useStore((s) => s.extraFieldDefs);
+  const extraValues = useStore((s) => s.extraValues);
+  const selectedProjectId = useStore((s) => s.selectedProjectId);
+  const updateTimerDetails = useStore((s) => s.updateTimerDetails);
   const stopTimer = useStore((s) => s.stopTimer);
   const updateStartTime = useStore((s) => s.updateStartTime);
   const getRoundingMinutes = useStore((s) => s.getRoundingMinutes);
 
   const [startInput, setStartInput] = useState(() => formatHHMM(timer.roundedStart));
   const [endInput, setEndInput] = useState('');
+  const [localDesc, setLocalDesc] = useState(description);
+  const [localExtras, setLocalExtras] = useState({ ...extraValues });
 
   useEffect(() => {
     setStartInput(formatHHMM(timer.roundedStart));
   }, [timer.startISO]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    setLocalDesc(description);
+    setLocalExtras({ ...extraValues });
+  }, [timer.notionPageId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const commitStart = () => {
     if (!startInput) {
@@ -322,16 +317,15 @@ function RunningView({
         <div className="text-sm font-semibold text-zinc-300 truncate max-w-full">
           {workspaceName}
         </div>
-        <div className="flex items-center gap-1 max-w-full">
-          <span className="text-sm text-zinc-200 truncate">{description.trim() || '—'}</span>
-          <button
-            onClick={onOpenEditTimer}
-            title={t('btnEditTimer')}
-            className="text-zinc-600 hover:text-zinc-300 text-sm leading-none transition-colors shrink-0"
-          >
-            ✏️
-          </button>
-        </div>
+        <input
+          type="text"
+          value={localDesc}
+          onChange={(e) => setLocalDesc(e.target.value)}
+          onBlur={() => updateTimerDetails(selectedProjectId, localDesc, localExtras)}
+          onKeyDown={blurOnEnter}
+          placeholder={t('placeholderDescription')}
+          className="w-full bg-transparent border border-transparent hover:border-zinc-700 focus:border-zinc-600 rounded-md px-2 py-0.5 text-sm text-zinc-200 text-center placeholder-zinc-600 outline-none transition-colors"
+        />
 
         <div className="mt-6 text-5xl font-mono font-bold tabular-nums text-red-400">
           {formatElapsed(timer.elapsedSeconds)}
@@ -365,6 +359,23 @@ function RunningView({
           </div>
         </div>
         <p className="mt-1 text-xs text-zinc-600 w-full">{t('hintManualEnd')}</p>
+
+        {extraFieldDefs.length > 0 && (
+          <div className="mt-3 w-full flex flex-col gap-3">
+            {extraFieldDefs.map((def) => (
+              <ExtraFieldInput
+                key={def.name}
+                def={def}
+                value={localExtras[def.name]}
+                onChange={(value) => {
+                  const newExtras = { ...localExtras, [def.name]: value };
+                  setLocalExtras(newExtras);
+                  updateTimerDetails(selectedProjectId, localDesc, newExtras);
+                }}
+              />
+            ))}
+          </div>
+        )}
 
         <button
           onClick={() => stopTimer()}
@@ -531,69 +542,6 @@ function RecentEntries({ entries, loading, onDelete, onOpenUrl }) {
   );
 }
 
-function EditTimerModal({ onClose, onSave }) {
-  const timer = useStore((s) => s.timer);
-  const description = useStore((s) => s.description);
-  const projects = useStore((s) => s.projects);
-  const selectedProjectId = useStore((s) => s.selectedProjectId);
-  const extraFieldDefs = useStore((s) => s.extraFieldDefs);
-  const extraValues = useStore((s) => s.extraValues);
-
-  const [localDesc, setLocalDesc] = useState(description);
-  const [localProjectId, setLocalProjectId] = useState(selectedProjectId || '');
-  const [localExtras, setLocalExtras] = useState({ ...extraValues });
-
-  const handleSave = () => {
-    onSave(localProjectId || null, localDesc, localExtras);
-  };
-
-  return (
-    <div className="flex flex-col h-full">
-      <div className="flex items-center justify-between px-4 pt-4 pb-2 border-b border-zinc-700">
-        <span className="text-sm font-semibold text-zinc-200">{t('titleEditTimer')}</span>
-        <div className="flex gap-2">
-          <button onClick={onClose} className="text-xs text-zinc-400 hover:text-zinc-200 transition-colors">{t('btnCancel')}</button>
-          <button onClick={handleSave} className="text-xs text-emerald-400 hover:text-emerald-300 font-semibold transition-colors">{t('btnSaveChanges')}</button>
-        </div>
-      </div>
-      <div className="flex-1 flex flex-col px-4 pt-3 gap-3 overflow-y-auto">
-        {projects.length > 0 && (
-          <div>
-            <label className="block text-xs text-zinc-400 mb-1">{t('labelProject')}</label>
-            <select
-              value={localProjectId}
-              onChange={(e) => setLocalProjectId(e.target.value)}
-              className="w-full bg-zinc-800 border border-zinc-700 rounded-md px-3 py-2 text-sm text-zinc-200"
-            >
-              <option value="">{t('placeholderSelectProject')}</option>
-              {projects.map((p) => (
-                <option key={p.id} value={p.id}>{p.name}</option>
-              ))}
-            </select>
-          </div>
-        )}
-        <div>
-          <label className="block text-xs text-zinc-400 mb-1">{t('labelDescription')}</label>
-          <input
-            type="text"
-            value={localDesc}
-            onChange={(e) => setLocalDesc(e.target.value)}
-            placeholder={t('placeholderDescription')}
-            className="w-full bg-zinc-800 border border-zinc-700 rounded-md px-3 py-2 text-sm placeholder-zinc-600"
-          />
-        </div>
-        {extraFieldDefs.map((def) => (
-          <ExtraFieldInput
-            key={def.name}
-            def={def}
-            value={localExtras[def.name]}
-            onChange={(value) => setLocalExtras((prev) => ({ ...prev, [def.name]: value }))}
-          />
-        ))}
-      </div>
-    </div>
-  );
-}
 
 function DeleteConfirmDialog({ title, onConfirm, onCancel }) {
   return (
