@@ -69,6 +69,7 @@ export default {
   placeholderSelectField: 'Select field…',
   labelRequiredField: 'Required',
   toastRequiredFieldsMissing: 'Please fill in all required fields before starting.',
+  toastRequiredBeforeStopping: 'Fill in required fields (highlighted in red) before stopping.',
   errorLoadingExtras: 'Could not load extra fields',
   noPropertiesOfType: 'No suitable field found in this database.',
   labelDefaultValue: 'Default value',

@@ -1,15 +1,16 @@
 import { t } from '../lib/i18n.js';
 import SearchableSelect from './SearchableSelect.jsx';
 
-const inputClass =
-  'w-full bg-zinc-800 border border-zinc-700 rounded-md px-3 py-2 text-sm placeholder-zinc-600';
-
 /**
  * Renders the right input for one extra field, based on its Notion property
  * type. `def` is { name, type, options } from the store; the label is the
  * property's own (user-chosen) name, so it needs no translation.
+ * Pass `error={true}` to highlight the field red (required field not filled).
  */
-export default function ExtraFieldInput({ def, value, onChange, disabled }) {
+export default function ExtraFieldInput({ def, value, onChange, disabled, error }) {
+  const borderClass = error ? 'border-red-500' : 'border-zinc-700';
+  const inputClass = `w-full bg-zinc-800 border ${borderClass} rounded-md px-3 py-2 text-sm placeholder-zinc-600`;
+
   const input = () => {
     switch (def.type) {
       case 'number':
@@ -46,7 +47,6 @@ export default function ExtraFieldInput({ def, value, onChange, disabled }) {
       case 'status':
       case 'people':
       case 'relation': {
-        // select/status are stored by option name; people/relation by id
         const byId = def.type === 'people' || def.type === 'relation';
         const selectOpts = def.options.map((o) => ({
           value: byId ? o.id : o.name,
@@ -59,14 +59,14 @@ export default function ExtraFieldInput({ def, value, onChange, disabled }) {
             options={selectOpts}
             placeholder={t('placeholderSelect')}
             disabled={disabled}
-            triggerClass="bg-zinc-800"
+            triggerClass={`bg-zinc-800 ${error ? 'border-red-500' : ''}`}
             className="w-full"
           />
         );
       }
       case 'multi_select':
         return (
-          <div className="flex flex-wrap gap-1">
+          <div className={`flex flex-wrap gap-1 ${error ? 'rounded-md ring-1 ring-red-500 p-1' : ''}`}>
             {def.options.map((o) => {
               const active = value.includes(o.name);
               return (
@@ -121,7 +121,6 @@ export default function ExtraFieldInput({ def, value, onChange, disabled }) {
           />
         );
       default:
-        // rich_text and any future text-like type
         return (
           <input
             type="text"
@@ -134,19 +133,20 @@ export default function ExtraFieldInput({ def, value, onChange, disabled }) {
     }
   };
 
-  // Checkbox reads better with the label beside it
+  const labelClass = `text-xs ${error ? 'text-red-400' : 'text-zinc-400'}`;
+
   if (def.type === 'checkbox') {
     return (
       <label className="flex items-center gap-2 text-sm cursor-pointer">
         {input()}
-        <span className="text-xs text-zinc-400">{def.name}</span>
+        <span className={labelClass}>{def.name}</span>
       </label>
     );
   }
 
   return (
     <div>
-      <label className="block text-xs text-zinc-400 mb-1">{def.name}</label>
+      <label className={`block mb-1 ${labelClass}`}>{def.name}</label>
       {input()}
     </div>
   );

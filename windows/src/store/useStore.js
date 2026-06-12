@@ -425,7 +425,8 @@ export const useStore = create((set, get) => ({
         tickInterval,
       },
     });
-    api.setTimerRunning(true);
+    const ws = get().workspaces.find((w) => w.id === get().selectedWorkspaceId);
+    api.setTimerRunning(true, ws?.color?.trim() || null);
   },
 
   updateStartTime: (newStart) => {

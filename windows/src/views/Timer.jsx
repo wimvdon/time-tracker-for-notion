@@ -96,6 +96,7 @@ export default function Timer() {
     return (
       <RunningView
         workspaceName={selectedWorkspace?.name || '—'}
+        workspaceColor={selectedWorkspace?.color?.trim() || null}
         settingsButton={settingsButton}
         runningTimers={runningTimers}
         runningTimersLoading={runningTimersLoading}
@@ -115,10 +116,7 @@ export default function Timer() {
   }
 
   // ---- Idle state ----
-  const requiredFieldsFilled = extraFieldDefs
-    .filter((def) => def.required)
-    .every((def) => buildPropertyValue(def.type, extraValues[def.name]) !== null);
-  const canStart = !!apiKey && !!selectedWorkspaceId && !extrasLoading && requiredFieldsFilled;
+  const canStart = !!apiKey && !!selectedWorkspaceId && !extrasLoading;
 
   return (
     <div className="flex flex-col h-full">
@@ -246,6 +244,7 @@ export default function Timer() {
 
 function RunningView({
   workspaceName,
+  workspaceColor,
   settingsButton,
   runningTimers,
   runningTimersLoading,
@@ -267,6 +266,7 @@ function RunningView({
   const extraValues = useStore((s) => s.extraValues);
   const selectedProjectId = useStore((s) => s.selectedProjectId);
   const updateTimerDetails = useStore((s) => s.updateTimerDetails);
+  const addToast = useStore((s) => s.addToast);
   const stopTimer = useStore((s) => s.stopTimer);
   const updateStartTime = useStore((s) => s.updateStartTime);
   const getRoundingMinutes = useStore((s) => s.getRoundingMinutes);
@@ -293,9 +293,20 @@ function RunningView({
     updateStartTime(timeOnDate(timer.rawStart, startInput));
   };
 
+  const handleStop = (manualEnd = null) => {
+    const missingRequired = extraFieldDefs.some(
+      (def) => def.required && buildPropertyValue(def.type, localExtras[def.name]) === null
+    );
+    if (missingRequired) {
+      addToast({ type: 'error', message: t('toastRequiredBeforeStopping') });
+      return;
+    }
+    stopTimer(manualEnd);
+  };
+
   const commitEnd = () => {
     if (!endInput) return;
-    stopTimer(timeOnDate(timer.rawStart, endInput));
+    handleStop(timeOnDate(timer.rawStart, endInput));
   };
 
   const blurOnEnter = (e) => {
@@ -309,7 +320,10 @@ function RunningView({
     'w-full bg-zinc-800 border border-zinc-700 rounded-md px-2 py-1.5 text-sm tabular-nums text-center';
 
   return (
-    <div className="flex flex-col h-full">
+    <div
+      className="flex flex-col h-full"
+      style={workspaceColor ? { backgroundColor: workspaceColor + '33' } : undefined}
+    >
       <div className="flex-1 flex flex-col items-center px-6 pt-6 gap-1 overflow-y-auto">
         <div className="text-sm font-semibold text-zinc-300 truncate max-w-full">
           {workspaceName}
@@ -364,6 +378,7 @@ function RunningView({
                 key={def.name}
                 def={def}
                 value={localExtras[def.name]}
+                error={def.required && buildPropertyValue(def.type, localExtras[def.name]) === null}
                 onChange={(value) => {
                   const newExtras = { ...localExtras, [def.name]: value };
                   setLocalExtras(newExtras);
@@ -375,7 +390,7 @@ function RunningView({
         )}
 
         <button
-          onClick={() => stopTimer()}
+          onClick={() => handleStop()}
           className="mt-4 w-full py-3 rounded-lg bg-red-600 hover:bg-red-500 active:bg-red-700 font-semibold text-lg transition-colors"
         >
           {t('btnStop')}
