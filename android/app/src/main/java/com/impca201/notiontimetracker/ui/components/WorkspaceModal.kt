@@ -326,6 +326,7 @@ private fun ExtraPropRow(
     }
 }
 
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 private fun SmartDefaultValueInput(
     type: String,
