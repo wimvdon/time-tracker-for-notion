@@ -1,10 +1,19 @@
 @echo off
 cd /d "%~dp0"
 
-:: Generate local.properties if missing (forward slashes required by Gradle)
-if not exist "local.properties" (
-    powershell -Command "$p = $env:LOCALAPPDATA + '\Android\Sdk'; Set-Content local.properties ('sdk.dir=' + $p.Replace('\', '/'))"
-    echo local.properties created.
+:: Write local.properties with forward slashes (required by Gradle on Windows)
+powershell -Command ^
+    "$sdk = $env:LOCALAPPDATA + '\Android\Sdk';" ^
+    "if (-not (Test-Path $sdk)) {" ^
+    "  Write-Host 'ERROR: Android SDK not found at ' $sdk;" ^
+    "  Write-Host 'Open Android Studio > Tools > SDK Manager to check the SDK location.';" ^
+    "  exit 1" ^
+    "};" ^
+    "Set-Content 'local.properties' ('sdk.dir=' + $sdk.Replace('\', '/'));" ^
+    "Write-Host 'SDK: ' $sdk"
+if %errorlevel% neq 0 (
+    pause
+    exit /b 1
 )
 
 :: Locate Java — use JAVA_HOME if set, otherwise find Android Studio's bundled JDK
