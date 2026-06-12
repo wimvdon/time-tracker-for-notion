@@ -358,17 +358,6 @@ function WorkspaceModal({ workspace, onClose }) {
       .map(([propName, prop]) => ({ name: propName, type: prop.type }));
   };
 
-  const requiredExtraProps = extraProps.filter((ep) => ep.propName && ep.required);
-
-  const presetsValid = presets
-    .filter((p) => p.name.trim())
-    .every((p) =>
-      requiredExtraProps.every((ep) => {
-        const v = p.extraValues?.[ep.propName];
-        return v !== undefined && v !== null && v !== '';
-      })
-    );
-
   const complete =
     !!name.trim() &&
     !!timeEntriesDbId &&
@@ -376,8 +365,7 @@ function WorkspaceModal({ workspace, onClose }) {
     !!sel.timeEntryDateProp &&
     !!sel.timeEntryStatusProp &&
     !!sel.timeEntryStatusRunning &&
-    !!sel.timeEntryStatusDone &&
-    presetsValid;
+    !!sel.timeEntryStatusDone;
 
   const handleSave = async () => {
     if (!complete) return;
@@ -404,7 +392,6 @@ function WorkspaceModal({ workspace, onClose }) {
         required: !!ep.required,
       })),
       presets: presets
-        .filter((p) => p.name.trim())
         .map((p) => ({
           ...p,
           name: p.name.trim(),
@@ -619,7 +606,6 @@ function WorkspaceModal({ workspace, onClose }) {
               preset={preset}
               workspaceName={name}
               extraProps={extraProps.filter((ep) => !!ep.propName)}
-              requiredExtraProps={requiredExtraProps}
               schema={teSchema.schema}
               relationOptions={relationOptions}
               onChange={(updated) =>
@@ -735,15 +721,12 @@ function PresetRow({ preset, workspaceName, extraProps, requiredExtraProps = [],
       return { name: ep.propName, type, options, required };
     });
 
-  const presetNamed = !!preset.name.trim();
-  const missingFields = presetNamed
-    ? propDefs.filter((d) => d.required && !(preset.extraValues?.[d.name] ?? ''))
-    : [];
-
   return (
-    <div className={`border rounded-md p-2 flex flex-col gap-2 ${missingFields.length ? 'border-red-500' : 'border-zinc-700'}`}>
+    <div className="border border-zinc-700 rounded-md p-2 flex flex-col gap-2">
       <div className="flex items-center gap-2">
-        <span className="text-xs text-zinc-500 shrink-0 truncate max-w-[80px]">{workspaceName} —</span>
+        {preset.name.trim() && (
+          <span className="text-xs text-zinc-500 shrink-0 truncate max-w-[80px]">{workspaceName} —</span>
+        )}
         <input
           type="text"
           value={preset.name}
@@ -759,9 +742,6 @@ function PresetRow({ preset, workspaceName, extraProps, requiredExtraProps = [],
           ✕
         </button>
       </div>
-      {missingFields.length > 0 && (
-        <p className="text-xs text-red-400">{t('toastRequiredFieldsMissing')}</p>
-      )}
       <div>
         <label className="block text-xs text-zinc-500 mb-0.5">{t('labelPresetTitle')}</label>
         <input
@@ -772,12 +752,10 @@ function PresetRow({ preset, workspaceName, extraProps, requiredExtraProps = [],
           className="w-full bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-xs"
         />
       </div>
-      {propDefs.map((def) => {
-        const fieldMissing = def.required && presetNamed && !(preset.extraValues?.[def.name] ?? '');
-        return (
+      {propDefs.map((def) => (
           <div key={def.name}>
-            <label className={`block text-xs mb-0.5 ${fieldMissing ? 'text-red-400' : 'text-zinc-500'}`}>
-              {def.name}{def.required ? ' *' : ''}
+            <label className="block text-xs text-zinc-500 mb-0.5">
+              {def.name}
             </label>
             <PresetFieldInput
               type={def.type}
@@ -791,8 +769,7 @@ function PresetRow({ preset, workspaceName, extraProps, requiredExtraProps = [],
               }
             />
           </div>
-        );
-      })}
+        ))}
     </div>
   );
 }

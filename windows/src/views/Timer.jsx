@@ -153,12 +153,12 @@ export default function Timer() {
                     key={`${w.id}:${preset.id}`}
                     onClick={() => applyPreset(w.id, preset)}
                     disabled={!apiKey}
-                    title={`${w.name} — ${preset.name}`}
+                    title={preset.name ? `${w.name} — ${preset.name}` : w.name}
                     style={chipStyle}
                     className="flex items-center gap-1 px-2.5 py-1 bg-zinc-800 hover:bg-emerald-700 border border-zinc-700 hover:border-emerald-600 rounded-full text-xs text-zinc-300 hover:text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     <span className="leading-none">▶</span>
-                    <span className="max-w-[140px] truncate">{w.name} — {preset.name}</span>
+                    <span className="max-w-[140px] truncate">{preset.name ? `${w.name} — ${preset.name}` : w.name}</span>
                   </button>
                 );
               })
