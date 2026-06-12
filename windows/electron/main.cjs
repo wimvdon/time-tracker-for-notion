@@ -182,16 +182,15 @@ function rebuildTrayMenu() {
     const presetItems = [];
     for (const ws of cachedWorkspaces) {
       for (const preset of (ws.presets || [])) {
-        if (preset.name) {
-          presetItems.push({ workspace: ws, preset });
-        }
+        presetItems.push({ workspace: ws, preset });
       }
     }
     if (presetItems.length > 0) {
       items.push({ type: 'separator' });
       for (const { workspace, preset } of presetItems.slice(0, 10)) {
+        const label = preset.name ? `${workspace.name} — ${preset.name}` : workspace.name;
         items.push({
-          label: `▶ ${workspace.name} — ${preset.name}`,
+          label: `▶ ${label}`,
           click: () => {
             showWindow();
             mainWindow.webContents.send('tray:apply-preset', { workspaceId: workspace.id, preset });

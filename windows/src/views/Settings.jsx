@@ -724,9 +724,7 @@ function PresetRow({ preset, workspaceName, extraProps, requiredExtraProps = [],
   return (
     <div className="border border-zinc-700 rounded-md p-2 flex flex-col gap-2">
       <div className="flex items-center gap-2">
-        {preset.name.trim() && (
-          <span className="text-xs text-zinc-500 shrink-0 truncate max-w-[80px]">{workspaceName} —</span>
-        )}
+        <span className="text-xs text-zinc-500 shrink-0 truncate max-w-[80px]">{workspaceName} —</span>
         <input
           type="text"
           value={preset.name}

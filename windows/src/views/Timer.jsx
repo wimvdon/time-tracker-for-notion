@@ -199,6 +199,7 @@ export default function Timer() {
               key={def.name}
               def={def}
               value={extraValues[def.name]}
+              error={def.required && buildPropertyValue(def.type, extraValues[def.name]) === null}
               onChange={(value) => setExtraValue(def.name, value)}
             />
           ))}
