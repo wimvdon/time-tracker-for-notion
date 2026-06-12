@@ -193,8 +193,29 @@ class SettingsViewModel(private val app: Application) : AndroidViewModel(app) {
         _editState.update { it?.copy(schemaLoading = true, schemaError = null) } ?: return
         viewModelScope.launch {
             runCatching { notionRepo.getDatabaseSchema(dbId) }
-                .onSuccess { schema -> _editState.update { it?.copy(schema = schema, schemaLoading = false) } }
+                .onSuccess { schema ->
+                    _editState.update { it?.copy(schema = schema, schemaLoading = false) }
+                    loadRelationPagesForExtraProps(schema)
+                }
                 .onFailure { err -> _editState.update { it?.copy(schemaLoading = false, schemaError = err.message) } }
+        }
+    }
+
+    private fun loadRelationPagesForExtraProps(schema: Map<String, SchemaProperty>) {
+        val state = _editState.value ?: return
+        state.extraProps.forEachIndexed { index, ep ->
+            if (ep.propName.isBlank()) return@forEachIndexed
+            if (schema[ep.propName]?.type != "relation") return@forEachIndexed
+            val relDbId = schema[ep.propName]?.relationDatabaseId ?: return@forEachIndexed
+            if (relDbId.isBlank()) return@forEachIndexed
+            _editState.update { it?.copy(extraPropRelationLoading = it.extraPropRelationLoading + index) }
+            viewModelScope.launch {
+                val pages = runCatching { notionRepo.fetchDatabasePages(relDbId) }.getOrDefault(emptyList())
+                _editState.update { it?.copy(
+                    extraPropRelationPages = it.extraPropRelationPages + (index to pages),
+                    extraPropRelationLoading = it.extraPropRelationLoading - index
+                )}
+            }
         }
     }
 

@@ -14,6 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.impca201.notiontimetracker.R
+import com.impca201.notiontimetracker.data.models.ExtraFieldDef
 import com.impca201.notiontimetracker.data.models.ExtraProp
 import com.impca201.notiontimetracker.data.models.NamedOption
 import com.impca201.notiontimetracker.data.models.Preset
@@ -195,12 +196,20 @@ fun WorkspaceModal(
             )
             Spacer(Modifier.height(8.dp))
 
+            val relationOptionsByName = state.extraProps
+                .mapIndexedNotNull { idx, ep ->
+                    val opts = state.extraPropRelationPages[idx]
+                    if (ep.propName.isNotBlank() && opts != null) ep.propName to opts else null
+                }
+                .toMap()
+
             state.presets.forEachIndexed { index, preset ->
                 PresetRow(
                     preset = preset,
                     workspaceName = state.name,
                     extraProps = state.extraProps.filter { it.propName.isNotBlank() },
                     schema = state.schema,
+                    relationOptions = relationOptionsByName,
                     onUpdate = { onUpdatePreset(index, it) },
                     onRemove = { onRemovePreset(index) }
                 )
@@ -345,6 +354,7 @@ private fun PresetRow(
     workspaceName: String,
     extraProps: List<ExtraProp>,
     schema: Map<String, SchemaProperty>,
+    relationOptions: Map<String, List<NamedOption>>,
     onUpdate: (Preset) -> Unit,
     onRemove: () -> Unit
 ) {
@@ -383,40 +393,28 @@ private fun PresetRow(
             extraProps.forEach { ep ->
                 val schemaProp = schema[ep.propName] ?: return@forEach
                 val type = schemaProp.type
-                if (type in setOf("people", "files", "relation")) return@forEach
+                if (type == "files") return@forEach
                 Spacer(Modifier.height(4.dp))
-                Text(ep.propName, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                val currentVal = preset.extraValues[ep.propName] ?: ""
-                when (type) {
-                    "checkbox" -> {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Switch(
-                                checked = currentVal == "true",
-                                onCheckedChange = { onUpdate(preset.copy(extraValues = preset.extraValues + (ep.propName to if (it) "true" else "false"))) }
-                            )
-                        }
-                    }
-                    "select", "status" -> {
-                        val opts = (schemaProp.selectOptions.ifEmpty { schemaProp.statusOptions }).map { NamedOption(it.name, it.name) }
-                        SearchableDropdown(
-                            options = opts,
-                            selected = opts.firstOrNull { it.id == currentVal },
-                            placeholder = stringResource(R.string.placeholder_select),
-                            onSelect = { opt -> onUpdate(preset.copy(extraValues = preset.extraValues + (ep.propName to (opt?.name ?: "")))) },
-                            allowClear = true,
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    }
-                    else -> {
-                        OutlinedTextField(
-                            value = currentVal,
-                            onValueChange = { onUpdate(preset.copy(extraValues = preset.extraValues + (ep.propName to it))) },
-                            modifier = Modifier.fillMaxWidth(),
-                            singleLine = true,
-                            textStyle = MaterialTheme.typography.bodySmall
-                        )
-                    }
+                val options = when (type) {
+                    "select", "multi_select" -> schemaProp.selectOptions.map { NamedOption(it.name, it.name) }
+                    "status" -> schemaProp.statusOptions.map { NamedOption(it.name, it.name) }
+                    "relation" -> relationOptions[ep.propName] ?: emptyList()
+                    else -> emptyList()
                 }
+                val fieldDef = ExtraFieldDef(
+                    propName = ep.propName,
+                    type = type,
+                    required = ep.required,
+                    defaultValue = ep.defaultValue,
+                    options = options,
+                    statusOptions = schemaProp.statusOptions
+                )
+                ExtraFieldInput(
+                    fieldDef = fieldDef,
+                    value = preset.extraValues[ep.propName] ?: "",
+                    onValueChange = { onUpdate(preset.copy(extraValues = preset.extraValues + (ep.propName to it))) },
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
         }
     }
