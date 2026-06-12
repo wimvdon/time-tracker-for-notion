@@ -144,6 +144,10 @@ ipcMain.handle('notion:stop', (_event, params) =>
   notion.stopTimeEntry(store.get('apiKey'), params)
 );
 
+ipcMain.handle('notion:fetchRunningTimers', (_event, dbId, statusProp, statusRunning, dateProp) =>
+  notion.fetchRunningTimers(store.get('apiKey'), dbId, statusProp, statusRunning, dateProp)
+);
+
 // apiKey is passed explicitly here so Settings can test a key before saving it
 ipcMain.handle('notion:test', (_event, apiKey, dbId) =>
   notion.testConnection(apiKey || store.get('apiKey'), dbId)

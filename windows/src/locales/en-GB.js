@@ -99,6 +99,8 @@ export default {
   toastStopError: 'Could not stop timer',
   toastStopRetry: 'Retry',
   toastRecoveryStopError: 'Could not stop the recovered timer',
+  runningTimersHeading: 'Other running timers',
+  titleStopRunningTimer: 'Stop timer',
   titleDismiss: 'Dismiss',
 
   // Back button

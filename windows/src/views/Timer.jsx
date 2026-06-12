@@ -29,8 +29,23 @@ export default function Timer() {
   const timer = useStore((s) => s.timer);
   const startTimer = useStore((s) => s.startTimer);
   const setView = useStore((s) => s.setView);
+  const recoveredTimer = useStore((s) => s.recoveredTimer);
+  const runningTimers = useStore((s) => s.runningTimers);
+  const loadRunningTimers = useStore((s) => s.loadRunningTimers);
+  const loadRunningTimer = useStore((s) => s.loadRunningTimer);
+  const stopOtherRunningTimer = useStore((s) => s.stopOtherRunningTimer);
 
   const selectedWorkspace = workspaces.find((w) => w.id === selectedWorkspaceId);
+
+  // Reload running timers whenever idle (no local timer, no crash recovery pending)
+  const timerRunning = timer.running;
+  const hasRecovery = !!recoveredTimer;
+  useEffect(() => {
+    if (!timerRunning && !hasRecovery) {
+      loadRunningTimers();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [timerRunning, hasRecovery]);
 
   const settingsButton = (
     <div className="flex justify-end px-4 pb-3">
@@ -50,6 +65,9 @@ export default function Timer() {
       <RunningView
         workspaceName={selectedWorkspace?.name || '—'}
         settingsButton={settingsButton}
+        runningTimers={runningTimers}
+        onLoadRunningTimer={loadRunningTimer}
+        onStopOtherRunningTimer={stopOtherRunningTimer}
       />
     );
   }
@@ -58,7 +76,6 @@ export default function Timer() {
   const requiredFieldsFilled = extraFieldDefs
     .filter((def) => def.required)
     .every((def) => buildPropertyValue(def.type, extraValues[def.name]) !== null);
-  // Also disabled while extra fields are still loading — required fields aren't known yet
   const canStart = !!apiKey && !!selectedWorkspaceId && !extrasLoading && requiredFieldsFilled;
 
   return (
@@ -126,13 +143,19 @@ export default function Timer() {
         >
           {t('btnStart')}
         </button>
+
+        <OtherRunningTimers
+          timers={runningTimers}
+          onLoad={loadRunningTimer}
+          onStop={stopOtherRunningTimer}
+        />
       </div>
       {settingsButton}
     </div>
   );
 }
 
-function RunningView({ workspaceName, settingsButton }) {
+function RunningView({ workspaceName, settingsButton, runningTimers, onLoadRunningTimer, onStopOtherRunningTimer }) {
   const timer = useStore((s) => s.timer);
   const description = useStore((s) => s.description);
   const stopTimer = useStore((s) => s.stopTimer);
@@ -142,7 +165,6 @@ function RunningView({ workspaceName, settingsButton }) {
   const [startInput, setStartInput] = useState(() => formatHHMM(timer.roundedStart));
   const [endInput, setEndInput] = useState('');
 
-  // Resync after the store applies (and possibly rounds) an edited start
   useEffect(() => {
     setStartInput(formatHHMM(timer.roundedStart));
   }, [timer.startISO]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -155,9 +177,6 @@ function RunningView({ workspaceName, settingsButton }) {
     updateStartTime(timeOnDate(timer.rawStart, startInput));
   };
 
-  // Filling in an end time stops the timer at that time (rounding rules
-  // apply in the store). On a validation error the timer keeps running and
-  // the input keeps its value so it can be corrected.
   const commitEnd = () => {
     if (!endInput) return;
     stopTimer(timeOnDate(timer.rawStart, endInput));
@@ -167,8 +186,6 @@ function RunningView({ workspaceName, settingsButton }) {
     if (e.key === 'Enter') e.currentTarget.blur();
   };
 
-  // Recomputed on every tick render, so the projected end refreshes as time
-  // passes. Without rounding the end is simply "now".
   const rm = getRoundingMinutes();
   const projectedEnd = rm > 0 ? computeEndTime(timer.roundedStart, new Date(), rm) : new Date();
 
@@ -224,8 +241,42 @@ function RunningView({ workspaceName, settingsButton }) {
         >
           {t('btnStop')}
         </button>
+
+        <OtherRunningTimers
+          timers={runningTimers}
+          onLoad={onLoadRunningTimer}
+          onStop={onStopOtherRunningTimer}
+        />
       </div>
       {settingsButton}
+    </div>
+  );
+}
+
+function OtherRunningTimers({ timers, onLoad, onStop }) {
+  if (!timers.length) return null;
+  return (
+    <div className="w-full mt-2 pt-3 border-t border-zinc-700">
+      <div className="text-xs text-zinc-500 mb-2">{t('runningTimersHeading')}</div>
+      {timers.map((rt) => (
+        <div
+          key={rt.pageId}
+          onClick={() => onLoad(rt)}
+          className="flex items-center gap-2 px-3 py-2 bg-zinc-800 hover:bg-zinc-700 rounded-md mb-1 cursor-pointer transition-colors"
+        >
+          <div className="flex-1 min-w-0">
+            <div className="text-sm truncate text-zinc-200">{rt.title}</div>
+            <div className="text-xs text-zinc-500">{rt.workspaceName}</div>
+          </div>
+          <button
+            onClick={(e) => { e.stopPropagation(); onStop(rt); }}
+            title={t('titleStopRunningTimer')}
+            className="text-zinc-500 hover:text-red-400 text-base transition-colors shrink-0 leading-none"
+          >
+            ⏹
+          </button>
+        </div>
+      ))}
     </div>
   );
 }

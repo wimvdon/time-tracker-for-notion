@@ -24,6 +24,13 @@ class NotionRepository(
     suspend fun listUsers(): List<NamedOption> =
         client.listUsers(apiKey())
 
+    suspend fun fetchRunningTimers(
+        dbId: String,
+        statusProp: String,
+        statusRunning: String,
+        dateProp: String
+    ): List<RunningTimerResult> = client.fetchRunningTimers(apiKey(), dbId, statusProp, statusRunning, dateProp)
+
     suspend fun createTimeEntry(
         dbId: String,
         title: String,

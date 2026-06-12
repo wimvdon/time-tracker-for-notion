@@ -108,6 +108,10 @@
     <string name="btn_back">Terug</string>
     <string name="title_settings">Instellingen</string>
 
+    <!-- Running timers list -->
+    <string name="running_timers_heading">Andere actieve timers</string>
+    <string name="stop_running_timer">Timer stoppen</string>
+
     <!-- Notification -->
     <string name="notification_channel_name">Timer</string>
     <string name="notification_channel_description">Toont de actieve timer</string>

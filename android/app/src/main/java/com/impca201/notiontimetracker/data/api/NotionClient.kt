@@ -191,6 +191,46 @@ class NotionClient {
         return data.get("id").asString
     }
 
+    suspend fun fetchRunningTimers(
+        apiKey: String,
+        dbId: String,
+        statusProp: String,
+        statusRunning: String,
+        dateProp: String
+    ): List<RunningTimerResult> {
+        val results = mutableListOf<RunningTimerResult>()
+        var cursor: String? = null
+        do {
+            val body = buildMap<String, Any> {
+                put("filter", mapOf("property" to statusProp, "status" to mapOf("equals" to statusRunning)))
+                if (dateProp.isNotBlank()) {
+                    put("sorts", listOf(mapOf("property" to dateProp, "direction" to "descending")))
+                }
+                put("page_size", 100)
+                if (cursor != null) put("start_cursor", cursor!!)
+            }
+            val data = fetch(apiKey, "POST", "/databases/$dbId/query", body)
+            data.getAsJsonArray("results")?.forEach { el ->
+                val page = el.asJsonObject
+                val propsObj = page.getAsJsonObject("properties") ?: return@forEach
+                val titleProp = propsObj.entrySet()
+                    .map { it.value.asJsonObject }
+                    .firstOrNull { it.get("type")?.asString == "title" }
+                val title = titleProp?.getAsJsonArray("title")
+                    ?.joinToString("") { it.asJsonObject.get("plain_text")?.asString ?: "" }
+                    ?.trim()?.ifBlank { "Untitled" } ?: "Untitled"
+                val startISO = if (dateProp.isNotBlank())
+                    propsObj.getAsJsonObject(dateProp)?.getAsJsonObject("date")?.get("start")?.asString
+                else null
+                startISO ?: return@forEach
+                results.add(RunningTimerResult(pageId = page.get("id").asString, title = title, startISO = startISO))
+            }
+            cursor = if (data.get("has_more")?.asBoolean == true)
+                data.get("next_cursor")?.asString else null
+        } while (cursor != null)
+        return results
+    }
+
     suspend fun stopTimeEntry(
         apiKey: String,
         pageId: String,
