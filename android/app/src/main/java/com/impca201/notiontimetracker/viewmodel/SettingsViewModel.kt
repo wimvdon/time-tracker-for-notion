@@ -255,7 +255,7 @@ class SettingsViewModel(private val app: Application) : AndroidViewModel(app) {
     fun addPreset() {
         val current = _editState.value ?: return
         if (current.presets.size >= 5) return
-        _editState.update { it?.copy(presets = it.presets + Preset(id = UUID.randomUUID().toString())) }
+        _editState.update { it?.copy(presets = it.presets + Preset(id = UUID.randomUUID().toString(), name = "")) }
     }
 
     fun removePreset(index: Int) {

@@ -7,6 +7,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.impca201.notiontimetracker.NotionTimeTrackerApp
 import com.impca201.notiontimetracker.data.models.*
+import com.impca201.notiontimetracker.ShortcutHelper
 import com.impca201.notiontimetracker.data.models.Preset
 import com.impca201.notiontimetracker.service.TimerForegroundService
 import kotlinx.coroutines.Job
