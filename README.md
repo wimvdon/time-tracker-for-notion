@@ -90,8 +90,14 @@ npm run icons      # regenerate the app/tray icons in assets/
 > You only do this when you want a "real" installable app instead of running
 > from the terminal. Build on a Windows machine for the smoothest experience.
 
+**Easiest way — double-click `build.bat`** in the project folder. It installs
+or updates dependencies automatically, then builds the installer. Works for
+both the first build and every subsequent update.
+
+Alternatively, run the same steps manually in a terminal:
+
 ```bash
-npm install        # if you haven't already
+npm install        # installs / updates dependencies
 npm run dist
 ```
 
@@ -111,10 +117,10 @@ The installer is "one-click": it installs per-user (no admin rights needed),
 creates a Start Menu + desktop shortcut, and launches the app. To uninstall,
 use Windows *Settings → Apps* like any other program.
 
-**Notes for first-time builders:**
+**Notes:**
 
-- The first `npm run dist` downloads Electron binaries and NSIS tooling
-  (a few hundred MB); later builds are much faster.
+- The first build downloads Electron binaries and NSIS tooling (a few hundred
+  MB); later builds are much faster.
 - Windows SmartScreen may warn "unrecognized app" when you run the installer,
   because it isn't code-signed. Click **More info → Run anyway**. Code signing
   certificates cost money and are not needed for personal use.
