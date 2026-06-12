@@ -4,6 +4,7 @@ windows/dist/
 windows/release/
 
 # Android app
+release
 android/.gradle/
 android/build/
 android/app/build/
