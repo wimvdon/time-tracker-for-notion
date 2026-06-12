@@ -183,6 +183,7 @@ private fun AppNavigation(
                 onStatusRunningChange = settingsViewModel::setStatusRunning,
                 onStatusDoneChange = settingsViewModel::setStatusDone,
                 onRoundingChange = settingsViewModel::setRounding,
+                onColorChange = settingsViewModel::setColor,
                 onAddExtraProp = settingsViewModel::addExtraProp,
                 onRemoveExtraProp = settingsViewModel::removeExtraProp,
                 onExtraPropNameChange = settingsViewModel::setExtraPropName,

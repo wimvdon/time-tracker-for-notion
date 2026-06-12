@@ -20,7 +20,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import com.impca201.notiontimetracker.ui.components.parseWorkspaceColor
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.input.ImeAction
@@ -152,7 +154,8 @@ fun TimerScreen(
             onOpenEditTimer = onOpenEditTimer,
             onQuickSaveDescription = onQuickSaveDescription,
             onConfirmDelete = onConfirmDelete,
-            onOpenUrl = onOpenUrl
+            onOpenUrl = onOpenUrl,
+            onApplyPreset = onApplyPreset
         )
     } else {
         IdleView(
@@ -264,20 +267,11 @@ private fun IdleView(
             }
 
             // Preset chips
-            val allPresets = uiState.workspaces.flatMap { ws -> ws.presets.map { ws to it } }
-            if (allPresets.isNotEmpty() && uiState.apiKey.isNotBlank()) {
-                androidx.compose.foundation.layout.FlowRow(
-                    horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp),
-                    verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(4.dp)
-                ) {
-                    allPresets.forEach { (ws, preset) ->
-                        SuggestionChip(
-                            onClick = { onApplyPreset(ws.id, preset) },
-                            label = { Text("▶ ${ws.name} — ${preset.name}", style = MaterialTheme.typography.labelMedium) }
-                        )
-                    }
-                }
-            }
+            PresetChips(
+                workspaces = uiState.workspaces,
+                apiKey = uiState.apiKey,
+                onApplyPreset = onApplyPreset
+            )
 
             FieldLabel(stringResource(R.string.label_workspace))
             val workspaceOptions = uiState.workspaces.map { NamedOption(it.id, it.name) }
@@ -390,7 +384,8 @@ private fun RunningView(
     onOpenEditTimer: () -> Unit,
     onQuickSaveDescription: (String) -> Unit = {},
     onConfirmDelete: (String, String, Boolean) -> Unit,
-    onOpenUrl: (String) -> Unit
+    onOpenUrl: (String) -> Unit,
+    onApplyPreset: (String, Preset) -> Unit = { _, _ -> }
 ) {
     val timer = uiState.activeTimer ?: return
     val workspace = uiState.workspaces.firstOrNull { it.id == timer.workspaceId }
@@ -434,6 +429,12 @@ private fun RunningView(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
+            PresetChips(
+                workspaces = uiState.workspaces,
+                apiKey = uiState.apiKey,
+                onApplyPreset = onApplyPreset
+            )
+
             Spacer(Modifier.height(8.dp))
 
             Text(
@@ -736,6 +737,37 @@ private fun RecentEntriesSection(
                     }
                 }
             }
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun PresetChips(
+    workspaces: List<com.impca201.notiontimetracker.data.models.Workspace>,
+    apiKey: String,
+    onApplyPreset: (String, Preset) -> Unit
+) {
+    val allPresets = workspaces.flatMap { ws -> ws.presets.map { ws to it } }
+    if (allPresets.isEmpty() || apiKey.isBlank()) return
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        allPresets.forEach { (ws, preset) ->
+            val wsColor = parseWorkspaceColor(ws.color)
+            SuggestionChip(
+                onClick = { onApplyPreset(ws.id, preset) },
+                label = { Text("▶ ${ws.name} — ${preset.name}", style = MaterialTheme.typography.labelMedium) },
+                colors = if (wsColor != null) SuggestionChipDefaults.suggestionChipColors(
+                    containerColor = wsColor.copy(alpha = 0.15f),
+                    labelColor = wsColor
+                ) else SuggestionChipDefaults.suggestionChipColors(),
+                border = if (wsColor != null) SuggestionChipDefaults.suggestionChipBorder(
+                    enabled = true,
+                    borderColor = wsColor.copy(alpha = 0.4f)
+                ) else SuggestionChipDefaults.suggestionChipBorder(enabled = true)
+            )
         }
     }
 }

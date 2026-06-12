@@ -161,18 +161,25 @@ export default function Timer() {
         {workspaces.some((w) => (w.presets?.length ?? 0) > 0) && (
           <div className="flex flex-wrap gap-1.5">
             {workspaces.flatMap((w) =>
-              (w.presets || []).map((preset) => (
-                <button
-                  key={`${w.id}:${preset.id}`}
-                  onClick={() => applyPreset(w.id, preset)}
-                  disabled={!apiKey}
-                  title={`${w.name} — ${preset.name}`}
-                  className="flex items-center gap-1 px-2.5 py-1 bg-zinc-800 hover:bg-emerald-700 border border-zinc-700 hover:border-emerald-600 rounded-full text-xs text-zinc-300 hover:text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  <span className="text-emerald-400 leading-none">▶</span>
-                  <span className="max-w-[140px] truncate">{w.name} — {preset.name}</span>
-                </button>
-              ))
+              (w.presets || []).map((preset) => {
+                const hex = w.color?.trim();
+                const chipStyle = hex
+                  ? { borderColor: hex + '66', color: hex, backgroundColor: hex + '22' }
+                  : {};
+                return (
+                  <button
+                    key={`${w.id}:${preset.id}`}
+                    onClick={() => applyPreset(w.id, preset)}
+                    disabled={!apiKey}
+                    title={`${w.name} — ${preset.name}`}
+                    style={chipStyle}
+                    className="flex items-center gap-1 px-2.5 py-1 bg-zinc-800 hover:bg-emerald-700 border border-zinc-700 hover:border-emerald-600 rounded-full text-xs text-zinc-300 hover:text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    <span className="leading-none">▶</span>
+                    <span className="max-w-[140px] truncate">{w.name} — {preset.name}</span>
+                  </button>
+                );
+              })
             )}
           </div>
         )}

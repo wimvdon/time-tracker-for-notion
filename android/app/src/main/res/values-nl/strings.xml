@@ -81,6 +81,9 @@
     <string name="rounding_10">Afronden naar 10 minuten</string>
     <string name="rounding_15">Afronden naar 15 minuten</string>
     <string name="workspace_rounding_hint">Rondt start- en stoptijden af, inclusief manueel ingevulde tijden.</string>
+    <string name="label_workspace_color">Werkruimtekleur</string>
+    <string name="label_custom_color">Aangepaste hex</string>
+    <string name="btn_apply_color">Toepassen</string>
     <string name="save_incomplete_hint">Vul alle velden in voor je kan opslaan.</string>
     <string name="btn_cancel">Annuleer</string>
     <string name="btn_save">Opslaan</string>

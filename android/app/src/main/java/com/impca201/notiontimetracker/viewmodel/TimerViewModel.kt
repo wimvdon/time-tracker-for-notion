@@ -167,9 +167,10 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
                 "status" -> schemaProp.statusOptions.map { NamedOption(it.name, it.name) }
                 "people" -> runCatching { notionRepo.listUsers() }.getOrDefault(emptyList())
                 "relation" -> {
-                    // Get the related DB ID from the schema (the raw schema needs relation.database_id)
-                    // For simplicity, if the workspace has a projectsDbId and this is a relation, use it
-                    runCatching { notionRepo.fetchDatabasePages(workspace.projectsDbId) }.getOrDefault(emptyList())
+                    val relDbId = schemaProp.relationDatabaseId
+                        ?.takeIf { it.isNotBlank() }
+                        ?: workspace.projectsDbId
+                    runCatching { notionRepo.fetchDatabasePages(relDbId) }.getOrDefault(emptyList())
                 }
                 else -> emptyList()
             }

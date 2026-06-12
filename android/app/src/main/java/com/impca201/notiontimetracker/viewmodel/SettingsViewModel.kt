@@ -31,6 +31,7 @@ class SettingsViewModel(private val app: Application) : AndroidViewModel(app) {
         val isNew: Boolean = true,
         val workspaceId: String = UUID.randomUUID().toString(),
         val name: String = "",
+        val color: String = "",
         val databases: List<NamedOption> = emptyList(),
         val databasesLoading: Boolean = false,
         val databasesError: String? = null,
@@ -158,6 +159,7 @@ class SettingsViewModel(private val app: Application) : AndroidViewModel(app) {
             isNew = false,
             workspaceId = workspace.id,
             name = workspace.name,
+            color = workspace.color,
             timeEntriesDbId = workspace.timeEntriesDbId,
             timeEntryDateProp = workspace.propertyMap.timeEntryDateProp,
             timeEntryStatusProp = workspace.propertyMap.timeEntryStatusProp,
@@ -224,6 +226,7 @@ class SettingsViewModel(private val app: Application) : AndroidViewModel(app) {
     fun setStatusRunning(opt: String) = _editState.update { it?.copy(timeEntryStatusRunning = opt) }
     fun setStatusDone(opt: String) = _editState.update { it?.copy(timeEntryStatusDone = opt) }
     fun setRounding(minutes: Int) = _editState.update { it?.copy(roundingMinutes = minutes) }
+    fun setColor(color: String) = _editState.update { it?.copy(color = color) }
 
     fun addExtraProp() {
         val current = _editState.value ?: return
@@ -301,6 +304,7 @@ class SettingsViewModel(private val app: Application) : AndroidViewModel(app) {
         val workspace = Workspace(
             id = edit.workspaceId,
             name = edit.name.trim(),
+            color = edit.color.trim(),
             timeEntriesDbId = edit.timeEntriesDbId,
             projectsDbId = projectsDbId,
             roundingMinutes = edit.roundingMinutes,
@@ -331,11 +335,25 @@ class SettingsViewModel(private val app: Application) : AndroidViewModel(app) {
 
     fun isEditValid(edit: WorkspaceEditState? = _editState.value): Boolean {
         edit ?: return false
-        return edit.name.isNotBlank() &&
-            edit.timeEntriesDbId.isNotBlank() &&
-            edit.timeEntryDateProp.isNotBlank() &&
-            edit.timeEntryStatusProp.isNotBlank() &&
-            edit.timeEntryStatusRunning.isNotBlank() &&
-            edit.timeEntryStatusDone.isNotBlank()
+        if (edit.name.isBlank() ||
+            edit.timeEntriesDbId.isBlank() ||
+            edit.timeEntryDateProp.isBlank() ||
+            edit.timeEntryStatusProp.isBlank() ||
+            edit.timeEntryStatusRunning.isBlank() ||
+            edit.timeEntryStatusDone.isBlank()
+        ) return false
+        val requiredProps = edit.extraProps.filter { it.required && it.propName.isNotBlank() }
+        if (requiredProps.isNotEmpty()) {
+            edit.presets.filter { it.name.isNotBlank() }.forEach { preset ->
+                if (requiredProps.any { ep -> preset.extraValues[ep.propName].isNullOrBlank() }) return false
+            }
+        }
+        return true
+    }
+
+    fun isPresetValid(preset: Preset, extraProps: List<ExtraProp>): Boolean {
+        if (preset.name.isBlank()) return true
+        val required = extraProps.filter { it.required && it.propName.isNotBlank() }
+        return required.all { ep -> !preset.extraValues[ep.propName].isNullOrBlank() }
     }
 }

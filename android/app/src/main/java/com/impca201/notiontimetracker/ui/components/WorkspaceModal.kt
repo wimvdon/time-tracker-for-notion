@@ -1,20 +1,26 @@
 package com.impca201.notiontimetracker.ui.components
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.impca201.notiontimetracker.R
-import com.impca201.notiontimetracker.data.models.ExtraFieldDef
 import com.impca201.notiontimetracker.data.models.ExtraProp
 import com.impca201.notiontimetracker.data.models.NamedOption
 import com.impca201.notiontimetracker.data.models.Preset
@@ -37,6 +43,7 @@ fun WorkspaceModal(
     onStatusRunningChange: (String) -> Unit,
     onStatusDoneChange: (String) -> Unit,
     onRoundingChange: (Int) -> Unit,
+    onColorChange: (String) -> Unit = {},
     onAddExtraProp: () -> Unit,
     onRemoveExtraProp: (Int) -> Unit,
     onExtraPropNameChange: (Int, String) -> Unit,
@@ -203,11 +210,12 @@ fun WorkspaceModal(
                 }
                 .toMap()
 
+            val filteredExtraProps = state.extraProps.filter { it.propName.isNotBlank() }
             state.presets.forEachIndexed { index, preset ->
                 PresetRow(
                     preset = preset,
                     workspaceName = state.name,
-                    extraProps = state.extraProps.filter { it.propName.isNotBlank() },
+                    extraProps = filteredExtraProps,
                     schema = state.schema,
                     relationOptions = relationOptionsByName,
                     onUpdate = { onUpdatePreset(index, it) },
@@ -232,6 +240,12 @@ fun WorkspaceModal(
             )
             Spacer(Modifier.height(8.dp))
             RoundingSelector(selected = state.roundingMinutes, onSelect = onRoundingChange)
+
+            // Colour
+            Spacer(Modifier.height(16.dp))
+            Text(stringResource(R.string.label_workspace_color), style = MaterialTheme.typography.titleSmall)
+            Spacer(Modifier.height(8.dp))
+            ColorPicker(selected = state.color, onSelect = onColorChange)
 
             if (!isValid) {
                 Spacer(Modifier.height(8.dp))
@@ -390,31 +404,86 @@ private fun PresetRow(
                 placeholder = { Text(stringResource(R.string.preset_title_placeholder), style = MaterialTheme.typography.bodySmall) },
                 textStyle = MaterialTheme.typography.bodySmall
             )
+            val presetNamed = preset.name.isNotBlank()
+            val missingRequired = presetNamed && extraProps.any { ep ->
+                ep.required && ep.propName.isNotBlank() && preset.extraValues[ep.propName].isNullOrBlank()
+            }
+            if (missingRequired) {
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    stringResource(R.string.toast_required_fields_missing),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
             extraProps.forEach { ep ->
                 val type = ep.type.ifBlank { "rich_text" }
                 if (type == "files") return@forEach
                 Spacer(Modifier.height(4.dp))
                 val schemaProp = schema[ep.propName]
-                val options = when (type) {
-                    "select", "multi_select" -> schemaProp?.selectOptions?.map { NamedOption(it.name, it.name) } ?: emptyList()
-                    "status" -> schemaProp?.statusOptions?.map { NamedOption(it.name, it.name) } ?: emptyList()
-                    "relation" -> relationOptions[ep.propName] ?: emptyList()
-                    else -> emptyList()
+                val currentVal = preset.extraValues[ep.propName] ?: ""
+                val fieldMissing = ep.required && presetNamed && currentVal.isBlank()
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        ep.propName + if (ep.required) " *" else "",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (fieldMissing) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
-                val fieldDef = ExtraFieldDef(
-                    propName = ep.propName,
-                    type = type,
-                    required = ep.required,
-                    defaultValue = ep.defaultValue,
-                    options = options,
-                    statusOptions = schemaProp?.statusOptions ?: emptyList()
-                )
-                ExtraFieldInput(
-                    fieldDef = fieldDef,
-                    value = preset.extraValues[ep.propName] ?: "",
-                    onValueChange = { onUpdate(preset.copy(extraValues = preset.extraValues + (ep.propName to it))) },
-                    modifier = Modifier.fillMaxWidth()
-                )
+                when (type) {
+                    "checkbox" -> {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Switch(
+                                checked = currentVal == "true",
+                                onCheckedChange = { checked ->
+                                    onUpdate(preset.copy(extraValues = preset.extraValues + (ep.propName to if (checked) "true" else "false")))
+                                }
+                            )
+                        }
+                    }
+                    "select" -> {
+                        val opts = schemaProp?.selectOptions?.map { NamedOption(it.name, it.name) } ?: emptyList()
+                        SearchableDropdown(
+                            options = opts,
+                            selected = opts.firstOrNull { it.id == currentVal },
+                            placeholder = stringResource(R.string.placeholder_select),
+                            onSelect = { opt -> onUpdate(preset.copy(extraValues = preset.extraValues + (ep.propName to (opt?.name ?: "")))) },
+                            allowClear = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                    "status" -> {
+                        val opts = schemaProp?.statusOptions?.map { NamedOption(it.name, it.name) } ?: emptyList()
+                        SearchableDropdown(
+                            options = opts,
+                            selected = opts.firstOrNull { it.id == currentVal },
+                            placeholder = stringResource(R.string.placeholder_select),
+                            onSelect = { opt -> onUpdate(preset.copy(extraValues = preset.extraValues + (ep.propName to (opt?.name ?: "")))) },
+                            allowClear = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                    "relation" -> {
+                        val opts = relationOptions[ep.propName] ?: emptyList()
+                        SearchableDropdown(
+                            options = opts,
+                            selected = opts.firstOrNull { it.id == currentVal },
+                            placeholder = stringResource(R.string.placeholder_select),
+                            onSelect = { opt -> onUpdate(preset.copy(extraValues = preset.extraValues + (ep.propName to (opt?.id ?: "")))) },
+                            allowClear = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                    else -> {
+                        OutlinedTextField(
+                            value = currentVal,
+                            onValueChange = { onUpdate(preset.copy(extraValues = preset.extraValues + (ep.propName to it))) },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true,
+                            textStyle = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                }
             }
         }
     }
@@ -437,6 +506,79 @@ private fun RoundingSelector(selected: Int, onSelect: (Int) -> Unit) {
                 RadioButton(selected = selected == minutes, onClick = { onSelect(minutes) })
                 Spacer(Modifier.width(8.dp))
                 Text(stringResource(labelRes), style = MaterialTheme.typography.bodyMedium)
+            }
+        }
+    }
+}
+
+val PRESET_PALETTE = listOf(
+    "#ef4444", "#f97316", "#eab308", "#22c55e",
+    "#06b6d4", "#3b82f6", "#8b5cf6", "#ec4899"
+)
+
+fun parseWorkspaceColor(hex: String): Color? = runCatching {
+    if (hex.isBlank()) null
+    else Color(android.graphics.Color.parseColor(if (hex.startsWith("#")) hex else "#$hex"))
+}.getOrNull()
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun ColorPicker(selected: String, onSelect: (String) -> Unit) {
+    var customHex by remember(selected) {
+        mutableStateOf(if (selected.isNotBlank() && selected !in PRESET_PALETTE) selected else "")
+    }
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            // "None" swatch
+            val noneSelected = selected.isBlank()
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                    .border(2.dp, if (noneSelected) MaterialTheme.colorScheme.primary else Color.Transparent, CircleShape)
+                    .clickable { onSelect("") },
+                contentAlignment = Alignment.Center
+            ) {
+                if (noneSelected) Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp))
+            }
+            PRESET_PALETTE.forEach { hex ->
+                val color = parseWorkspaceColor(hex) ?: return@forEach
+                val isSelected = selected == hex
+                Box(
+                    modifier = Modifier
+                        .size(32.dp)
+                        .clip(CircleShape)
+                        .background(color)
+                        .border(2.dp, if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent, CircleShape)
+                        .clickable { onSelect(hex); customHex = "" },
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (isSelected) Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp), tint = Color.White)
+                }
+            }
+        }
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedTextField(
+                value = customHex,
+                onValueChange = { customHex = it },
+                modifier = Modifier.weight(1f),
+                singleLine = true,
+                placeholder = { Text("#RRGGBB", style = MaterialTheme.typography.bodySmall) },
+                textStyle = MaterialTheme.typography.bodySmall,
+                label = { Text(stringResource(R.string.label_custom_color), style = MaterialTheme.typography.labelSmall) }
+            )
+            TextButton(
+                onClick = {
+                    val hex = customHex.trim().let { if (it.startsWith("#")) it else "#$it" }
+                    if (parseWorkspaceColor(hex) != null) onSelect(hex)
+                },
+                enabled = customHex.isNotBlank()
+            ) {
+                Text(stringResource(R.string.btn_apply_color))
             }
         }
     }

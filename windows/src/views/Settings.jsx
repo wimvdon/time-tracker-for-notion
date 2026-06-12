@@ -257,6 +257,11 @@ function WorkspaceModal({ workspace, onClose }) {
     )
   );
   const [presets, setPresets] = useState(workspace?.presets || []);
+  const [color, setColor] = useState(workspace?.color || '');
+
+  // Relation field options for presets: { [propName]: [{ value, label }] }
+  const [relationOptions, setRelationOptions] = useState({});
+  const loadedRelations = useRef(new Set());
 
   // Database list — fetched once per modal lifetime (Retry/Refresh re-fetches)
   const [dbs, setDbs] = useState({ loading: true, error: null, items: [] });
@@ -306,6 +311,30 @@ function WorkspaceModal({ workspace, onClose }) {
     else setTeSchema({ loading: false, error: null, schema: null });
   }, [timeEntriesDbId]);
 
+  // Load pages for any relation-type extra fields so presets can offer a searchable dropdown
+  useEffect(() => {
+    if (!teSchema.schema) return;
+    extraProps.forEach((ep) => {
+      if (!ep.propName || loadedRelations.current.has(ep.propName)) return;
+      const prop = teSchema.schema[ep.propName];
+      if (prop?.type !== 'relation') return;
+      const relDbId = prop.relation?.database_id;
+      if (!relDbId) return;
+      loadedRelations.current.add(ep.propName);
+      window.notionAPI
+        .fetchDatabasePages(relDbId)
+        .then((pages) =>
+          setRelationOptions((prev) => ({
+            ...prev,
+            [ep.propName]: pages.map((p) => ({ value: p.id, label: p.name })),
+          }))
+        )
+        .catch(() =>
+          setRelationOptions((prev) => ({ ...prev, [ep.propName]: [] }))
+        );
+    });
+  }, [teSchema.schema, extraProps]);
+
   const teDateOpts = teSchema.schema ? propertiesByType(teSchema.schema, 'date') : [];
   const teStatusOpts = teSchema.schema ? propertiesByType(teSchema.schema, 'status') : [];
   const teStatusOptions = teSchema.schema
@@ -329,6 +358,17 @@ function WorkspaceModal({ workspace, onClose }) {
       .map(([propName, prop]) => ({ name: propName, type: prop.type }));
   };
 
+  const requiredExtraProps = extraProps.filter((ep) => ep.propName && ep.required);
+
+  const presetsValid = presets
+    .filter((p) => p.name.trim())
+    .every((p) =>
+      requiredExtraProps.every((ep) => {
+        const v = p.extraValues?.[ep.propName];
+        return v !== undefined && v !== null && v !== '';
+      })
+    );
+
   const complete =
     !!name.trim() &&
     !!timeEntriesDbId &&
@@ -336,7 +376,8 @@ function WorkspaceModal({ workspace, onClose }) {
     !!sel.timeEntryDateProp &&
     !!sel.timeEntryStatusProp &&
     !!sel.timeEntryStatusRunning &&
-    !!sel.timeEntryStatusDone;
+    !!sel.timeEntryStatusDone &&
+    presetsValid;
 
   const handleSave = async () => {
     if (!complete) return;
@@ -346,6 +387,7 @@ function WorkspaceModal({ workspace, onClose }) {
     const saved = {
       id: workspace?.id || crypto.randomUUID(),
       name: name.trim(),
+      color: color.trim(),
       timeEntriesDbId,
       projectsDbId,
       roundingMinutes,
@@ -577,7 +619,9 @@ function WorkspaceModal({ workspace, onClose }) {
               preset={preset}
               workspaceName={name}
               extraProps={extraProps.filter((ep) => !!ep.propName)}
+              requiredExtraProps={requiredExtraProps}
               schema={teSchema.schema}
+              relationOptions={relationOptions}
               onChange={(updated) =>
                 setPresets((prev) => prev.map((p, j) => (j === i ? updated : p)))
               }
@@ -612,7 +656,13 @@ function WorkspaceModal({ workspace, onClose }) {
           <p className="text-xs text-zinc-500 mt-1">{t('workspaceRoundingHint')}</p>
         </div>
 
-        {/* Section F — Buttons */}
+        {/* Section G — Colour */}
+        <div className="border-t border-zinc-700 pt-3">
+          <label className="block text-xs text-zinc-400 mb-2">{t('labelWorkspaceColor')}</label>
+          <WorkspaceColorPicker value={color} onChange={setColor} />
+        </div>
+
+        {/* Section H — Buttons */}
         {!complete && (
           <p className="text-xs text-zinc-500">{t('saveIncompleteHint')}</p>
         )}
@@ -667,20 +717,31 @@ function PropSelect({ label, hint, loading, options, value, onChange }) {
 }
 
 
-function PresetRow({ preset, workspaceName, extraProps, schema, onChange, onRemove }) {
+function PresetRow({ preset, workspaceName, extraProps, requiredExtraProps = [], schema, relationOptions, onChange, onRemove }) {
   const propDefs = extraProps
-    .filter((ep) => ep.propName && schema?.[ep.propName])
+    .filter((ep) => ep.propName && (schema?.[ep.propName] || ep.type))
     .map((ep) => {
-      const prop = schema[ep.propName];
-      return {
-        name: ep.propName,
-        type: prop.type,
-        options: (prop[prop.type]?.options ?? []).map((o) => ({ name: o.name })),
-      };
+      const prop = schema?.[ep.propName];
+      const type = prop?.type ?? ep.type ?? 'rich_text';
+      let options = [];
+      if (type === 'select' || type === 'multi_select') {
+        options = (prop?.[type]?.options ?? []).map((o) => ({ value: o.name, label: o.name }));
+      } else if (type === 'status') {
+        options = (prop?.status?.options ?? []).map((o) => ({ value: o.name, label: o.name }));
+      } else if (type === 'relation' || type === 'people') {
+        options = relationOptions?.[ep.propName] ?? [];
+      }
+      const required = requiredExtraProps.some((r) => r.propName === ep.propName);
+      return { name: ep.propName, type, options, required };
     });
 
+  const presetNamed = !!preset.name.trim();
+  const missingFields = presetNamed
+    ? propDefs.filter((d) => d.required && !(preset.extraValues?.[d.name] ?? ''))
+    : [];
+
   return (
-    <div className="border border-zinc-700 rounded-md p-2 flex flex-col gap-2">
+    <div className={`border rounded-md p-2 flex flex-col gap-2 ${missingFields.length ? 'border-red-500' : 'border-zinc-700'}`}>
       <div className="flex items-center gap-2">
         <span className="text-xs text-zinc-500 shrink-0 truncate max-w-[80px]">{workspaceName} —</span>
         <input
@@ -698,6 +759,9 @@ function PresetRow({ preset, workspaceName, extraProps, schema, onChange, onRemo
           ✕
         </button>
       </div>
+      {missingFields.length > 0 && (
+        <p className="text-xs text-red-400">{t('toastRequiredFieldsMissing')}</p>
+      )}
       <div>
         <label className="block text-xs text-zinc-500 mb-0.5">{t('labelPresetTitle')}</label>
         <input
@@ -708,22 +772,27 @@ function PresetRow({ preset, workspaceName, extraProps, schema, onChange, onRemo
           className="w-full bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-xs"
         />
       </div>
-      {propDefs.map((def) => (
-        <div key={def.name}>
-          <label className="block text-xs text-zinc-500 mb-0.5">{def.name}</label>
-          <PresetFieldInput
-            type={def.type}
-            options={def.options}
-            value={preset.extraValues?.[def.name] ?? ''}
-            onChange={(v) =>
-              onChange({
-                ...preset,
-                extraValues: { ...(preset.extraValues || {}), [def.name]: v },
-              })
-            }
-          />
-        </div>
-      ))}
+      {propDefs.map((def) => {
+        const fieldMissing = def.required && presetNamed && !(preset.extraValues?.[def.name] ?? '');
+        return (
+          <div key={def.name}>
+            <label className={`block text-xs mb-0.5 ${fieldMissing ? 'text-red-400' : 'text-zinc-500'}`}>
+              {def.name}{def.required ? ' *' : ''}
+            </label>
+            <PresetFieldInput
+              type={def.type}
+              options={def.options}
+              value={preset.extraValues?.[def.name] ?? ''}
+              onChange={(v) =>
+                onChange({
+                  ...preset,
+                  extraValues: { ...(preset.extraValues || {}), [def.name]: v },
+                })
+              }
+            />
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -744,16 +813,55 @@ function PresetFieldInput({ type, options, value, onChange }) {
   }
   if (type === 'select' || type === 'status') {
     return (
-      <select
+      <SearchableSelect
         value={value ?? ''}
-        onChange={(e) => onChange(e.target.value)}
-        className="w-full bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-xs text-zinc-200"
-      >
-        <option value="">{t('placeholderSelect')}</option>
-        {options.map((o) => (
-          <option key={o.name} value={o.name}>{o.name}</option>
-        ))}
-      </select>
+        onChange={onChange}
+        options={options}
+        placeholder={t('placeholderSelect')}
+        triggerClass="bg-zinc-900"
+        className="w-full"
+      />
+    );
+  }
+  if (type === 'relation' || type === 'people') {
+    return (
+      <SearchableSelect
+        value={value ?? ''}
+        onChange={onChange}
+        options={options}
+        placeholder={t('placeholderSelect')}
+        triggerClass="bg-zinc-900"
+        className="w-full"
+      />
+    );
+  }
+  if (type === 'multi_select') {
+    const selected = value ? value.split(',').map((v) => v.trim()).filter(Boolean) : [];
+    return (
+      <div className="flex flex-wrap gap-1">
+        {options.map((o) => {
+          const active = selected.includes(o.value);
+          return (
+            <button
+              key={o.value}
+              type="button"
+              onClick={() => {
+                const next = active
+                  ? selected.filter((v) => v !== o.value)
+                  : [...selected, o.value];
+                onChange(next.join(','));
+              }}
+              className={`px-2 py-0.5 rounded text-xs border transition-colors ${
+                active
+                  ? 'bg-emerald-600 border-emerald-500 text-white'
+                  : 'bg-zinc-700 border-zinc-600 text-zinc-200 hover:border-zinc-400'
+              }`}
+            >
+              {o.label}
+            </button>
+          );
+        })}
+      </div>
     );
   }
   if (type === 'number') {
@@ -773,6 +881,82 @@ function PresetFieldInput({ type, options, value, onChange }) {
       onChange={(e) => onChange(e.target.value)}
       className="w-full bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-xs"
     />
+  );
+}
+
+const PRESET_PALETTE = [
+  '#ef4444', '#f97316', '#eab308', '#22c55e',
+  '#06b6d4', '#3b82f6', '#8b5cf6', '#ec4899',
+];
+
+function WorkspaceColorPicker({ value, onChange }) {
+  const [customHex, setCustomHex] = useState(
+    value && !PRESET_PALETTE.includes(value) ? value : ''
+  );
+
+  const applyCustom = () => {
+    const hex = customHex.trim().startsWith('#') ? customHex.trim() : `#${customHex.trim()}`;
+    if (/^#[0-9a-fA-F]{6}$/.test(hex)) onChange(hex);
+  };
+
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex flex-wrap gap-2 items-center">
+        {/* None swatch */}
+        <button
+          type="button"
+          onClick={() => onChange('')}
+          title="None"
+          className={`w-7 h-7 rounded-full border-2 bg-zinc-700 flex items-center justify-center text-xs transition-colors ${
+            !value ? 'border-emerald-500' : 'border-zinc-600 hover:border-zinc-400'
+          }`}
+        >
+          {!value && <span className="text-zinc-300">✓</span>}
+        </button>
+        {PRESET_PALETTE.map((hex) => (
+          <button
+            key={hex}
+            type="button"
+            onClick={() => { onChange(hex); setCustomHex(''); }}
+            title={hex}
+            style={{ backgroundColor: hex }}
+            className={`w-7 h-7 rounded-full border-2 flex items-center justify-center transition-colors ${
+              value === hex ? 'border-white' : 'border-transparent hover:border-white/50'
+            }`}
+          >
+            {value === hex && <span className="text-white text-xs">✓</span>}
+          </button>
+        ))}
+      </div>
+      <div className="flex items-center gap-2">
+        <input
+          type="text"
+          value={customHex}
+          onChange={(e) => setCustomHex(e.target.value)}
+          placeholder="#RRGGBB"
+          className="flex-1 bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-xs font-mono"
+          onKeyDown={(e) => e.key === 'Enter' && applyCustom()}
+        />
+        {customHex && (
+          <div
+            className="w-6 h-6 rounded border border-zinc-600 shrink-0"
+            style={{
+              backgroundColor: /^#?[0-9a-fA-F]{6}$/.test(customHex.trim())
+                ? (customHex.trim().startsWith('#') ? customHex.trim() : `#${customHex.trim()}`)
+                : 'transparent',
+            }}
+          />
+        )}
+        <button
+          type="button"
+          onClick={applyCustom}
+          disabled={!customHex.trim()}
+          className="px-2 py-1 text-xs rounded bg-zinc-700 hover:bg-zinc-600 disabled:opacity-40"
+        >
+          {t('btnApplyColor')}
+        </button>
+      </div>
+    </div>
   );
 }
 
