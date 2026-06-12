@@ -471,9 +471,7 @@ function WorkspaceModal({ workspace, onClose }) {
             loading={dbs.loading}
             className="w-full"
           />
-          {t('hintTimeEntriesDb') && (
-            <p className="text-xs text-zinc-600 mt-1">{t('hintTimeEntriesDb')}</p>
-          )}
+          <p className="text-xs text-zinc-600 mt-1">{t('hintTimeEntriesDb')}</p>
         </div>
 
         {/* Section C — Time entry properties */}
@@ -703,7 +701,7 @@ function PropSelect({ label, hint, loading, options, value, onChange }) {
 }
 
 
-function PresetRow({ preset, workspaceName, extraProps, requiredExtraProps = [], schema, relationOptions, onChange, onRemove }) {
+function PresetRow({ preset, workspaceName, extraProps, schema, relationOptions, onChange, onRemove }) {
   const propDefs = extraProps
     .filter((ep) => ep.propName && (schema?.[ep.propName] || ep.type))
     .map((ep) => {
@@ -717,8 +715,7 @@ function PresetRow({ preset, workspaceName, extraProps, requiredExtraProps = [],
       } else if (type === 'relation' || type === 'people') {
         options = relationOptions?.[ep.propName] ?? [];
       }
-      const required = requiredExtraProps.some((r) => r.propName === ep.propName);
-      return { name: ep.propName, type, options, required };
+      return { name: ep.propName, type, options };
     });
 
   return (

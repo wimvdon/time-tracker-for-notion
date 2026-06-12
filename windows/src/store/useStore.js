@@ -61,13 +61,10 @@ export const useStore = create((set, get) => ({
   toasts: [],
   recoveredTimer: null,
   recoveryBusy: false,
-  editTimerOpen: false,
   theme: 'auto',
 
   // Session state
   selectedWorkspaceId: null,
-  projects: [],
-  projectsLoading: false,
   selectedProjectId: null,
   description: '',
   extraFieldDefs: [],
@@ -84,12 +81,11 @@ export const useStore = create((set, get) => ({
   recentEntriesLoading: false,
   deleteConfirm: null,
 
-  // Deleted-page dialog: { notionPageId, title, description, startISO }
+  // Deleted-page dialog: { notionPageId, title, startISO }
   deletedPageInfo: null,
 
   setView: (view) => set({ view }),
   setDescription: (description) => set({ description }),
-  setSelectedProjectId: (selectedProjectId) => set({ selectedProjectId }),
   setExtraValue: (name, value) =>
     set((s) => ({ extraValues: { ...s.extraValues, [name]: value } })),
 
@@ -97,8 +93,6 @@ export const useStore = create((set, get) => ({
     const ws = get().workspaces.find((w) => w.id === get().selectedWorkspaceId);
     return ws?.roundingMinutes ?? 15;
   },
-
-  getRoundingEnabled: () => get().getRoundingMinutes() > 0,
 
   addToast: (toast) => {
     const id = ++toastSeq;
@@ -248,7 +242,6 @@ export const useStore = create((set, get) => ({
     if (get().selectedWorkspaceId === workspaceId) {
       Object.assign(patch, {
         selectedWorkspaceId: null,
-        projects: [],
         selectedProjectId: null,
       });
       await api.saveSettings({ lastUsedWorkspaceId: null });
@@ -268,25 +261,14 @@ export const useStore = create((set, get) => ({
     const workspace = get().workspaces.find((w) => w.id === workspaceId);
     set({
       selectedWorkspaceId: workspaceId,
-      projects: [],
       selectedProjectId: null,
-      projectsLoading: !!workspace,
       extraFieldDefs: [],
       extraValues: {},
       extrasLoading: !!workspace && (workspace.extraProps?.length ?? 0) > 0,
     });
     api.saveSettings({ lastUsedWorkspaceId: workspaceId });
     if (!workspace) return;
-    get().loadExtraFields(workspace);
-    try {
-      const projects = await api.fetchDatabasePages(workspace.projectsDbId);
-      if (get().selectedWorkspaceId !== workspaceId) return;
-      set({ projects, projectsLoading: false, selectedProjectId: null });
-    } catch (err) {
-      if (get().selectedWorkspaceId !== workspaceId) return;
-      set({ projectsLoading: false });
-      get().addToast({ type: 'error', message: `${t('toastProjectsError')}: ${errorMessage(err)}` });
-    }
+    await get().loadExtraFields(workspace);
   },
 
   loadExtraFields: async (workspace) => {
@@ -329,14 +311,11 @@ export const useStore = create((set, get) => ({
     if (state.timer.running) return;
     const workspace = state.workspaces.find((w) => w.id === state.selectedWorkspaceId);
     if (!workspace) return;
-    const project = state.projects.find((p) => p.id === state.selectedProjectId);
 
     const rm = get().getRoundingMinutes();
     const roundedStart = rm > 0 ? computeStartTime(new Date(), rm) : new Date();
     const startISO = toNotionDateTime(roundedStart);
-    const title =
-      state.description.trim() ||
-      (project ? `${project.name} — ${formatDateDDMMYYYY(roundedStart)}` : formatDateDDMMYYYY(roundedStart));
+    const title = state.description.trim() || formatDateDDMMYYYY(roundedStart);
 
     const extra = {};
     for (const def of state.extraFieldDefs) {
@@ -350,7 +329,7 @@ export const useStore = create((set, get) => ({
         dbId: workspace.timeEntriesDbId,
         title,
         startISO,
-        projectId: project?.id,
+        projectId: state.selectedProjectId,
         props: workspace.propertyMap,
         extra,
       }));
@@ -366,8 +345,8 @@ export const useStore = create((set, get) => ({
         roundedStart: startISO,
         rawStart: rawStart.toISOString(),
         workspaceId: workspace.id,
-        projectId: project?.id,
-        projectName: project?.name ?? '',
+        projectId: state.selectedProjectId,
+        projectName: '',
         description: state.description,
         propertyMap: workspace.propertyMap,
       },
@@ -444,7 +423,6 @@ export const useStore = create((set, get) => ({
         elapsedSeconds: Math.max(0, Math.floor((Date.now() - newStart.getTime()) / 1000)),
       },
     }));
-    const project = state.projects.find((p) => p.id === state.selectedProjectId);
     api.saveSettings({
       activeTimer: {
         notionPageId: state.timer.notionPageId,
@@ -452,7 +430,7 @@ export const useStore = create((set, get) => ({
         rawStart: newStart.toISOString(),
         workspaceId: state.selectedWorkspaceId,
         projectId: state.selectedProjectId,
-        projectName: project?.name ?? '',
+        projectName: '',
         description: state.description,
         propertyMap: state.timer.propertyMap,
       },
@@ -789,15 +767,10 @@ export const useStore = create((set, get) => ({
 
   // ---- Edit running timer ----
 
-  openEditTimer: () => set({ editTimerOpen: true }),
-  closeEditTimer: () => set({ editTimerOpen: false }),
-
   updateTimerDetails: async (projectId, description, extraValues) => {
     const state = get();
     if (!state.timer.running) return;
     const pm = state.timer.propertyMap;
-    const project = state.projects.find((p) => p.id === projectId);
-    const projectName = project?.name ?? '';
     // Allow empty title — do not fall back to a default
     const newTitle = description.trim();
 
@@ -844,7 +817,7 @@ export const useStore = create((set, get) => ({
       rawStart: state.timer.rawStart?.toISOString?.() ?? state.timer.startISO,
       workspaceId: state.selectedWorkspaceId,
       projectId,
-      projectName,
+      projectName: '',
       description: newTitle,
       propertyMap: pm,
     };
@@ -862,7 +835,6 @@ export const useStore = create((set, get) => ({
       deletedPageInfo: {
         notionPageId: timer.notionPageId,
         title: get().description || '',
-        description: get().description || '',
         startISO: timer.startISO || timer.roundedStart || null,
       },
     });
