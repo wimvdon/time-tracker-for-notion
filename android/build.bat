@@ -7,6 +7,22 @@ if not exist "local.properties" (
     echo local.properties aangemaakt.
 )
 
+:: Locate Java — use JAVA_HOME if set, otherwise find Android Studio's bundled JDK
+if not defined JAVA_HOME (
+    if exist "%PROGRAMFILES%\Android\Android Studio\jbr\bin\java.exe" (
+        set "JAVA_HOME=%PROGRAMFILES%\Android\Android Studio\jbr"
+    ) else if exist "%PROGRAMFILES%\Android\Android Studio\jre\bin\java.exe" (
+        set "JAVA_HOME=%PROGRAMFILES%\Android\Android Studio\jre"
+    )
+)
+if defined JAVA_HOME (
+    set "PATH=%JAVA_HOME%\bin;%PATH%"
+) else (
+    echo ERROR: Java not found. Make sure Android Studio is installed, or set JAVA_HOME manually.
+    pause
+    exit /b 1
+)
+
 echo.
 echo Building APK...
 echo.
