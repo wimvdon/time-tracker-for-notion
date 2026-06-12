@@ -638,25 +638,17 @@ export const useStore = create((set, get) => ({
     api.setTimerRunning(false);
   },
 
-  loadRunningTimer: (rt) => {
+  loadRunningTimer: async (rt) => {
     const state = get();
 
     if (state.timer.running && state.timer.tickInterval) {
       clearInterval(state.timer.tickInterval);
     }
 
-    const previouslyActive = state.timer.running
-      ? {
-          pageId: state.timer.notionPageId,
-          title: state.description || '',
-          startISO: state.timer.startISO,
-          workspaceId: state.selectedWorkspaceId || '',
-          workspaceName: state.workspaces.find((w) => w.id === state.selectedWorkspaceId)?.name || '',
-          propertyMap: state.timer.propertyMap,
-        }
-      : null;
-
-    get().selectWorkspace(rt.workspaceId);
+    // Only switch workspace when actually needed — avoids resetting extraFieldDefs/extraValues
+    if (state.selectedWorkspaceId !== rt.workspaceId) {
+      await get().selectWorkspace(rt.workspaceId);
+    }
 
     api.saveSettings({
       activeTimer: {
@@ -671,14 +663,9 @@ export const useStore = create((set, get) => ({
       },
     });
 
-    set((s) => {
-      const activePageId = state.timer.notionPageId;
-      const others = s.runningTimers.filter(
-        (x) => x.pageId !== rt.pageId && x.pageId !== activePageId,
-      );
-      if (previouslyActive) others.push(previouslyActive);
-      return { runningTimers: others, description: rt.title };
-    });
+    // Only update description; leave runningTimers untouched so the list stays stable.
+    // The active/inactive styling is derived from timer.notionPageId, not the list order.
+    set({ description: rt.title });
 
     get().beginTicking({
       pageId: rt.pageId,
