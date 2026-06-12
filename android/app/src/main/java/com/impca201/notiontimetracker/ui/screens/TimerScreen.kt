@@ -14,6 +14,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
@@ -248,6 +249,7 @@ private fun IdleView(
             OtherRunningTimers(
                 timers = uiState.runningTimers,
                 loading = uiState.runningTimersLoading,
+                activePageId = null,
                 onLoad = onLoadRunningTimer,
                 onStop = onStopOtherRunningTimer,
                 onRefresh = onRefreshRunningTimers
@@ -415,6 +417,7 @@ private fun RunningView(
             OtherRunningTimers(
                 timers = uiState.runningTimers,
                 loading = uiState.runningTimersLoading,
+                activePageId = uiState.activeTimer?.notionPageId,
                 onLoad = onLoadRunningTimer,
                 onStop = onStopOtherRunningTimer,
                 onRefresh = onRefreshRunningTimers
@@ -429,6 +432,7 @@ private fun RunningView(
 private fun OtherRunningTimers(
     timers: List<RunningTimerInfo>,
     loading: Boolean,
+    activePageId: String?,
     onLoad: (RunningTimerInfo) -> Unit,
     onStop: (RunningTimerInfo) -> Unit,
     onRefresh: () -> Unit
@@ -459,14 +463,20 @@ private fun OtherRunningTimers(
         }
     }
     timers.forEach { rt ->
+        val isActive = rt.pageId == activePageId
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable { onLoad(rt) },
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                .then(if (!isActive) Modifier.clickable { onLoad(rt) } else Modifier),
+            colors = CardDefaults.cardColors(
+                containerColor = if (isActive) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                else MaterialTheme.colorScheme.surfaceVariant
+            )
         ) {
             Row(
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                modifier = Modifier
+                    .padding(horizontal = 12.dp, vertical = 8.dp)
+                    .then(if (isActive) Modifier.alpha(0.6f) else Modifier),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column(modifier = Modifier.weight(1f)) {
@@ -481,12 +491,14 @@ private fun OtherRunningTimers(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-                IconButton(onClick = { onStop(rt) }) {
-                    Text(
-                        "⏹",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                if (!isActive) {
+                    IconButton(onClick = { onStop(rt) }) {
+                        Text(
+                            "⏹",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             }
         }

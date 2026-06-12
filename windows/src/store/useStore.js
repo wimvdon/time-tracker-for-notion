@@ -77,7 +77,7 @@ export const useStore = create((set, get) => ({
   // Timer state
   timer: { ...idleTimer },
 
-  // Running timers fetched from Notion (excludes the currently active UI timer)
+  // Running timers fetched from Notion
   runningTimers: [],
   runningTimersLoading: false,
 
@@ -497,15 +497,9 @@ export const useStore = create((set, get) => ({
 
   // ---- Running timers loaded from Notion ----
 
-  /**
-   * Queries every configured workspace for pages with the running status.
-   * autoLoad=true (default): auto-loads the most recent; skipped when a timer is running.
-   * autoLoad=false (manual refresh): updates the list while a timer is running, no auto-load.
-   */
-  loadRunningTimers: async (autoLoad = true) => {
-    const { workspaces, apiKey, timer, recoveredTimer, runningTimersLoading } = get();
+  loadRunningTimers: async () => {
+    const { workspaces, apiKey, recoveredTimer, runningTimersLoading } = get();
     if (!apiKey || !workspaces.length || recoveredTimer || runningTimersLoading) return;
-    if (autoLoad && timer.running) return;
 
     set({ runningTimersLoading: true });
     const allRunning = [];
@@ -529,16 +523,7 @@ export const useStore = create((set, get) => ({
     }
 
     allRunning.sort((a, b) => new Date(b.startISO) - new Date(a.startISO));
-
-    // Exclude whichever timer is currently active in the UI
-    const activePageId = get().timer.running ? get().timer.notionPageId : null;
-    const others = allRunning.filter((r) => r.pageId !== activePageId);
-
-    set({ runningTimersLoading: false, runningTimers: others });
-
-    if (autoLoad && !get().timer.running && others.length >= 1) {
-      get().loadRunningTimer(others[0]);
-    }
+    set({ runningTimersLoading: false, runningTimers: allRunning });
   },
 
   /**

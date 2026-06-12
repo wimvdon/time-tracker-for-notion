@@ -39,11 +39,11 @@ export default function Timer() {
 
   const selectedWorkspace = workspaces.find((w) => w.id === selectedWorkspaceId);
 
-  // Reload running timers whenever idle (no local timer, no crash recovery pending)
+  // Reload running timers on every state transition (except during crash recovery)
   const timerRunning = timer.running;
   const hasRecovery = !!recoveredTimer;
   useEffect(() => {
-    if (!timerRunning && !hasRecovery) {
+    if (!hasRecovery) {
       loadRunningTimers();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -78,9 +78,10 @@ export default function Timer() {
         settingsButton={settingsButton}
         runningTimers={runningTimers}
         runningTimersLoading={runningTimersLoading}
+        activePageId={timer.notionPageId}
         onLoadRunningTimer={loadRunningTimer}
         onStopOtherRunningTimer={stopOtherRunningTimer}
-        onRefreshTimers={() => loadRunningTimers(false)}
+        onRefreshTimers={loadRunningTimers}
       />
     );
   }
@@ -160,9 +161,10 @@ export default function Timer() {
         <OtherRunningTimers
           timers={runningTimers}
           loading={runningTimersLoading}
+          activePageId={null}
           onLoad={loadRunningTimer}
           onStop={stopOtherRunningTimer}
-          onRefresh={() => loadRunningTimers(false)}
+          onRefresh={loadRunningTimers}
         />
       </div>
       {settingsButton}
@@ -170,7 +172,7 @@ export default function Timer() {
   );
 }
 
-function RunningView({ workspaceName, settingsButton, runningTimers, runningTimersLoading, onLoadRunningTimer, onStopOtherRunningTimer, onRefreshTimers }) {
+function RunningView({ workspaceName, settingsButton, runningTimers, runningTimersLoading, activePageId, onLoadRunningTimer, onStopOtherRunningTimer, onRefreshTimers }) {
   const timer = useStore((s) => s.timer);
   const description = useStore((s) => s.description);
   const stopTimer = useStore((s) => s.stopTimer);
@@ -260,6 +262,7 @@ function RunningView({ workspaceName, settingsButton, runningTimers, runningTime
         <OtherRunningTimers
           timers={runningTimers}
           loading={runningTimersLoading}
+          activePageId={activePageId}
           onLoad={onLoadRunningTimer}
           onStop={onStopOtherRunningTimer}
           onRefresh={onRefreshTimers}
@@ -270,7 +273,7 @@ function RunningView({ workspaceName, settingsButton, runningTimers, runningTime
   );
 }
 
-function OtherRunningTimers({ timers, loading, onLoad, onStop, onRefresh }) {
+function OtherRunningTimers({ timers, loading, activePageId, onLoad, onStop, onRefresh }) {
   if (!timers.length && !loading) return null;
   return (
     <div className="w-full mt-2 pt-3 border-t border-zinc-700">
@@ -285,25 +288,30 @@ function OtherRunningTimers({ timers, loading, onLoad, onStop, onRefresh }) {
           {loading ? '…' : '↺'}
         </button>
       </div>
-      {timers.map((rt) => (
-        <div
-          key={rt.pageId}
-          onClick={() => onLoad(rt)}
-          className="flex items-center gap-2 px-3 py-2 bg-zinc-800 hover:bg-zinc-700 rounded-md mb-1 cursor-pointer transition-colors"
-        >
-          <div className="flex-1 min-w-0">
-            <div className="text-sm truncate text-zinc-200">{rt.title}</div>
-            <div className="text-xs text-zinc-500">{rt.workspaceName}</div>
-          </div>
-          <button
-            onClick={(e) => { e.stopPropagation(); onStop(rt); }}
-            title={t('titleStopRunningTimer')}
-            className="text-zinc-500 hover:text-red-400 text-base transition-colors shrink-0 leading-none"
+      {timers.map((rt) => {
+        const isActive = rt.pageId === activePageId;
+        return (
+          <div
+            key={rt.pageId}
+            onClick={isActive ? undefined : () => onLoad(rt)}
+            className={`flex items-center gap-2 px-3 py-2 bg-zinc-800 rounded-md mb-1 transition-colors ${isActive ? 'opacity-60' : 'hover:bg-zinc-700 cursor-pointer'}`}
           >
-            ⏹
-          </button>
-        </div>
-      ))}
+            <div className="flex-1 min-w-0">
+              <div className="text-sm truncate text-zinc-200">{rt.title}</div>
+              <div className="text-xs text-zinc-500">{rt.workspaceName}</div>
+            </div>
+            {!isActive && (
+              <button
+                onClick={(e) => { e.stopPropagation(); onStop(rt); }}
+                title={t('titleStopRunningTimer')}
+                className="text-zinc-500 hover:text-red-400 text-base transition-colors shrink-0 leading-none"
+              >
+                ⏹
+              </button>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
