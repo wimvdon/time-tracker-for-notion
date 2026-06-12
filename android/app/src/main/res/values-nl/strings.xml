@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Notion Time Tracker</string>
+
+    <!-- Timer — idle -->
+    <string name="label_workspace">Werkruimte</string>
+    <string name="label_project">Project</string>
+    <string name="label_description">Bezig met…</string>
+    <string name="placeholder_description">Optionele omschrijving</string>
+    <string name="placeholder_select_workspace">Kies werkruimte…</string>
+    <string name="placeholder_select_project">Kies project…</string>
+    <string name="placeholder_loading">Laden…</string>
+    <string name="btn_start">START</string>
+    <string name="btn_stop">STOP</string>
+    <string name="label_start_time">Starttijd</string>
+    <string name="label_end_time">Eindtijd</string>
+    <string name="hint_manual_end">Een eindtijd invullen stopt de timer.</string>
+    <string name="toast_end_before_start">De eindtijd moet na de starttijd liggen.</string>
+    <string name="warn_no_api_key">Geen Notion API-sleutel ingesteld.</string>
+    <string name="warn_no_api_key_link">Open Instellingen</string>
+    <string name="warn_no_workspaces">Voeg een werkruimte toe in</string>
+    <string name="warn_no_workspaces_link">Instellingen</string>
+    <string name="warn_no_workspaces_suffix">om te beginnen.</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Instellingen</string>
+    <string name="first_launch_hint">Voeg je Notion API-sleutel en minstens één werkruimte toe om te beginnen.</string>
+    <string name="label_api_key">Notion API-sleutel</string>
+    <string name="placeholder_api_key">secret_… of ntn_…</string>
+    <string name="btn_show_key">Toon</string>
+    <string name="btn_hide_key">Verberg</string>
+    <string name="btn_test_and_save_key">Verbinding testen &amp; opslaan</string>
+    <string name="btn_testing_key">Testen…</string>
+    <string name="label_workspaces">Werkruimtes</string>
+    <string name="no_workspaces_yet">Nog geen werkruimtes.</string>
+    <string name="title_delete_workspace">Werkruimte verwijderen</string>
+    <string name="title_delete_workspace_disabled">Stop de timer eerst</string>
+    <string name="title_move_up">Omhoog</string>
+    <string name="title_move_down">Omlaag</string>
+    <string name="btn_add_workspace">+ Werkruimte toevoegen</string>
+
+    <!-- Workspace modal -->
+    <string name="modal_title_add_workspace">Werkruimte toevoegen</string>
+    <string name="modal_title_edit_workspace">Werkruimte bewerken</string>
+    <string name="label_workspace_name">Naam</string>
+    <string name="label_time_entries_db">Database tijdsregistraties</string>
+    <string name="hint_time_entries_db">Tijdsregistraties worden hier aangemaakt. Vereist: één datumbereik-veld, één statusveld, en bij voorkeur één koppelveld naar een projectendatabase.</string>
+    <string name="label_projects_db">Projectendatabase</string>
+    <string name="placeholder_select_database">Kies database…</string>
+    <string name="placeholder_select">Kies…</string>
+    <string name="placeholder_search">Zoeken…</string>
+    <string name="search_no_results">Geen resultaten</string>
+    <string name="btn_refresh_databases">Vernieuwen</string>
+    <string name="loading_databases">Databases laden…</string>
+    <string name="error_loading_databases">Kon databases niet laden</string>
+    <string name="error_loading_schema">Kon database-eigenschappen niet laden</string>
+    <string name="no_databases_found">Geen databases gevonden. Verbind je integratie eerst met de juiste Notion-pagina\'s.</string>
+    <string name="btn_retry">Opnieuw proberen</string>
+    <string name="label_time_entry_date_prop">Datumbereik-veld</string>
+    <string name="hint_time_entry_date_prop">Slaat de start- en eindtijd op.</string>
+    <string name="label_time_entry_status_prop">Statusveld</string>
+    <string name="hint_time_entry_status_prop">Geeft aan of de timer actief of voltooid is.</string>
+    <string name="label_time_entry_status_running">Statusoptie — actief</string>
+    <string name="hint_time_entry_status_running">De optie die een actieve tijdsregistratie aanduidt.</string>
+    <string name="label_time_entry_status_done">Statusoptie — voltooid</string>
+    <string name="hint_time_entry_status_done">De optie die een voltooide tijdsregistratie aanduidt.</string>
+    <string name="label_relation_prop">Koppelveld (projecten)</string>
+    <string name="loading_properties">Laden…</string>
+    <string name="section_extra_fields">Extra velden (optioneel)</string>
+    <string name="hint_extra_fields">Tot vijf extra velden uit de tijdsregistratie-database, handmatig in te vullen in de timer.</string>
+    <string name="btn_add_extra_field">+ Veld toevoegen</string>
+    <string name="title_remove_extra_field">Veld verwijderen</string>
+    <string name="placeholder_select_field">Kies veld…</string>
+    <string name="label_required_field">Verplicht</string>
+    <string name="toast_required_fields_missing">Vul alle verplichte velden in voor je start.</string>
+    <string name="error_loading_extras">Kon extra velden niet laden</string>
+    <string name="no_properties_of_type">Geen geschikt veld gevonden in deze database.</string>
+    <string name="label_default_value">Standaardwaarde</string>
+    <string name="default_value_unsupported">Standaardwaarde niet ondersteund voor dit type</string>
+    <string name="label_workspace_rounding">Tijden afronden</string>
+    <string name="rounding_off">Niet afronden</string>
+    <string name="rounding_5">Afronden naar 5 minuten</string>
+    <string name="rounding_10">Afronden naar 10 minuten</string>
+    <string name="rounding_15">Afronden naar 15 minuten</string>
+    <string name="workspace_rounding_hint">Rondt start- en stoptijden af, inclusief manueel ingevulde tijden.</string>
+    <string name="save_incomplete_hint">Vul alle velden in voor je kan opslaan.</string>
+    <string name="btn_cancel">Annuleer</string>
+    <string name="btn_save">Opslaan</string>
+
+    <!-- Recovery dialog -->
+    <string name="recovery_title">Timer nog actief</string>
+    <string name="recovery_body">Een timer was nog actief toen de app sloot.</string>
+    <string name="recovery_stop">Nu stoppen</string>
+    <string name="recovery_resume">Hervatten</string>
+    <string name="recovery_discard">Negeren</string>
+
+    <!-- Toasts / errors -->
+    <string name="toast_api_key_saved">API-sleutel werkt en is opgeslagen.</string>
+    <string name="toast_connection_failed">Verbinding mislukt</string>
+    <string name="toast_workspace_added">Werkruimte \"%1$s\" toegevoegd.</string>
+    <string name="toast_workspace_saved">Werkruimte \"%1$s\" opgeslagen.</string>
+    <string name="toast_projects_error">Kon projecten niet laden</string>
+    <string name="toast_start_error">Kon timer niet starten</string>
+    <string name="toast_stop_error">Kon timer niet stoppen</string>
+    <string name="toast_stop_retry">Opnieuw proberen</string>
+    <string name="toast_recovery_stop_error">Kon de herstelde timer niet stoppen</string>
+    <string name="title_dismiss">Sluiten</string>
+    <string name="btn_back">Terug</string>
+    <string name="title_settings">Instellingen</string>
+
+    <!-- Notification -->
+    <string name="notification_channel_name">Timer</string>
+    <string name="notification_channel_description">Toont de actieve timer</string>
+    <string name="notification_action_stop">Stoppen</string>
+</resources>

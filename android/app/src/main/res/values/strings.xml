@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Notion Time Tracker</string>
+
+    <!-- Timer — idle -->
+    <string name="label_workspace">Workspace</string>
+    <string name="label_project">Project</string>
+    <string name="label_description">Working on…</string>
+    <string name="placeholder_description">Optional description</string>
+    <string name="placeholder_select_workspace">Select workspace…</string>
+    <string name="placeholder_select_project">Select project…</string>
+    <string name="placeholder_loading">Loading…</string>
+    <string name="btn_start">START</string>
+    <string name="btn_stop">STOP</string>
+    <string name="label_start_time">Start time</string>
+    <string name="label_end_time">End time</string>
+    <string name="hint_manual_end">Filling in an end time stops the timer.</string>
+    <string name="toast_end_before_start">The end time must be after the start time.</string>
+    <string name="warn_no_api_key">No Notion API key set.</string>
+    <string name="warn_no_api_key_link">Open Settings</string>
+    <string name="warn_no_workspaces">Add a workspace in</string>
+    <string name="warn_no_workspaces_link">Settings</string>
+    <string name="warn_no_workspaces_suffix">to get started.</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Settings</string>
+    <string name="first_launch_hint">Add your Notion API key and at least one workspace to get started.</string>
+    <string name="label_api_key">Notion API Key</string>
+    <string name="placeholder_api_key">secret_… or ntn_…</string>
+    <string name="btn_show_key">Show</string>
+    <string name="btn_hide_key">Hide</string>
+    <string name="btn_test_and_save_key">Test connection &amp; save</string>
+    <string name="btn_testing_key">Testing…</string>
+    <string name="label_workspaces">Workspaces</string>
+    <string name="no_workspaces_yet">No workspaces yet.</string>
+    <string name="title_delete_workspace">Delete workspace</string>
+    <string name="title_delete_workspace_disabled">Stop the timer first</string>
+    <string name="title_move_up">Move up</string>
+    <string name="title_move_down">Move down</string>
+    <string name="btn_add_workspace">+ Add workspace</string>
+
+    <!-- Workspace modal -->
+    <string name="modal_title_add_workspace">Add Workspace</string>
+    <string name="modal_title_edit_workspace">Edit Workspace</string>
+    <string name="label_workspace_name">Name</string>
+    <string name="label_time_entries_db">Time Entries database</string>
+    <string name="hint_time_entries_db">Time entries are created here. Required: one date-range field, one status field, and ideally one relation field linking to a projects database.</string>
+    <string name="label_projects_db">Projects database</string>
+    <string name="placeholder_select_database">Select database…</string>
+    <string name="placeholder_select">Select…</string>
+    <string name="placeholder_search">Search…</string>
+    <string name="search_no_results">No results</string>
+    <string name="btn_refresh_databases">Refresh</string>
+    <string name="loading_databases">Loading databases…</string>
+    <string name="error_loading_databases">Could not load databases</string>
+    <string name="error_loading_schema">Could not load database properties</string>
+    <string name="no_databases_found">No databases found. Connect your integration to the relevant Notion pages first.</string>
+    <string name="btn_retry">Retry</string>
+    <string name="label_time_entry_date_prop">Date range field</string>
+    <string name="hint_time_entry_date_prop">Stores the start and end time.</string>
+    <string name="label_time_entry_status_prop">Status field</string>
+    <string name="hint_time_entry_status_prop">Tracks whether the timer is running or completed.</string>
+    <string name="label_time_entry_status_running">Running status option</string>
+    <string name="hint_time_entry_status_running">The option that marks a time entry as in progress.</string>
+    <string name="label_time_entry_status_done">Completed status option</string>
+    <string name="hint_time_entry_status_done">The option that marks a time entry as finished.</string>
+    <string name="label_relation_prop">Relation field (projects)</string>
+    <string name="loading_properties">Loading…</string>
+    <string name="section_extra_fields">Extra fields (optional)</string>
+    <string name="hint_extra_fields">Up to five additional fields from the Time Entries database, filled in manually in the timer.</string>
+    <string name="btn_add_extra_field">+ Add field</string>
+    <string name="title_remove_extra_field">Remove field</string>
+    <string name="placeholder_select_field">Select field…</string>
+    <string name="label_required_field">Required</string>
+    <string name="toast_required_fields_missing">Please fill in all required fields before starting.</string>
+    <string name="error_loading_extras">Could not load extra fields</string>
+    <string name="no_properties_of_type">No suitable field found in this database.</string>
+    <string name="label_default_value">Default value</string>
+    <string name="default_value_unsupported">Default value not supported for this type</string>
+    <string name="label_workspace_rounding">Time rounding</string>
+    <string name="rounding_off">No rounding</string>
+    <string name="rounding_5">Round to nearest 5 minutes</string>
+    <string name="rounding_10">Round to nearest 10 minutes</string>
+    <string name="rounding_15">Round to nearest 15 minutes</string>
+    <string name="workspace_rounding_hint">Rounds start and stop times (including manual edits) to the nearest interval.</string>
+    <string name="save_incomplete_hint">Fill in all fields before saving.</string>
+    <string name="btn_cancel">Cancel</string>
+    <string name="btn_save">Save</string>
+
+    <!-- Recovery dialog -->
+    <string name="recovery_title">Timer still running</string>
+    <string name="recovery_body">A timer was running when the app last closed.</string>
+    <string name="recovery_stop">Stop now</string>
+    <string name="recovery_resume">Resume</string>
+    <string name="recovery_discard">Discard</string>
+
+    <!-- Toasts / errors -->
+    <string name="toast_api_key_saved">API key works and was saved.</string>
+    <string name="toast_connection_failed">Connection failed</string>
+    <string name="toast_workspace_added">Workspace \"%1$s\" added.</string>
+    <string name="toast_workspace_saved">Workspace \"%1$s\" saved.</string>
+    <string name="toast_projects_error">Could not load projects</string>
+    <string name="toast_start_error">Could not start timer</string>
+    <string name="toast_stop_error">Could not stop timer</string>
+    <string name="toast_stop_retry">Retry</string>
+    <string name="toast_recovery_stop_error">Could not stop the recovered timer</string>
+    <string name="title_dismiss">Dismiss</string>
+    <string name="btn_back">Back</string>
+    <string name="title_settings">Settings</string>
+
+    <!-- Notification -->
+    <string name="notification_channel_name">Timer</string>
+    <string name="notification_channel_description">Shows the active timer</string>
+    <string name="notification_action_stop">Stop</string>
+</resources>
