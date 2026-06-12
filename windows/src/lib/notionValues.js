@@ -65,7 +65,7 @@ export function buildPropertyValue(type, value) {
       // value comes from an <input type="datetime-local">, which is local time
       return value ? { date: { start: toNotionDateTime(new Date(value)) } } : null;
     case 'checkbox':
-      return value ? { checkbox: true } : null;
+      return { checkbox: !!value };
     case 'url': {
       const url = String(value ?? '').trim();
       return url ? { url } : null;

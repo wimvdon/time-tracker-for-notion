@@ -106,7 +106,6 @@ export default function Timer() {
         deleteConfirm={deleteConfirm}
         onLoadRunningTimer={loadRunningTimer}
         onStopOtherRunningTimer={stopOtherRunningTimer}
-        onSuspendActiveToNewTimer={suspendActiveToNewTimer}
         onConfirmDelete={confirmDelete}
         onCancelDelete={cancelDelete}
         onDeleteEntry={deleteEntry}
@@ -255,7 +254,6 @@ function RunningView({
   deleteConfirm,
   onLoadRunningTimer,
   onStopOtherRunningTimer,
-  onSuspendActiveToNewTimer: _onSuspendActiveToNewTimer,
   onConfirmDelete,
   onCancelDelete,
   onDeleteEntry,

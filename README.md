@@ -66,7 +66,7 @@ On first launch the app opens on Settings:
 
 ### How it behaves
 
-- **Start**: creates a time entry with status = running and the description as the title (or `"{Project} — {DD/MM/YYYY}"` if left empty). Start time is rounded to the nearest configured interval.
+- **Start**: creates a time entry with status = running and the description as the title (or `"DD/MM/YYYY"` if left empty). Start time is rounded to the nearest configured interval.
 - **Stop**: fills in the end time and sets status = completed. End time is rounded with a minimum duration equal to one interval.
 - **Edit timer**: while a timer is running, click the edit icon to change the title, project, or extra field values. The title can be left empty.
 - **Closing the window** minimises to the system tray. The tray icon turns red while a timer runs.
@@ -198,7 +198,7 @@ In Android Studio:
 Double-click `android/build.bat`. The first run takes a bit longer as Gradle sets itself up. You'll then see:
 
 ```
-Klaar! APK staat in:
+Done! APK is located at:
   release\NotionTimeTracker.apk
 ```
 
