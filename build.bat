@@ -1,11 +1,16 @@
 @echo off
 cd /d "%~dp0"
 echo Building Electron app...
-npm run dist
-if %errorlevel% neq 0 (
-    echo Build failed!
-    pause
-    exit /b %errorlevel%
+echo.
+
+call npm run dist
+set BUILD_ERROR=%errorlevel%
+
+echo.
+if %BUILD_ERROR% neq 0 (
+    echo Build FAILED with error code %BUILD_ERROR%
+) else (
+    echo Done! Check the /release folder.
 )
-echo Done! Check the /release folder.
+
 pause
