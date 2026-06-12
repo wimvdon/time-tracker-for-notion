@@ -1,5 +1,14 @@
 @echo off
 cd /d "%~dp0"
+echo Installing dependencies...
+call npm install
+if %errorlevel% neq 0 (
+    echo Dependency install FAILED with error code %errorlevel%
+    pause
+    exit /b %errorlevel%
+)
+
+echo.
 echo Building Electron app...
 echo.
 
