@@ -40,7 +40,7 @@ export default function Settings() {
     try {
       const payload = JSON.stringify({ workspace });
       const QRCode = (await import('qrcode')).default;
-      const dataUrl = await QRCode.toDataURL(payload, { width: 256, margin: 2 });
+      const dataUrl = await QRCode.toDataURL(payload, { width: 512, margin: 2 });
       setActiveQr({ workspaceId: workspace.id, dataUrl });
       qrDismissTimer.current = setTimeout(() => setActiveQr(null), 30_000);
     } catch (err) {
@@ -143,9 +143,14 @@ export default function Settings() {
                   <button
                     onClick={() => generateWorkspaceQr(w)}
                     title={t('labelWorkspaceQr')}
-                    className="text-zinc-500 hover:text-zinc-200 ml-1 text-base leading-none"
+                    className="text-zinc-500 hover:text-zinc-200 ml-1 leading-none"
                   >
-                    {activeQr?.workspaceId === w.id ? '✕' : '▦'}
+                    {activeQr?.workspaceId === w.id ? '✕' : (
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 inline">
+                        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                        <circle cx="12" cy="13" r="4"/>
+                      </svg>
+                    )}
                   </button>
                   <button
                     onClick={() => setEditingWorkspace(w)}
@@ -167,7 +172,7 @@ export default function Settings() {
               {activeQr?.workspaceId === w.id && (
                 <div className="mt-1 ml-2 flex flex-col gap-1">
                   <p className="text-xs text-zinc-500">{t('qrWorkspaceNote')}</p>
-                  <img src={activeQr.dataUrl} alt="QR code" className="w-32 h-32 rounded border border-zinc-600" />
+                  <img src={activeQr.dataUrl} alt="QR code" className="w-48 h-48 rounded border border-zinc-600" />
                   <p className="text-xs text-zinc-600">{t('qrAutoDismiss')}</p>
                 </div>
               )}

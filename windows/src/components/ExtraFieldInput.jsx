@@ -78,8 +78,8 @@ export default function ExtraFieldInput({ def, value, onChange, disabled }) {
                   disabled={disabled}
                   className={`px-2 py-1 rounded-md text-xs border transition-colors ${
                     active
-                      ? 'bg-emerald-700 border-emerald-500 text-white'
-                      : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:border-zinc-500'
+                      ? 'bg-emerald-600 border-emerald-500 text-white'
+                      : 'bg-zinc-700 border-zinc-600 text-zinc-200 hover:border-zinc-400'
                   }`}
                 >
                   {o.name}

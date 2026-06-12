@@ -144,6 +144,7 @@ private fun AppNavigation(
                 onRefreshAll = timerViewModel::refreshAll,
                 onOpenEditTimer = timerViewModel::openEditTimer,
                 onCloseEditTimer = timerViewModel::closeEditTimer,
+                onQuickSaveDescription = timerViewModel::quickSaveDescription,
                 onUpdateTimerDetails = timerViewModel::updateTimerDetails,
                 onConfirmDelete = { pageId, title, isRunning -> timerViewModel.confirmDelete(pageId, title, isRunning) },
                 onCancelDelete = timerViewModel::cancelDelete,

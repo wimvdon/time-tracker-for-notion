@@ -176,16 +176,6 @@ fun SettingsScreen(
                 }
             }
 
-            // QR code import
-            OutlinedButton(
-                onClick = onScanQr,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Icon(Icons.Default.QrCodeScanner, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.width(8.dp))
-                Text(stringResource(R.string.btn_scan_qr))
-            }
-
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
             // --- Workspaces section ---
@@ -223,6 +213,15 @@ fun SettingsScreen(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(stringResource(R.string.btn_add_workspace))
+            }
+
+            OutlinedButton(
+                onClick = onScanQr,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(Icons.Default.QrCodeScanner, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text(stringResource(R.string.btn_add_workspace_qr))
             }
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))

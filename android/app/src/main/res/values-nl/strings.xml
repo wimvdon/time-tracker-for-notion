@@ -132,6 +132,7 @@
 
     <!-- QR code import -->
     <string name="btn_scan_qr">QR-code scannen om instellingen te importeren</string>
+    <string name="btn_add_workspace_qr">Werkruimte toevoegen met QR-code</string>
     <string name="qr_scan_title">QR-code scannen</string>
     <string name="qr_scan_hint">Richt de camera op een QR-code vanuit de Windows-app-instellingen.</string>
     <string name="qr_import_success">Instellingen succesvol geïmporteerd.</string>
@@ -142,6 +143,7 @@
     <string name="btn_refresh_all">Vernieuwen</string>
 
     <!-- Edit running timer -->
+    <string name="hint_timer_title">Timertitel…</string>
     <string name="btn_edit_timer">Bewerken</string>
     <string name="title_edit_timer">Timer bewerken</string>
     <string name="btn_save_changes">Opslaan</string>

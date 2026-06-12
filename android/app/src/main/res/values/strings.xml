@@ -132,6 +132,7 @@
 
     <!-- QR code import -->
     <string name="btn_scan_qr">Scan QR code to import settings</string>
+    <string name="btn_add_workspace_qr">Add workspace via QR code</string>
     <string name="qr_scan_title">Scan QR code</string>
     <string name="qr_scan_hint">Point the camera at a QR code from the Windows app settings.</string>
     <string name="qr_import_success">Settings imported successfully.</string>
@@ -142,6 +143,7 @@
     <string name="btn_refresh_all">Refresh</string>
 
     <!-- Edit running timer -->
+    <string name="hint_timer_title">Timer title…</string>
     <string name="btn_edit_timer">Edit</string>
     <string name="title_edit_timer">Edit timer</string>
     <string name="btn_save_changes">Save</string>
