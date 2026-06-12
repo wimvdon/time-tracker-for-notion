@@ -50,7 +50,8 @@ data class NamedOption(val id: String, val name: String)
 data class RunningTimerResult(
     val pageId: String,
     val title: String,
-    val startISO: String
+    val startISO: String,
+    val url: String = ""
 )
 
 /** Full running-timer descriptor used in the UI, enriched with workspace data. */
@@ -58,9 +59,38 @@ data class RunningTimerInfo(
     val pageId: String,
     val title: String,
     val startISO: String,
+    val url: String = "",
     val workspaceId: String,
     val workspaceName: String,
     val propertyMap: PropertyMap
+)
+
+/** Raw completed entry from Notion. */
+data class RecentEntryResult(
+    val pageId: String,
+    val title: String,
+    val startISO: String?,
+    val endISO: String?,
+    val url: String
+)
+
+/** Completed time entry shown in the "Recent" section. */
+data class RecentEntryInfo(
+    val pageId: String,
+    val title: String,
+    val startISO: String?,
+    val endISO: String?,
+    val url: String,
+    val workspaceId: String,
+    val workspaceName: String,
+    val propertyMap: PropertyMap
+)
+
+/** Carries the entry to be confirmed for deletion. */
+data class DeleteConfirmInfo(
+    val pageId: String,
+    val title: String,
+    val isRunning: Boolean
 )
 
 data class StatusOption(val name: String, val color: String = "")

@@ -80,6 +80,9 @@ export const useStore = create((set, get) => ({
   // Running timers fetched from Notion
   runningTimers: [],
   runningTimersLoading: false,
+  recentEntries: [],
+  recentEntriesLoading: false,
+  deleteConfirm: null, // { pageId, title, context } where context is 'active' | 'running' | 'recent'
 
   setView: (view) => set({ view }),
   setDescription: (description) => set({ description }),
@@ -188,6 +191,7 @@ export const useStore = create((set, get) => ({
     // Load running timers from Notion (skipped if crash recovery is pending)
     if (settings.apiKey && workspaces.length && !(activeTimer && activeTimer.notionPageId)) {
       get().loadRunningTimers();
+      get().loadRecentEntries();
     }
   },
 
@@ -493,6 +497,7 @@ export const useStore = create((set, get) => ({
     set({ timer: { ...idleTimer }, description: '', extraValues });
     api.setTimerRunning(false);
     get().loadRunningTimers();
+    get().loadRecentEntries();
   },
 
   // ---- Running timers loaded from Notion ----
@@ -525,6 +530,64 @@ export const useStore = create((set, get) => ({
     allRunning.sort((a, b) => new Date(b.startISO) - new Date(a.startISO));
     set({ runningTimersLoading: false, runningTimers: allRunning });
   },
+
+  loadRecentEntries: async () => {
+    const { workspaces, apiKey, recoveredTimer, recentEntriesLoading } = get();
+    if (!apiKey || !workspaces.length || recoveredTimer || recentEntriesLoading) return;
+
+    set({ recentEntriesLoading: true });
+    const allRecent = [];
+    for (const ws of workspaces) {
+      const pm = ws.propertyMap;
+      if (!ws.timeEntriesDbId || !pm?.timeEntryStatusProp || !pm?.timeEntryStatusDone) continue;
+      try {
+        const pages = await api.fetchRecentEntries(
+          ws.timeEntriesDbId,
+          pm.timeEntryStatusProp,
+          pm.timeEntryStatusDone,
+          pm.timeEntryDateProp,
+        );
+        for (const page of pages) {
+          allRecent.push({ ...page, workspaceId: ws.id, workspaceName: ws.name, propertyMap: pm });
+        }
+      } catch {
+        // silently ignore per-workspace errors
+      }
+    }
+    allRecent.sort((a, b) => (b.endISO || b.startISO || '').localeCompare(a.endISO || a.startISO || ''));
+    set({ recentEntriesLoading: false, recentEntries: allRecent.slice(0, 5) });
+  },
+
+  confirmDelete: (entry, context) => set({ deleteConfirm: { pageId: entry.pageId, title: entry.title, context } }),
+  cancelDelete: () => set({ deleteConfirm: null }),
+
+  deleteEntry: async () => {
+    const { deleteConfirm } = get();
+    if (!deleteConfirm) return;
+    const { pageId, context } = deleteConfirm;
+    set({ deleteConfirm: null });
+    try {
+      await api.deletePage(pageId);
+      if (context === 'active') {
+        const { timer } = get();
+        if (timer.tickInterval) clearInterval(timer.tickInterval);
+        api.saveSettings({ activeTimer: null });
+        api.setTimerRunning(false);
+        set((s) => ({
+          timer: { ...idleTimer },
+          runningTimers: s.runningTimers.filter((r) => r.pageId !== pageId),
+        }));
+      } else if (context === 'running') {
+        set((s) => ({ runningTimers: s.runningTimers.filter((r) => r.pageId !== pageId) }));
+      } else {
+        set((s) => ({ recentEntries: s.recentEntries.filter((r) => r.pageId !== pageId) }));
+      }
+    } catch (err) {
+      get().addToast({ type: 'error', message: `${t('toastDeleteError')}: ${errorMessage(err)}` });
+    }
+  },
+
+  openNotionPage: (url) => { api.openExternal(url); },
 
   /**
    * Puts the active timer aside (into runningTimers) without stopping it in Notion,
@@ -674,6 +737,7 @@ export const useStore = create((set, get) => ({
     api.saveSettings({ activeTimer: null });
     set({ recoveredTimer: null, recoveryBusy: false });
     get().loadRunningTimers();
+    get().loadRecentEntries();
   },
 
   discardRecoveredTimer: () => {
@@ -681,5 +745,6 @@ export const useStore = create((set, get) => ({
     api.saveSettings({ activeTimer: null });
     set({ recoveredTimer: null });
     get().loadRunningTimers();
+    get().loadRecentEntries();
   },
 }));

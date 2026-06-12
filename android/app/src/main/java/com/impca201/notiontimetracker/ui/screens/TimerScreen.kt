@@ -8,6 +8,8 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
@@ -24,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.impca201.notiontimetracker.R
 import com.impca201.notiontimetracker.data.models.NamedOption
+import com.impca201.notiontimetracker.data.models.RecentEntryInfo
 import com.impca201.notiontimetracker.data.models.RunningTimerInfo
 import com.impca201.notiontimetracker.ui.components.ExtraFieldInput
 import com.impca201.notiontimetracker.ui.components.RecoveryDialog
@@ -53,7 +56,11 @@ fun TimerScreen(
     onLoadRunningTimer: (RunningTimerInfo) -> Unit,
     onStopOtherRunningTimer: (RunningTimerInfo) -> Unit,
     onSuspendActiveToNewTimer: () -> Unit,
-    onRefreshRunningTimers: () -> Unit
+    onRefreshRunningTimers: () -> Unit,
+    onConfirmDelete: (String, String, Boolean) -> Unit,
+    onCancelDelete: () -> Unit,
+    onDeleteEntry: () -> Unit,
+    onOpenUrl: (String) -> Unit
 ) {
     if (uiState.recoveredTimer != null) {
         RecoveryDialog(
@@ -62,6 +69,24 @@ fun TimerScreen(
             onStop = onRecoveryStop,
             onResume = onRecoveryResume,
             onDiscard = onRecoveryDiscard
+        )
+    }
+
+    uiState.deleteConfirmInfo?.let { info ->
+        AlertDialog(
+            onDismissRequest = onCancelDelete,
+            title = { Text(stringResource(R.string.confirm_delete_title)) },
+            text = { Text(stringResource(R.string.confirm_delete_message, info.title)) },
+            confirmButton = {
+                TextButton(onClick = onDeleteEntry) {
+                    Text(stringResource(R.string.confirm_delete_confirm))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = onCancelDelete) {
+                    Text(stringResource(R.string.btn_cancel))
+                }
+            }
         )
     }
 
@@ -75,7 +100,9 @@ fun TimerScreen(
             onLoadRunningTimer = onLoadRunningTimer,
             onStopOtherRunningTimer = onStopOtherRunningTimer,
             onSuspendActiveToNewTimer = onSuspendActiveToNewTimer,
-            onRefreshRunningTimers = onRefreshRunningTimers
+            onRefreshRunningTimers = onRefreshRunningTimers,
+            onConfirmDelete = onConfirmDelete,
+            onOpenUrl = onOpenUrl
         )
     } else {
         IdleView(
@@ -89,7 +116,9 @@ fun TimerScreen(
             onClearError = onClearError,
             onLoadRunningTimer = onLoadRunningTimer,
             onStopOtherRunningTimer = onStopOtherRunningTimer,
-            onRefreshRunningTimers = onRefreshRunningTimers
+            onRefreshRunningTimers = onRefreshRunningTimers,
+            onConfirmDelete = onConfirmDelete,
+            onOpenUrl = onOpenUrl
         )
     }
 }
@@ -106,7 +135,9 @@ private fun IdleView(
     onClearError: () -> Unit,
     onLoadRunningTimer: (RunningTimerInfo) -> Unit,
     onStopOtherRunningTimer: (RunningTimerInfo) -> Unit,
-    onRefreshRunningTimers: () -> Unit
+    onRefreshRunningTimers: () -> Unit,
+    onConfirmDelete: (String, String, Boolean) -> Unit,
+    onOpenUrl: (String) -> Unit
 ) {
     val scrollState = rememberScrollState()
 
@@ -115,6 +146,7 @@ private fun IdleView(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .statusBarsPadding()
                     .padding(horizontal = 8.dp, vertical = 4.dp),
                 horizontalArrangement = Arrangement.End
             ) {
@@ -252,7 +284,16 @@ private fun IdleView(
                 activePageId = null,
                 onLoad = onLoadRunningTimer,
                 onStop = onStopOtherRunningTimer,
-                onRefresh = onRefreshRunningTimers
+                onRefresh = onRefreshRunningTimers,
+                onDelete = { rt -> onConfirmDelete(rt.pageId, rt.title, true) },
+                onOpenUrl = onOpenUrl
+            )
+
+            RecentEntriesSection(
+                entries = uiState.recentEntries,
+                loading = uiState.recentEntriesLoading,
+                onDelete = { re -> onConfirmDelete(re.pageId, re.title, false) },
+                onOpenUrl = onOpenUrl
             )
 
             Spacer(Modifier.height(16.dp))
@@ -270,7 +311,9 @@ private fun RunningView(
     onLoadRunningTimer: (RunningTimerInfo) -> Unit,
     onStopOtherRunningTimer: (RunningTimerInfo) -> Unit,
     onSuspendActiveToNewTimer: () -> Unit,
-    onRefreshRunningTimers: () -> Unit
+    onRefreshRunningTimers: () -> Unit,
+    onConfirmDelete: (String, String, Boolean) -> Unit,
+    onOpenUrl: (String) -> Unit
 ) {
     val timer = uiState.activeTimer ?: return
     val workspace = uiState.workspaces.firstOrNull { it.id == timer.workspaceId }
@@ -290,6 +333,7 @@ private fun RunningView(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .statusBarsPadding()
                     .padding(horizontal = 8.dp, vertical = 4.dp),
                 horizontalArrangement = Arrangement.End
             ) {
@@ -420,7 +464,16 @@ private fun RunningView(
                 activePageId = uiState.activeTimer?.notionPageId,
                 onLoad = onLoadRunningTimer,
                 onStop = onStopOtherRunningTimer,
-                onRefresh = onRefreshRunningTimers
+                onRefresh = onRefreshRunningTimers,
+                onDelete = { rt -> onConfirmDelete(rt.pageId, rt.title, true) },
+                onOpenUrl = onOpenUrl
+            )
+
+            RecentEntriesSection(
+                entries = uiState.recentEntries,
+                loading = uiState.recentEntriesLoading,
+                onDelete = { re -> onConfirmDelete(re.pageId, re.title, false) },
+                onOpenUrl = onOpenUrl
             )
 
             Spacer(Modifier.height(16.dp))
@@ -435,7 +488,9 @@ private fun OtherRunningTimers(
     activePageId: String?,
     onLoad: (RunningTimerInfo) -> Unit,
     onStop: (RunningTimerInfo) -> Unit,
-    onRefresh: () -> Unit
+    onRefresh: () -> Unit,
+    onDelete: (RunningTimerInfo) -> Unit,
+    onOpenUrl: (String) -> Unit
 ) {
     if (timers.isEmpty() && !loading) return
 
@@ -480,11 +535,7 @@ private fun OtherRunningTimers(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        rt.title,
-                        style = MaterialTheme.typography.bodyMedium,
-                        maxLines = 1
-                    )
+                    Text(rt.title, style = MaterialTheme.typography.bodyMedium, maxLines = 1)
                     Text(
                         rt.workspaceName,
                         style = MaterialTheme.typography.bodySmall,
@@ -492,11 +543,87 @@ private fun OtherRunningTimers(
                     )
                 }
                 if (!isActive) {
-                    IconButton(onClick = { onStop(rt) }) {
+                    IconButton(onClick = { onStop(rt) }, modifier = Modifier.size(36.dp)) {
+                        Text("⏹", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+                IconButton(onClick = { onDelete(rt) }, modifier = Modifier.size(36.dp)) {
+                    Icon(
+                        Icons.Default.Delete,
+                        contentDescription = stringResource(R.string.title_delete_entry),
+                        modifier = Modifier.size(18.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                if (rt.url.isNotBlank()) {
+                    IconButton(onClick = { onOpenUrl(rt.url) }, modifier = Modifier.size(36.dp)) {
+                        Icon(
+                            Icons.Default.OpenInNew,
+                            contentDescription = stringResource(R.string.title_open_in_notion),
+                            modifier = Modifier.size(18.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun RecentEntriesSection(
+    entries: List<RecentEntryInfo>,
+    loading: Boolean,
+    onDelete: (RecentEntryInfo) -> Unit,
+    onOpenUrl: (String) -> Unit
+) {
+    if (entries.isEmpty() && !loading) return
+
+    HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+    Text(
+        stringResource(R.string.recent_entries_heading),
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(vertical = 4.dp)
+    )
+    if (loading) {
+        CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+    }
+    entries.forEach { re ->
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(re.title, style = MaterialTheme.typography.bodyMedium, maxLines = 1)
+                    val timeLabel = buildRecentTimeLabel(re.startISO, re.endISO)
+                    if (timeLabel.isNotBlank()) {
                         Text(
-                            "⏹",
-                            style = MaterialTheme.typography.bodyLarge,
+                            timeLabel,
+                            style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                IconButton(onClick = { onDelete(re) }, modifier = Modifier.size(36.dp)) {
+                    Icon(
+                        Icons.Default.Delete,
+                        contentDescription = stringResource(R.string.title_delete_entry),
+                        modifier = Modifier.size(18.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                if (re.url.isNotBlank()) {
+                    IconButton(onClick = { onOpenUrl(re.url) }, modifier = Modifier.size(36.dp)) {
+                        Icon(
+                            Icons.Default.OpenInNew,
+                            contentDescription = stringResource(R.string.title_open_in_notion),
+                            modifier = Modifier.size(18.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
@@ -566,3 +693,16 @@ private fun parseHHMMToMillis(hhMM: String, referenceISO: String): Long? = runCa
     val iso = parseHHMMToISO(hhMM, referenceISO) ?: return null
     OffsetDateTime.parse(iso).toInstant().toEpochMilli()
 }.getOrNull()
+
+private fun buildRecentTimeLabel(startISO: String?, endISO: String?): String {
+    if (startISO == null) return ""
+    return runCatching {
+        val start = OffsetDateTime.parse(startISO)
+        val startStr = "%02d:%02d".format(start.hour, start.minute)
+        if (endISO != null) {
+            val end = OffsetDateTime.parse(endISO)
+            val endStr = "%02d:%02d".format(end.hour, end.minute)
+            "$startStr → $endStr"
+        } else startStr
+    }.getOrDefault("")
+}

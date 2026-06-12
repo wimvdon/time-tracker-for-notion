@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Tray, Menu, ipcMain, nativeImage } = require('electron');
+const { app, BrowserWindow, Tray, Menu, ipcMain, nativeImage, shell } = require('electron');
 const path = require('path');
 const Store = require('electron-store');
 const notion = require('./notionClient.cjs');
@@ -147,6 +147,16 @@ ipcMain.handle('notion:stop', (_event, params) =>
 ipcMain.handle('notion:fetchRunningTimers', (_event, dbId, statusProp, statusRunning, dateProp) =>
   notion.fetchRunningTimers(store.get('apiKey'), dbId, statusProp, statusRunning, dateProp)
 );
+
+ipcMain.handle('notion:fetchRecentEntries', (_event, dbId, statusProp, statusDone, dateProp) =>
+  notion.fetchRecentEntries(store.get('apiKey'), dbId, statusProp, statusDone, dateProp)
+);
+
+ipcMain.handle('notion:deletePage', (_event, pageId) =>
+  notion.deletePage(store.get('apiKey'), pageId)
+);
+
+ipcMain.handle('shell:openExternal', (_event, url) => shell.openExternal(url));
 
 // apiKey is passed explicitly here so Settings can test a key before saving it
 ipcMain.handle('notion:test', (_event, apiKey, dbId) =>

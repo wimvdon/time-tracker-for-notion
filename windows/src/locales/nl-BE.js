@@ -109,4 +109,11 @@ export default {
   btnBack: '←',
   titleBack: 'Terug',
   titleSettings: 'Instellingen',
+
+  recentEntriesHeading: 'Recente tijdsregistraties',
+  titleDeleteEntry: 'Verwijderen',
+  titleOpenInNotion: 'Openen in Notion',
+  confirmDeleteTitle: 'Deze tijdsregistratie archiveren in Notion?',
+  confirmDeleteConfirm: 'Archiveren',
+  toastDeleteError: 'Kon tijdsregistratie niet verwijderen',
 };

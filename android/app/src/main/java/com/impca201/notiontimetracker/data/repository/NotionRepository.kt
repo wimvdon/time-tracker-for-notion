@@ -12,6 +12,9 @@ class NotionRepository(
     suspend fun testConnection(dbId: String? = null) =
         client.testConnection(apiKey(), dbId)
 
+    suspend fun testConnectionWithKey(explicitKey: String, dbId: String? = null) =
+        client.testConnection(explicitKey, dbId)
+
     suspend fun searchDatabases(): List<NamedOption> =
         client.searchDatabases(apiKey())
 
@@ -46,4 +49,13 @@ class NotionRepository(
         endISO: String,
         propertyMap: PropertyMap
     ) = client.stopTimeEntry(apiKey(), pageId, startISO, endISO, propertyMap)
+
+    suspend fun fetchRecentEntries(
+        dbId: String,
+        statusProp: String,
+        statusDone: String,
+        dateProp: String
+    ): List<RecentEntryResult> = client.fetchRecentEntries(apiKey(), dbId, statusProp, statusDone, dateProp)
+
+    suspend fun deletePage(pageId: String) = client.deletePage(apiKey(), pageId)
 }

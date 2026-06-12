@@ -12,6 +12,10 @@ contextBridge.exposeInMainWorld('notionAPI', {
   fetchRunningTimers: (dbId, statusProp, statusRunning, dateProp) =>
     ipcRenderer.invoke('notion:fetchRunningTimers', dbId, statusProp, statusRunning, dateProp),
   testConnection: (apiKey, dbId) => ipcRenderer.invoke('notion:test', apiKey, dbId),
+  fetchRecentEntries: (dbId, statusProp, statusDone, dateProp) =>
+    ipcRenderer.invoke('notion:fetchRecentEntries', dbId, statusProp, statusDone, dateProp),
+  deletePage: (pageId) => ipcRenderer.invoke('notion:deletePage', pageId),
+  openExternal: (url) => ipcRenderer.invoke('shell:openExternal', url),
   setAlwaysOnTop: (val) => ipcRenderer.invoke('window:alwaysOnTop', val),
   setTimerRunning: (running) => ipcRenderer.send('timer:state', running),
   onTrayStopTimer: (callback) => {

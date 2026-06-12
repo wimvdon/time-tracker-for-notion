@@ -114,6 +114,15 @@
     <string name="refresh_running_timers">Lopende timers vernieuwen</string>
     <string name="start_new_timer">Nieuwe timer starten</string>
 
+    <!-- Recent entries -->
+    <string name="recent_entries_heading">Recente tijdsregistraties</string>
+    <string name="title_delete_entry">Verwijderen</string>
+    <string name="title_open_in_notion">Openen in Notion</string>
+    <string name="confirm_delete_title">Registratie archiveren?</string>
+    <string name="confirm_delete_message">"%1$s" wordt gearchiveerd in Notion.</string>
+    <string name="confirm_delete_confirm">Archiveren</string>
+    <string name="toast_delete_error">Kon registratie niet verwijderen</string>
+
     <!-- Notification -->
     <string name="notification_channel_name">Timer</string>
     <string name="notification_channel_description">Toont de actieve timer</string>

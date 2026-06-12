@@ -36,15 +36,24 @@ export default function Timer() {
   const loadRunningTimer = useStore((s) => s.loadRunningTimer);
   const stopOtherRunningTimer = useStore((s) => s.stopOtherRunningTimer);
   const suspendActiveToNewTimer = useStore((s) => s.suspendActiveToNewTimer);
+  const recentEntries = useStore((s) => s.recentEntries);
+  const recentEntriesLoading = useStore((s) => s.recentEntriesLoading);
+  const loadRecentEntries = useStore((s) => s.loadRecentEntries);
+  const deleteConfirm = useStore((s) => s.deleteConfirm);
+  const confirmDelete = useStore((s) => s.confirmDelete);
+  const cancelDelete = useStore((s) => s.cancelDelete);
+  const deleteEntry = useStore((s) => s.deleteEntry);
+  const openNotionPage = useStore((s) => s.openNotionPage);
 
   const selectedWorkspace = workspaces.find((w) => w.id === selectedWorkspaceId);
 
-  // Reload running timers on every state transition (except during crash recovery)
+  // Reload running timers and recent entries on every state transition (except during crash recovery)
   const timerRunning = timer.running;
   const hasRecovery = !!recoveredTimer;
   useEffect(() => {
     if (!hasRecovery) {
       loadRunningTimers();
+      loadRecentEntries();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timerRunning, hasRecovery]);
@@ -79,9 +88,17 @@ export default function Timer() {
         runningTimers={runningTimers}
         runningTimersLoading={runningTimersLoading}
         activePageId={timer.notionPageId}
+        recentEntries={recentEntries}
+        recentEntriesLoading={recentEntriesLoading}
+        deleteConfirm={deleteConfirm}
         onLoadRunningTimer={loadRunningTimer}
         onStopOtherRunningTimer={stopOtherRunningTimer}
         onRefreshTimers={loadRunningTimers}
+        onSuspendActiveToNewTimer={suspendActiveToNewTimer}
+        onConfirmDelete={confirmDelete}
+        onCancelDelete={cancelDelete}
+        onDeleteEntry={deleteEntry}
+        onOpenUrl={openNotionPage}
       />
     );
   }
@@ -164,15 +181,47 @@ export default function Timer() {
           activePageId={null}
           onLoad={loadRunningTimer}
           onStop={stopOtherRunningTimer}
+          onDelete={(rt) => confirmDelete(rt, 'running')}
+          onOpenUrl={openNotionPage}
           onRefresh={loadRunningTimers}
+        />
+        <RecentEntries
+          entries={recentEntries}
+          loading={recentEntriesLoading}
+          onDelete={(entry) => confirmDelete(entry, 'recent')}
+          onOpenUrl={openNotionPage}
         />
       </div>
       {settingsButton}
+      {deleteConfirm && (
+        <DeleteConfirmDialog
+          title={deleteConfirm.title}
+          onConfirm={deleteEntry}
+          onCancel={cancelDelete}
+        />
+      )}
     </div>
   );
 }
 
-function RunningView({ workspaceName, settingsButton, runningTimers, runningTimersLoading, activePageId, onLoadRunningTimer, onStopOtherRunningTimer, onRefreshTimers }) {
+function RunningView({
+  workspaceName,
+  settingsButton,
+  runningTimers,
+  runningTimersLoading,
+  activePageId,
+  recentEntries,
+  recentEntriesLoading,
+  deleteConfirm,
+  onLoadRunningTimer,
+  onStopOtherRunningTimer,
+  onRefreshTimers,
+  onSuspendActiveToNewTimer: _onSuspendActiveToNewTimer,
+  onConfirmDelete,
+  onCancelDelete,
+  onDeleteEntry,
+  onOpenUrl,
+}) {
   const timer = useStore((s) => s.timer);
   const description = useStore((s) => s.description);
   const stopTimer = useStore((s) => s.stopTimer);
@@ -265,15 +314,30 @@ function RunningView({ workspaceName, settingsButton, runningTimers, runningTime
           activePageId={activePageId}
           onLoad={onLoadRunningTimer}
           onStop={onStopOtherRunningTimer}
+          onDelete={(rt) => onConfirmDelete(rt, rt.pageId === activePageId ? 'active' : 'running')}
+          onOpenUrl={onOpenUrl}
           onRefresh={onRefreshTimers}
+        />
+        <RecentEntries
+          entries={recentEntries}
+          loading={recentEntriesLoading}
+          onDelete={(entry) => onConfirmDelete(entry, 'recent')}
+          onOpenUrl={onOpenUrl}
         />
       </div>
       {settingsButton}
+      {deleteConfirm && (
+        <DeleteConfirmDialog
+          title={deleteConfirm.title}
+          onConfirm={onDeleteEntry}
+          onCancel={onCancelDelete}
+        />
+      )}
     </div>
   );
 }
 
-function OtherRunningTimers({ timers, loading, activePageId, onLoad, onStop, onRefresh }) {
+function OtherRunningTimers({ timers, loading, activePageId, onLoad, onStop, onDelete, onOpenUrl, onRefresh }) {
   if (!timers.length && !loading) return null;
   return (
     <div className="w-full mt-2 pt-3 border-t border-zinc-700">
@@ -300,18 +364,104 @@ function OtherRunningTimers({ timers, loading, activePageId, onLoad, onStop, onR
               <div className="text-sm truncate text-zinc-200">{rt.title}</div>
               <div className="text-xs text-zinc-500">{rt.workspaceName}</div>
             </div>
-            {!isActive && (
+            <div className="flex items-center gap-1 shrink-0">
+              {rt.url && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); onOpenUrl(rt.url); }}
+                  title={t('titleOpenInNotion')}
+                  className="text-zinc-500 hover:text-zinc-200 text-base transition-colors leading-none"
+                >
+                  ↗
+                </button>
+              )}
               <button
-                onClick={(e) => { e.stopPropagation(); onStop(rt); }}
-                title={t('titleStopRunningTimer')}
-                className="text-zinc-500 hover:text-red-400 text-base transition-colors shrink-0 leading-none"
+                onClick={(e) => { e.stopPropagation(); onDelete(rt); }}
+                title={t('titleDeleteEntry')}
+                className="text-zinc-500 hover:text-red-400 text-base transition-colors leading-none"
               >
-                ⏹
+                🗑
               </button>
-            )}
+              {!isActive && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); onStop(rt); }}
+                  title={t('titleStopRunningTimer')}
+                  className="text-zinc-500 hover:text-red-400 text-base transition-colors leading-none"
+                >
+                  ⏹
+                </button>
+              )}
+            </div>
           </div>
         );
       })}
+    </div>
+  );
+}
+
+function RecentEntries({ entries, loading, onDelete, onOpenUrl }) {
+  if (!entries.length && !loading) return null;
+  return (
+    <div className="w-full mt-2 pt-3 border-t border-zinc-700">
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-xs text-zinc-500">{t('recentEntriesHeading')}</span>
+      </div>
+      {loading && !entries.length && (
+        <div className="text-xs text-zinc-600 py-1">…</div>
+      )}
+      {entries.map((entry) => (
+        <div
+          key={entry.pageId}
+          className="flex items-center gap-2 px-3 py-2 bg-zinc-800 rounded-md mb-1 transition-colors"
+        >
+          <div className="flex-1 min-w-0">
+            <div className="text-sm truncate text-zinc-400">{entry.title}</div>
+            <div className="text-xs text-zinc-600">{entry.workspaceName}</div>
+          </div>
+          <div className="flex items-center gap-1 shrink-0">
+            {entry.url && (
+              <button
+                onClick={() => onOpenUrl(entry.url)}
+                title={t('titleOpenInNotion')}
+                className="text-zinc-500 hover:text-zinc-200 text-base transition-colors leading-none"
+              >
+                ↗
+              </button>
+            )}
+            <button
+              onClick={() => onDelete(entry)}
+              title={t('titleDeleteEntry')}
+              className="text-zinc-500 hover:text-red-400 text-base transition-colors leading-none"
+            >
+              🗑
+            </button>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function DeleteConfirmDialog({ title, onConfirm, onCancel }) {
+  return (
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 px-4">
+      <div className="bg-zinc-800 border border-zinc-600 rounded-lg p-4 max-w-xs w-full">
+        <p className="text-sm text-zinc-200 mb-1">{t('confirmDeleteTitle')}</p>
+        <p className="text-xs text-zinc-500 mb-4 truncate">"{title}"</p>
+        <div className="flex gap-2 justify-end">
+          <button
+            onClick={onCancel}
+            className="px-3 py-1.5 text-sm text-zinc-300 hover:text-zinc-100 transition-colors"
+          >
+            {t('btnCancel')}
+          </button>
+          <button
+            onClick={onConfirm}
+            className="px-3 py-1.5 text-sm bg-red-700 hover:bg-red-600 rounded-md font-medium transition-colors"
+          >
+            {t('confirmDeleteConfirm')}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

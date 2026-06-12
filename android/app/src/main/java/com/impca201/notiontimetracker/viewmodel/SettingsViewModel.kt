@@ -83,7 +83,7 @@ class SettingsViewModel(private val app: Application) : AndroidViewModel(app) {
         if (key.isBlank()) return
         _uiState.update { it.copy(testingKey = true, keyTestError = null, keyTestSuccess = false) }
         viewModelScope.launch {
-            runCatching { notionRepo.testConnection() }
+            runCatching { notionRepo.testConnectionWithKey(key) }
                 .onSuccess {
                     settingsRepo.saveApiKey(key)
                     _uiState.update { it.copy(testingKey = false, keyTestSuccess = true, snackbarMessage = "api_key_saved") }

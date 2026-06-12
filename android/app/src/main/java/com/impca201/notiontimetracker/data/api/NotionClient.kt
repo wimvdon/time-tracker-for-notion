@@ -224,12 +224,51 @@ class NotionClient {
                     propsObj.getAsJsonObject(dateProp)?.getAsJsonObject("date")?.get("start")?.asString
                 else null
                 startISO ?: return@forEach
-                results.add(RunningTimerResult(pageId = page.get("id").asString, title = title, startISO = startISO))
+                val url = page.get("url")?.asString ?: ""
+                results.add(RunningTimerResult(pageId = page.get("id").asString, title = title, startISO = startISO, url = url))
             }
             cursor = if (data.get("has_more")?.asBoolean == true)
                 data.get("next_cursor")?.asString else null
         } while (cursor != null)
         return results
+    }
+
+    suspend fun fetchRecentEntries(
+        apiKey: String,
+        dbId: String,
+        statusProp: String,
+        statusDone: String,
+        dateProp: String
+    ): List<RecentEntryResult> {
+        val body = buildMap<String, Any> {
+            put("filter", mapOf("property" to statusProp, "status" to mapOf("equals" to statusDone)))
+            if (dateProp.isNotBlank()) {
+                put("sorts", listOf(mapOf("property" to dateProp, "direction" to "descending")))
+            }
+            put("page_size", 5)
+        }
+        val data = fetch(apiKey, "POST", "/databases/$dbId/query", body)
+        val results = mutableListOf<RecentEntryResult>()
+        data.getAsJsonArray("results")?.forEach { el ->
+            val page = el.asJsonObject
+            val propsObj = page.getAsJsonObject("properties") ?: return@forEach
+            val titleProp = propsObj.entrySet()
+                .map { it.value.asJsonObject }
+                .firstOrNull { it.get("type")?.asString == "title" }
+            val title = titleProp?.getAsJsonArray("title")
+                ?.joinToString("") { it.asJsonObject.get("plain_text")?.asString ?: "" }
+                ?.trim()?.ifBlank { "Untitled" } ?: "Untitled"
+            val datePropObj = if (dateProp.isNotBlank()) propsObj.getAsJsonObject(dateProp)?.getAsJsonObject("date") else null
+            val startISO = datePropObj?.get("start")?.asString
+            val endISO = datePropObj?.get("end")?.asString
+            val url = page.get("url")?.asString ?: ""
+            results.add(RecentEntryResult(pageId = page.get("id").asString, title = title, startISO = startISO, endISO = endISO, url = url))
+        }
+        return results
+    }
+
+    suspend fun deletePage(apiKey: String, pageId: String) {
+        fetch(apiKey, "PATCH", "/pages/$pageId", mapOf("archived" to true))
     }
 
     suspend fun stopTimeEntry(
