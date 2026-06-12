@@ -93,6 +93,8 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
             )
         }
 
+        ShortcutHelper.updateShortcuts(app, workspaces)
+
         if (activeTimer == null) {
             val firstId = (workspaces.firstOrNull { it.id == lastId } ?: workspaces.firstOrNull())?.id
             if (firstId != null) selectWorkspace(firstId)
@@ -105,6 +107,7 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
             val apiKey = settingsRepo.getApiKey()
             val workspaces = settingsRepo.getWorkspaces()
             _uiState.update { it.copy(apiKey = apiKey, workspaces = workspaces) }
+            ShortcutHelper.updateShortcuts(app, workspaces)
             val current = _uiState.value.selectedWorkspaceId
             if (current == null || workspaces.none { it.id == current }) {
                 val firstId = workspaces.firstOrNull()?.id
@@ -722,7 +725,6 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
                 launch { loadProjects(workspace) }
                 loadExtraFieldDefs(workspace)
             }
-            // Apply preset values on top of loaded defaults
             _uiState.update { it.copy(
                 description = preset.pageTitle,
                 extraValues = it.extraValues.toMutableMap().also { map ->
@@ -731,6 +733,13 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
             )}
             startTimer()
         }
+    }
+
+    fun applyPresetById(workspaceId: String, presetId: String) {
+        val state = _uiState.value
+        val workspace = state.workspaces.firstOrNull { it.id == workspaceId } ?: return
+        val preset = workspace.presets.firstOrNull { it.id == presetId } ?: return
+        applyPreset(workspaceId, preset)
     }
 
     private fun startTicking(startMs: Long) {

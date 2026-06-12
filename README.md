@@ -11,7 +11,7 @@ Lightweight time-tracking app for Notion — available as a Windows desktop widg
 
 ## Windows (Electron)
 
-A lightweight, always-on-top Windows desktop widget. Pick a workspace and project, press **START**, and the app creates a time entry page in your Notion database. Press **STOP** and it fills in the end time — optionally rounded to the nearest 15 minutes (configurable per workspace).
+A lightweight, always-on-top Windows desktop widget. Pick a workspace and project, press **START**, and the app creates a time entry page in your Notion database. Press **STOP** and it fills in the end time — optionally rounded to the nearest configured interval.
 
 Built with Electron, React, Vite, Tailwind CSS and Zustand.
 
@@ -27,8 +27,8 @@ The app talks directly to the Notion API. You need a (free) internal integration
 
 ### What your databases need
 
-- a **Time Entries database**: needs a title property, a date property (start/end range), a status property (one option for "running", one for "completed"), and a relation property linking to projects.
-- a **Projects database**: page titles are used as picker options — no configuration needed.
+- A **Time Entries database**: needs a title property, a date property (start/end range), a status property (one option for "running", one for "completed"), and optionally a relation property linking to a projects database.
+- A **Projects database**: page titles are used as picker options — no configuration needed.
 
 ### Developing
 
@@ -60,17 +60,36 @@ On first launch the app opens on Settings:
 
 1. Paste your Notion API key and click **Test connection & save**.
 2. Click **+ Add workspace** and follow the step-by-step modal.
-3. Optionally add up to five extra fields from the Time Entries database (text, number, select, multi-select, status, date, checkbox, URL, e-mail, phone, people, relation).
-4. Click `←` to go to the timer.
+3. Optionally add up to five **extra fields** from the Time Entries database (text, number, select, multi-select, status, date, checkbox, URL, e-mail, phone, people, relation).
+4. Optionally add up to five **presets** per workspace — quick-start configurations with a default title and extra field values (see [Presets](#presets)).
+5. Click `←` to go to the timer.
 
 ### How it behaves
 
 - **Start**: creates a time entry with status = running and the description as the title (or `"{Project} — {DD/MM/YYYY}"` if left empty). Start time is rounded to the nearest configured interval.
 - **Stop**: fills in the end time and sets status = completed. End time is rounded with a minimum duration equal to one interval.
+- **Edit timer**: while a timer is running, click the edit icon to change the title, project, or extra field values. The title can be left empty.
 - **Closing the window** minimises to the system tray. The tray icon turns red while a timer runs.
 - **Crash recovery**: if force-quit while a timer runs, next launch asks whether to stop, resume, or discard.
+- **Auto-refresh**: running timers and recent entries refresh every 60 seconds. If the active timer was stopped on another device, it is automatically cleared from the view.
+- **Deleted pages**: if Notion reports that a page no longer exists when stopping or editing, the app shows the local details and asks you to confirm before discarding.
 
-### Troubleshooting
+### Presets
+
+Presets are quick-start configurations defined per workspace. Each preset has:
+- A **name** (always prefixed with the workspace name)
+- An optional **default title** for new time entries
+- Optional **default values** for extra fields
+
+Presets appear as clickable chips above the workspace selector in the timer view. Clicking a chip immediately starts the timer with those values.
+
+On Windows, presets also appear in the **right-click tray menu** and **taskbar context menu** when no timer is running.
+
+### Syncing settings to Android
+
+Each workspace can be exported as a QR code (click the QR button next to the workspace name in Settings). Scanning this code from the Android app imports the full workspace configuration — databases, field mappings, extra fields, presets, and rounding settings. The Notion API key is intentionally not included; enter it manually on each device.
+
+### Troubleshooting (Windows)
 
 | Problem | Fix |
 |---|---|
@@ -85,7 +104,7 @@ On first launch the app opens on Settings:
 ```
 windows/
 ├── electron/
-│   ├── main.cjs           # Main process: window, tray, IPC, electron-store
+│   ├── main.cjs           # Main process: window, tray, IPC, presets in context menu
 │   ├── preload.cjs        # contextBridge: safe API exposed to renderer
 │   └── notionClient.cjs   # All Notion REST calls
 ├── src/
@@ -108,7 +127,7 @@ A native Android app built with Kotlin + Jetpack Compose. Functionally identical
 - A **sticky foreground notification** replaces the system tray while a timer is running
 - Tap **Stop** in the notification to stop the timer even when the app is closed
 - **Android 16+**: uses `Notification.ProgressStyle` (Live Updates) for a visual progress bar
-- Crash recovery, identical rounding logic, and bilingual support (nl/en) — all ported 1:1
+- Crash recovery, identical rounding logic, and bilingual support (Dutch/English) — all ported 1:1
 
 ### Tech stack
 
@@ -124,15 +143,42 @@ A native Android app built with Kotlin + Jetpack Compose. Functionally identical
 | Min SDK | 26 (Android 8) |
 | Target SDK | 36 (Android 16) |
 
+### First launch & workspace configuration
+
+1. Open the app. Tap the gear icon to open Settings.
+2. Paste your Notion API key and tap **Test connection & save**.
+3. Tap **+ Add workspace** and follow the step-by-step modal.
+4. Optionally add up to five **extra fields** and up to five **presets** per workspace.
+5. Tap the back arrow to go to the timer.
+
+Alternatively, scan a workspace QR code from the Windows app to import a workspace configuration directly (see [Syncing settings](#syncing-settings-to-android-1)).
+
+### How it behaves
+
+- **Start / Stop**: same logic as Windows — rounding, status transitions, relation fields.
+- **Edit timer**: while a timer is running, tap the edit icon to update the title, project, or extra field values. The title can be left empty.
+- **Auto-refresh**: running timers and recent entries refresh every 60 seconds. If the active timer was stopped on another device, it is automatically cleared and a toast is shown.
+- **Deleted pages**: if Notion reports that a page no longer exists when stopping or editing, the app shows the local details and asks you to confirm before discarding.
+
+### Presets
+
+Presets appear as tappable chips above the workspace selector in the timer view. Tapping a chip immediately starts the timer with those values.
+
+Presets also appear as **Android dynamic shortcuts** — long-press the app icon on your home screen or app drawer to see up to four preset shortcuts. The shortcuts are refreshed automatically each time the app loads its settings.
+
+### Syncing settings to Android
+
+On Windows, click the QR button next to any workspace in Settings to show a QR code. In the Android app, go to Settings and tap **Scan QR code to import settings**. The Notion API key is intentionally not included in the QR code; enter it manually on each device.
+
 ### Setup & build
 
 #### 1. Install Android Studio
 
-1. Download [Android Studio](https://developer.android.com/studio) — click the big download button
-2. Run the installer, click **Next** throughout — default settings are fine
-3. On first launch: step through the setup wizard, choose **Standard** installation
-4. Android Studio will automatically download the JDK and SDK (~1.5 GB, takes a few minutes)
-5. Once the main screen appears: done
+1. Download [Android Studio](https://developer.android.com/studio) — click the big download button.
+2. Run the installer, click **Next** throughout — default settings are fine.
+3. On first launch: step through the setup wizard, choose **Standard** installation.
+4. Android Studio will automatically download the JDK and SDK (~1.5 GB, takes a few minutes).
+5. Once the main screen appears: done.
 
 ---
 
@@ -187,6 +233,7 @@ The file is placed in the `release/` folder at the root of the repo.
 | Gradle sync fails | File → Sync Project with Gradle Files; check internet connection |
 | Device not recognised via USB | Try another cable; toggle USB debugging off/on |
 | Notification not showing | Grant notification permission in Settings → Apps → Notion Time Tracker → Notifications |
+| Preset shortcuts not showing | Long-press the app icon; shortcuts appear once at least one preset is configured |
 
 ### Android project structure
 
@@ -197,23 +244,24 @@ android/
 │   └── src/main/
 │       ├── AndroidManifest.xml
 │       ├── java/com/impca201/notiontimetracker/
-│       │   ├── MainActivity.kt
-│       │   ├── NotionTimeTrackerApp.kt
+│       │   ├── MainActivity.kt          # Entry point, handles shortcut intents
+│       │   ├── NotionTimeTrackerApp.kt  # Application class, DI root
+│       │   ├── ShortcutHelper.kt        # Dynamic shortcuts for preset chips
 │       │   ├── data/
-│       │   │   ├── models/Models.kt          # Workspace, ActiveTimer, ExtraProp, …
-│       │   │   ├── api/NotionClient.kt        # OkHttp Notion REST client (7 endpoints)
+│       │   │   ├── models/Models.kt          # Workspace, ActiveTimer, Preset, ExtraProp, …
+│       │   │   ├── api/NotionClient.kt        # OkHttp Notion REST client
 │       │   │   └── repository/
 │       │   │       ├── SettingsRepository.kt  # DataStore + EncryptedSharedPreferences
 │       │   │       └── NotionRepository.kt
 │       │   ├── service/TimerForegroundService.kt  # Ongoing notification, stop action
 │       │   ├── ui/
 │       │   │   ├── theme/                    # Material 3 dark theme
-│       │   │   ├── screens/                  # TimerScreen.kt, SettingsScreen.kt
+│       │   │   ├── screens/                  # TimerScreen.kt, SettingsScreen.kt, QrScannerScreen.kt
 │       │   │   └── components/               # SearchableDropdown, ExtraFieldInput,
-│       │   │                                 # WorkspaceModal, RecoveryDialog
+│       │   │                                 # WorkspaceModal, RecoveryDialog, EditTimerModal
 │       │   └── viewmodel/
-│       │       ├── TimerViewModel.kt         # Timer state, rounding, start/stop
-│       │       └── SettingsViewModel.kt      # API key, workspace CRUD
+│       │       ├── TimerViewModel.kt         # Timer state, rounding, start/stop, presets
+│       │       └── SettingsViewModel.kt      # API key, workspace CRUD, presets
 │       └── res/
 │           ├── values/strings.xml            # English (UK)
 │           └── values-nl/strings.xml         # Dutch (NL/BE)

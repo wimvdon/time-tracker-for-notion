@@ -75,8 +75,6 @@
     <string name="toast_required_fields_missing">Vul alle verplichte velden in voor je start.</string>
     <string name="error_loading_extras">Kon extra velden niet laden</string>
     <string name="no_properties_of_type">Geen geschikt veld gevonden in deze database.</string>
-    <string name="label_default_value">Standaardwaarde</string>
-    <string name="default_value_unsupported">Standaardwaarde niet ondersteund voor dit type</string>
     <string name="label_workspace_rounding">Tijden afronden</string>
     <string name="rounding_off">Niet afronden</string>
     <string name="rounding_5">Afronden naar 5 minuten</string>
@@ -123,8 +121,59 @@
     <string name="confirm_delete_confirm">Archiveren</string>
     <string name="toast_delete_error">Kon registratie niet verwijderen</string>
 
+    <!-- Database integration hint -->
+    <string name="hint_database_integration">Zorg dat deze database gedeeld is met je Notion-integratie.</string>
+
+    <!-- Theme -->
+    <string name="label_theme">Weergave</string>
+    <string name="theme_auto">Automatisch (systeeminstelling)</string>
+    <string name="theme_light">Licht</string>
+    <string name="theme_dark">Donker</string>
+
+    <!-- QR code import -->
+    <string name="btn_scan_qr">QR-code scannen om instellingen te importeren</string>
+    <string name="qr_scan_title">QR-code scannen</string>
+    <string name="qr_scan_hint">Richt de camera op een QR-code vanuit de Windows-app-instellingen.</string>
+    <string name="qr_import_success">Instellingen succesvol geïmporteerd.</string>
+    <string name="qr_import_error">Kon de QR-code-instellingen niet lezen.</string>
+    <string name="qr_permission_denied">Cameramachtiging is vereist om QR-codes te scannen.</string>
+
+    <!-- Refresh -->
+    <string name="btn_refresh_all">Vernieuwen</string>
+
+    <!-- Edit running timer -->
+    <string name="btn_edit_timer">Bewerken</string>
+    <string name="title_edit_timer">Timer bewerken</string>
+    <string name="btn_save_changes">Opslaan</string>
+    <string name="hint_edit_timer_saving">Opslaan…</string>
+
     <!-- Notification -->
     <string name="notification_channel_name">Timer</string>
     <string name="notification_channel_description">Toont de actieve timer</string>
     <string name="notification_action_stop">Stoppen</string>
+
+    <!-- Presets -->
+    <string name="section_presets">Snelstarters (optioneel)</string>
+    <string name="hint_presets">Tot 5 snelstartconfiguraties. Tik op een snelstarter om de timer direct te starten.</string>
+    <string name="btn_add_preset">+ Snelstarter toevoegen</string>
+    <string name="title_remove_preset">Snelstarter verwijderen</string>
+    <string name="preset_name_placeholder">bijv. Ochtendoverleg</string>
+    <string name="label_preset_title">Standaardtitel</string>
+    <string name="preset_title_placeholder">Optionele standaardtitel…</string>
+
+    <!-- Timer stopped elsewhere -->
+    <string name="timer_stopped_elsewhere">Timer gestopt op een ander apparaat.</string>
+
+    <!-- Deleted page dialog -->
+    <string name="deleted_page_title">Pagina niet gevonden in Notion</string>
+    <string name="deleted_page_body">De tijdsregistratie kon niet worden opgeslagen omdat de pagina is verwijderd of niet meer toegankelijk is.</string>
+    <string name="deleted_page_hint">Zet de pagina terug vanuit de Notion-prullenbak of maak hem opnieuw aan als de registratie nodig is.</string>
+    <string name="deleted_page_confirm">Sluiten</string>
+    <string name="toast_deleted_page_discarded">Pagina niet gevonden — registratie verwijderd.</string>
+    <string name="toast_update_error">Kon timer niet bijwerken</string>
+
+    <!-- Per-workspace QR -->
+    <string name="btn_workspace_qr">Werkruimte exporteren via QR</string>
+    <string name="qr_workspace_note">Scan om deze werkruimte te importeren op een ander apparaat. API-sleutel niet inbegrepen.</string>
+    <string name="qr_scan_hint_workspace">Richt de camera op een werkruimte-QR-code vanuit de Windows-app.</string>
 </resources>

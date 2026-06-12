@@ -72,7 +72,6 @@ export default {
   errorLoadingExtras: 'Could not load extra fields',
   noPropertiesOfType: 'No suitable field found in this database.',
   labelDefaultValue: 'Default value',
-  defaultValueUnsupported: 'Default value not supported for this type',
   labelWorkspaceRounding: 'Time rounding',
   roundingOff: 'No rounding',
   rounding5: 'Round to nearest 5 minutes',

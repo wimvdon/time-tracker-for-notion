@@ -72,7 +72,6 @@ export default {
   errorLoadingExtras: 'Kon extra velden niet laden',
   noPropertiesOfType: 'Geen geschikt veld gevonden in deze database.',
   labelDefaultValue: 'Standaardwaarde',
-  defaultValueUnsupported: 'Standaardwaarde niet ondersteund voor dit type',
   labelWorkspaceRounding: 'Tijden afronden',
   roundingOff: 'Niet afronden',
   rounding5: 'Afronden naar 5 minuten',
