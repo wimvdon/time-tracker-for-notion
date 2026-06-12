@@ -258,6 +258,10 @@ function WorkspaceModal({ workspace, onClose }) {
   );
   const [presets, setPresets] = useState(workspace?.presets || []);
 
+  // Relation field options for presets: { [propName]: [{ value, label }] }
+  const [relationOptions, setRelationOptions] = useState({});
+  const loadedRelations = useRef(new Set());
+
   // Database list — fetched once per modal lifetime (Retry/Refresh re-fetches)
   const [dbs, setDbs] = useState({ loading: true, error: null, items: [] });
   // Schema of the selected Time Entries database
@@ -305,6 +309,30 @@ function WorkspaceModal({ workspace, onClose }) {
     if (timeEntriesDbId) loadTeSchema(timeEntriesDbId);
     else setTeSchema({ loading: false, error: null, schema: null });
   }, [timeEntriesDbId]);
+
+  // Load pages for any relation-type extra fields so presets can offer a searchable dropdown
+  useEffect(() => {
+    if (!teSchema.schema) return;
+    extraProps.forEach((ep) => {
+      if (!ep.propName || loadedRelations.current.has(ep.propName)) return;
+      const prop = teSchema.schema[ep.propName];
+      if (prop?.type !== 'relation') return;
+      const relDbId = prop.relation?.database_id;
+      if (!relDbId) return;
+      loadedRelations.current.add(ep.propName);
+      window.notionAPI
+        .fetchDatabasePages(relDbId)
+        .then((pages) =>
+          setRelationOptions((prev) => ({
+            ...prev,
+            [ep.propName]: pages.map((p) => ({ value: p.id, label: p.name })),
+          }))
+        )
+        .catch(() =>
+          setRelationOptions((prev) => ({ ...prev, [ep.propName]: [] }))
+        );
+    });
+  }, [teSchema.schema, extraProps]);
 
   const teDateOpts = teSchema.schema ? propertiesByType(teSchema.schema, 'date') : [];
   const teStatusOpts = teSchema.schema ? propertiesByType(teSchema.schema, 'status') : [];
@@ -578,6 +606,7 @@ function WorkspaceModal({ workspace, onClose }) {
               workspaceName={name}
               extraProps={extraProps.filter((ep) => !!ep.propName)}
               schema={teSchema.schema}
+              relationOptions={relationOptions}
               onChange={(updated) =>
                 setPresets((prev) => prev.map((p, j) => (j === i ? updated : p)))
               }
@@ -667,16 +696,21 @@ function PropSelect({ label, hint, loading, options, value, onChange }) {
 }
 
 
-function PresetRow({ preset, workspaceName, extraProps, schema, onChange, onRemove }) {
+function PresetRow({ preset, workspaceName, extraProps, schema, relationOptions, onChange, onRemove }) {
   const propDefs = extraProps
-    .filter((ep) => ep.propName && schema?.[ep.propName])
+    .filter((ep) => ep.propName && (schema?.[ep.propName] || ep.type))
     .map((ep) => {
-      const prop = schema[ep.propName];
-      return {
-        name: ep.propName,
-        type: prop.type,
-        options: (prop[prop.type]?.options ?? []).map((o) => ({ name: o.name })),
-      };
+      const prop = schema?.[ep.propName];
+      const type = prop?.type ?? ep.type ?? 'rich_text';
+      let options = [];
+      if (type === 'select' || type === 'multi_select') {
+        options = (prop?.[type]?.options ?? []).map((o) => ({ value: o.name, label: o.name }));
+      } else if (type === 'status') {
+        options = (prop?.status?.options ?? []).map((o) => ({ value: o.name, label: o.name }));
+      } else if (type === 'relation' || type === 'people') {
+        options = relationOptions?.[ep.propName] ?? [];
+      }
+      return { name: ep.propName, type, options };
     });
 
   return (
@@ -744,16 +778,55 @@ function PresetFieldInput({ type, options, value, onChange }) {
   }
   if (type === 'select' || type === 'status') {
     return (
-      <select
+      <SearchableSelect
         value={value ?? ''}
-        onChange={(e) => onChange(e.target.value)}
-        className="w-full bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-xs text-zinc-200"
-      >
-        <option value="">{t('placeholderSelect')}</option>
-        {options.map((o) => (
-          <option key={o.name} value={o.name}>{o.name}</option>
-        ))}
-      </select>
+        onChange={onChange}
+        options={options}
+        placeholder={t('placeholderSelect')}
+        triggerClass="bg-zinc-900"
+        className="w-full"
+      />
+    );
+  }
+  if (type === 'relation' || type === 'people') {
+    return (
+      <SearchableSelect
+        value={value ?? ''}
+        onChange={onChange}
+        options={options}
+        placeholder={t('placeholderSelect')}
+        triggerClass="bg-zinc-900"
+        className="w-full"
+      />
+    );
+  }
+  if (type === 'multi_select') {
+    const selected = value ? value.split(',').map((v) => v.trim()).filter(Boolean) : [];
+    return (
+      <div className="flex flex-wrap gap-1">
+        {options.map((o) => {
+          const active = selected.includes(o.value);
+          return (
+            <button
+              key={o.value}
+              type="button"
+              onClick={() => {
+                const next = active
+                  ? selected.filter((v) => v !== o.value)
+                  : [...selected, o.value];
+                onChange(next.join(','));
+              }}
+              className={`px-2 py-0.5 rounded text-xs border transition-colors ${
+                active
+                  ? 'bg-emerald-600 border-emerald-500 text-white'
+                  : 'bg-zinc-700 border-zinc-600 text-zinc-200 hover:border-zinc-400'
+              }`}
+            >
+              {o.label}
+            </button>
+          );
+        })}
+      </div>
     );
   }
   if (type === 'number') {

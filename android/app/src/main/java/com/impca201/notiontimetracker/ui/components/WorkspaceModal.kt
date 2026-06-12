@@ -14,7 +14,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.impca201.notiontimetracker.R
-import com.impca201.notiontimetracker.data.models.ExtraFieldDef
 import com.impca201.notiontimetracker.data.models.ExtraProp
 import com.impca201.notiontimetracker.data.models.NamedOption
 import com.impca201.notiontimetracker.data.models.Preset
@@ -395,26 +394,62 @@ private fun PresetRow(
                 if (type == "files") return@forEach
                 Spacer(Modifier.height(4.dp))
                 val schemaProp = schema[ep.propName]
-                val options = when (type) {
-                    "select", "multi_select" -> schemaProp?.selectOptions?.map { NamedOption(it.name, it.name) } ?: emptyList()
-                    "status" -> schemaProp?.statusOptions?.map { NamedOption(it.name, it.name) } ?: emptyList()
-                    "relation" -> relationOptions[ep.propName] ?: emptyList()
-                    else -> emptyList()
+                val currentVal = preset.extraValues[ep.propName] ?: ""
+                Text(ep.propName, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                when (type) {
+                    "checkbox" -> {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Switch(
+                                checked = currentVal == "true",
+                                onCheckedChange = { checked ->
+                                    onUpdate(preset.copy(extraValues = preset.extraValues + (ep.propName to if (checked) "true" else "false")))
+                                }
+                            )
+                        }
+                    }
+                    "select" -> {
+                        val opts = schemaProp?.selectOptions?.map { NamedOption(it.name, it.name) } ?: emptyList()
+                        SearchableDropdown(
+                            options = opts,
+                            selected = opts.firstOrNull { it.id == currentVal },
+                            placeholder = stringResource(R.string.placeholder_select),
+                            onSelect = { opt -> onUpdate(preset.copy(extraValues = preset.extraValues + (ep.propName to (opt?.name ?: "")))) },
+                            allowClear = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                    "status" -> {
+                        val opts = schemaProp?.statusOptions?.map { NamedOption(it.name, it.name) } ?: emptyList()
+                        SearchableDropdown(
+                            options = opts,
+                            selected = opts.firstOrNull { it.id == currentVal },
+                            placeholder = stringResource(R.string.placeholder_select),
+                            onSelect = { opt -> onUpdate(preset.copy(extraValues = preset.extraValues + (ep.propName to (opt?.name ?: "")))) },
+                            allowClear = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                    "relation" -> {
+                        val opts = relationOptions[ep.propName] ?: emptyList()
+                        SearchableDropdown(
+                            options = opts,
+                            selected = opts.firstOrNull { it.id == currentVal },
+                            placeholder = stringResource(R.string.placeholder_select),
+                            onSelect = { opt -> onUpdate(preset.copy(extraValues = preset.extraValues + (ep.propName to (opt?.id ?: "")))) },
+                            allowClear = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                    else -> {
+                        OutlinedTextField(
+                            value = currentVal,
+                            onValueChange = { onUpdate(preset.copy(extraValues = preset.extraValues + (ep.propName to it))) },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true,
+                            textStyle = MaterialTheme.typography.bodySmall
+                        )
+                    }
                 }
-                val fieldDef = ExtraFieldDef(
-                    propName = ep.propName,
-                    type = type,
-                    required = ep.required,
-                    defaultValue = ep.defaultValue,
-                    options = options,
-                    statusOptions = schemaProp?.statusOptions ?: emptyList()
-                )
-                ExtraFieldInput(
-                    fieldDef = fieldDef,
-                    value = preset.extraValues[ep.propName] ?: "",
-                    onValueChange = { onUpdate(preset.copy(extraValues = preset.extraValues + (ep.propName to it))) },
-                    modifier = Modifier.fillMaxWidth()
-                )
             }
         }
     }
