@@ -85,7 +85,7 @@ async function getDatabaseSchema(apiKey, dbId) {
  */
 async function fetchDatabasePages(apiKey, dbId) {
   const results = [];
-  let cursor = undefined;
+  let cursor;
   do {
     const data = await notionFetch(apiKey, 'POST', `/databases/${dbId}/query`, {
       page_size: 100,

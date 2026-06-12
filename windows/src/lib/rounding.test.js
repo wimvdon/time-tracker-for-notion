@@ -1,26 +1,26 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { roundToNearest15, roundToNearestN, computeStartTime, computeEndTime } from './rounding.js';
+import { roundToNearestN, computeStartTime, computeEndTime } from './rounding.js';
 
 const at = (h, m, s = 0) => new Date(2026, 5, 11, h, m, s);
 const hhmm = (d) => `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 
-test('roundToNearest15 rounds down below the midpoint', () => {
-  assert.equal(hhmm(roundToNearest15(at(14, 7))), '14:00');
-  assert.equal(hhmm(roundToNearest15(at(14, 22))), '14:15');
-  assert.equal(hhmm(roundToNearest15(at(14, 52))), '14:45');
+test('roundToNearestN(15) rounds down below the midpoint', () => {
+  assert.equal(hhmm(roundToNearestN(at(14, 7), 15)), '14:00');
+  assert.equal(hhmm(roundToNearestN(at(14, 22), 15)), '14:15');
+  assert.equal(hhmm(roundToNearestN(at(14, 52), 15)), '14:45');
 });
 
-test('roundToNearest15 rounds up at and above the midpoint', () => {
-  assert.equal(hhmm(roundToNearest15(at(14, 8))), '14:15');
-  assert.equal(hhmm(roundToNearest15(at(14, 7, 30))), '14:15'); // exact midpoint rounds up
-  assert.equal(hhmm(roundToNearest15(at(14, 23))), '14:30');
-  assert.equal(hhmm(roundToNearest15(at(14, 53))), '15:00');
+test('roundToNearestN(15) rounds up at and above the midpoint', () => {
+  assert.equal(hhmm(roundToNearestN(at(14, 8), 15)), '14:15');
+  assert.equal(hhmm(roundToNearestN(at(14, 7, 30), 15)), '14:15'); // exact midpoint rounds up
+  assert.equal(hhmm(roundToNearestN(at(14, 23), 15)), '14:30');
+  assert.equal(hhmm(roundToNearestN(at(14, 53), 15)), '15:00');
 });
 
-test('roundToNearest15 keeps exact boundaries untouched', () => {
-  assert.equal(hhmm(roundToNearest15(at(14, 0))), '14:00');
-  assert.equal(hhmm(roundToNearest15(at(14, 45))), '14:45');
+test('roundToNearestN(15) keeps exact boundaries untouched', () => {
+  assert.equal(hhmm(roundToNearestN(at(14, 0), 15)), '14:00');
+  assert.equal(hhmm(roundToNearestN(at(14, 45), 15)), '14:45');
 });
 
 test('roundToNearestN rounds to 5 minutes', () => {

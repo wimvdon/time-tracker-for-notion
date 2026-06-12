@@ -34,5 +34,3 @@ export function computeEndTime(startTime, now = new Date(), minutes = 15) {
   return roundedNow < minEnd ? minEnd : roundedNow;
 }
 
-// Backwards compat alias
-export const roundToNearest15 = (date) => roundToNearestN(date, 15);
