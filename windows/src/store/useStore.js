@@ -846,7 +846,6 @@ export const useStore = create((set, get) => ({
       description: newTitle,
       selectedProjectId: projectId,
       extraValues,
-      editTimerOpen: false,
     });
     const updatedTimer = {
       notionPageId: state.timer.notionPageId,
