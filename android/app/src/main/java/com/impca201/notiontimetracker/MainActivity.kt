@@ -6,12 +6,15 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.*
+import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.compose.NavHost
@@ -43,6 +46,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
 
         timerViewModel = ViewModelProvider(
             this,
@@ -91,6 +95,7 @@ private fun AppNavigation(
     timerViewModel: TimerViewModel,
     settingsViewModel: SettingsViewModel
 ) {
+    val context = LocalContext.current
     val navController = rememberNavController()
     val timerState by timerViewModel.uiState.collectAsState()
     val settingsState by settingsViewModel.uiState.collectAsState()
@@ -121,7 +126,11 @@ private fun AppNavigation(
                 onLoadRunningTimer = timerViewModel::loadRunningTimer,
                 onStopOtherRunningTimer = timerViewModel::stopOtherRunningTimer,
                 onSuspendActiveToNewTimer = timerViewModel::suspendActiveToNewTimer,
-                onRefreshRunningTimers = { timerViewModel.loadRunningTimers() }
+                onRefreshRunningTimers = { timerViewModel.loadRunningTimers() },
+                onConfirmDelete = { pageId, title, isRunning -> timerViewModel.confirmDelete(pageId, title, isRunning) },
+                onCancelDelete = timerViewModel::cancelDelete,
+                onDeleteEntry = timerViewModel::deleteEntry,
+                onOpenUrl = { url -> context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
             )
         }
 

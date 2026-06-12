@@ -199,11 +199,36 @@ async function fetchRunningTimers(apiKey, dbId, statusProp, statusRunning, dateP
       const datePropObj = dateProp ? props[dateProp] : null;
       const startISO = datePropObj?.date?.start ?? null;
       if (!startISO) continue;
-      results.push({ pageId: page.id, title, startISO });
+      results.push({ pageId: page.id, title, startISO, url: page.url || '' });
     }
     cursor = data.has_more ? data.next_cursor : undefined;
   } while (cursor);
   return results;
+}
+
+async function fetchRecentEntries(apiKey, dbId, statusProp, statusDone, dateProp) {
+  const body = {
+    filter: { property: statusProp, status: { equals: statusDone } },
+    page_size: 5,
+    ...(dateProp ? { sorts: [{ property: dateProp, direction: 'descending' }] } : {}),
+  };
+  const data = await notionFetch(apiKey, 'POST', `/databases/${dbId}/query`, body);
+  const results = [];
+  for (const page of data.results) {
+    const props = page.properties || {};
+    const titlePropObj = Object.values(props).find((p) => p.type === 'title');
+    const title = (titlePropObj?.title || []).map((t) => t.plain_text).join('').trim() || 'Untitled';
+    const datePropObj = dateProp ? props[dateProp] : null;
+    const startISO = datePropObj?.date?.start ?? null;
+    const endISO = datePropObj?.date?.end ?? null;
+    results.push({ pageId: page.id, title, startISO, endISO, url: page.url || '' });
+  }
+  return results;
+}
+
+async function deletePage(apiKey, pageId) {
+  await notionFetch(apiKey, 'PATCH', `/pages/${pageId}`, { archived: true });
+  return { ok: true };
 }
 
 module.exports = {
@@ -215,4 +240,6 @@ module.exports = {
   createTimeEntry,
   stopTimeEntry,
   fetchRunningTimers,
+  fetchRecentEntries,
+  deletePage,
 };

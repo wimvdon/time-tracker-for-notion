@@ -109,4 +109,11 @@ export default {
   btnBack: '←',
   titleBack: 'Back',
   titleSettings: 'Settings',
+
+  recentEntriesHeading: 'Recent time entries',
+  titleDeleteEntry: 'Delete',
+  titleOpenInNotion: 'Open in Notion',
+  confirmDeleteTitle: 'Archive this entry in Notion?',
+  confirmDeleteConfirm: 'Archive',
+  toastDeleteError: 'Could not delete entry',
 };

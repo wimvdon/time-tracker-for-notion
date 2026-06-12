@@ -114,6 +114,15 @@
     <string name="refresh_running_timers">Refresh running timers</string>
     <string name="start_new_timer">Start new timer</string>
 
+    <!-- Recent entries -->
+    <string name="recent_entries_heading">Recent time entries</string>
+    <string name="title_delete_entry">Delete</string>
+    <string name="title_open_in_notion">Open in Notion</string>
+    <string name="confirm_delete_title">Archive this entry?</string>
+    <string name="confirm_delete_message">"%1$s" will be archived in Notion.</string>
+    <string name="confirm_delete_confirm">Archive</string>
+    <string name="toast_delete_error">Could not delete entry</string>
+
     <!-- Notification -->
     <string name="notification_channel_name">Timer</string>
     <string name="notification_channel_description">Shows the active timer</string>

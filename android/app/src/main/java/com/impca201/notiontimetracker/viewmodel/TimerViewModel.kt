@@ -41,7 +41,10 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
         val isStarting: Boolean = false,
         val isStopping: Boolean = false,
         val runningTimers: List<RunningTimerInfo> = emptyList(),
-        val runningTimersLoading: Boolean = false
+        val runningTimersLoading: Boolean = false,
+        val recentEntries: List<RecentEntryInfo> = emptyList(),
+        val recentEntriesLoading: Boolean = false,
+        val deleteConfirmInfo: DeleteConfirmInfo? = null
     )
 
     private val _uiState = MutableStateFlow(UiState())
@@ -74,7 +77,7 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
         if (activeTimer == null) {
             val firstId = (workspaces.firstOrNull { it.id == lastId } ?: workspaces.firstOrNull())?.id
             if (firstId != null) selectWorkspace(firstId)
-            if (apiKey.isNotBlank() && workspaces.isNotEmpty()) loadRunningTimers()
+            if (apiKey.isNotBlank() && workspaces.isNotEmpty()) { loadRunningTimers(); loadRecentEntries() }
         }
     }
 
@@ -89,6 +92,7 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
                 if (firstId != null) selectWorkspace(firstId)
             }
             loadRunningTimers()
+            loadRecentEntries()
         }
     }
 
@@ -287,6 +291,7 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
                 stopService()
                 _uiState.update { it.copy(running = false, activeTimer = null, elapsedSeconds = 0L, isStopping = false, stopError = null) }
                 loadRunningTimers()
+                loadRecentEntries()
             }.onFailure { err ->
                 _uiState.update { it.copy(isStopping = false, stopError = err.message ?: "Could not stop timer") }
             }
@@ -332,6 +337,7 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
                 val firstId = _uiState.value.workspaces.firstOrNull()?.id
                 if (firstId != null) selectWorkspace(firstId)
                 loadRunningTimers()
+                loadRecentEntries()
             }.onFailure { err ->
                 _uiState.update { it.copy(recoveryBusy = false, error = err.message) }
             }
@@ -362,6 +368,7 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
             val firstId = _uiState.value.workspaces.firstOrNull()?.id
             if (firstId != null) selectWorkspace(firstId)
             loadRunningTimers()
+            loadRecentEntries()
         }
     }
 
@@ -369,6 +376,7 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
         tickJob?.cancel()
         _uiState.update { it.copy(running = false, activeTimer = null, elapsedSeconds = 0L, isStopping = false) }
         loadRunningTimers()
+        loadRecentEntries()
     }
 
     fun loadRunningTimers() {
@@ -394,6 +402,7 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
                         pageId = result.pageId,
                         title = result.title,
                         startISO = result.startISO,
+                        url = result.url,
                         workspaceId = ws.id,
                         workspaceName = ws.name,
                         propertyMap = pm
@@ -402,6 +411,82 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
             }
             allRunning.sortByDescending { it.startISO }
             _uiState.update { it.copy(runningTimersLoading = false, runningTimers = allRunning) }
+        }
+    }
+
+    fun loadRecentEntries() {
+        val state = _uiState.value
+        if (state.recoveredTimer != null || state.apiKey.isBlank() ||
+            state.workspaces.isEmpty() || state.recentEntriesLoading) return
+
+        _uiState.update { it.copy(recentEntriesLoading = true) }
+
+        viewModelScope.launch {
+            val allRecent = mutableListOf<RecentEntryInfo>()
+            for (ws in state.workspaces) {
+                val pm = ws.propertyMap
+                if (ws.timeEntriesDbId.isBlank() || pm.timeEntryStatusProp.isBlank() ||
+                    pm.timeEntryStatusDone.isBlank()) continue
+                runCatching {
+                    notionRepo.fetchRecentEntries(
+                        ws.timeEntriesDbId, pm.timeEntryStatusProp,
+                        pm.timeEntryStatusDone, pm.timeEntryDateProp
+                    )
+                }.getOrDefault(emptyList()).forEach { result ->
+                    allRecent.add(RecentEntryInfo(
+                        pageId = result.pageId,
+                        title = result.title,
+                        startISO = result.startISO,
+                        endISO = result.endISO,
+                        url = result.url,
+                        workspaceId = ws.id,
+                        workspaceName = ws.name,
+                        propertyMap = pm
+                    ))
+                }
+            }
+            allRecent.sortByDescending { it.endISO ?: it.startISO ?: "" }
+            _uiState.update { it.copy(recentEntriesLoading = false, recentEntries = allRecent.take(5)) }
+        }
+    }
+
+    fun confirmDelete(pageId: String, title: String, isRunning: Boolean) {
+        _uiState.update { it.copy(deleteConfirmInfo = DeleteConfirmInfo(pageId, title, isRunning)) }
+    }
+
+    fun cancelDelete() {
+        _uiState.update { it.copy(deleteConfirmInfo = null) }
+    }
+
+    fun deleteEntry() {
+        val info = _uiState.value.deleteConfirmInfo ?: return
+        _uiState.update { it.copy(deleteConfirmInfo = null) }
+
+        viewModelScope.launch {
+            runCatching { notionRepo.deletePage(info.pageId) }
+                .onSuccess {
+                    val isActiveTimer = _uiState.value.activeTimer?.notionPageId == info.pageId
+                    when {
+                        isActiveTimer -> {
+                            tickJob?.cancel()
+                            stopService()
+                            settingsRepo.clearActiveTimer()
+                            _uiState.update { it.copy(
+                                running = false, activeTimer = null, elapsedSeconds = 0L,
+                                runningTimers = it.runningTimers.filter { r -> r.pageId != info.pageId }
+                            )}
+                        }
+                        info.isRunning -> {
+                            _uiState.update { it.copy(runningTimers = it.runningTimers.filter { r -> r.pageId != info.pageId }) }
+                        }
+                        else -> {
+                            _uiState.update { it.copy(recentEntries = it.recentEntries.filter { r -> r.pageId != info.pageId }) }
+                        }
+                    }
+                }
+                .onFailure { err ->
+                    _uiState.update { it.copy(error = err.message ?: "Could not delete entry") }
+                }
         }
     }
 
