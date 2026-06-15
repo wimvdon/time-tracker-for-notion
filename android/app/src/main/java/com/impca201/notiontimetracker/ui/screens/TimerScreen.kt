@@ -23,10 +23,15 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import com.impca201.notiontimetracker.ui.components.parseWorkspaceColor
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.impca201.notiontimetracker.R
@@ -159,8 +164,8 @@ fun TimerScreen(
             onSuspendActiveToNewTimer = onSuspendActiveToNewTimer,
             onRefreshRunningTimers = onRefreshRunningTimers,
             onRefreshAll = onRefreshAll,
-            onOpenEditTimer = onOpenEditTimer,
             onQuickSaveDescription = onQuickSaveDescription,
+            onUpdateTimerDetails = onUpdateTimerDetails,
             onConfirmDelete = onConfirmDelete,
             onOpenUrl = onOpenUrl,
             onApplyPreset = onApplyPreset
@@ -246,18 +251,26 @@ private fun IdleView(
                     }
                 }
             } else if (uiState.workspaces.isEmpty()) {
-                WarningCard {
+                val noWorkspacesText = buildAnnotatedString {
+                    append(stringResource(R.string.warn_no_workspaces))
+                    append(" ")
+                    withStyle(SpanStyle(fontWeight = FontWeight.SemiBold, textDecoration = TextDecoration.Underline)) {
+                        append(stringResource(R.string.warn_no_workspaces_link))
+                    }
+                    append(" ")
+                    append(stringResource(R.string.warn_no_workspaces_suffix))
+                }
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onNavigateToSettings() }
+                ) {
                     Text(
-                        buildString {
-                            append(stringResource(R.string.warn_no_workspaces))
-                            append(" ")
-                        },
+                        noWorkspacesText,
+                        modifier = Modifier.padding(12.dp),
                         style = MaterialTheme.typography.bodySmall
                     )
-                    TextButton(onClick = onNavigateToSettings, contentPadding = PaddingValues(0.dp)) {
-                        Text(stringResource(R.string.warn_no_workspaces_link), style = MaterialTheme.typography.bodySmall)
-                    }
-                    Text(" " + stringResource(R.string.warn_no_workspaces_suffix), style = MaterialTheme.typography.bodySmall)
                 }
             }
 
@@ -389,8 +402,8 @@ private fun RunningView(
     onSuspendActiveToNewTimer: () -> Unit,
     onRefreshRunningTimers: () -> Unit,
     onRefreshAll: () -> Unit,
-    onOpenEditTimer: () -> Unit,
     onQuickSaveDescription: (String) -> Unit = {},
+    onUpdateTimerDetails: (String?, String, Map<String, String>) -> Unit,
     onConfirmDelete: (String, String, Boolean) -> Unit,
     onOpenUrl: (String) -> Unit,
     onApplyPreset: (String, Preset) -> Unit = { _, _ -> }
@@ -453,6 +466,24 @@ private fun RunningView(
 
             var titleDraft by remember(timer.description) { mutableStateOf(timer.description) }
             val isTitleDirty = titleDraft.trim() != timer.description.trim()
+            // Inline-editable project & extra fields, seeded from the active timer and
+            // re-seeded when the underlying fields change (e.g. after loading another timer).
+            var localProjectId by remember(timer.notionPageId) { mutableStateOf(uiState.selectedProjectId) }
+            var localExtras by remember(timer.notionPageId) { mutableStateOf(uiState.extraValues) }
+            var pendingSave by remember(timer.notionPageId) { mutableStateOf(false) }
+            LaunchedEffect(uiState.extraFieldDefs, timer.notionPageId) {
+                localProjectId = uiState.selectedProjectId
+                localExtras = uiState.extraValues
+            }
+            // Debounce inline edits so we don't hit the Notion API on every keystroke.
+            // The title is saved separately (its own check button / IME action), so we
+            // keep the last-committed title here to avoid clobbering an in-progress edit.
+            LaunchedEffect(localProjectId, localExtras, pendingSave) {
+                if (!pendingSave) return@LaunchedEffect
+                kotlinx.coroutines.delay(600)
+                onUpdateTimerDetails(localProjectId, timer.description, localExtras)
+                pendingSave = false
+            }
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.fillMaxWidth()
@@ -476,14 +507,6 @@ private fun RunningView(
                             tint = MaterialTheme.colorScheme.primary
                         )
                     }
-                }
-                IconButton(onClick = onOpenEditTimer, modifier = Modifier.size(36.dp)) {
-                    Icon(
-                        Icons.Default.Edit,
-                        contentDescription = stringResource(R.string.btn_edit_timer),
-                        modifier = Modifier.size(18.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
                 }
             }
 
@@ -546,6 +569,46 @@ private fun RunningView(
                         if (ms != null) onStop(ms)
                     })
                 )
+            }
+
+            // Inline project + extra-field editing (matches Windows: edits save immediately).
+            if (uiState.projects.isNotEmpty()) {
+                Spacer(Modifier.height(4.dp))
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    FieldLabel(stringResource(R.string.label_project))
+                    SearchableDropdown(
+                        options = uiState.projects,
+                        selected = uiState.projects.firstOrNull { it.id == localProjectId },
+                        placeholder = stringResource(R.string.placeholder_select_project),
+                        onSelect = {
+                            localProjectId = it?.id
+                            pendingSave = true
+                        },
+                        allowClear = true,
+                        searchable = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            }
+
+            if (uiState.extraFieldDefs.isNotEmpty()) {
+                Spacer(Modifier.height(4.dp))
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    uiState.extraFieldDefs.forEach { def ->
+                        ExtraFieldInput(
+                            fieldDef = def,
+                            value = localExtras[def.propName] ?: "",
+                            onValueChange = { value ->
+                                localExtras = localExtras + (def.propName to value)
+                                pendingSave = true
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                }
             }
 
             uiState.stopError?.let { err ->
@@ -767,9 +830,10 @@ private fun PresetChips(
     ) {
         allPresets.forEach { (ws, preset) ->
             val wsColor = parseWorkspaceColor(ws.color)
+            val chipLabel = if (preset.name.isBlank()) "▶ ${ws.name}" else "▶ ${ws.name} — ${preset.name}"
             SuggestionChip(
                 onClick = { onApplyPreset(ws.id, preset) },
-                label = { Text("▶ ${ws.name} — ${preset.name}", style = MaterialTheme.typography.labelMedium) },
+                label = { Text(chipLabel, style = MaterialTheme.typography.labelMedium) },
                 colors = if (wsColor != null) SuggestionChipDefaults.suggestionChipColors(
                     containerColor = wsColor.copy(alpha = 0.15f),
                     labelColor = wsColor

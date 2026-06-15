@@ -24,24 +24,33 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import com.google.gson.Gson
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.barcode.common.Barcode
 import com.google.mlkit.vision.common.InputImage
 import com.impca201.notiontimetracker.R
 import com.impca201.notiontimetracker.data.models.ThemeMode
 import com.impca201.notiontimetracker.data.models.Workspace
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.json.Json
 import java.util.concurrent.Executors
 
+@Serializable
 data class QrSettingsPayload(
     val apiKey: String? = null,
     val workspaces: List<Workspace>? = null,
     val theme: String? = null
 )
 
+@Serializable
 data class QrWorkspacePayload(
     val workspace: Workspace? = null
 )
+
+private val qrJson = Json {
+    ignoreUnknownKeys = true
+    isLenient = true
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -127,9 +136,8 @@ fun QrScannerScreen(
                             if (!scanned) {
                                 scanned = true
                                 try {
-                                    val gson = Gson()
                                     // Try per-workspace format first
-                                    val workspacePayload = runCatching { gson.fromJson(raw, QrWorkspacePayload::class.java) }.getOrNull()
+                                    val workspacePayload = runCatching { qrJson.decodeFromString<QrWorkspacePayload>(raw) }.getOrNull()
                                     if (workspacePayload?.workspace != null) {
                                         if (onImportWorkspace != null) {
                                             onImportWorkspace(workspacePayload.workspace)
@@ -138,7 +146,7 @@ fun QrScannerScreen(
                                         }
                                     } else {
                                         // Fall back to legacy global settings format
-                                        val payload = gson.fromJson(raw, QrSettingsPayload::class.java)
+                                        val payload = qrJson.decodeFromString<QrSettingsPayload>(raw)
                                         val theme = when (payload.theme?.uppercase()) {
                                             "LIGHT" -> ThemeMode.LIGHT
                                             "DARK" -> ThemeMode.DARK

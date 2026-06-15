@@ -63,6 +63,10 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
     private var tickJob: Job? = null
     private var tickStartMs: Long = 0L
 
+    // A preset launched from a home-screen / launcher shortcut before workspaces
+    // finished loading (cold start). Applied once loadInitialState() completes.
+    private var pendingPreset: Pair<String, String>? = null
+
     init {
         viewModelScope.launch { loadInitialState() }
         // Auto-refresh every 60s
@@ -103,6 +107,14 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
         ShortcutHelper.updateShortcuts(app, workspaces)
 
         if (activeTimer == null) {
+            // A shortcut tapped during a cold start is queued until now; apply it
+            // (quick-starts the preset) instead of falling back to the idle screen.
+            val pending = pendingPreset
+            if (pending != null) {
+                pendingPreset = null
+                applyPresetById(pending.first, pending.second)
+                return
+            }
             val firstId = (workspaces.firstOrNull { it.id == lastId } ?: workspaces.firstOrNull())?.id
             if (firstId != null) selectWorkspace(firstId)
             if (apiKey.isNotBlank() && workspaces.isNotEmpty()) { loadRunningTimers(); loadRecentEntries() }
@@ -757,6 +769,12 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
 
     fun applyPresetById(workspaceId: String, presetId: String) {
         val state = _uiState.value
+        // Cold start: workspaces not loaded yet. Queue the request; loadInitialState()
+        // applies it once the data is available (fixes home-screen shortcuts).
+        if (state.workspaces.isEmpty()) {
+            pendingPreset = workspaceId to presetId
+            return
+        }
         val workspace = state.workspaces.firstOrNull { it.id == workspaceId } ?: return
         val preset = workspace.presets.firstOrNull { it.id == presetId } ?: return
         applyPreset(workspaceId, preset)

@@ -11,6 +11,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -62,15 +65,21 @@ fun SettingsScreen(
     onSnackbarDismiss: () -> Unit
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
+    val context = LocalContext.current
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
 
     LaunchedEffect(uiState.snackbarMessage) {
         uiState.snackbarMessage?.let { msg ->
             val text = when {
-                msg == "api_key_saved" -> "API key works and was saved."
-                msg.startsWith("workspace_added:") -> "Workspace \"${msg.substringAfter(":")}\" added."
-                msg.startsWith("workspace_saved:") -> "Workspace \"${msg.substringAfter(":")}\" saved."
+                msg == "api_key_saved" -> context.getString(R.string.toast_api_key_saved)
+                msg.startsWith("workspace_added:") -> context.getString(R.string.toast_workspace_added, msg.substringAfter(":"))
+                msg.startsWith("workspace_saved:") -> context.getString(R.string.toast_workspace_saved, msg.substringAfter(":"))
                 else -> msg
             }
+            // Dismiss the keyboard so the snackbar isn't hidden behind it.
+            keyboardController?.hide()
+            focusManager.clearFocus()
             snackbarHostState.showSnackbar(text)
             onSnackbarDismiss()
         }
@@ -281,7 +290,7 @@ private fun WorkspaceListItem(
                 Text(workspace.name, style = MaterialTheme.typography.bodyLarge)
                 if (workspace.roundingMinutes > 0) {
                     Text(
-                        "Rounding: ${workspace.roundingMinutes} min",
+                        stringResource(R.string.workspace_rounding_summary, workspace.roundingMinutes),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
