@@ -82,6 +82,7 @@
     <string name="rounding_10">Round to nearest 10 minutes</string>
     <string name="rounding_15">Round to nearest 15 minutes</string>
     <string name="workspace_rounding_hint">Rounds start and stop times (including manual edits) to the nearest interval.</string>
+    <string name="workspace_rounding_summary">Rounding: %1$d min</string>
     <string name="label_workspace_color">Workspace colour</string>
     <string name="label_custom_color">Custom hex</string>
     <string name="btn_apply_color">Apply</string>

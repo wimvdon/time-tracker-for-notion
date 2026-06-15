@@ -9,20 +9,27 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
-import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
 import com.impca201.notiontimetracker.data.models.ActiveTimer
 import com.impca201.notiontimetracker.data.models.ThemeMode
 import com.impca201.notiontimetracker.data.models.Workspace
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "notion_settings")
 
 class SettingsRepository(private val context: Context) {
 
-    private val gson = Gson()
+    // kotlinx.serialization (not Gson): applies @Serializable defaults for missing
+    // fields and ignores unknown keys, so workspaces saved by older versions
+    // (e.g. before `color`/`presets` existed) deserialize without crashing.
+    private val json = Json {
+        ignoreUnknownKeys = true
+        encodeDefaults = true
+    }
 
     private val WORKSPACES_KEY = stringPreferencesKey("workspaces_json")
     private val LAST_WORKSPACE_KEY = stringPreferencesKey("last_workspace_id")
@@ -49,10 +56,9 @@ class SettingsRepository(private val context: Context) {
     }
 
     val workspacesFlow: Flow<List<Workspace>> = context.dataStore.data.map { prefs ->
-        val json = prefs[WORKSPACES_KEY] ?: return@map emptyList()
+        val stored = prefs[WORKSPACES_KEY] ?: return@map emptyList()
         runCatching {
-            val type = object : TypeToken<List<Workspace>>() {}.type
-            gson.fromJson<List<Workspace>>(json, type)
+            json.decodeFromString<List<Workspace>>(stored)
         }.getOrDefault(emptyList())
     }
 
@@ -60,7 +66,7 @@ class SettingsRepository(private val context: Context) {
 
     suspend fun saveWorkspaces(workspaces: List<Workspace>) {
         context.dataStore.edit { prefs ->
-            prefs[WORKSPACES_KEY] = gson.toJson(workspaces)
+            prefs[WORKSPACES_KEY] = json.encodeToString(workspaces)
         }
     }
 
@@ -75,15 +81,15 @@ class SettingsRepository(private val context: Context) {
     }
 
     val activeTimerFlow: Flow<ActiveTimer?> = context.dataStore.data.map { prefs ->
-        val json = prefs[ACTIVE_TIMER_KEY]?.takeIf { it.isNotBlank() } ?: return@map null
-        runCatching { gson.fromJson(json, ActiveTimer::class.java) }.getOrNull()
+        val stored = prefs[ACTIVE_TIMER_KEY]?.takeIf { it.isNotBlank() } ?: return@map null
+        runCatching { json.decodeFromString<ActiveTimer>(stored) }.getOrNull()
     }
 
     suspend fun getActiveTimer(): ActiveTimer? = activeTimerFlow.first()
 
     suspend fun saveActiveTimer(timer: ActiveTimer) {
         context.dataStore.edit { prefs ->
-            prefs[ACTIVE_TIMER_KEY] = gson.toJson(timer)
+            prefs[ACTIVE_TIMER_KEY] = json.encodeToString(timer)
         }
     }
 
