@@ -108,7 +108,14 @@ class SettingsViewModel(private val app: Application) : AndroidViewModel(app) {
 
     fun testAndSaveApiKey() {
         val key = _uiState.value.apiKey.trim()
-        if (key.isBlank()) return
+        if (key.isBlank()) {
+            // Emptying the field and saving removes the stored key.
+            viewModelScope.launch {
+                settingsRepo.saveApiKey("")
+                _uiState.update { it.copy(apiKey = "", keyTestSuccess = false, keyTestError = null, snackbarMessage = "api_key_removed") }
+            }
+            return
+        }
         _uiState.update { it.copy(testingKey = true, keyTestError = null, keyTestSuccess = false) }
         viewModelScope.launch {
             runCatching { notionRepo.testConnectionWithKey(key) }

@@ -73,6 +73,7 @@ fun SettingsScreen(
         uiState.snackbarMessage?.let { msg ->
             val text = when {
                 msg == "api_key_saved" -> context.getString(R.string.toast_api_key_saved)
+                msg == "api_key_removed" -> context.getString(R.string.toast_api_key_removed)
                 msg.startsWith("workspace_added:") -> context.getString(R.string.toast_workspace_added, msg.substringAfter(":"))
                 msg.startsWith("workspace_saved:") -> context.getString(R.string.toast_workspace_saved, msg.substringAfter(":"))
                 else -> msg
@@ -175,7 +176,7 @@ fun SettingsScreen(
 
             Button(
                 onClick = onTestAndSave,
-                enabled = uiState.apiKey.isNotBlank() && !uiState.testingKey,
+                enabled = !uiState.testingKey,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 if (uiState.testingKey) {
@@ -183,7 +184,10 @@ fun SettingsScreen(
                     Spacer(Modifier.width(8.dp))
                     Text(stringResource(R.string.btn_testing_key))
                 } else {
-                    Text(stringResource(R.string.btn_test_and_save_key))
+                    Text(
+                        if (uiState.apiKey.isBlank()) stringResource(R.string.btn_remove_key)
+                        else stringResource(R.string.btn_test_and_save_key)
+                    )
                 }
             }
 

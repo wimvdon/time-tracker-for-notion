@@ -31,6 +31,7 @@
     <string name="btn_hide_key">Hide</string>
     <string name="btn_test_and_save_key">Test connection &amp; save</string>
     <string name="btn_testing_key">Testing…</string>
+    <string name="btn_remove_key">Remove key</string>
     <string name="label_workspaces">Workspaces</string>
     <string name="no_workspaces_yet">No workspaces yet.</string>
     <string name="title_delete_workspace">Delete workspace</string>
@@ -50,6 +51,8 @@
     <string name="placeholder_select">Select…</string>
     <string name="placeholder_search">Search…</string>
     <string name="search_no_results">No results</string>
+    <string name="dropdown_none">— None —</string>
+    <string name="btn_clear">Clear</string>
     <string name="btn_refresh_databases">Refresh</string>
     <string name="loading_databases">Loading databases…</string>
     <string name="error_loading_databases">Could not load databases</string>
@@ -99,6 +102,7 @@
 
     <!-- Toasts / errors -->
     <string name="toast_api_key_saved">API key works and was saved.</string>
+    <string name="toast_api_key_removed">API key removed.</string>
     <string name="toast_connection_failed">Connection failed</string>
     <string name="toast_workspace_added">Workspace \"%1$s\" added.</string>
     <string name="toast_workspace_saved">Workspace \"%1$s\" saved.</string>
