@@ -118,8 +118,8 @@ let cachedWorkspaces = [];
 // Tray menu strings live in the main process, where the renderer's i18n is
 // not available; app.getLocale() reflects the Windows display language.
 const TRAY_STRINGS = {
-  'en-GB': { open: 'Open', stopTimer: 'Stop timer', quit: 'Quit' },
-  'nl-BE': { open: 'Openen', stopTimer: 'Timer stoppen', quit: 'Afsluiten' },
+  'en-GB': { open: 'Open', stopTimer: 'Stop timer', quit: 'Quit', quickStart: 'Quick Start' },
+  'nl-BE': { open: 'Openen', stopTimer: 'Timer stoppen', quit: 'Afsluiten', quickStart: 'Snelstarters' },
 };
 let trayStrings = TRAY_STRINGS['en-GB'];
 
@@ -226,6 +226,40 @@ function showWindow() {
   mainWindow.focus();
 }
 
+function applyPresetById(presetId) {
+  for (const ws of cachedWorkspaces) {
+    const preset = (ws.presets || []).find((p) => p.id === presetId);
+    if (preset) {
+      showWindow();
+      mainWindow?.webContents.send('tray:apply-preset', { workspaceId: ws.id, preset });
+      return;
+    }
+  }
+}
+
+function rebuildJumpList() {
+  if (!app.isPackaged) return;
+  const items = [];
+  for (const ws of cachedWorkspaces) {
+    for (const preset of (ws.presets || [])) {
+      if (!preset.name || !preset.id) continue;
+      items.push({
+        type: 'task',
+        program: process.execPath,
+        args: `--preset=${preset.id}`,
+        title: `${ws.name} — ${preset.name}`,
+        iconPath: process.execPath,
+        iconIndex: 0,
+      });
+    }
+  }
+  if (items.length === 0) {
+    app.setJumpList(null);
+    return;
+  }
+  app.setJumpList([{ type: 'custom', name: trayStrings.quickStart, items: items.slice(0, 10) }]);
+}
+
 // ---- IPC handlers ----
 
 ipcMain.handle('store:get', () => store.store);
@@ -315,6 +349,7 @@ ipcMain.on('timer:state', (_event, data) => {
 ipcMain.on('settings:changed', () => {
   cachedWorkspaces = store.get('workspaces') || [];
   if (tray) rebuildTrayMenu();
+  rebuildJumpList();
 });
 
 // ---- App lifecycle ----
@@ -323,7 +358,14 @@ const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) {
   app.quit();
 } else {
-  app.on('second-instance', () => showWindow());
+  app.on('second-instance', (_event, argv) => {
+    const presetArg = argv.find((a) => a.startsWith('--preset='));
+    if (presetArg) {
+      applyPresetById(presetArg.slice('--preset='.length));
+    } else {
+      showWindow();
+    }
+  });
 
   app.whenReady().then(() => {
     // Same detection rule as the renderer: any Dutch locale maps to nl-BE
@@ -339,6 +381,15 @@ if (!gotLock) {
 
     createWindow();
     createTray();
+    rebuildJumpList();
+
+    // Handle --preset arg when launched fresh (app was not already running)
+    const presetArg = process.argv.find((a) => a.startsWith('--preset='));
+    if (presetArg) {
+      mainWindow.webContents.once('did-finish-load', () => {
+        applyPresetById(presetArg.slice('--preset='.length));
+      });
+    }
   });
 }
 
