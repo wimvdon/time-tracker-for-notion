@@ -417,10 +417,13 @@ private fun PresetRow(
                 )
             }
             extraProps.forEach { ep ->
-                val type = ep.type.ifBlank { "rich_text" }
+                val schemaProp = schema[ep.propName]
+                // Resolve type schema-first (matches Windows): the stored ep.type can be
+                // blank/stale (e.g. QR-imported workspaces), which would otherwise make
+                // relation/select fields fall back to a plain text field.
+                val type = schemaProp?.type ?: ep.type.ifBlank { "rich_text" }
                 if (type == "files") return@forEach
                 Spacer(Modifier.height(4.dp))
-                val schemaProp = schema[ep.propName]
                 val currentVal = preset.extraValues[ep.propName] ?: ""
                 val fieldMissing = ep.required && presetNamed && currentVal.isBlank()
                 Row(verticalAlignment = Alignment.CenterVertically) {

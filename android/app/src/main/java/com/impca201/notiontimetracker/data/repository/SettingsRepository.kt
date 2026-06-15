@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
@@ -35,6 +36,7 @@ class SettingsRepository(private val context: Context) {
     private val LAST_WORKSPACE_KEY = stringPreferencesKey("last_workspace_id")
     private val ACTIVE_TIMER_KEY = stringPreferencesKey("active_timer_json")
     private val THEME_MODE_KEY = stringPreferencesKey("theme_mode")
+    private val DYNAMIC_COLOR_KEY = booleanPreferencesKey("dynamic_color")
 
     private val encryptedPrefs: SharedPreferences by lazy {
         val masterKey = MasterKey.Builder(context)
@@ -105,6 +107,14 @@ class SettingsRepository(private val context: Context) {
             "DARK" -> ThemeMode.DARK
             else -> ThemeMode.AUTO
         }
+    }
+
+    val dynamicColorFlow: Flow<Boolean> = context.dataStore.data.map { prefs ->
+        prefs[DYNAMIC_COLOR_KEY] ?: false
+    }
+
+    suspend fun saveDynamicColor(enabled: Boolean) {
+        context.dataStore.edit { prefs -> prefs[DYNAMIC_COLOR_KEY] = enabled }
     }
 
     suspend fun saveThemeMode(mode: ThemeMode) {

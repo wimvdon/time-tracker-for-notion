@@ -238,18 +238,14 @@ private fun IdleView(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             if (uiState.apiKey.isBlank()) {
-                WarningCard {
-                    Text(
-                        buildString {
-                            append(stringResource(R.string.warn_no_api_key))
-                            append(" ")
-                        },
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                    TextButton(onClick = onNavigateToSettings, contentPadding = PaddingValues(0.dp)) {
-                        Text(stringResource(R.string.warn_no_api_key_link), style = MaterialTheme.typography.bodySmall)
+                val noApiKeyText = buildAnnotatedString {
+                    append(stringResource(R.string.warn_no_api_key))
+                    append(" ")
+                    withStyle(SpanStyle(fontWeight = FontWeight.SemiBold, textDecoration = TextDecoration.Underline)) {
+                        append(stringResource(R.string.warn_no_api_key_link))
                     }
                 }
+                FlowingWarningCard(text = noApiKeyText, onClick = onNavigateToSettings)
             } else if (uiState.workspaces.isEmpty()) {
                 val noWorkspacesText = buildAnnotatedString {
                     append(stringResource(R.string.warn_no_workspaces))
@@ -260,18 +256,7 @@ private fun IdleView(
                     append(" ")
                     append(stringResource(R.string.warn_no_workspaces_suffix))
                 }
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { onNavigateToSettings() }
-                ) {
-                    Text(
-                        noWorkspacesText,
-                        modifier = Modifier.padding(12.dp),
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                }
+                FlowingWarningCard(text = noWorkspacesText, onClick = onNavigateToSettings)
             }
 
             uiState.error?.let { err ->
@@ -373,7 +358,6 @@ private fun IdleView(
                 activePageId = null,
                 onLoad = onLoadRunningTimer,
                 onStop = onStopOtherRunningTimer,
-                onRefresh = onRefreshRunningTimers,
                 onDelete = { rt -> onConfirmDelete(rt.pageId, rt.title, true) },
                 onOpenUrl = onOpenUrl
             )
@@ -650,7 +634,6 @@ private fun RunningView(
                 activePageId = uiState.activeTimer?.notionPageId,
                 onLoad = onLoadRunningTimer,
                 onStop = onStopOtherRunningTimer,
-                onRefresh = onRefreshRunningTimers,
                 onDelete = { rt -> onConfirmDelete(rt.pageId, rt.title, true) },
                 onOpenUrl = onOpenUrl
             )
@@ -674,7 +657,6 @@ private fun OtherRunningTimers(
     activePageId: String?,
     onLoad: (RunningTimerInfo) -> Unit,
     onStop: (RunningTimerInfo) -> Unit,
-    onRefresh: () -> Unit,
     onDelete: (RunningTimerInfo) -> Unit,
     onOpenUrl: (String) -> Unit
 ) {
@@ -683,7 +665,6 @@ private fun OtherRunningTimers(
     HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
@@ -691,16 +672,9 @@ private fun OtherRunningTimers(
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
-        IconButton(onClick = onRefresh, enabled = !loading, modifier = Modifier.size(32.dp)) {
-            if (loading) {
-                CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
-            } else {
-                Icon(
-                    Icons.Default.Refresh,
-                    contentDescription = stringResource(R.string.refresh_running_timers),
-                    modifier = Modifier.size(16.dp)
-                )
-            }
+        if (loading) {
+            Spacer(Modifier.width(8.dp))
+            CircularProgressIndicator(modifier = Modifier.size(12.dp), strokeWidth = 2.dp)
         }
     }
     timers.forEach { rt ->
@@ -847,10 +821,21 @@ private fun PresetChips(
     }
 }
 
+/** A warning card whose message flows as a single tappable paragraph (the link
+ *  stays inline instead of floating onto its own row). */
 @Composable
-private fun WarningCard(content: @Composable RowScope.() -> Unit) {
-    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)) {
-        Row(modifier = Modifier.padding(12.dp), content = content)
+private fun FlowingWarningCard(text: androidx.compose.ui.text.AnnotatedString, onClick: () -> Unit) {
+    Card(
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() }
+    ) {
+        Text(
+            text,
+            modifier = Modifier.padding(12.dp),
+            style = MaterialTheme.typography.bodySmall
+        )
     }
 }
 

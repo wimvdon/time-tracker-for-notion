@@ -24,7 +24,8 @@ class SettingsViewModel(private val app: Application) : AndroidViewModel(app) {
         val keyTestSuccess: Boolean = false,
         val keyTestError: String? = null,
         val snackbarMessage: String? = null,
-        val themeMode: ThemeMode = ThemeMode.AUTO
+        val themeMode: ThemeMode = ThemeMode.AUTO,
+        val dynamicColor: Boolean = false
     )
 
     data class WorkspaceEditState(
@@ -74,12 +75,18 @@ class SettingsViewModel(private val app: Application) : AndroidViewModel(app) {
         val apiKey = settingsRepo.getApiKey()
         val workspaces = settingsRepo.getWorkspaces()
         val themeMode = settingsRepo.themeModeFlow.first()
-        _uiState.update { it.copy(apiKey = apiKey, workspaces = workspaces, themeMode = themeMode) }
+        val dynamicColor = settingsRepo.dynamicColorFlow.first()
+        _uiState.update { it.copy(apiKey = apiKey, workspaces = workspaces, themeMode = themeMode, dynamicColor = dynamicColor) }
     }
 
     fun setThemeMode(mode: ThemeMode) {
         _uiState.update { it.copy(themeMode = mode) }
         viewModelScope.launch { settingsRepo.saveThemeMode(mode) }
+    }
+
+    fun setDynamicColor(enabled: Boolean) {
+        _uiState.update { it.copy(dynamicColor = enabled) }
+        viewModelScope.launch { settingsRepo.saveDynamicColor(enabled) }
     }
 
     fun importApiKey(key: String) {
@@ -108,7 +115,14 @@ class SettingsViewModel(private val app: Application) : AndroidViewModel(app) {
 
     fun testAndSaveApiKey() {
         val key = _uiState.value.apiKey.trim()
-        if (key.isBlank()) return
+        if (key.isBlank()) {
+            // Emptying the field and saving removes the stored key.
+            viewModelScope.launch {
+                settingsRepo.saveApiKey("")
+                _uiState.update { it.copy(apiKey = "", keyTestSuccess = false, keyTestError = null, snackbarMessage = "api_key_removed") }
+            }
+            return
+        }
         _uiState.update { it.copy(testingKey = true, keyTestError = null, keyTestSuccess = false) }
         viewModelScope.launch {
             runCatching { notionRepo.testConnectionWithKey(key) }

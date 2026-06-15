@@ -24,6 +24,7 @@ import com.impca201.notiontimetracker.R
 import com.impca201.notiontimetracker.data.models.ThemeMode
 import com.impca201.notiontimetracker.data.models.Workspace
 import com.impca201.notiontimetracker.ui.components.WorkspaceModal
+import com.impca201.notiontimetracker.ui.theme.dynamicColorSupported
 import com.impca201.notiontimetracker.viewmodel.SettingsViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -61,6 +62,7 @@ fun SettingsScreen(
     onRemovePreset: (Int) -> Unit = {},
     onUpdatePreset: (Int, com.impca201.notiontimetracker.data.models.Preset) -> Unit = { _, _ -> },
     onThemeModeChange: (ThemeMode) -> Unit,
+    onDynamicColorChange: (Boolean) -> Unit,
     onScanQr: () -> Unit,
     onSnackbarDismiss: () -> Unit
 ) {
@@ -73,6 +75,7 @@ fun SettingsScreen(
         uiState.snackbarMessage?.let { msg ->
             val text = when {
                 msg == "api_key_saved" -> context.getString(R.string.toast_api_key_saved)
+                msg == "api_key_removed" -> context.getString(R.string.toast_api_key_removed)
                 msg.startsWith("workspace_added:") -> context.getString(R.string.toast_workspace_added, msg.substringAfter(":"))
                 msg.startsWith("workspace_saved:") -> context.getString(R.string.toast_workspace_saved, msg.substringAfter(":"))
                 else -> msg
@@ -175,7 +178,7 @@ fun SettingsScreen(
 
             Button(
                 onClick = onTestAndSave,
-                enabled = uiState.apiKey.isNotBlank() && !uiState.testingKey,
+                enabled = !uiState.testingKey,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 if (uiState.testingKey) {
@@ -183,7 +186,10 @@ fun SettingsScreen(
                     Spacer(Modifier.width(8.dp))
                     Text(stringResource(R.string.btn_testing_key))
                 } else {
-                    Text(stringResource(R.string.btn_test_and_save_key))
+                    Text(
+                        if (uiState.apiKey.isBlank()) stringResource(R.string.btn_remove_key)
+                        else stringResource(R.string.btn_test_and_save_key)
+                    )
                 }
             }
 
@@ -240,6 +246,25 @@ fun SettingsScreen(
             // --- Theme section ---
             Text(stringResource(R.string.label_theme), style = MaterialTheme.typography.titleSmall)
             ThemePicker(selected = uiState.themeMode, onSelect = onThemeModeChange)
+
+            if (dynamicColorSupported) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(stringResource(R.string.label_dynamic_color), style = MaterialTheme.typography.bodyMedium)
+                        Text(
+                            stringResource(R.string.dynamic_color_hint),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Switch(checked = uiState.dynamicColor, onCheckedChange = onDynamicColorChange)
+                }
+            }
 
             Spacer(Modifier.height(16.dp))
         }

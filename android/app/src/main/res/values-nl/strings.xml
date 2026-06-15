@@ -31,6 +31,7 @@
     <string name="btn_hide_key">Verberg</string>
     <string name="btn_test_and_save_key">Verbinding testen &amp; opslaan</string>
     <string name="btn_testing_key">Testen…</string>
+    <string name="btn_remove_key">Sleutel verwijderen</string>
     <string name="label_workspaces">Werkruimtes</string>
     <string name="no_workspaces_yet">Nog geen werkruimtes.</string>
     <string name="title_delete_workspace">Werkruimte verwijderen</string>
@@ -50,6 +51,8 @@
     <string name="placeholder_select">Kies…</string>
     <string name="placeholder_search">Zoeken…</string>
     <string name="search_no_results">Geen resultaten</string>
+    <string name="dropdown_none">— Geen —</string>
+    <string name="btn_clear">Wissen</string>
     <string name="btn_refresh_databases">Vernieuwen</string>
     <string name="loading_databases">Databases laden…</string>
     <string name="error_loading_databases">Kon databases niet laden</string>
@@ -99,6 +102,7 @@
 
     <!-- Toasts / errors -->
     <string name="toast_api_key_saved">API-sleutel werkt en is opgeslagen.</string>
+    <string name="toast_api_key_removed">API-sleutel verwijderd.</string>
     <string name="toast_connection_failed">Verbinding mislukt</string>
     <string name="toast_workspace_added">Werkruimte \"%1$s\" toegevoegd.</string>
     <string name="toast_workspace_saved">Werkruimte \"%1$s\" opgeslagen.</string>
@@ -134,6 +138,8 @@
     <string name="theme_auto">Automatisch (systeeminstelling)</string>
     <string name="theme_light">Licht</string>
     <string name="theme_dark">Donker</string>
+    <string name="label_dynamic_color">Dynamische kleuren (Material You)</string>
+    <string name="dynamic_color_hint">Gebruik kleuren van je achtergrond.</string>
 
     <!-- QR code import -->
     <string name="btn_scan_qr">QR-code scannen om instellingen te importeren</string>

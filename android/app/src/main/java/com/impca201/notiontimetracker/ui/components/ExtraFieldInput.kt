@@ -7,7 +7,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.impca201.notiontimetracker.R
 import com.impca201.notiontimetracker.data.models.ExtraFieldDef
 import com.impca201.notiontimetracker.data.models.NamedOption
 
@@ -42,7 +44,7 @@ fun ExtraFieldInput(
                 SearchableDropdown(
                     options = fieldDef.options,
                     selected = fieldDef.options.firstOrNull { it.id == value || it.name == value },
-                    placeholder = "Select…",
+                    placeholder = stringResource(R.string.placeholder_select),
                     onSelect = { onValueChange(it?.name ?: "") },
                     allowClear = !fieldDef.required,
                     searchable = fieldDef.options.size > 5,
@@ -62,7 +64,7 @@ fun ExtraFieldInput(
                 SearchableDropdown(
                     options = fieldDef.options,
                     selected = fieldDef.options.firstOrNull { it.id == value },
-                    placeholder = "Select…",
+                    placeholder = stringResource(R.string.placeholder_select),
                     onSelect = { onValueChange(it?.id ?: "") },
                     allowClear = !fieldDef.required,
                     searchable = true,

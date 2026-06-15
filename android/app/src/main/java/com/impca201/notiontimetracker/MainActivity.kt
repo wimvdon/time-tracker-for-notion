@@ -65,7 +65,10 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             val settingsUiState by settingsViewModel.uiState.collectAsState()
-            NotionTimeTrackerTheme(themeMode = settingsUiState.themeMode) {
+            NotionTimeTrackerTheme(
+                themeMode = settingsUiState.themeMode,
+                dynamicColor = settingsUiState.dynamicColor
+            ) {
                 AppNavigation(timerViewModel, settingsViewModel)
             }
         }
@@ -193,6 +196,7 @@ private fun AppNavigation(
                 onRemovePreset = settingsViewModel::removePreset,
                 onUpdatePreset = settingsViewModel::updatePreset,
                 onThemeModeChange = settingsViewModel::setThemeMode,
+                onDynamicColorChange = settingsViewModel::setDynamicColor,
                 onScanQr = { navController.navigate("qr_scan") },
                 onSnackbarDismiss = settingsViewModel::clearSnackbar
             )

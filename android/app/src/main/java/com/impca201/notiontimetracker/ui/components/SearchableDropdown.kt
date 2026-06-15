@@ -6,7 +6,9 @@ import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.impca201.notiontimetracker.R
 import com.impca201.notiontimetracker.data.models.NamedOption
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -25,6 +27,9 @@ fun SearchableDropdown(
     var expanded by remember { mutableStateOf(false) }
     var query by remember { mutableStateOf("") }
 
+    val loadingText = stringResource(R.string.placeholder_loading)
+    val searchText = stringResource(R.string.placeholder_search)
+
     val filtered = remember(query, options) {
         if (query.isBlank()) options
         else options.filter { it.name.contains(query, ignoreCase = true) }
@@ -42,7 +47,7 @@ fun SearchableDropdown(
     ) {
         OutlinedTextField(
             value = when {
-                loading -> "Loading…"
+                loading -> loadingText
                 expanded && searchable -> query
                 selected != null -> selected.name
                 else -> ""
@@ -56,8 +61,8 @@ fun SearchableDropdown(
             placeholder = {
                 Text(
                     text = when {
-                        loading -> "Loading…"
-                        expanded && searchable -> "Search…"
+                        loading -> loadingText
+                        expanded && searchable -> searchText
                         else -> placeholder
                     }
                 )
@@ -71,7 +76,7 @@ fun SearchableDropdown(
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Clear,
-                                contentDescription = "Clear",
+                                contentDescription = stringResource(R.string.btn_clear),
                                 modifier = Modifier.size(16.dp)
                             )
                         }
@@ -91,7 +96,7 @@ fun SearchableDropdown(
                 DropdownMenuItem(
                     text = {
                         Text(
-                            "— None —",
+                            stringResource(R.string.dropdown_none),
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     },
@@ -105,7 +110,7 @@ fun SearchableDropdown(
                 DropdownMenuItem(
                     text = {
                         Text(
-                            "No results",
+                            stringResource(R.string.search_no_results),
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     },
