@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import com.impca201.notiontimetracker.R
 import com.impca201.notiontimetracker.data.models.ThemeMode
 import com.impca201.notiontimetracker.data.models.Workspace
+import androidx.activity.compose.BackHandler
 import com.impca201.notiontimetracker.ui.components.WorkspaceModal
 import com.impca201.notiontimetracker.ui.theme.dynamicColorSupported
 import com.impca201.notiontimetracker.viewmodel.SettingsViewModel
@@ -66,6 +67,7 @@ fun SettingsScreen(
     onScanQr: () -> Unit,
     onSnackbarDismiss: () -> Unit
 ) {
+    BackHandler(onBack = onBack)
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
     val focusManager = LocalFocusManager.current
@@ -91,6 +93,7 @@ fun SettingsScreen(
     if (editState != null) {
         WorkspaceModal(
             state = editState,
+            allWorkspaces = uiState.workspaces,
             onDismiss = onCloseEdit,
             onSave = onSaveWorkspace,
             onNameChange = onWorkspaceNameChange,
@@ -262,7 +265,14 @@ fun SettingsScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                    Switch(checked = uiState.dynamicColor, onCheckedChange = onDynamicColorChange)
+                    Switch(
+                        checked = uiState.dynamicColor,
+                        onCheckedChange = onDynamicColorChange,
+                        colors = SwitchDefaults.colors(
+                            uncheckedThumbColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            uncheckedBorderColor = MaterialTheme.colorScheme.outline
+                        )
+                    )
                 }
             }
 

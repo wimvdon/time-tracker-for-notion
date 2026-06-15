@@ -28,6 +28,7 @@ export default function Timer() {
   const setExtraValue = useStore((s) => s.setExtraValue);
   const timer = useStore((s) => s.timer);
   const startTimer = useStore((s) => s.startTimer);
+  const isStarting = useStore((s) => s.isStarting);
   const setView = useStore((s) => s.setView);
   const recoveredTimer = useStore((s) => s.recoveredTimer);
   const runningTimers = useStore((s) => s.runningTimers);
@@ -95,7 +96,7 @@ export default function Timer() {
   if (timer.running) {
     return (
       <RunningView
-        workspaceName={selectedWorkspace?.name || '—'}
+        workspaceName={selectedWorkspace?.name || '–'}
         workspaceColor={selectedWorkspace?.color?.trim() || null}
         settingsButton={settingsButton}
         runningTimers={runningTimers}
@@ -115,7 +116,7 @@ export default function Timer() {
   }
 
   // ---- Idle state ----
-  const canStart = !!apiKey && !!selectedWorkspaceId && !extrasLoading;
+  const canStart = !!apiKey && !!selectedWorkspaceId && !extrasLoading && !isStarting;
 
   return (
     <div className="flex flex-col h-full">
@@ -152,12 +153,12 @@ export default function Timer() {
                     key={`${w.id}:${preset.id}`}
                     onClick={() => applyPreset(w.id, preset)}
                     disabled={!apiKey}
-                    title={preset.name ? `${w.name} — ${preset.name}` : w.name}
+                    title={preset.name ? `${w.name} – ${preset.name}` : w.name}
                     style={chipStyle}
                     className="flex items-center gap-1 px-2.5 py-1 bg-zinc-800 hover:bg-emerald-700 border border-zinc-700 hover:border-emerald-600 rounded-full text-xs text-zinc-300 hover:text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     <span className="leading-none">▶</span>
-                    <span className="max-w-[140px] truncate">{preset.name ? `${w.name} — ${preset.name}` : w.name}</span>
+                    <span className="max-w-[140px] truncate">{preset.name ? `${w.name} – ${preset.name}` : w.name}</span>
                   </button>
                 );
               })
@@ -205,10 +206,23 @@ export default function Timer() {
 
         <button
           onClick={startTimer}
-          disabled={!canStart}
-          className="mt-2 w-full py-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 disabled:bg-zinc-800 disabled:text-zinc-600 font-semibold text-lg transition-colors"
+          disabled={!canStart || isStarting}
+          className={`mt-2 w-full py-3 rounded-lg font-semibold text-lg transition-colors flex items-center justify-center ${
+            selectedWorkspace?.color
+              ? 'text-white hover:brightness-110 active:brightness-90 disabled:bg-zinc-800 disabled:text-zinc-600'
+              : 'bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 disabled:bg-zinc-800 disabled:text-zinc-600'
+          }`}
+          style={
+            selectedWorkspace?.color && canStart && !isStarting
+              ? { backgroundColor: selectedWorkspace.color }
+              : undefined
+          }
         >
-          {t('btnStart')}
+          {isStarting ? (
+            <span className="animate-spin inline-block w-5 h-5 border-2 border-current border-t-transparent rounded-full" />
+          ) : (
+            t('btnStart')
+          )}
         </button>
 
         <OtherRunningTimers
@@ -260,6 +274,7 @@ function RunningView({
   onOpenUrl,
 }) {
   const timer = useStore((s) => s.timer);
+  const isStopping = useStore((s) => s.isStopping);
   const description = useStore((s) => s.description);
   const extraFieldDefs = useStore((s) => s.extraFieldDefs);
   const extraValues = useStore((s) => s.extraValues);
@@ -340,9 +355,7 @@ function RunningView({
         <div className="mt-6 text-5xl font-mono font-bold tabular-nums text-red-400">
           {formatElapsed(timer.elapsedSeconds)}
         </div>
-        <div className="mt-2 text-sm text-zinc-400 tabular-nums">
-          {formatHHMM(timer.roundedStart)} → {formatHHMM(projectedEnd)}
-        </div>
+
 
         <div className="mt-5 w-full grid grid-cols-2 gap-3">
           <div>
@@ -390,9 +403,14 @@ function RunningView({
 
         <button
           onClick={() => handleStop()}
-          className="mt-4 w-full py-3 rounded-lg bg-red-600 hover:bg-red-500 active:bg-red-700 font-semibold text-lg transition-colors"
+          disabled={isStopping}
+          className="mt-4 w-full py-3 rounded-lg bg-red-600 hover:bg-red-500 active:bg-red-700 font-semibold text-lg transition-colors flex items-center justify-center disabled:opacity-50"
         >
-          {t('btnStop')}
+          {isStopping ? (
+            <span className="animate-spin inline-block w-5 h-5 border-2 border-current border-t-transparent rounded-full" />
+          ) : (
+            t('btnStop')
+          )}
         </button>
 
         <OtherRunningTimers
@@ -455,6 +473,9 @@ function OtherRunningTimers({ timers, loading, activePageId, onLoad, onStop, onD
       <div className="mb-2">
         <span className="text-xs text-zinc-500">{t('runningTimersHeading')}</span>
       </div>
+      {loading && !timers.length && (
+        <div className="text-xs text-zinc-600 py-1">…</div>
+      )}
       {timers.map((rt) => {
         const isActive = rt.pageId === activePageId;
         return (

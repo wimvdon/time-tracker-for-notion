@@ -4,6 +4,7 @@ import { buildPropertyValue, emptyValueFor, WRITABLE_EXTRA_TYPES } from './notio
 
 test('empty values are omitted (null) for every writable type', () => {
   for (const type of WRITABLE_EXTRA_TYPES) {
+    if (type === 'checkbox') continue;
     assert.equal(buildPropertyValue(type, emptyValueFor(type)), null, type);
   }
 });
@@ -32,9 +33,9 @@ test('select, status and multi_select use option names', () => {
   });
 });
 
-test('checkbox is only sent when ticked', () => {
+test('checkbox is sent with boolean value', () => {
   assert.deepEqual(buildPropertyValue('checkbox', true), { checkbox: true });
-  assert.equal(buildPropertyValue('checkbox', false), null);
+  assert.deepEqual(buildPropertyValue('checkbox', false), { checkbox: false });
 });
 
 test('people and relation wrap an id', () => {

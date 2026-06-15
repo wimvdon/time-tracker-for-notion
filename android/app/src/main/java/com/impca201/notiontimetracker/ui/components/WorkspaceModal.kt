@@ -33,6 +33,7 @@ import com.impca201.notiontimetracker.viewmodel.SettingsViewModel
 @Composable
 fun WorkspaceModal(
     state: SettingsViewModel.WorkspaceEditState,
+    allWorkspaces: List<com.impca201.notiontimetracker.data.models.Workspace>,
     onDismiss: () -> Unit,
     onSave: () -> Unit,
     onNameChange: (String) -> Unit,
@@ -211,6 +212,13 @@ fun WorkspaceModal(
                 .toMap()
 
             val filteredExtraProps = state.extraProps.filter { it.propName.isNotBlank() }
+            val context = androidx.compose.ui.platform.LocalContext.current
+            val maxShortcuts = remember(context) { androidx.core.content.pm.ShortcutManagerCompat.getMaxShortcutCountPerActivity(context).coerceAtMost(4) }
+            val otherWorkspaces = allWorkspaces.filter { it.id != state.workspaceId }
+            val otherShortcutsCount = otherWorkspaces.flatMap { it.presets.filter { it.showInShortcuts } }.size
+            val currentShortcutsCount = state.presets.filter { it.showInShortcuts } .size
+            val shortcutLimitReached = (otherShortcutsCount + currentShortcutsCount) >= maxShortcuts
+
             state.presets.forEachIndexed { index, preset ->
                 PresetRow(
                     preset = preset,
@@ -218,6 +226,7 @@ fun WorkspaceModal(
                     extraProps = filteredExtraProps,
                     schema = state.schema,
                     relationOptions = relationOptionsByName,
+                    shortcutCheckboxEnabled = preset.showInShortcuts || !shortcutLimitReached,
                     onUpdate = { onUpdatePreset(index, it) },
                     onRemove = { onRemovePreset(index) }
                 )
@@ -369,6 +378,7 @@ private fun PresetRow(
     extraProps: List<ExtraProp>,
     schema: Map<String, SchemaProperty>,
     relationOptions: Map<String, List<NamedOption>>,
+    shortcutCheckboxEnabled: Boolean,
     onUpdate: (Preset) -> Unit,
     onRemove: () -> Unit
 ) {
@@ -376,7 +386,7 @@ private fun PresetRow(
         Column(modifier = Modifier.padding(12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    "$workspaceName — ",
+                    "$workspaceName – ",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.widthIn(max = 100.dp)
@@ -404,16 +414,24 @@ private fun PresetRow(
                 placeholder = { Text(stringResource(R.string.preset_title_placeholder), style = MaterialTheme.typography.bodySmall) },
                 textStyle = MaterialTheme.typography.bodySmall
             )
-            val presetNamed = preset.name.isNotBlank()
-            val missingRequired = presetNamed && extraProps.any { ep ->
-                ep.required && ep.propName.isNotBlank() && preset.extraValues[ep.propName].isNullOrBlank()
-            }
-            if (missingRequired) {
-                Spacer(Modifier.height(4.dp))
+            Spacer(Modifier.height(8.dp))
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Checkbox(
+                    checked = preset.showInShortcuts,
+                    enabled = shortcutCheckboxEnabled,
+                    onCheckedChange = { checked ->
+                        onUpdate(preset.copy(showInShortcuts = checked))
+                    }
+                )
+                Spacer(Modifier.width(4.dp))
                 Text(
-                    stringResource(R.string.toast_required_fields_missing),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.error
+                    stringResource(R.string.label_show_in_shortcuts),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (shortcutCheckboxEnabled) MaterialTheme.colorScheme.onSurfaceVariant
+                            else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
                 )
             }
             extraProps.forEach { ep ->
@@ -425,12 +443,11 @@ private fun PresetRow(
                 if (type == "files") return@forEach
                 Spacer(Modifier.height(4.dp))
                 val currentVal = preset.extraValues[ep.propName] ?: ""
-                val fieldMissing = ep.required && presetNamed && currentVal.isBlank()
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        ep.propName + if (ep.required) " *" else "",
+                        ep.propName,
                         style = MaterialTheme.typography.labelSmall,
-                        color = if (fieldMissing) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
                 when (type) {

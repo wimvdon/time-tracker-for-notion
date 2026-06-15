@@ -24,7 +24,7 @@ fun ExtraFieldInput(
         Text(
             text = fieldDef.propName + if (fieldDef.required) " *" else "",
             style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
         )
         Spacer(Modifier.height(4.dp))
 
@@ -78,7 +78,13 @@ fun ExtraFieldInput(
                     onValueChange = { if (it.isEmpty() || it.matches(Regex("-?\\d*\\.?\\d*"))) onValueChange(it) },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
-                    placeholder = { Text("0") }
+                    placeholder = { Text("0", color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f)) },
+                    textStyle = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onBackground),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = MaterialTheme.colorScheme.onBackground,
+                        unfocusedTextColor = MaterialTheme.colorScheme.onBackground,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.3f)
+                    )
                 )
             }
 
@@ -88,7 +94,13 @@ fun ExtraFieldInput(
                     onValueChange = onValueChange,
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
-                    placeholder = { Text("YYYY-MM-DD") }
+                    placeholder = { Text("YYYY-MM-DD", color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f)) },
+                    textStyle = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onBackground),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = MaterialTheme.colorScheme.onBackground,
+                        unfocusedTextColor = MaterialTheme.colorScheme.onBackground,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.3f)
+                    )
                 )
             }
 
@@ -98,7 +110,13 @@ fun ExtraFieldInput(
                     onValueChange = onValueChange,
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
-                    placeholder = { Text("https://…") }
+                    placeholder = { Text("https://…", color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f)) },
+                    textStyle = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onBackground),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = MaterialTheme.colorScheme.onBackground,
+                        unfocusedTextColor = MaterialTheme.colorScheme.onBackground,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.3f)
+                    )
                 )
             }
 
@@ -108,7 +126,13 @@ fun ExtraFieldInput(
                     onValueChange = onValueChange,
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
-                    placeholder = { Text("name@example.com") }
+                    placeholder = { Text("name@example.com", color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f)) },
+                    textStyle = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onBackground),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = MaterialTheme.colorScheme.onBackground,
+                        unfocusedTextColor = MaterialTheme.colorScheme.onBackground,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.3f)
+                    )
                 )
             }
 
@@ -118,7 +142,13 @@ fun ExtraFieldInput(
                     onValueChange = onValueChange,
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
-                    placeholder = { Text("+32…") }
+                    placeholder = { Text("+32…", color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f)) },
+                    textStyle = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onBackground),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = MaterialTheme.colorScheme.onBackground,
+                        unfocusedTextColor = MaterialTheme.colorScheme.onBackground,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.3f)
+                    )
                 )
             }
 
@@ -127,7 +157,13 @@ fun ExtraFieldInput(
                     value = value,
                     onValueChange = onValueChange,
                     modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
+                    singleLine = true,
+                    textStyle = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onBackground),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = MaterialTheme.colorScheme.onBackground,
+                        unfocusedTextColor = MaterialTheme.colorScheme.onBackground,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.3f)
+                    )
                 )
             }
         }

@@ -47,10 +47,10 @@ if %BUILD_ERROR% neq 0 (
 )
 
 if not exist "..\release" mkdir "..\release"
-copy /Y "app\build\outputs\apk\debug\app-debug.apk" "..\release\NotionTimeTracker.apk" >nul
+copy /Y "app\build\outputs\apk\debug\app-debug.apk" "..\release\TimeTracker.apk" >nul
 
 echo Done! APK is located at:
-echo   release\NotionTimeTracker.apk
+echo   release\TimeTracker.apk
 echo.
 echo Copy this file to your device to install.
 echo.

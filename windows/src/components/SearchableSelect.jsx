@@ -11,7 +11,7 @@ import { t } from '../lib/i18n.js';
  * @param {Array}    options       - [{ value: string, label: string }]
  * @param {string}   [placeholder] - Shown in trigger when nothing is selected;
  *                                   also appears as the first "clear" option
- * @param {boolean}  [allowClear]  - Whether to show a "— none —" first option
+ * @param {boolean}  [allowClear]  - Whether to show a "– none –" first option
  * @param {boolean}  [disabled]
  * @param {boolean}  [loading]     - Disables and shows placeholder while loading
  * @param {string}   [className]   - Applied to the outer wrapper div
@@ -42,7 +42,7 @@ export default function SearchableSelect({
   const displayOptions =
     search.trim() === ''
       ? allowClear
-        ? [{ value: '', label: placeholder || '—' }, ...options]
+        ? [{ value: '', label: placeholder || '–' }, ...options]
         : options
       : options.filter((o) =>
           o.label.toLowerCase().includes(search.toLowerCase())
@@ -159,7 +159,7 @@ export default function SearchableSelect({
         <span className={selectedLabel ? 'text-zinc-100' : 'text-zinc-500'}>
           {loading
             ? (placeholder || '…')
-            : (selectedLabel || placeholder || '—')}
+            : (selectedLabel || placeholder || '–')}
         </span>
         <span className="ml-2 text-zinc-500 text-xs shrink-0">▾</span>
       </button>

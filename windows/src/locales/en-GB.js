@@ -157,7 +157,7 @@ export default {
   toastUpdateError: 'Could not update timer',
 
   // Deleted page
-  toastDeletedPageDiscarded: 'Page not found — entry discarded.',
+  toastDeletedPageDiscarded: 'Page not found – entry discarded.',
   deletedPageTitle: 'Page not found in Notion',
   deletedPageBody: 'The time entry could not be saved because the page was deleted or is no longer accessible.',
   deletedPageHint: 'If this entry is needed, restore the page from Notion trash or recreate it manually.',

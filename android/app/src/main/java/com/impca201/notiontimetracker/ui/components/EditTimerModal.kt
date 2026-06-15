@@ -57,21 +57,7 @@ fun EditTimerModal(
         ) {
             Spacer(Modifier.height(8.dp))
 
-            if (uiState.projects.isNotEmpty()) {
-                Text(
-                    stringResource(R.string.label_project),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                SearchableDropdown(
-                    options = uiState.projects,
-                    selected = uiState.projects.firstOrNull { it.id == selectedProjectId },
-                    placeholder = stringResource(R.string.placeholder_select_project),
-                    onSelect = { selectedProjectId = it?.id },
-                    allowClear = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
+
 
             Text(
                 stringResource(R.string.label_description),

@@ -43,6 +43,7 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
         val stopError: String? = null,
         val isStarting: Boolean = false,
         val isStopping: Boolean = false,
+        val extrasLoading: Boolean = false,
         val runningTimers: List<RunningTimerInfo> = emptyList(),
         val runningTimersLoading: Boolean = false,
         val recentEntries: List<RecentEntryInfo> = emptyList(),
@@ -51,7 +52,8 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
         val editTimerOpen: Boolean = false,
         val deletedPageDialogVisible: Boolean = false,
         val deletedPageDialogTitle: String? = null,
-        val infoToast: String? = null
+        val infoToast: String? = null,
+        val suspendedTimer: RunningTimerInfo? = null
     )
 
     private val _uiState = MutableStateFlow(UiState())
@@ -139,69 +141,64 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
 
     fun selectWorkspace(id: String) {
         val workspace = _uiState.value.workspaces.firstOrNull { it.id == id } ?: return
-        _uiState.update { it.copy(selectedWorkspaceId = id, projects = emptyList(), projectsLoading = true, extraFieldDefs = emptyList()) }
+        _uiState.update {
+            it.copy(
+                selectedWorkspaceId = id,
+                description = "",
+                extraFieldDefs = emptyList(),
+                extraValues = emptyMap(),
+                extrasLoading = workspace.extraProps.isNotEmpty()
+            )
+        }
         viewModelScope.launch {
             settingsRepo.saveLastWorkspaceId(id)
-            loadProjects(workspace)
             loadExtraFieldDefs(workspace)
         }
     }
 
-    private suspend fun loadProjects(workspace: Workspace) {
-        if (workspace.projectsDbId.isBlank()) {
-            _uiState.update { it.copy(projects = emptyList(), projectsLoading = false) }
-            return
-        }
-        runCatching { notionRepo.fetchDatabasePages(workspace.projectsDbId) }
-            .onSuccess { pages -> _uiState.update { it.copy(projects = pages, projectsLoading = false) } }
-            .onFailure { _uiState.update { it.copy(projectsLoading = false) } }
-    }
-
     private suspend fun loadExtraFieldDefs(workspace: Workspace) {
         if (workspace.extraProps.isEmpty() || workspace.timeEntriesDbId.isBlank()) {
-            _uiState.update { it.copy(extraFieldDefs = emptyList()) }
+            _uiState.update { it.copy(extraFieldDefs = emptyList(), extrasLoading = false) }
             initExtraValues(workspace.extraProps, emptyList())
             return
         }
-        val schema = runCatching { notionRepo.getDatabaseSchema(workspace.timeEntriesDbId) }
-            .getOrDefault(emptyMap())
 
-        val defs = workspace.extraProps.mapNotNull { prop ->
-            val schemaProp = schema[prop.propName] ?: return@mapNotNull null
-            val type = schemaProp.type
+        val defs = runCatching {
+            val schema = runCatching { notionRepo.getDatabaseSchema(workspace.timeEntriesDbId) }
+                .getOrDefault(emptyMap())
 
-            val options: List<NamedOption> = when (type) {
-                "select", "multi_select" -> {
-                    runCatching { notionRepo.getDatabaseSchema(workspace.timeEntriesDbId) }
-                        .getOrDefault(emptyMap())[prop.propName]
-                        ?.let { sp ->
-                            when (type) {
-                                "select" -> sp.statusOptions.map { NamedOption(it.name, it.name) }
-                                "multi_select" -> sp.statusOptions.map { NamedOption(it.name, it.name) }
-                                else -> emptyList()
-                            }
+            workspace.extraProps.mapNotNull { prop ->
+                val schemaProp = schema[prop.propName] ?: return@mapNotNull null
+                val type = schemaProp.type
+
+                val options: List<NamedOption> = when (type) {
+                    "select", "multi_select" -> {
+                        schema[prop.propName]?.let { sp ->
+                            sp.statusOptions.map { NamedOption(it.name, it.name) }
                         } ?: emptyList()
+                    }
+                    "status" -> schemaProp.statusOptions.map { NamedOption(it.name, it.name) }
+                    "people" -> runCatching { notionRepo.listUsers() }.getOrDefault(emptyList())
+                    "relation" -> {
+                        val relDbId = schemaProp.relationDatabaseId ?: ""
+                        if (relDbId.isNotBlank()) {
+                            runCatching { notionRepo.fetchDatabasePages(relDbId) }.getOrDefault(emptyList())
+                        } else emptyList()
+                    }
+                    else -> emptyList()
                 }
-                "status" -> schemaProp.statusOptions.map { NamedOption(it.name, it.name) }
-                "people" -> runCatching { notionRepo.listUsers() }.getOrDefault(emptyList())
-                "relation" -> {
-                    val relDbId = schemaProp.relationDatabaseId
-                        ?.takeIf { it.isNotBlank() }
-                        ?: workspace.projectsDbId
-                    runCatching { notionRepo.fetchDatabasePages(relDbId) }.getOrDefault(emptyList())
-                }
-                else -> emptyList()
+                ExtraFieldDef(
+                    propName = prop.propName,
+                    type = type,
+                    required = prop.required,
+                    defaultValue = prop.defaultValue,
+                    options = options,
+                    statusOptions = schemaProp.statusOptions
+                )
             }
-            ExtraFieldDef(
-                propName = prop.propName,
-                type = type,
-                required = prop.required,
-                defaultValue = prop.defaultValue,
-                options = options,
-                statusOptions = schemaProp.statusOptions
-            )
-        }
-        _uiState.update { it.copy(extraFieldDefs = defs) }
+        }.getOrDefault(emptyList())
+
+        _uiState.update { it.copy(extraFieldDefs = defs, extrasLoading = false) }
         initExtraValues(workspace.extraProps, defs)
     }
 
@@ -305,6 +302,13 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
                     val updated = timer.copy(description = newTitle, projectId = projectId, projectName = projectName, extraValues = extraValues)
                     _uiState.update { it.copy(activeTimer = updated, description = newTitle, selectedProjectId = projectId, extraValues = extraValues, editTimerOpen = false) }
                     settingsRepo.saveActiveTimer(updated)
+                    // Update foreground service notification immediately
+                    val ws = state.workspaces.firstOrNull { it.id == updated.workspaceId }
+                    if (ws != null) {
+                        app.startForegroundService(
+                            TimerForegroundService.buildStartIntent(app, updated, ws.name, ws.roundingMinutes, ws.color)
+                        )
+                    }
                     // Refresh to ensure consistency
                     loadRunningTimers()
                     loadRecentEntries()
@@ -326,27 +330,25 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
         val apiKey = state.apiKey
         if (apiKey.isBlank()) { _uiState.update { it.copy(error = "No Notion API key set.") }; return }
 
-        // Validate required extra fields
-        val missingRequired = state.extraFieldDefs.any { def ->
-            def.required && (state.extraValues[def.propName]?.isBlank() != false)
-        }
-        if (missingRequired) { _uiState.update { it.copy(error = "required_fields_missing") }; return }
+        // No validation on start (validated on stop instead)
 
         _uiState.update { it.copy(isStarting = true, error = null) }
 
         viewModelScope.launch {
+            val currentState = _uiState.value
+            val suspended = currentState.suspendedTimer
+            if (suspended != null) {
+                _uiState.update { it.copy(suspendedTimer = null) }
+            }
+
             runCatching {
                 val nowMs = System.currentTimeMillis()
-                val rounding = workspace.roundingMinutes
-                val roundedStartMs = if (rounding == 0) nowMs else roundToNearest(nowMs, rounding)
-
                 val rawStartISO = toNotionDateTime(nowMs)
-                val roundedStartISO = toNotionDateTime(roundedStartMs)
 
                 val project = state.projects.firstOrNull { it.id == state.selectedProjectId }
                 val projectName = project?.name ?: ""
                 val description = state.description.ifBlank {
-                    "${projectName.ifBlank { "" }} — ${formatDateDDMMYYYY(nowMs)}".trim(' ', '—', ' ')
+                    "${projectName.ifBlank { "" }} – ${formatDateDDMMYYYY(nowMs)}".trim(' ', '–', ' ')
                 }
                 val title = description.ifBlank { "Time entry" }
 
@@ -355,7 +357,7 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
                 val pageId = notionRepo.createTimeEntry(
                     dbId = workspace.timeEntriesDbId,
                     title = title,
-                    startISO = roundedStartISO,
+                    startISO = rawStartISO,
                     projectId = state.selectedProjectId,
                     propertyMap = workspace.propertyMap,
                     extra = extraNotionValues
@@ -363,7 +365,7 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
 
                 val timer = ActiveTimer(
                     notionPageId = pageId,
-                    roundedStart = roundedStartISO,
+                    roundedStart = rawStartISO,
                     rawStart = rawStartISO,
                     workspaceId = workspace.id,
                     projectId = state.selectedProjectId,
@@ -375,14 +377,16 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
                 settingsRepo.saveActiveTimer(timer)
 
                 app.startForegroundService(
-                    TimerForegroundService.buildStartIntent(app, timer, workspace.name, workspace.roundingMinutes)
+                    TimerForegroundService.buildStartIntent(app, timer, workspace.name, workspace.roundingMinutes, workspace.color)
                 )
 
-                timer to roundedStartMs
+                timer to nowMs
             }.onSuccess { (timer, startMs) ->
                 tickStartMs = startMs
                 _uiState.update { it.copy(running = true, activeTimer = timer, isStarting = false, elapsedSeconds = 0L) }
                 startTicking(startMs)
+                loadRunningTimers()
+                loadRecentEntries()
             }.onFailure { err ->
                 _uiState.update { it.copy(isStarting = false, error = err.message ?: "Could not start timer") }
             }
@@ -391,7 +395,52 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
 
     fun stopTimer(manualEndMs: Long? = null) {
         val state = _uiState.value
-        val timer = state.activeTimer ?: return
+        val timer = state.activeTimer
+        val suspended = state.suspendedTimer
+
+        if (timer == null && suspended != null) {
+            val workspace = state.workspaces.firstOrNull { it.id == suspended.workspaceId } ?: return
+            _uiState.update { it.copy(isStopping = true, stopError = null) }
+            viewModelScope.launch {
+                runCatching {
+                    val rounding = workspace.roundingMinutes
+                    val rawStartMs = runCatching { parseIso(suspended.startISO) }.getOrElse { System.currentTimeMillis() }
+                    val startMs = if (rounding == 0) rawStartMs else roundToNearest(rawStartMs, rounding)
+                    val nowMs = manualEndMs ?: System.currentTimeMillis()
+                    val endMs = if (rounding == 0) nowMs
+                    else {
+                        val minEnd = startMs + rounding * 60_000L
+                        val rounded = roundToNearest(nowMs, rounding)
+                        if (rounded < minEnd) minEnd else rounded
+                    }
+                    val startISO = toNotionDateTime(startMs)
+                    val endISO = toNotionDateTime(endMs)
+                    notionRepo.stopTimeEntry(
+                        pageId = suspended.pageId,
+                        startISO = startISO,
+                        endISO = endISO,
+                        propertyMap = suspended.propertyMap
+                    )
+                }.onSuccess {
+                    tickJob?.cancel()
+                    val remainingRunning = _uiState.value.runningTimers.filter { it.pageId != suspended.pageId }
+                    if (remainingRunning.isNotEmpty()) {
+                        _uiState.update { it.copy(isStopping = false, suspendedTimer = null, runningTimers = remainingRunning, stopError = null) }
+                        loadRunningTimer(remainingRunning.first())
+                    } else {
+                        stopService()
+                        _uiState.update { it.copy(isStopping = false, suspendedTimer = null, runningTimers = emptyList(), stopError = null) }
+                    }
+                    loadRunningTimers()
+                    loadRecentEntries()
+                }.onFailure { err ->
+                    _uiState.update { it.copy(isStopping = false, stopError = err.message ?: "Could not stop timer") }
+                }
+            }
+            return
+        }
+
+        if (timer == null) return
         val workspace = state.workspaces.firstOrNull { it.id == timer.workspaceId } ?: return
 
         if (state.extraFieldDefs.any { def ->
@@ -406,7 +455,8 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             runCatching {
                 val rounding = workspace.roundingMinutes
-                val startMs = parseIso(timer.roundedStart)
+                val rawStartMs = parseIso(timer.rawStart)
+                val startMs = if (rounding == 0) rawStartMs else roundToNearest(rawStartMs, rounding)
                 val nowMs = manualEndMs ?: System.currentTimeMillis()
                 val endMs = if (rounding == 0) nowMs
                 else {
@@ -414,27 +464,40 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
                     val rounded = roundToNearest(nowMs, rounding)
                     if (rounded < minEnd) minEnd else rounded
                 }
+                val startISO = toNotionDateTime(startMs)
                 val endISO = toNotionDateTime(endMs)
                 notionRepo.stopTimeEntry(
                     pageId = timer.notionPageId,
-                    startISO = timer.roundedStart,
+                    startISO = startISO,
                     endISO = endISO,
                     propertyMap = timer.propertyMap
                 )
                 settingsRepo.clearActiveTimer()
             }.onSuccess {
                 tickJob?.cancel()
-                stopService()
-                _uiState.update { it.copy(running = false, activeTimer = null, elapsedSeconds = 0L, isStopping = false, stopError = null) }
+                val remainingRunning = _uiState.value.runningTimers.filter { it.pageId != timer.notionPageId }
+                if (remainingRunning.isNotEmpty()) {
+                    _uiState.update { it.copy(running = false, activeTimer = null, elapsedSeconds = 0L, runningTimers = remainingRunning, isStopping = false, stopError = null) }
+                    loadRunningTimer(remainingRunning.first())
+                } else {
+                    stopService()
+                    _uiState.update { it.copy(running = false, activeTimer = null, elapsedSeconds = 0L, runningTimers = emptyList(), isStopping = false, stopError = null) }
+                }
                 loadRunningTimers()
                 loadRecentEntries()
             }.onFailure { err ->
                 val msg = err.message ?: ""
                 if (isPageDeletedError(msg)) {
                     tickJob?.cancel()
-                    stopService()
+                    val remainingRunning = _uiState.value.runningTimers.filter { it.pageId != timer.notionPageId }
                     settingsRepo.clearActiveTimer()
-                    _uiState.update { it.copy(isStopping = false, running = false, activeTimer = null, elapsedSeconds = 0L, deletedPageDialogVisible = true, deletedPageDialogTitle = state.description.ifBlank { null }) }
+                    if (remainingRunning.isNotEmpty()) {
+                        _uiState.update { it.copy(isStopping = false, running = false, activeTimer = null, elapsedSeconds = 0L, runningTimers = remainingRunning, deletedPageDialogVisible = true, deletedPageDialogTitle = state.description.ifBlank { null }) }
+                        loadRunningTimer(remainingRunning.first())
+                    } else {
+                        stopService()
+                        _uiState.update { it.copy(isStopping = false, running = false, activeTimer = null, elapsedSeconds = 0L, runningTimers = emptyList(), deletedPageDialogVisible = true, deletedPageDialogTitle = state.description.ifBlank { null }) }
+                    }
                 } else {
                     _uiState.update { it.copy(isStopping = false, stopError = msg.ifBlank { "Could not stop timer" }) }
                 }
@@ -444,13 +507,9 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
 
     fun updateStartTime(newStartISO: String) {
         val timer = _uiState.value.activeTimer ?: return
-        val workspace = _uiState.value.workspaces.firstOrNull { it.id == timer.workspaceId } ?: return
-        val rounding = workspace.roundingMinutes
         val parsedMs = runCatching { parseIso(newStartISO) }.getOrNull() ?: return
-        val roundedMs = if (rounding == 0) parsedMs else roundToNearest(parsedMs, rounding)
-        val roundedISO = toNotionDateTime(roundedMs)
-        val updated = timer.copy(roundedStart = roundedISO)
-        tickStartMs = roundedMs
+        val updated = timer.copy(roundedStart = newStartISO, rawStart = newStartISO)
+        tickStartMs = parsedMs
         _uiState.update { it.copy(activeTimer = updated) }
         viewModelScope.launch { settingsRepo.saveActiveTimer(updated) }
     }
@@ -462,16 +521,18 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
         _uiState.update { it.copy(recoveryBusy = true) }
         viewModelScope.launch {
             runCatching {
-                val startMs = parseIso(timer.roundedStart)
+                val rawStartMs = parseIso(timer.rawStart)
+                val startMs = if (rounding == 0) rawStartMs else roundToNearest(rawStartMs, rounding)
                 val nowMs = System.currentTimeMillis()
                 val endMs = if (rounding == 0) nowMs else {
                     val minEnd = startMs + rounding * 60_000L
                     val rounded = roundToNearest(nowMs, rounding)
                     if (rounded < minEnd) minEnd else rounded
                 }
+                val startISO = toNotionDateTime(startMs)
                 notionRepo.stopTimeEntry(
                     pageId = timer.notionPageId,
-                    startISO = timer.roundedStart,
+                    startISO = startISO,
                     endISO = toNotionDateTime(endMs),
                     propertyMap = timer.propertyMap
                 )
@@ -497,7 +558,7 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
         tickStartMs = startMs
 
         app.startForegroundService(
-            TimerForegroundService.buildStartIntent(app, timer, workspace.name, workspace.roundingMinutes)
+            TimerForegroundService.buildStartIntent(app, timer, workspace.name, workspace.roundingMinutes, workspace.color)
         )
 
         _uiState.update { it.copy(recoveredTimer = null, running = true, activeTimer = timer, elapsedSeconds = 0L) }
@@ -516,9 +577,45 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun handleTimerStoppedFromService() {
+    fun handleTimerStoppedFromService(stoppedPageId: String? = null) {
+        val state = _uiState.value
         tickJob?.cancel()
-        _uiState.update { it.copy(running = false, activeTimer = null, elapsedSeconds = 0L, isStopping = false) }
+
+        var nextSuspended = state.suspendedTimer
+        if (stoppedPageId != null && state.suspendedTimer?.pageId == stoppedPageId) {
+            nextSuspended = null
+        }
+
+        val pageToFilter = stoppedPageId ?: state.activeTimer?.notionPageId
+        val remainingRunning = if (pageToFilter != null) {
+            state.runningTimers.filter { it.pageId != pageToFilter }
+        } else {
+            state.runningTimers
+        }
+
+        if (remainingRunning.isNotEmpty() && (state.activeTimer?.notionPageId == pageToFilter || state.suspendedTimer?.pageId == pageToFilter)) {
+            _uiState.update { it.copy(
+                running = false,
+                activeTimer = null,
+                elapsedSeconds = 0L,
+                isStopping = false,
+                suspendedTimer = nextSuspended,
+                runningTimers = remainingRunning
+            ) }
+            loadRunningTimer(remainingRunning.first())
+        } else {
+            if (remainingRunning.isEmpty()) {
+                stopService()
+            }
+            _uiState.update { it.copy(
+                running = false,
+                activeTimer = null,
+                elapsedSeconds = 0L,
+                isStopping = false,
+                suspendedTimer = nextSuspended,
+                runningTimers = remainingRunning
+            ) }
+        }
         loadRunningTimers()
         loadRecentEntries()
     }
@@ -555,6 +652,12 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
             }
             allRunning.sortByDescending { it.startISO }
             _uiState.update { it.copy(runningTimersLoading = false, runningTimers = allRunning) }
+            val updatedState = _uiState.value
+            if (!updatedState.running && updatedState.activeTimer == null && allRunning.isNotEmpty()) {
+                if (updatedState.suspendedTimer == null) {
+                    loadRunningTimer(allRunning.first())
+                }
+            }
         }
     }
 
@@ -627,6 +730,8 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
                             _uiState.update { it.copy(recentEntries = it.recentEntries.filter { r -> r.pageId != info.pageId }) }
                         }
                     }
+                    loadRunningTimers()
+                    loadRecentEntries()
                 }
                 .onFailure { err ->
                     _uiState.update { it.copy(error = err.message ?: "Could not delete entry") }
@@ -648,14 +753,17 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
         )
 
         tickJob?.cancel()
-        app.stopService(Intent(app, TimerForegroundService::class.java))
+
+        val alreadyExists = state.runningTimers.any { it.pageId == aside.pageId }
+        val newRunning = if (alreadyExists) state.runningTimers else state.runningTimers + aside
 
         _uiState.update { it.copy(
             running = false,
             activeTimer = null,
             elapsedSeconds = 0L,
             description = "",
-            runningTimers = it.runningTimers + aside
+            runningTimers = newRunning,
+            suspendedTimer = aside
         )}
 
         viewModelScope.launch { settingsRepo.clearActiveTimer() }
@@ -691,9 +799,8 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
         )
 
         // Switch foreground service to show the loaded timer
-        if (state.running) app.stopService(Intent(app, TimerForegroundService::class.java))
         app.startForegroundService(
-            TimerForegroundService.buildStartIntent(app, timer, workspace.name, workspace.roundingMinutes)
+            TimerForegroundService.buildStartIntent(app, timer, workspace.name, workspace.roundingMinutes, workspace.color)
         )
 
         val startMs = runCatching { parseIso(rt.startISO) }.getOrElse { System.currentTimeMillis() }
@@ -708,7 +815,8 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
             elapsedSeconds = 0L,
             runningTimers = others,
             description = rt.title,
-            selectedWorkspaceId = rt.workspaceId
+            selectedWorkspaceId = rt.workspaceId,
+            suspendedTimer = null
         )}
         startTicking(startMs)
         viewModelScope.launch { settingsRepo.saveActiveTimer(timer) }
@@ -720,21 +828,31 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
         val rounding = workspace?.roundingMinutes ?: 15
         viewModelScope.launch {
             runCatching {
-                val startMs = parseIso(rt.startISO)
+                val rawStartMs = parseIso(rt.startISO)
+                val startMs = if (rounding == 0) rawStartMs else roundToNearest(rawStartMs, rounding)
                 val nowMs = System.currentTimeMillis()
                 val endMs = if (rounding == 0) nowMs else {
                     val minEnd = startMs + rounding * 60_000L
                     val rounded = roundToNearest(nowMs, rounding)
                     if (rounded < minEnd) minEnd else rounded
                 }
+                val startISO = toNotionDateTime(startMs)
                 notionRepo.stopTimeEntry(
                     pageId = rt.pageId,
-                    startISO = rt.startISO,
+                    startISO = startISO,
                     endISO = toNotionDateTime(endMs),
                     propertyMap = rt.propertyMap
                 )
             }.onSuccess {
-                _uiState.update { it.copy(runningTimers = it.runningTimers.filter { t -> t.pageId != rt.pageId }) }
+                val isSuspended = _uiState.value.suspendedTimer?.pageId == rt.pageId
+                val remainingRunning = _uiState.value.runningTimers.filter { t -> t.pageId != rt.pageId }
+                _uiState.update { it.copy(
+                    runningTimers = remainingRunning,
+                    suspendedTimer = if (isSuspended) null else it.suspendedTimer
+                ) }
+                if (isSuspended && remainingRunning.isNotEmpty()) {
+                    loadRunningTimer(remainingRunning.first())
+                }
             }.onFailure { err ->
                 _uiState.update { it.copy(error = err.message ?: "Could not stop timer") }
             }
@@ -749,12 +867,10 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
                 val workspace = state.workspaces.firstOrNull { it.id == workspaceId } ?: return@launch
                 _uiState.update { it.copy(
                     selectedWorkspaceId = workspaceId,
-                    projects = emptyList(),
-                    projectsLoading = true,
-                    extraFieldDefs = emptyList()
+                    extraFieldDefs = emptyList(),
+                    extrasLoading = workspace.extraProps.isNotEmpty()
                 )}
                 settingsRepo.saveLastWorkspaceId(workspaceId)
-                launch { loadProjects(workspace) }
                 loadExtraFieldDefs(workspace)
             }
             _uiState.update { it.copy(

@@ -31,12 +31,14 @@ class TimerForegroundService : Service() {
         const val EXTRA_DATE_PROP = "extra_date_prop"
         const val EXTRA_STATUS_PROP = "extra_status_prop"
         const val EXTRA_STATUS_DONE = "extra_status_done"
+        const val EXTRA_WORKSPACE_COLOR = "extra_workspace_color"
 
         fun buildStartIntent(
             context: Context,
             timer: ActiveTimer,
             workspaceName: String,
-            roundingMinutes: Int
+            roundingMinutes: Int,
+            workspaceColor: String? = null
         ) = Intent(context, TimerForegroundService::class.java).apply {
             action = ACTION_START
             putExtra(EXTRA_PAGE_ID, timer.notionPageId)
@@ -49,6 +51,7 @@ class TimerForegroundService : Service() {
             putExtra(EXTRA_DATE_PROP, timer.propertyMap.timeEntryDateProp)
             putExtra(EXTRA_STATUS_PROP, timer.propertyMap.timeEntryStatusProp)
             putExtra(EXTRA_STATUS_DONE, timer.propertyMap.timeEntryStatusDone)
+            putExtra(EXTRA_WORKSPACE_COLOR, workspaceColor)
         }
     }
 
@@ -60,6 +63,7 @@ class TimerForegroundService : Service() {
     private var workspaceName: String = ""
     private var description: String = ""
     private var roundingMinutes: Int = 15
+    private var workspaceColor: String? = null
     private var propertyMap: PropertyMap = PropertyMap()
     private var startMillis: Long = 0L
 
@@ -84,6 +88,7 @@ class TimerForegroundService : Service() {
                 workspaceName = intent.getStringExtra(EXTRA_WORKSPACE_NAME) ?: ""
                 description = intent.getStringExtra(EXTRA_DESCRIPTION) ?: ""
                 roundingMinutes = intent.getIntExtra(EXTRA_ROUNDING_MINUTES, 15)
+                workspaceColor = intent.getStringExtra(EXTRA_WORKSPACE_COLOR)
                 propertyMap = PropertyMap(
                     timeEntryTitleProp = intent.getStringExtra(EXTRA_TITLE_PROP) ?: "",
                     timeEntryDateProp = intent.getStringExtra(EXTRA_DATE_PROP) ?: "",
@@ -94,7 +99,9 @@ class TimerForegroundService : Service() {
                 val rawStart = intent.getStringExtra(EXTRA_RAW_START) ?: ""
                 startMillis = parseIso(rawStart)
 
-                startForeground(NOTIFICATION_ID, buildNotification(0L))
+                val elapsed = (System.currentTimeMillis() - startMillis) / 1000L
+                startForeground(NOTIFICATION_ID, buildNotification(elapsed.coerceAtLeast(0L)))
+                handler.removeCallbacks(ticker)
                 handler.post(ticker)
             }
             ACTION_STOP -> {
@@ -108,33 +115,49 @@ class TimerForegroundService : Service() {
         handler.removeCallbacks(ticker)
         serviceScope.launch {
             val app = application as NotionTimeTrackerApp
-            val elapsedSecs = (System.currentTimeMillis() - startMillis) / 1000L
-            val endISO = computeEndISO(roundedStart, elapsedSecs, roundingMinutes)
-            runCatching {
-                app.notionRepository.stopTimeEntry(
-                    pageId = pageId,
-                    startISO = roundedStart,
-                    endISO = endISO,
-                    propertyMap = propertyMap
-                )
-                app.settingsRepository.clearActiveTimer()
+            if (pageId.isNotBlank()) {
+                val rounding = roundingMinutes
+                val rawStartMs = startMillis
+                val startMs = if (rounding == 0) rawStartMs else roundToNearest(rawStartMs, rounding)
+                val nowMs = System.currentTimeMillis()
+                val endMs = if (rounding == 0) nowMs
+                else {
+                    val minEnd = startMs + rounding * 60_000L
+                    val rounded = roundToNearest(nowMs, rounding)
+                    if (rounded < minEnd) minEnd else rounded
+                }
+                val startISO = toNotionDateTime(startMs)
+                val endISO = toNotionDateTime(endMs)
+
+                runCatching {
+                    app.notionRepository.stopTimeEntry(
+                        pageId = pageId,
+                        startISO = startISO,
+                        endISO = endISO,
+                        propertyMap = propertyMap
+                    )
+                }
+                val activeTimer = app.settingsRepository.getActiveTimer()
+                if (activeTimer != null && activeTimer.notionPageId == pageId) {
+                    app.settingsRepository.clearActiveTimer()
+                }
+                sendBroadcast(Intent(ACTION_TIMER_STOPPED).apply {
+                    putExtra(EXTRA_PAGE_ID, pageId)
+                })
             }
-            sendBroadcast(Intent(ACTION_TIMER_STOPPED))
-            stopForeground(STOP_FOREGROUND_REMOVE)
             stopSelf()
         }
     }
 
     private fun updateNotification() {
-        val elapsedMs = System.currentTimeMillis() - startMillis
-        val elapsedSecs = elapsedMs / 1000L
+        val elapsed = (System.currentTimeMillis() - startMillis) / 1000L
         val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        nm.notify(NOTIFICATION_ID, buildNotification(elapsedSecs))
+        nm.notify(NOTIFICATION_ID, buildNotification(elapsed.coerceAtLeast(0L)))
     }
 
     private fun buildNotification(elapsedSecs: Long): Notification {
         val contentTitle = if (description.isNotBlank())
-            "⏱ $workspaceName — $description" else "⏱ $workspaceName"
+            "⏱ $workspaceName – $description" else "⏱ $workspaceName"
         val elapsedStr = formatElapsed(elapsedSecs)
         val intervalStr = buildIntervalString(roundedStart, elapsedSecs, roundingMinutes)
         val contentText = "$elapsedStr · $intervalStr"
@@ -166,6 +189,14 @@ class TimerForegroundService : Service() {
             .setContentIntent(openIntent)
             .addAction(stopAction)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+
+        workspaceColor?.ifBlank { null }?.let { colorStr ->
+            runCatching {
+                val parsedColor = Color.parseColor(if (colorStr.startsWith("#")) colorStr else "#$colorStr")
+                builder.setColor(parsedColor)
+                builder.setColorized(true)
+            }
+        }
 
         if (Build.VERSION.SDK_INT >= 36) {
             buildProgressStyleNotification(builder, elapsedSecs)
@@ -268,22 +299,7 @@ class TimerForegroundService : Service() {
         }
     }
 
-    private fun computeEndISO(roundedStart: String, elapsedSecs: Long, rounding: Int): String {
-        return try {
-            val startMs = parseIso(roundedStart)
-            val nowMs = startMs + elapsedSecs * 1000L
-            val endMs = if (rounding == 0) {
-                nowMs
-            } else {
-                val minEnd = startMs + rounding * 60_000L
-                val roundMs = roundToNearest(nowMs, rounding)
-                if (roundMs < minEnd) minEnd else roundMs
-            }
-            toNotionDateTime(endMs)
-        } catch (_: Exception) {
-            toNotionDateTime(System.currentTimeMillis())
-        }
-    }
+
 
     private fun roundToNearest(ms: Long, minutes: Int): Long {
         val intervalMs = minutes * 60_000L

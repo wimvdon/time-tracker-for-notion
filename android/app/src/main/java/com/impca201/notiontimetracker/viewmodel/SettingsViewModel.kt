@@ -5,6 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.impca201.notiontimetracker.NotionTimeTrackerApp
 import com.impca201.notiontimetracker.data.models.*
+import com.impca201.notiontimetracker.ShortcutHelper
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -95,7 +96,7 @@ class SettingsViewModel(private val app: Application) : AndroidViewModel(app) {
     }
 
     fun importWorkspaces(workspaces: List<Workspace>) {
-        viewModelScope.launch { settingsRepo.saveWorkspaces(workspaces) }
+        viewModelScope.launch { saveWorkspaces(workspaces) }
     }
 
     fun importWorkspace(workspace: Workspace) {
@@ -103,7 +104,7 @@ class SettingsViewModel(private val app: Application) : AndroidViewModel(app) {
             val existing = settingsRepo.getWorkspaces().toMutableList()
             val idx = existing.indexOfFirst { it.id == workspace.id }
             if (idx >= 0) existing[idx] = workspace else existing.add(workspace)
-            settingsRepo.saveWorkspaces(existing)
+            saveWorkspaces(existing)
         }
     }
 
@@ -145,7 +146,7 @@ class SettingsViewModel(private val app: Application) : AndroidViewModel(app) {
         val idx = list.indexOfFirst { it.id == id }
         if (idx <= 0) return
         val tmp = list[idx - 1]; list[idx - 1] = list[idx]; list[idx] = tmp
-        viewModelScope.launch { settingsRepo.saveWorkspaces(list) }
+        viewModelScope.launch { saveWorkspaces(list) }
     }
 
     fun moveWorkspaceDown(id: String) {
@@ -153,12 +154,12 @@ class SettingsViewModel(private val app: Application) : AndroidViewModel(app) {
         val idx = list.indexOfFirst { it.id == id }
         if (idx < 0 || idx >= list.size - 1) return
         val tmp = list[idx + 1]; list[idx + 1] = list[idx]; list[idx] = tmp
-        viewModelScope.launch { settingsRepo.saveWorkspaces(list) }
+        viewModelScope.launch { saveWorkspaces(list) }
     }
 
     fun deleteWorkspace(id: String) {
         val updated = _uiState.value.workspaces.filter { it.id != id }
-        viewModelScope.launch { settingsRepo.saveWorkspaces(updated) }
+        viewModelScope.launch { saveWorkspaces(updated) }
     }
 
     // --- Workspace edit ---
@@ -331,7 +332,7 @@ class SettingsViewModel(private val app: Application) : AndroidViewModel(app) {
                 timeEntryStatusDone = edit.timeEntryStatusDone
             ),
             extraProps = validExtraProps,
-            presets = edit.presets.filter { it.name.isNotBlank() }.map { p ->
+            presets = edit.presets.map { p ->
                 p.copy(name = p.name.trim(), pageTitle = p.pageTitle.trim())
             }
         )
@@ -341,7 +342,7 @@ class SettingsViewModel(private val app: Application) : AndroidViewModel(app) {
             val list = settingsRepo.getWorkspaces().toMutableList()
             if (edit.isNew) list.add(workspace)
             else { val idx = list.indexOfFirst { it.id == workspace.id }; if (idx >= 0) list[idx] = workspace else list.add(workspace) }
-            settingsRepo.saveWorkspaces(list)
+            saveWorkspaces(list)
             _editState.value = null
             _uiState.update { it.copy(snackbarMessage = if (edit.isNew) "workspace_added:${workspace.name}" else "workspace_saved:${workspace.name}") }
         }
@@ -356,12 +357,6 @@ class SettingsViewModel(private val app: Application) : AndroidViewModel(app) {
             edit.timeEntryStatusRunning.isBlank() ||
             edit.timeEntryStatusDone.isBlank()
         ) return false
-        val requiredProps = edit.extraProps.filter { it.required && it.propName.isNotBlank() }
-        if (requiredProps.isNotEmpty()) {
-            edit.presets.filter { it.name.isNotBlank() }.forEach { preset ->
-                if (requiredProps.any { ep -> preset.extraValues[ep.propName].isNullOrBlank() }) return false
-            }
-        }
         return true
     }
 
@@ -369,5 +364,10 @@ class SettingsViewModel(private val app: Application) : AndroidViewModel(app) {
         if (preset.name.isBlank()) return true
         val required = extraProps.filter { it.required && it.propName.isNotBlank() }
         return required.all { ep -> !preset.extraValues[ep.propName].isNullOrBlank() }
+    }
+
+    private suspend fun saveWorkspaces(list: List<Workspace>) {
+        settingsRepo.saveWorkspaces(list)
+        ShortcutHelper.updateShortcuts(app, list)
     }
 }

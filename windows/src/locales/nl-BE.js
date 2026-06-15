@@ -58,9 +58,9 @@ export default {
   hintTimeEntryDateProp: 'Slaat de start- en eindtijd op.',
   labelTimeEntryStatusProp: 'Statusveld',
   hintTimeEntryStatusProp: 'Geeft aan of de timer actief of voltooid is.',
-  labelTimeEntryStatusRunning: 'Statusoptie — actief',
+  labelTimeEntryStatusRunning: 'Statusoptie – actief',
   hintTimeEntryStatusRunning: 'De optie die een actieve tijdsregistratie aanduidt.',
-  labelTimeEntryStatusDone: 'Statusoptie — voltooid',
+  labelTimeEntryStatusDone: 'Statusoptie – voltooid',
   hintTimeEntryStatusDone: 'De optie die een voltooide tijdsregistratie aanduidt.',
   loadingProperties: 'Laden…',
   sectionExtraFields: 'Extra velden (optioneel)',
@@ -153,7 +153,7 @@ export default {
   toastUpdateError: 'Kon timer niet bijwerken',
 
   // Verwijderde pagina
-  toastDeletedPageDiscarded: 'Pagina niet gevonden — registratie verwijderd.',
+  toastDeletedPageDiscarded: 'Pagina niet gevonden – registratie verwijderd.',
   deletedPageTitle: 'Pagina niet gevonden in Notion',
   deletedPageBody: 'De tijdsregistratie kon niet worden opgeslagen omdat de pagina is verwijderd of niet meer toegankelijk is.',
   deletedPageHint: 'Zet de pagina terug vanuit de Notion-prullenbak of maak hem opnieuw aan als de registratie nodig is.',

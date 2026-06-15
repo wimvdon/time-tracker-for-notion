@@ -191,7 +191,7 @@ function rebuildTrayMenu() {
     if (presetItems.length > 0) {
       items.push({ type: 'separator' });
       for (const { workspace, preset } of presetItems.slice(0, 10)) {
-        const label = preset.name ? `${workspace.name} — ${preset.name}` : workspace.name;
+        const label = preset.name ? `${workspace.name} – ${preset.name}` : workspace.name;
         items.push({
           label: `▶ ${label}`,
           click: () => {
@@ -215,7 +215,7 @@ function rebuildTrayMenu() {
 
 function createTray() {
   tray = new Tray(trayIcon());
-  tray.setToolTip('Notion Timer');
+  tray.setToolTip('Time Tracker');
   tray.on('click', () => showWindow());
   rebuildTrayMenu();
 }
@@ -247,7 +247,7 @@ function rebuildJumpList() {
         type: 'task',
         program: process.execPath,
         args: `--preset=${preset.id}`,
-        title: `${ws.name} — ${preset.name}`,
+        title: `${ws.name} – ${preset.name}`,
         iconPath: process.execPath,
         iconIndex: 0,
       });

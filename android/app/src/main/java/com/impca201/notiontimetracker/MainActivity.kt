@@ -37,7 +37,8 @@ class MainActivity : ComponentActivity() {
     private val timerStoppedReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             if (intent?.action == TimerForegroundService.ACTION_TIMER_STOPPED) {
-                timerViewModel.handleTimerStoppedFromService()
+                val stoppedPageId = intent?.getStringExtra(TimerForegroundService.EXTRA_PAGE_ID)
+                timerViewModel.handleTimerStoppedFromService(stoppedPageId)
             }
         }
     }
@@ -76,6 +77,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        setIntent(intent)
         handlePresetShortcut(intent)
     }
 

@@ -1,9 +1,9 @@
 {
   "name": "notion-timer",
-  "productName": "Notion Timer",
+  "productName": "Time Tracker for Notion",
   "version": "1.0.0",
   "description": "Floating time-tracking widget that creates and manages time registrations in Notion",
-  "author": "Wim Van Donck <wim@wimvandonck.be>",
+  "author": "Wim Vandonck",
   "license": "MIT",
   "private": true,
   "type": "module",
@@ -36,7 +36,7 @@
   },
   "build": {
     "appId": "com.wimvandonck.notiontimer",
-    "productName": "Notion Timer",
+    "productName": "Time Tracker for Notion",
     "directories": {
       "output": "../release"
     },

@@ -84,7 +84,14 @@ fun SearchableDropdown(
                     ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
                 }
             },
-            colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+            colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(
+                focusedTextColor = MaterialTheme.colorScheme.onBackground,
+                unfocusedTextColor = MaterialTheme.colorScheme.onBackground,
+                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                unfocusedBorderColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.3f),
+                focusedPlaceholderColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
+                unfocusedPlaceholderColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f)
+            ),
             singleLine = true
         )
 

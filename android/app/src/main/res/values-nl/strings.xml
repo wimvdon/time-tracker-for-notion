@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Notion Time Tracker</string>
+    <string name="app_name">Time Tracker</string>
 
     <!-- Timer — idle -->
     <string name="label_workspace">Werkruimte</string>
@@ -51,7 +51,7 @@
     <string name="placeholder_select">Kies…</string>
     <string name="placeholder_search">Zoeken…</string>
     <string name="search_no_results">Geen resultaten</string>
-    <string name="dropdown_none">— Geen —</string>
+    <string name="dropdown_none">– Geen –</string>
     <string name="btn_clear">Wissen</string>
     <string name="btn_refresh_databases">Vernieuwen</string>
     <string name="loading_databases">Databases laden…</string>
@@ -63,9 +63,9 @@
     <string name="hint_time_entry_date_prop">Slaat de start- en eindtijd op.</string>
     <string name="label_time_entry_status_prop">Statusveld</string>
     <string name="hint_time_entry_status_prop">Geeft aan of de timer actief of voltooid is.</string>
-    <string name="label_time_entry_status_running">Statusoptie — actief</string>
+    <string name="label_time_entry_status_running">Statusoptie – actief</string>
     <string name="hint_time_entry_status_running">De optie die een actieve tijdsregistratie aanduidt.</string>
-    <string name="label_time_entry_status_done">Statusoptie — voltooid</string>
+    <string name="label_time_entry_status_done">Statusoptie – voltooid</string>
     <string name="hint_time_entry_status_done">De optie die een voltooide tijdsregistratie aanduidt.</string>
     <string name="label_relation_prop">Koppelveld (projecten)</string>
     <string name="loading_properties">Laden…</string>
@@ -138,7 +138,7 @@
     <string name="theme_auto">Automatisch (systeeminstelling)</string>
     <string name="theme_light">Licht</string>
     <string name="theme_dark">Donker</string>
-    <string name="label_dynamic_color">Dynamische kleuren (Material You)</string>
+    <string name="label_dynamic_color">Dynamische kleuren</string>
     <string name="dynamic_color_hint">Gebruik kleuren van je achtergrond.</string>
 
     <!-- QR code import -->
@@ -173,6 +173,7 @@
     <string name="preset_name_placeholder">bijv. Ochtendoverleg</string>
     <string name="label_preset_title">Standaardtitel</string>
     <string name="preset_title_placeholder">Optionele standaardtitel…</string>
+    <string name="label_show_in_shortcuts">Toon in launcher-snelkoppelingen</string>
 
     <!-- Timer stopped elsewhere -->
     <string name="timer_stopped_elsewhere">Timer gestopt op een ander apparaat.</string>
@@ -182,7 +183,7 @@
     <string name="deleted_page_body">De tijdsregistratie kon niet worden opgeslagen omdat de pagina is verwijderd of niet meer toegankelijk is.</string>
     <string name="deleted_page_hint">Zet de pagina terug vanuit de Notion-prullenbak of maak hem opnieuw aan als de registratie nodig is.</string>
     <string name="deleted_page_confirm">Sluiten</string>
-    <string name="toast_deleted_page_discarded">Pagina niet gevonden — registratie verwijderd.</string>
+    <string name="toast_deleted_page_discarded">Pagina niet gevonden – registratie verwijderd.</string>
     <string name="toast_update_error">Kon timer niet bijwerken</string>
 
     <!-- Per-workspace QR -->

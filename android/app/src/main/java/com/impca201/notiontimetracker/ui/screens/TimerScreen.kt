@@ -213,19 +213,28 @@ private fun IdleView(
     val scrollState = rememberScrollState()
 
     Scaffold(
+        contentColor = MaterialTheme.colorScheme.onBackground,
         topBar = {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .statusBarsPadding()
-                    .padding(horizontal = 8.dp, vertical = 4.dp),
-                horizontalArrangement = Arrangement.End
+                    .padding(horizontal = 16.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                IconButton(onClick = onRefreshAll) {
-                    Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.btn_refresh_all))
-                }
-                IconButton(onClick = onNavigateToSettings) {
-                    Icon(Icons.Default.Settings, contentDescription = stringResource(R.string.title_settings))
+                Text(
+                    text = "Time Tracker",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = onRefreshAll) {
+                        Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.btn_refresh_all))
+                    }
+                    IconButton(onClick = onNavigateToSettings) {
+                        Icon(Icons.Default.Settings, contentDescription = stringResource(R.string.title_settings))
+                    }
                 }
             }
         }
@@ -291,20 +300,7 @@ private fun IdleView(
                 enabled = uiState.workspaces.isNotEmpty()
             )
 
-            if (uiState.selectedWorkspaceId != null) {
-                FieldLabel(stringResource(R.string.label_project))
-                SearchableDropdown(
-                    options = uiState.projects,
-                    selected = uiState.projects.firstOrNull { it.id == uiState.selectedProjectId },
-                    placeholder = if (uiState.projectsLoading) stringResource(R.string.placeholder_loading)
-                    else stringResource(R.string.placeholder_select_project),
-                    onSelect = { onProjectSelect(it?.id) },
-                    allowClear = true,
-                    searchable = true,
-                    loading = uiState.projectsLoading,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
+
 
             FieldLabel(stringResource(R.string.label_description))
             OutlinedTextField(
@@ -316,6 +312,16 @@ private fun IdleView(
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                 keyboardActions = KeyboardActions(onDone = { })
             )
+
+            if (uiState.extrasLoading) {
+                Spacer(Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                }
+            }
 
             uiState.extraFieldDefs.forEach { def ->
                 ExtraFieldInput(
@@ -330,24 +336,29 @@ private fun IdleView(
 
             val canStart = uiState.apiKey.isNotBlank() &&
                     uiState.selectedWorkspaceId != null &&
-                    !uiState.isStarting &&
-                    uiState.extraFieldDefs.none { def ->
-                        def.required && (uiState.extraValues[def.propName]?.isBlank() != false)
-                    }
+                    !uiState.isStarting
+
+            val selectedWorkspace = uiState.workspaces.firstOrNull { it.id == uiState.selectedWorkspaceId }
+            val startWorkspaceColor = selectedWorkspace?.color?.ifBlank { null }?.let { parseWorkspaceColor(it) }
+            val buttonColor = startWorkspaceColor ?: MaterialTheme.colorScheme.tertiary
+            val onButtonColor = if (startWorkspaceColor != null) Color.White else MaterialTheme.colorScheme.onTertiary
 
             Button(
                 onClick = onStart,
                 enabled = canStart,
                 modifier = Modifier.fillMaxWidth().height(56.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.tertiary)
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = buttonColor,
+                    contentColor = onButtonColor
+                )
             ) {
                 if (uiState.isStarting) {
-                    CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 3.dp, color = MaterialTheme.colorScheme.onTertiary)
+                    CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 3.dp, color = onButtonColor)
                 } else {
                     Text(
                         stringResource(R.string.btn_start),
                         fontSize = 18.sp,
-                        color = MaterialTheme.colorScheme.onTertiary
+                        color = onButtonColor
                     )
                 }
             }
@@ -396,32 +407,52 @@ private fun RunningView(
     val workspace = uiState.workspaces.firstOrNull { it.id == timer.workspaceId }
     val rounding = workspace?.roundingMinutes ?: 15
 
-    val intervalText = remember(uiState.elapsedSeconds, timer.roundedStart, rounding) {
-        buildIntervalText(timer.roundedStart, uiState.elapsedSeconds, rounding)
-    }
 
     var startTimeInput by remember(timer.roundedStart) { mutableStateOf(formatHHMM(timer.roundedStart)) }
     var endTimeInput by remember { mutableStateOf("") }
 
+    val workspaceColor = workspace?.color?.ifBlank { null }?.let { parseWorkspaceColor(it) }
+    val scaffoldBg = if (workspaceColor != null) {
+        val bg = MaterialTheme.colorScheme.background
+        val alpha = 0.20f
+        Color(
+            red = workspaceColor.red * alpha + bg.red * (1f - alpha),
+            green = workspaceColor.green * alpha + bg.green * (1f - alpha),
+            blue = workspaceColor.blue * alpha + bg.blue * (1f - alpha),
+            alpha = 1f
+        )
+    } else {
+        MaterialTheme.colorScheme.background
+    }
     val scrollState = rememberScrollState()
 
     Scaffold(
+        containerColor = scaffoldBg,
+        contentColor = MaterialTheme.colorScheme.onBackground,
         topBar = {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .statusBarsPadding()
-                    .padding(horizontal = 8.dp, vertical = 4.dp),
-                horizontalArrangement = Arrangement.End
+                    .padding(horizontal = 16.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                IconButton(onClick = onRefreshAll) {
-                    Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.btn_refresh_all))
-                }
-                IconButton(onClick = onSuspendActiveToNewTimer) {
-                    Icon(Icons.Default.Add, contentDescription = stringResource(R.string.start_new_timer))
-                }
-                IconButton(onClick = onNavigateToSettings) {
-                    Icon(Icons.Default.Settings, contentDescription = stringResource(R.string.title_settings))
+                Text(
+                    text = "Time Tracker",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = onSuspendActiveToNewTimer) {
+                        Icon(Icons.Default.Add, contentDescription = stringResource(R.string.start_new_timer))
+                    }
+                    IconButton(onClick = onRefreshAll) {
+                        Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.btn_refresh_all))
+                    }
+                    IconButton(onClick = onNavigateToSettings) {
+                        Icon(Icons.Default.Settings, contentDescription = stringResource(R.string.title_settings))
+                    }
                 }
             }
         }
@@ -434,18 +465,12 @@ private fun RunningView(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            PresetChips(
-                workspaces = uiState.workspaces,
-                apiKey = uiState.apiKey,
-                onApplyPreset = onApplyPreset
-            )
 
-            Spacer(Modifier.height(8.dp))
 
             Text(
                 workspace?.name ?: "",
                 style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
             )
 
             var titleDraft by remember(timer.description) { mutableStateOf(timer.description) }
@@ -477,10 +502,16 @@ private fun RunningView(
                     onValueChange = { titleDraft = it },
                     modifier = Modifier.weight(1f),
                     singleLine = true,
-                    placeholder = { Text(stringResource(R.string.hint_timer_title), style = MaterialTheme.typography.bodySmall) },
-                    textStyle = MaterialTheme.typography.bodyMedium,
+                    placeholder = { Text(stringResource(R.string.hint_timer_title), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f)) },
+                    textStyle = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onBackground),
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                    keyboardActions = KeyboardActions(onDone = { onQuickSaveDescription(titleDraft.trim()) })
+                    keyboardActions = KeyboardActions(onDone = { onQuickSaveDescription(titleDraft.trim()) }),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = MaterialTheme.colorScheme.onBackground,
+                        unfocusedTextColor = MaterialTheme.colorScheme.onBackground,
+                        focusedBorderColor = workspaceColor ?: MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.3f)
+                    )
                 )
                 if (isTitleDirty) {
                     IconButton(onClick = { onQuickSaveDescription(titleDraft.trim()) }, modifier = Modifier.size(36.dp)) {
@@ -506,31 +537,32 @@ private fun RunningView(
                 textAlign = TextAlign.Center
             )
 
-            Text(
-                intervalText,
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
 
-            Spacer(Modifier.height(8.dp))
 
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                 Text(
                     stringResource(R.string.label_start_time),
                     style = MaterialTheme.typography.labelMedium,
                     modifier = Modifier.width(100.dp),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
                 )
                 OutlinedTextField(
                     value = startTimeInput,
                     onValueChange = { startTimeInput = it },
                     modifier = Modifier.weight(1f),
                     singleLine = true,
+                    textStyle = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onBackground),
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                     keyboardActions = KeyboardActions(onDone = {
                         val iso = parseHHMMToISO(startTimeInput, timer.roundedStart)
                         if (iso != null) onUpdateStartTime(iso)
-                    })
+                    }),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = MaterialTheme.colorScheme.onBackground,
+                        unfocusedTextColor = MaterialTheme.colorScheme.onBackground,
+                        focusedBorderColor = workspaceColor ?: MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.3f)
+                    )
                 )
             }
 
@@ -539,41 +571,30 @@ private fun RunningView(
                     stringResource(R.string.label_end_time),
                     style = MaterialTheme.typography.labelMedium,
                     modifier = Modifier.width(100.dp),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
                 )
                 OutlinedTextField(
                     value = endTimeInput,
                     onValueChange = { endTimeInput = it },
                     modifier = Modifier.weight(1f),
                     singleLine = true,
-                    placeholder = { Text(stringResource(R.string.hint_manual_end), style = MaterialTheme.typography.bodySmall) },
+                    textStyle = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onBackground),
+                    placeholder = { Text(stringResource(R.string.hint_manual_end), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f)) },
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                     keyboardActions = KeyboardActions(onDone = {
                         val ms = parseHHMMToMillis(endTimeInput, timer.roundedStart)
                         if (ms != null) onStop(ms)
-                    })
+                    }),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = MaterialTheme.colorScheme.onBackground,
+                        unfocusedTextColor = MaterialTheme.colorScheme.onBackground,
+                        focusedBorderColor = workspaceColor ?: MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.3f)
+                    )
                 )
             }
 
-            // Inline project + extra-field editing (matches Windows: edits save immediately).
-            if (uiState.projects.isNotEmpty()) {
-                Spacer(Modifier.height(4.dp))
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    FieldLabel(stringResource(R.string.label_project))
-                    SearchableDropdown(
-                        options = uiState.projects,
-                        selected = uiState.projects.firstOrNull { it.id == localProjectId },
-                        placeholder = stringResource(R.string.placeholder_select_project),
-                        onSelect = {
-                            localProjectId = it?.id
-                            pendingSave = true
-                        },
-                        allowClear = true,
-                        searchable = true,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-            }
+
 
             if (uiState.extraFieldDefs.isNotEmpty()) {
                 Spacer(Modifier.height(4.dp))
@@ -670,7 +691,8 @@ private fun OtherRunningTimers(
         Text(
             stringResource(R.string.running_timers_heading),
             style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.weight(1f)
         )
         if (loading) {
             Spacer(Modifier.width(8.dp))
@@ -740,14 +762,20 @@ private fun RecentEntriesSection(
     if (entries.isEmpty() && !loading) return
 
     HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-    Text(
-        stringResource(R.string.recent_entries_heading),
-        style = MaterialTheme.typography.labelSmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(vertical = 4.dp)
-    )
-    if (loading) {
-        CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            stringResource(R.string.recent_entries_heading),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(vertical = 4.dp).weight(1f)
+        )
+        if (loading) {
+            Spacer(Modifier.width(8.dp))
+            CircularProgressIndicator(modifier = Modifier.size(12.dp), strokeWidth = 2.dp)
+        }
     }
     entries.forEach { re ->
         Card(
@@ -804,7 +832,7 @@ private fun PresetChips(
     ) {
         allPresets.forEach { (ws, preset) ->
             val wsColor = parseWorkspaceColor(ws.color)
-            val chipLabel = if (preset.name.isBlank()) "▶ ${ws.name}" else "▶ ${ws.name} — ${preset.name}"
+            val chipLabel = if (preset.name.isBlank()) "▶ ${ws.name}" else "▶ ${ws.name} – ${preset.name}"
             SuggestionChip(
                 onClick = { onApplyPreset(ws.id, preset) },
                 label = { Text(chipLabel, style = MaterialTheme.typography.labelMedium) },
