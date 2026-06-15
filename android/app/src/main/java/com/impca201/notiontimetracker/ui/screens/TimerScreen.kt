@@ -52,7 +52,7 @@ fun TimerScreen(
     onDescriptionChange: (String) -> Unit,
     onExtraValueChange: (String, String) -> Unit,
     onStart: () -> Unit,
-    onStop: () -> Unit,
+    onStop: (Long?) -> Unit,
     onUpdateStartTime: (String) -> Unit,
     onNavigateToSettings: () -> Unit,
     onRecoveryStop: () -> Unit,
@@ -112,6 +112,9 @@ fun TimerScreen(
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(stringResource(R.string.deleted_page_body))
+                    uiState.deletedPageDialogTitle?.takeIf { it.isNotBlank() }?.let { title ->
+                        Text("“$title”", style = MaterialTheme.typography.bodyMedium)
+                    }
                     Text(stringResource(R.string.deleted_page_hint), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                 }
             },
@@ -124,8 +127,13 @@ fun TimerScreen(
     }
 
     uiState.infoToast?.let { msg ->
+        val context = androidx.compose.ui.platform.LocalContext.current
+        val displayMsg = when (msg) {
+            "timer_stopped_elsewhere" -> stringResource(R.string.timer_stopped_elsewhere)
+            else -> msg
+        }
         LaunchedEffect(msg) {
-            kotlinx.coroutines.delay(3000)
+            android.widget.Toast.makeText(context, displayMsg, android.widget.Toast.LENGTH_SHORT).show()
             onClearInfoToast()
         }
     }
@@ -372,7 +380,7 @@ private fun IdleView(
 @Composable
 private fun RunningView(
     uiState: TimerViewModel.UiState,
-    onStop: () -> Unit,
+    onStop: (Long?) -> Unit,
     onUpdateStartTime: (String) -> Unit,
     onNavigateToSettings: () -> Unit,
     onRetryStop: () -> Unit,
@@ -534,17 +542,23 @@ private fun RunningView(
                     placeholder = { Text(stringResource(R.string.hint_manual_end), style = MaterialTheme.typography.bodySmall) },
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                     keyboardActions = KeyboardActions(onDone = {
-                        val iso = parseHHMMToISO(endTimeInput, timer.roundedStart)
-                        if (iso != null) onStop()
+                        val ms = parseHHMMToMillis(endTimeInput, timer.roundedStart)
+                        if (ms != null) onStop(ms)
                     })
                 )
             }
 
             uiState.stopError?.let { err ->
+                val errMsg = when (err) {
+                    "required_fields_before_stopping" -> stringResource(R.string.toast_required_before_stopping)
+                    else -> err
+                }
                 Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)) {
                     Row(modifier = Modifier.padding(12.dp)) {
-                        Text(err, modifier = Modifier.weight(1f), color = MaterialTheme.colorScheme.onErrorContainer)
-                        TextButton(onClick = onRetryStop) { Text(stringResource(R.string.toast_stop_retry)) }
+                        Text(errMsg, modifier = Modifier.weight(1f), color = MaterialTheme.colorScheme.onErrorContainer)
+                        if (err != "required_fields_before_stopping") {
+                            TextButton(onClick = onRetryStop) { Text(stringResource(R.string.toast_stop_retry)) }
+                        }
                     }
                 }
             }
@@ -554,7 +568,7 @@ private fun RunningView(
                     val manualEnd = endTimeInput.takeIf { it.isNotBlank() }?.let {
                         runCatching { parseHHMMToMillis(it, timer.roundedStart) }.getOrNull()
                     }
-                    onStop()
+                    onStop(manualEnd)
                 },
                 enabled = !uiState.isStopping,
                 modifier = Modifier.fillMaxWidth().height(56.dp),
@@ -709,14 +723,11 @@ private fun RecentEntriesSection(
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(re.title, style = MaterialTheme.typography.bodyMedium, maxLines = 1)
-                    val timeLabel = buildRecentTimeLabel(re.startISO, re.endISO)
-                    if (timeLabel.isNotBlank()) {
-                        Text(
-                            timeLabel,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
+                    Text(
+                        re.workspaceName,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
                 IconButton(onClick = { onDelete(re) }, modifier = Modifier.size(36.dp)) {
                     Icon(
@@ -834,15 +845,3 @@ private fun parseHHMMToMillis(hhMM: String, referenceISO: String): Long? = runCa
     OffsetDateTime.parse(iso).toInstant().toEpochMilli()
 }.getOrNull()
 
-private fun buildRecentTimeLabel(startISO: String?, endISO: String?): String {
-    if (startISO == null) return ""
-    return runCatching {
-        val start = OffsetDateTime.parse(startISO)
-        val startStr = "%02d:%02d".format(start.hour, start.minute)
-        if (endISO != null) {
-            val end = OffsetDateTime.parse(endISO)
-            val endStr = "%02d:%02d".format(end.hour, end.minute)
-            "$startStr → $endStr"
-        } else startStr
-    }.getOrDefault("")
-}
