@@ -138,6 +138,8 @@
     <string name="theme_auto">Follow device (Auto)</string>
     <string name="theme_light">Light</string>
     <string name="theme_dark">Dark</string>
+    <string name="label_dynamic_color">Dynamic colour (Material You)</string>
+    <string name="dynamic_color_hint">Use colours from your wallpaper.</string>
 
     <!-- QR code import -->
     <string name="btn_scan_qr">Scan QR code to import settings</string>

@@ -138,6 +138,8 @@
     <string name="theme_auto">Automatisch (systeeminstelling)</string>
     <string name="theme_light">Licht</string>
     <string name="theme_dark">Donker</string>
+    <string name="label_dynamic_color">Dynamische kleuren (Material You)</string>
+    <string name="dynamic_color_hint">Gebruik kleuren van je achtergrond.</string>
 
     <!-- QR code import -->
     <string name="btn_scan_qr">QR-code scannen om instellingen te importeren</string>

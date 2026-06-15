@@ -1,8 +1,10 @@
 package com.impca201.notiontimetracker.ui.theme
 
+import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.platform.LocalContext
 import com.impca201.notiontimetracker.data.models.ThemeMode
 
 private val DarkColorScheme = darkColorScheme(
@@ -49,9 +51,13 @@ private val LightColorScheme = lightColorScheme(
     onError = Zinc50
 )
 
+/** True when the device supports Material You dynamic color (Android 12+). */
+val dynamicColorSupported: Boolean = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+
 @Composable
 fun NotionTimeTrackerTheme(
     themeMode: ThemeMode = ThemeMode.AUTO,
+    dynamicColor: Boolean = false,
     content: @Composable () -> Unit
 ) {
     val useDark = when (themeMode) {
@@ -59,8 +65,15 @@ fun NotionTimeTrackerTheme(
         ThemeMode.LIGHT -> false
         ThemeMode.AUTO -> isSystemInDarkTheme()
     }
+    val context = LocalContext.current
+    val colorScheme = when {
+        dynamicColor && dynamicColorSupported ->
+            if (useDark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+        useDark -> DarkColorScheme
+        else -> LightColorScheme
+    }
     MaterialTheme(
-        colorScheme = if (useDark) DarkColorScheme else LightColorScheme,
+        colorScheme = colorScheme,
         typography = Typography,
         content = content
     )
