@@ -36,6 +36,7 @@ export default {
   titleMoveDown: 'Omlaag',
   btnAddWorkspace: '+ Werkruimte toevoegen',
   labelAlwaysOnTop: 'Venster altijd bovenaan houden',
+  labelStartWithWindows: 'Starten met Windows',
 
   // Add/Edit workspace modal
   modalTitleAddWorkspace: 'Werkruimte toevoegen',

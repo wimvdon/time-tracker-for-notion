@@ -100,6 +100,7 @@ const store = new Store({
   defaults: {
     apiKey: '',
     alwaysOnTop: true,
+    startWithWindows: false,
     workspaces: [],
     lastUsedWorkspaceId: null,
     activeTimer: null,
@@ -125,6 +126,7 @@ let trayStrings = TRAY_STRINGS['en-GB'];
 const assetPath = (name) => path.join(__dirname, '..', 'assets', name);
 
 function createWindow() {
+  const startHidden = process.argv.includes('--hidden');
   mainWindow = new BrowserWindow({
     width: 340,
     height: 480,
@@ -133,6 +135,7 @@ function createWindow() {
     fullscreenable: false,
     autoHideMenuBar: true,
     alwaysOnTop: store.get('alwaysOnTop'),
+    show: !startHidden,
     icon: assetPath('icon-256.png'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
@@ -290,6 +293,14 @@ ipcMain.handle('window:alwaysOnTop', (_event, value) => {
   return value;
 });
 
+ipcMain.handle('window:startWithWindows', (_event, value) => {
+  store.set('startWithWindows', value);
+  if (app.isPackaged) {
+    app.setLoginItemSettings({ openAtLogin: value, args: value ? ['--hidden'] : [] });
+  }
+  return value;
+});
+
 // Renderer reports timer state so the tray icon/menu can reflect it
 ipcMain.on('timer:state', (_event, data) => {
   timerRunning = typeof data === 'object' ? !!data.running : !!data;
@@ -320,6 +331,12 @@ if (!gotLock) {
       trayStrings = TRAY_STRINGS['nl-BE'];
     }
     cachedWorkspaces = store.get('workspaces') || [];
+
+    if (app.isPackaged) {
+      const startWithWindows = store.get('startWithWindows') === true;
+      app.setLoginItemSettings({ openAtLogin: startWithWindows, args: startWithWindows ? ['--hidden'] : [] });
+    }
+
     createWindow();
     createTray();
   });
