@@ -19,7 +19,7 @@ echo.
 if %BUILD_ERROR% neq 0 (
     echo Build FAILED with error code %BUILD_ERROR%
 ) else (
-    echo Done! Check the /release folder.
+    echo Done! Check the release folder (one level up, next to the android folder).
 )
 
 pause

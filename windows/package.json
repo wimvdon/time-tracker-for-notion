@@ -38,7 +38,7 @@
     "appId": "com.wimvandonck.notiontimer",
     "productName": "Notion Timer",
     "directories": {
-      "output": "release"
+      "output": "../release"
     },
     "files": [
       "dist/**",

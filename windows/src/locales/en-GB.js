@@ -36,6 +36,7 @@ export default {
   titleMoveDown: 'Move down',
   btnAddWorkspace: '+ Add workspace',
   labelAlwaysOnTop: 'Keep window on top',
+  labelStartWithWindows: 'Start with Windows',
 
   // Add/Edit workspace modal
   modalTitleAddWorkspace: 'Add Workspace',

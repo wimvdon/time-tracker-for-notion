@@ -100,6 +100,7 @@ const store = new Store({
   defaults: {
     apiKey: '',
     alwaysOnTop: true,
+    startWithWindows: false,
     workspaces: [],
     lastUsedWorkspaceId: null,
     activeTimer: null,
@@ -117,14 +118,15 @@ let cachedWorkspaces = [];
 // Tray menu strings live in the main process, where the renderer's i18n is
 // not available; app.getLocale() reflects the Windows display language.
 const TRAY_STRINGS = {
-  'en-GB': { open: 'Open', stopTimer: 'Stop timer', quit: 'Quit' },
-  'nl-BE': { open: 'Openen', stopTimer: 'Timer stoppen', quit: 'Afsluiten' },
+  'en-GB': { open: 'Open', stopTimer: 'Stop timer', quit: 'Quit', quickStart: 'Quick Start' },
+  'nl-BE': { open: 'Openen', stopTimer: 'Timer stoppen', quit: 'Afsluiten', quickStart: 'Snelstarters' },
 };
 let trayStrings = TRAY_STRINGS['en-GB'];
 
 const assetPath = (name) => path.join(__dirname, '..', 'assets', name);
 
 function createWindow() {
+  const startHidden = process.argv.includes('--hidden');
   mainWindow = new BrowserWindow({
     width: 340,
     height: 480,
@@ -133,6 +135,7 @@ function createWindow() {
     fullscreenable: false,
     autoHideMenuBar: true,
     alwaysOnTop: store.get('alwaysOnTop'),
+    show: !startHidden,
     icon: assetPath('icon-256.png'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
@@ -223,6 +226,40 @@ function showWindow() {
   mainWindow.focus();
 }
 
+function applyPresetById(presetId) {
+  for (const ws of cachedWorkspaces) {
+    const preset = (ws.presets || []).find((p) => p.id === presetId);
+    if (preset) {
+      showWindow();
+      mainWindow?.webContents.send('tray:apply-preset', { workspaceId: ws.id, preset });
+      return;
+    }
+  }
+}
+
+function rebuildJumpList() {
+  if (!app.isPackaged) return;
+  const items = [];
+  for (const ws of cachedWorkspaces) {
+    for (const preset of (ws.presets || [])) {
+      if (!preset.name || !preset.id) continue;
+      items.push({
+        type: 'task',
+        program: process.execPath,
+        args: `--preset=${preset.id}`,
+        title: `${ws.name} — ${preset.name}`,
+        iconPath: process.execPath,
+        iconIndex: 0,
+      });
+    }
+  }
+  if (items.length === 0) {
+    app.setJumpList(null);
+    return;
+  }
+  app.setJumpList([{ type: 'custom', name: trayStrings.quickStart, items: items.slice(0, 10) }]);
+}
+
 // ---- IPC handlers ----
 
 ipcMain.handle('store:get', () => store.store);
@@ -290,6 +327,14 @@ ipcMain.handle('window:alwaysOnTop', (_event, value) => {
   return value;
 });
 
+ipcMain.handle('window:startWithWindows', (_event, value) => {
+  store.set('startWithWindows', value);
+  if (app.isPackaged) {
+    app.setLoginItemSettings({ openAtLogin: value, args: value ? ['--hidden'] : [] });
+  }
+  return value;
+});
+
 // Renderer reports timer state so the tray icon/menu can reflect it
 ipcMain.on('timer:state', (_event, data) => {
   timerRunning = typeof data === 'object' ? !!data.running : !!data;
@@ -304,6 +349,7 @@ ipcMain.on('timer:state', (_event, data) => {
 ipcMain.on('settings:changed', () => {
   cachedWorkspaces = store.get('workspaces') || [];
   if (tray) rebuildTrayMenu();
+  rebuildJumpList();
 });
 
 // ---- App lifecycle ----
@@ -312,7 +358,14 @@ const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) {
   app.quit();
 } else {
-  app.on('second-instance', () => showWindow());
+  app.on('second-instance', (_event, argv) => {
+    const presetArg = argv.find((a) => a.startsWith('--preset='));
+    if (presetArg) {
+      applyPresetById(presetArg.slice('--preset='.length));
+    } else {
+      showWindow();
+    }
+  });
 
   app.whenReady().then(() => {
     // Same detection rule as the renderer: any Dutch locale maps to nl-BE
@@ -320,8 +373,23 @@ if (!gotLock) {
       trayStrings = TRAY_STRINGS['nl-BE'];
     }
     cachedWorkspaces = store.get('workspaces') || [];
+
+    if (app.isPackaged) {
+      const startWithWindows = store.get('startWithWindows') === true;
+      app.setLoginItemSettings({ openAtLogin: startWithWindows, args: startWithWindows ? ['--hidden'] : [] });
+    }
+
     createWindow();
     createTray();
+    rebuildJumpList();
+
+    // Handle --preset arg when launched fresh (app was not already running)
+    const presetArg = process.argv.find((a) => a.startsWith('--preset='));
+    if (presetArg) {
+      mainWindow.webContents.once('did-finish-load', () => {
+        applyPresetById(presetArg.slice('--preset='.length));
+      });
+    }
   });
 }
 

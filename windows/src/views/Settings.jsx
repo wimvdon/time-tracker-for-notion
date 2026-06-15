@@ -10,11 +10,13 @@ export default function Settings() {
   const apiKey = useStore((s) => s.apiKey);
   const workspaces = useStore((s) => s.workspaces);
   const alwaysOnTop = useStore((s) => s.alwaysOnTop);
+  const startWithWindows = useStore((s) => s.startWithWindows);
   const theme = useStore((s) => s.theme);
   const saveApiKey = useStore((s) => s.saveApiKey);
   const deleteWorkspace = useStore((s) => s.deleteWorkspace);
   const moveWorkspace = useStore((s) => s.moveWorkspace);
   const toggleAlwaysOnTop = useStore((s) => s.toggleAlwaysOnTop);
+  const toggleStartWithWindows = useStore((s) => s.toggleStartWithWindows);
   const setTheme = useStore((s) => s.setTheme);
   const setView = useStore((s) => s.setView);
   const addToast = useStore((s) => s.addToast);
@@ -197,6 +199,16 @@ export default function Settings() {
           className="accent-emerald-500"
         />
         {t('labelAlwaysOnTop')}
+      </label>
+
+      <label className="flex items-center gap-2 text-sm cursor-pointer">
+        <input
+          type="checkbox"
+          checked={startWithWindows}
+          onChange={(e) => toggleStartWithWindows(e.target.checked)}
+          className="accent-emerald-500"
+        />
+        {t('labelStartWithWindows')}
       </label>
 
       {/* Theme */}

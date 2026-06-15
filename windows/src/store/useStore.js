@@ -55,6 +55,7 @@ export const useStore = create((set, get) => ({
   apiKey: '',
   workspaces: [],
   alwaysOnTop: true,
+  startWithWindows: false,
 
   // UI
   view: 'timer',
@@ -163,6 +164,7 @@ export const useStore = create((set, get) => ({
       apiKey: settings.apiKey || '',
       workspaces,
       alwaysOnTop: settings.alwaysOnTop !== false,
+      startWithWindows: settings.startWithWindows === true,
       theme: settings.theme || 'auto',
     });
 
@@ -253,6 +255,11 @@ export const useStore = create((set, get) => ({
   toggleAlwaysOnTop: async (value) => {
     await api.setAlwaysOnTop(value);
     set({ alwaysOnTop: value });
+  },
+
+  toggleStartWithWindows: async (value) => {
+    await api.setStartWithWindows(value);
+    set({ startWithWindows: value });
   },
 
   // ---- Workspace / project selection ----
