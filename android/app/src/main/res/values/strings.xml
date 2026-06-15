@@ -73,6 +73,7 @@
     <string name="placeholder_select_field">Select field…</string>
     <string name="label_required_field">Required</string>
     <string name="toast_required_fields_missing">Please fill in all required fields before starting.</string>
+    <string name="toast_required_before_stopping">Fill in required fields before stopping.</string>
     <string name="error_loading_extras">Could not load extra fields</string>
     <string name="no_properties_of_type">No suitable field found in this database.</string>
     <string name="label_workspace_rounding">Time rounding</string>

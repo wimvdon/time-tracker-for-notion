@@ -73,6 +73,7 @@
     <string name="placeholder_select_field">Kies veld…</string>
     <string name="label_required_field">Verplicht</string>
     <string name="toast_required_fields_missing">Vul alle verplichte velden in voor je start.</string>
+    <string name="toast_required_before_stopping">Vul alle verplichte velden in voor je stopt.</string>
     <string name="error_loading_extras">Kon extra velden niet laden</string>
     <string name="no_properties_of_type">Geen geschikt veld gevonden in deze database.</string>
     <string name="label_workspace_rounding">Tijden afronden</string>

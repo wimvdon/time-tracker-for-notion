@@ -50,6 +50,7 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
         val deleteConfirmInfo: DeleteConfirmInfo? = null,
         val editTimerOpen: Boolean = false,
         val deletedPageDialogVisible: Boolean = false,
+        val deletedPageDialogTitle: String? = null,
         val infoToast: String? = null
     )
 
@@ -64,14 +65,19 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
 
     init {
         viewModelScope.launch { loadInitialState() }
-        // Auto-refresh every 60s while a timer is running
+        // Auto-refresh every 60s
         viewModelScope.launch {
             while (true) {
                 delay(60_000L)
                 val state = _uiState.value
-                if (state.running && state.recoveredTimer == null && state.apiKey.isNotBlank()) {
-                    checkActiveTimerStillRunning()
-                    if (_uiState.value.running) {
+                if (state.recoveredTimer == null && state.apiKey.isNotBlank() && state.workspaces.isNotEmpty()) {
+                    if (state.running) {
+                        checkActiveTimerStillRunning()
+                        if (_uiState.value.running) {
+                            loadRunningTimers()
+                            loadRecentEntries()
+                        }
+                    } else {
                         loadRunningTimers()
                         loadRecentEntries()
                     }
@@ -225,9 +231,9 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
             tickJob?.cancel()
             stopService()
             viewModelScope.launch { settingsRepo.clearActiveTimer() }
-            _uiState.update { it.copy(running = false, activeTimer = null, elapsedSeconds = 0L, deletedPageDialogVisible = false) }
+            _uiState.update { it.copy(running = false, activeTimer = null, elapsedSeconds = 0L, deletedPageDialogVisible = false, deletedPageDialogTitle = null) }
         } else {
-            _uiState.update { it.copy(deletedPageDialogVisible = false) }
+            _uiState.update { it.copy(deletedPageDialogVisible = false, deletedPageDialogTitle = null) }
         }
         loadRunningTimers()
         loadRecentEntries()
@@ -294,7 +300,7 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
                 .onFailure { err ->
                     val msg = err.message ?: ""
                     if (isPageDeletedError(msg)) {
-                        _uiState.update { it.copy(editTimerOpen = false, deletedPageDialogVisible = true) }
+                        _uiState.update { it.copy(editTimerOpen = false, deletedPageDialogVisible = true, deletedPageDialogTitle = description.ifBlank { null }) }
                     } else {
                         _uiState.update { it.copy(error = msg) }
                     }
@@ -376,6 +382,13 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
         val timer = state.activeTimer ?: return
         val workspace = state.workspaces.firstOrNull { it.id == timer.workspaceId } ?: return
 
+        if (state.extraFieldDefs.any { def ->
+                def.required && (state.extraValues[def.propName]?.isBlank() != false)
+            }) {
+            _uiState.update { it.copy(stopError = "required_fields_before_stopping") }
+            return
+        }
+
         _uiState.update { it.copy(isStopping = true, stopError = null) }
 
         viewModelScope.launch {
@@ -409,7 +422,7 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
                     tickJob?.cancel()
                     stopService()
                     settingsRepo.clearActiveTimer()
-                    _uiState.update { it.copy(isStopping = false, running = false, activeTimer = null, elapsedSeconds = 0L, deletedPageDialogVisible = true) }
+                    _uiState.update { it.copy(isStopping = false, running = false, activeTimer = null, elapsedSeconds = 0L, deletedPageDialogVisible = true, deletedPageDialogTitle = state.description.ifBlank { null }) }
                 } else {
                     _uiState.update { it.copy(isStopping = false, stopError = msg.ifBlank { "Could not stop timer" }) }
                 }
