@@ -19,7 +19,6 @@ import kotlinx.coroutines.flow.map
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
-import com.impca201.notiontimetracker.widget.WidgetHelper
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "notion_settings")
 
@@ -98,7 +97,6 @@ class SettingsRepository(private val context: Context) {
         context.dataStore.edit { prefs ->
             prefs[WORKSPACES_KEY] = json.encodeToString(workspaces)
         }
-        WidgetHelper.updateAllWidgets(context)
     }
 
     val lastWorkspaceIdFlow: Flow<String?> = context.dataStore.data.map { prefs ->
@@ -122,14 +120,12 @@ class SettingsRepository(private val context: Context) {
         context.dataStore.edit { prefs ->
             prefs[ACTIVE_TIMER_KEY] = json.encodeToString(timer)
         }
-        WidgetHelper.updateAllWidgets(context)
     }
 
     suspend fun clearActiveTimer() {
         context.dataStore.edit { prefs ->
             prefs[ACTIVE_TIMER_KEY] = ""
         }
-        WidgetHelper.updateAllWidgets(context)
     }
 
     val themeModeFlow: Flow<ThemeMode> = context.dataStore.data.map { prefs ->
