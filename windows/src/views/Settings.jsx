@@ -65,7 +65,10 @@ export default function Settings() {
     try {
       const payload = JSON.stringify({ apiKey, workspaces });
       const QRCode = (await import('qrcode')).default;
-      const dataUrl = await QRCode.toDataURL(payload, { width: 512, margin: 2 });
+      // Use the lowest error-correction level: large settings payloads otherwise
+      // produce an overly dense code that phones struggle to scan (or that exceeds
+      // QR capacity entirely).
+      const dataUrl = await QRCode.toDataURL(payload, { width: 512, margin: 2, errorCorrectionLevel: 'L' });
       setGlobalQrUrl(dataUrl);
       globalQrTimer.current = setTimeout(() => setGlobalQrUrl(null), 60_000);
     } catch (err) {
