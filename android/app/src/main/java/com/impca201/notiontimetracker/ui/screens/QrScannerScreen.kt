@@ -43,7 +43,9 @@ import java.util.concurrent.Executors
 data class QrSettingsPayload(
     val apiKey: String? = null,
     val workspaces: List<Workspace>? = null,
-    val theme: String? = null
+    val theme: String? = null,
+    val showNotionLink: Boolean? = null,
+    val showArchiveAction: Boolean? = null
 )
 
 @Serializable
@@ -60,7 +62,7 @@ private val qrJson = Json {
 @Composable
 fun QrScannerScreen(
     onBack: () -> Unit,
-    onImport: (apiKey: String?, workspaces: List<Workspace>?, theme: ThemeMode?) -> Unit,
+    onImport: (apiKey: String?, workspaces: List<Workspace>?, theme: ThemeMode?, showNotionLink: Boolean?, showArchiveAction: Boolean?) -> Unit,
     onImportWorkspace: ((Workspace) -> Unit)? = null
 ) {
     val context = LocalContext.current
@@ -146,7 +148,7 @@ fun QrScannerScreen(
                                         if (onImportWorkspace != null) {
                                             onImportWorkspace(workspacePayload.workspace)
                                         } else {
-                                            onImport(null, listOf(workspacePayload.workspace), null)
+                                            onImport(null, listOf(workspacePayload.workspace), null, null, null)
                                         }
                                     } else {
                                         // Fall back to legacy global settings format
@@ -157,7 +159,7 @@ fun QrScannerScreen(
                                             "AUTO" -> ThemeMode.AUTO
                                             else -> null
                                         }
-                                        onImport(payload.apiKey, payload.workspaces, theme)
+                                        onImport(payload.apiKey, payload.workspaces, theme, payload.showNotionLink, payload.showArchiveAction)
                                     }
                                 } catch (e: Exception) {
                                     errorMsg = context.getString(R.string.qr_import_error)

@@ -37,6 +37,9 @@ export default {
   btnAddWorkspace: '+ Ajouter un espace',
   labelAlwaysOnTop: 'Garder la fenêtre au-premier plan',
   labelStartWithWindows: 'Lancer avec Windows',
+  labelNotionActions: 'Actions Notion',
+  labelShowNotionLink: 'Afficher le lien « Ouvrir dans Notion » sur les minuteurs actifs/récents',
+  labelShowArchiveAction: 'Afficher l’action d’archivage sur les minuteurs actifs/récents',
 
   // Add/Edit workspace modal
   modalTitleAddWorkspace: 'Ajouter un espace',

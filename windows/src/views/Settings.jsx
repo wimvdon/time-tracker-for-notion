@@ -36,6 +36,10 @@ export default function Settings() {
   const moveWorkspace = useStore((s) => s.moveWorkspace);
   const toggleAlwaysOnTop = useStore((s) => s.toggleAlwaysOnTop);
   const toggleStartWithWindows = useStore((s) => s.toggleStartWithWindows);
+  const showNotionLink = useStore((s) => s.showNotionLink);
+  const showArchiveAction = useStore((s) => s.showArchiveAction);
+  const setShowNotionLink = useStore((s) => s.setShowNotionLink);
+  const setShowArchiveAction = useStore((s) => s.setShowArchiveAction);
   const setTheme = useStore((s) => s.setTheme);
   const setView = useStore((s) => s.setView);
   const addToast = useStore((s) => s.addToast);
@@ -63,7 +67,7 @@ export default function Settings() {
       return;
     }
     try {
-      const payload = JSON.stringify({ apiKey, workspaces });
+      const payload = JSON.stringify({ apiKey, workspaces, showNotionLink, showArchiveAction });
       const QRCode = (await import('qrcode')).default;
       // Use the lowest error-correction level: large settings payloads otherwise
       // produce an overly dense code that phones struggle to scan (or that exceeds
@@ -252,6 +256,31 @@ export default function Settings() {
         />
         {t('labelStartWithWindows')}
       </label>
+
+      {/* Notion entry actions */}
+      <div>
+        <label className="block text-xs text-zinc-400 mb-1">{t('labelNotionActions')}</label>
+        <div className="flex flex-col gap-2">
+          <label className="flex items-center gap-2 text-sm cursor-pointer">
+            <input
+              type="checkbox"
+              checked={showNotionLink}
+              onChange={(e) => setShowNotionLink(e.target.checked)}
+              className="accent-emerald-500"
+            />
+            {t('labelShowNotionLink')}
+          </label>
+          <label className="flex items-center gap-2 text-sm cursor-pointer">
+            <input
+              type="checkbox"
+              checked={showArchiveAction}
+              onChange={(e) => setShowArchiveAction(e.target.checked)}
+              className="accent-emerald-500"
+            />
+            {t('labelShowArchiveAction')}
+          </label>
+        </div>
+      </div>
 
       {/* Theme */}
       <div>

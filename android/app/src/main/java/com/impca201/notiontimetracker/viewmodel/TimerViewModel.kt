@@ -55,7 +55,9 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
         val showAlreadyRunningWarning: Boolean = false,
         val locale: String = "system",
         val dateFormat: String = "DD/MM/YYYY",
-        val timeFormat: String = "24h"
+        val timeFormat: String = "24h",
+        val showNotionLink: Boolean = true,
+        val showArchiveAction: Boolean = true
     )
 
     private val _uiState = MutableStateFlow(UiState())
@@ -103,6 +105,8 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
             val locale = settingsRepo.localeFlow.first()
             val dateFormat = settingsRepo.dateFormatFlow.first()
             val timeFormat = settingsRepo.timeFormatFlow.first()
+            val showNotionLink = settingsRepo.showNotionLinkFlow.first()
+            val showArchiveAction = settingsRepo.showArchiveActionFlow.first()
 
             _uiState.update { state ->
                 state.copy(
@@ -110,7 +114,9 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
                     workspaces = workspaces,
                     locale = locale,
                     dateFormat = dateFormat,
-                    timeFormat = timeFormat
+                    timeFormat = timeFormat,
+                    showNotionLink = showNotionLink,
+                    showArchiveAction = showArchiveAction
                 )
             }
 
@@ -169,12 +175,16 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
             val locale = settingsRepo.localeFlow.first()
             val dateFormat = settingsRepo.dateFormatFlow.first()
             val timeFormat = settingsRepo.timeFormatFlow.first()
+            val showNotionLink = settingsRepo.showNotionLinkFlow.first()
+            val showArchiveAction = settingsRepo.showArchiveActionFlow.first()
             _uiState.update { it.copy(
                 apiKey = apiKey,
                 workspaces = workspaces,
                 locale = locale,
                 dateFormat = dateFormat,
-                timeFormat = timeFormat
+                timeFormat = timeFormat,
+                showNotionLink = showNotionLink,
+                showArchiveAction = showArchiveAction
             ) }
             ShortcutHelper.updateShortcuts(app, workspaces)
             val current = _uiState.value.selectedWorkspaceId

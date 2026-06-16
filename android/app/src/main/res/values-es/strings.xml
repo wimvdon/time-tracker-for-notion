@@ -216,6 +216,9 @@
     <string name="label_language">Idioma</string>
     <string name="label_date_format">Formato de fecha</string>
     <string name="label_time_format">Formato de hora</string>
+    <string name="label_notion_actions">Acciones de Notion</string>
+    <string name="label_show_notion_link">Mostrar enlace «Abrir en Notion» en temporizadores activos/recientes</string>
+    <string name="label_show_archive_action">Mostrar acción de archivar en temporizadores activos/recientes</string>
     <string name="language_system">Idioma del sistema (Auto)</string>
     <string name="language_en">English</string>
     <string name="language_nl">Nederlands</string>

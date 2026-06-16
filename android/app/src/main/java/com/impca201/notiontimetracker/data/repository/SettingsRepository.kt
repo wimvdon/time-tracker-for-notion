@@ -40,6 +40,8 @@ class SettingsRepository(private val context: Context) {
     private val LOCALE_KEY = stringPreferencesKey("locale")
     private val DATE_FORMAT_KEY = stringPreferencesKey("date_format")
     private val TIME_FORMAT_KEY = stringPreferencesKey("time_format")
+    private val SHOW_NOTION_LINK_KEY = booleanPreferencesKey("show_notion_link")
+    private val SHOW_ARCHIVE_ACTION_KEY = booleanPreferencesKey("show_archive_action")
 
     private val encryptedPrefs: SharedPreferences by lazy {
         runCatching {
@@ -170,5 +172,22 @@ class SettingsRepository(private val context: Context) {
 
     suspend fun saveTimeFormat(format: String) {
         context.dataStore.edit { prefs -> prefs[TIME_FORMAT_KEY] = format }
+    }
+
+    // Global toggles for the per-entry Notion actions on active/recent timers.
+    val showNotionLinkFlow: Flow<Boolean> = context.dataStore.data.map { prefs ->
+        prefs[SHOW_NOTION_LINK_KEY] ?: true
+    }
+
+    suspend fun saveShowNotionLink(enabled: Boolean) {
+        context.dataStore.edit { prefs -> prefs[SHOW_NOTION_LINK_KEY] = enabled }
+    }
+
+    val showArchiveActionFlow: Flow<Boolean> = context.dataStore.data.map { prefs ->
+        prefs[SHOW_ARCHIVE_ACTION_KEY] ?: true
+    }
+
+    suspend fun saveShowArchiveAction(enabled: Boolean) {
+        context.dataStore.edit { prefs -> prefs[SHOW_ARCHIVE_ACTION_KEY] = enabled }
     }
 }

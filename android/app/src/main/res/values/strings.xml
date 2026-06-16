@@ -216,6 +216,9 @@
     <string name="label_language">Language</string>
     <string name="label_date_format">Date format</string>
     <string name="label_time_format">Time format</string>
+    <string name="label_notion_actions">Notion entry actions</string>
+    <string name="label_show_notion_link">Show “Open in Notion” link on active/recent timers</string>
+    <string name="label_show_archive_action">Show archive action on active/recent timers</string>
     <string name="language_system">Follow device (Auto)</string>
     <string name="language_en">English</string>
     <string name="language_nl">Nederlands</string>

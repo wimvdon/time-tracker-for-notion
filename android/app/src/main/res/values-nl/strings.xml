@@ -216,6 +216,9 @@
     <string name="label_language">Taal</string>
     <string name="label_date_format">Datumnotatie</string>
     <string name="label_time_format">Tijdnotatie</string>
+    <string name="label_notion_actions">Notion-acties</string>
+    <string name="label_show_notion_link">Toon “Openen in Notion”-link bij actieve/recente timers</string>
+    <string name="label_show_archive_action">Toon archiveeractie bij actieve/recente timers</string>
     <string name="language_system">Systeemtaal volgen (Auto)</string>
     <string name="language_en">English</string>
     <string name="language_nl">Nederlands</string>

@@ -463,7 +463,9 @@ private fun IdleView(
                 onLoad = onLoadRunningTimer,
                 onStop = onStopOtherRunningTimer,
                 onDelete = { rt -> onConfirmDelete(rt.pageId, rt.title, true) },
-                onOpenUrl = onOpenUrl
+                onOpenUrl = onOpenUrl,
+                showNotionLink = uiState.showNotionLink,
+                showArchiveAction = uiState.showArchiveAction
             )
 
             RecentEntriesSection(
@@ -472,7 +474,9 @@ private fun IdleView(
                 onDelete = { re -> onConfirmDelete(re.pageId, re.title, false) },
                 onOpenUrl = onOpenUrl,
                 dateFormat = uiState.dateFormat,
-                timeFormat = uiState.timeFormat
+                timeFormat = uiState.timeFormat,
+                showNotionLink = uiState.showNotionLink,
+                showArchiveAction = uiState.showArchiveAction
             )
 
             Spacer(Modifier.height(16.dp))
@@ -893,7 +897,9 @@ private fun RunningView(
                 onLoad = onLoadRunningTimer,
                 onStop = onStopOtherRunningTimer,
                 onDelete = { rt -> onConfirmDelete(rt.pageId, rt.title, true) },
-                onOpenUrl = onOpenUrl
+                onOpenUrl = onOpenUrl,
+                showNotionLink = uiState.showNotionLink,
+                showArchiveAction = uiState.showArchiveAction
             )
 
             RecentEntriesSection(
@@ -902,7 +908,9 @@ private fun RunningView(
                 onDelete = { re -> onConfirmDelete(re.pageId, re.title, false) },
                 onOpenUrl = onOpenUrl,
                 dateFormat = uiState.dateFormat,
-                timeFormat = uiState.timeFormat
+                timeFormat = uiState.timeFormat,
+                showNotionLink = uiState.showNotionLink,
+                showArchiveAction = uiState.showArchiveAction
             )
 
             Spacer(Modifier.height(16.dp))
@@ -918,7 +926,9 @@ private fun OtherRunningTimers(
     onLoad: (RunningTimerInfo) -> Unit,
     onStop: (RunningTimerInfo) -> Unit,
     onDelete: (RunningTimerInfo) -> Unit,
-    onOpenUrl: (String) -> Unit
+    onOpenUrl: (String) -> Unit,
+    showNotionLink: Boolean = true,
+    showArchiveAction: Boolean = true
 ) {
     if (timers.isEmpty() && !loading) return
 
@@ -992,15 +1002,17 @@ private fun OtherRunningTimers(
                         )
                     }
                 }
-                IconButton(onClick = { onDelete(rt) }, modifier = Modifier.size(36.dp)) {
-                    Icon(
-                        Icons.Default.Delete,
-                        contentDescription = stringResource(R.string.title_delete_entry),
-                        modifier = Modifier.size(18.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                if (showArchiveAction) {
+                    IconButton(onClick = { onDelete(rt) }, modifier = Modifier.size(36.dp)) {
+                        Icon(
+                            Icons.Default.Delete,
+                            contentDescription = stringResource(R.string.title_delete_entry),
+                            modifier = Modifier.size(18.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
-                if (rt.url.isNotBlank()) {
+                if (showNotionLink && rt.url.isNotBlank()) {
                     IconButton(onClick = { onOpenUrl(rt.url) }, modifier = Modifier.size(36.dp)) {
                         Icon(
                             Icons.Default.OpenInNew,
@@ -1022,7 +1034,9 @@ private fun RecentEntriesSection(
     onDelete: (RecentEntryInfo) -> Unit,
     onOpenUrl: (String) -> Unit,
     dateFormat: String,
-    timeFormat: String
+    timeFormat: String,
+    showNotionLink: Boolean = true,
+    showArchiveAction: Boolean = true
 ) {
     if (entries.isEmpty() && !loading) return
 
@@ -1070,15 +1084,17 @@ private fun RecentEntriesSection(
                         overflow = TextOverflow.Ellipsis
                     )
                 }
-                IconButton(onClick = { onDelete(re) }, modifier = Modifier.size(36.dp)) {
-                    Icon(
-                        Icons.Default.Delete,
-                        contentDescription = stringResource(R.string.title_delete_entry),
-                        modifier = Modifier.size(18.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                if (showArchiveAction) {
+                    IconButton(onClick = { onDelete(re) }, modifier = Modifier.size(36.dp)) {
+                        Icon(
+                            Icons.Default.Delete,
+                            contentDescription = stringResource(R.string.title_delete_entry),
+                            modifier = Modifier.size(18.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
-                if (re.url.isNotBlank()) {
+                if (showNotionLink && re.url.isNotBlank()) {
                     IconButton(onClick = { onOpenUrl(re.url) }, modifier = Modifier.size(36.dp)) {
                         Icon(
                             Icons.Default.OpenInNew,

@@ -780,6 +780,8 @@ function DeletedPageDialog({ info, onDismiss }) {
 }
 
 function RunningTimerItem({ rt, isActive, onLoad, onStop, onDelete, onOpenUrl }) {
+  const showNotionLink = useStore((s) => s.showNotionLink);
+  const showArchiveAction = useStore((s) => s.showArchiveAction);
   const [elapsed, setElapsed] = useState(0);
 
   useEffect(() => {
@@ -805,7 +807,7 @@ function RunningTimerItem({ rt, isActive, onLoad, onStop, onDelete, onOpenUrl })
         </div>
       </div>
       <div className="flex items-center gap-1 shrink-0">
-        {rt.url && (
+        {showNotionLink && rt.url && (
           <button
             onClick={(e) => { e.stopPropagation(); onOpenUrl(rt.url); }}
             title={t('titleOpenInNotion')}
@@ -814,6 +816,7 @@ function RunningTimerItem({ rt, isActive, onLoad, onStop, onDelete, onOpenUrl })
             <Open20Regular className="w-4 h-4" />
           </button>
         )}
+        {showArchiveAction && (
         <button
           onClick={(e) => { e.stopPropagation(); onDelete(rt); }}
           title={t('titleDeleteEntry')}
@@ -821,6 +824,7 @@ function RunningTimerItem({ rt, isActive, onLoad, onStop, onDelete, onOpenUrl })
         >
           <Delete20Regular className="w-4 h-4" />
         </button>
+        )}
         {!isActive && (
           <button
             onClick={(e) => { e.stopPropagation(); onStop(rt); }}
@@ -883,6 +887,8 @@ function formatRecentRange(startISO, endISO) {
 }
 
 function RecentEntries({ entries, loading, onDelete, onOpenUrl }) {
+  const showNotionLink = useStore((s) => s.showNotionLink);
+  const showArchiveAction = useStore((s) => s.showArchiveAction);
   if (!entries.length && !loading) return null;
   return (
     <div className="w-full mt-2 pt-3 border-t border-zinc-700">
@@ -905,7 +911,7 @@ function RecentEntries({ entries, loading, onDelete, onOpenUrl }) {
             </div>
           </div>
           <div className="flex items-center gap-1 shrink-0">
-            {entry.url && (
+            {showNotionLink && entry.url && (
               <button
                 onClick={() => onOpenUrl(entry.url)}
                 title={t('titleOpenInNotion')}
@@ -914,13 +920,15 @@ function RecentEntries({ entries, loading, onDelete, onOpenUrl }) {
                 <Open20Regular className="w-4 h-4" />
               </button>
             )}
-            <button
-              onClick={() => onDelete(entry)}
-              title={t('titleDeleteEntry')}
-              className="text-zinc-500 hover:text-red-400 transition-colors flex items-center justify-center p-1"
-            >
-              <Delete20Regular className="w-4 h-4" />
-            </button>
+            {showArchiveAction && (
+              <button
+                onClick={() => onDelete(entry)}
+                title={t('titleDeleteEntry')}
+                className="text-zinc-500 hover:text-red-400 transition-colors flex items-center justify-center p-1"
+              >
+                <Delete20Regular className="w-4 h-4" />
+              </button>
+            )}
           </div>
         </div>
       ))}

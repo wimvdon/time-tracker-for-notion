@@ -37,6 +37,9 @@ export default {
   btnAddWorkspace: '+ Add workspace',
   labelAlwaysOnTop: 'Keep window on top',
   labelStartWithWindows: 'Start with Windows',
+  labelNotionActions: 'Notion entry actions',
+  labelShowNotionLink: 'Show “Open in Notion” link on active/recent timers',
+  labelShowArchiveAction: 'Show archive action on active/recent timers',
 
   // Add/Edit workspace modal
   modalTitleAddWorkspace: 'Add Workspace',

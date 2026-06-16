@@ -56,6 +56,9 @@ export const useStore = create((set, get) => ({
   workspaces: [],
   alwaysOnTop: true,
   startWithWindows: false,
+  // Global toggles for the per-entry Notion actions on active/recent timers.
+  showNotionLink: true,
+  showArchiveAction: true,
 
   // UI
   view: 'timer',
@@ -173,6 +176,8 @@ export const useStore = create((set, get) => ({
       workspaces,
       alwaysOnTop: settings.alwaysOnTop !== false,
       startWithWindows: settings.startWithWindows === true,
+      showNotionLink: settings.showNotionLink !== false,
+      showArchiveAction: settings.showArchiveAction !== false,
       theme: settings.theme || 'auto',
       locale: activeLocale,
       dateFormat: settings.dateFormat || 'DD/MM/YYYY',
@@ -360,6 +365,16 @@ export const useStore = create((set, get) => ({
   toggleStartWithWindows: async (value) => {
     await api.setStartWithWindows(value);
     set({ startWithWindows: value });
+  },
+
+  setShowNotionLink: async (value) => {
+    await api.saveSettings({ showNotionLink: value });
+    set({ showNotionLink: value });
+  },
+
+  setShowArchiveAction: async (value) => {
+    await api.saveSettings({ showArchiveAction: value });
+    set({ showArchiveAction: value });
   },
 
   setLocale: async (locale) => {

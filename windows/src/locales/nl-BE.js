@@ -37,6 +37,9 @@ export default {
   btnAddWorkspace: '+ Werkruimte toevoegen',
   labelAlwaysOnTop: 'Venster altijd bovenaan houden',
   labelStartWithWindows: 'Starten met Windows',
+  labelNotionActions: 'Notion-acties',
+  labelShowNotionLink: 'Toon “Openen in Notion”-link bij actieve/recente timers',
+  labelShowArchiveAction: 'Toon archiveeractie bij actieve/recente timers',
 
   // Add/Edit workspace modal
   modalTitleAddWorkspace: 'Werkruimte toevoegen',
