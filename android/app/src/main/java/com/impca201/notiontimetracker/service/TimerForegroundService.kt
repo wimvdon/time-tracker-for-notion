@@ -3,6 +3,7 @@ package com.impca201.notiontimetracker.service
 import android.app.*
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ServiceInfo
 import android.graphics.Color
 import android.os.*
 import androidx.core.app.NotificationCompat
@@ -11,7 +12,10 @@ import com.impca201.notiontimetracker.NotionTimeTrackerApp
 import com.impca201.notiontimetracker.R
 import com.impca201.notiontimetracker.data.models.ActiveTimer
 import com.impca201.notiontimetracker.data.models.PropertyMap
+import com.impca201.notiontimetracker.data.models.RunningTimerInfo
 import kotlinx.coroutines.*
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.decodeFromString
 
 class TimerForegroundService : Service() {
 
@@ -20,6 +24,8 @@ class TimerForegroundService : Service() {
         const val NOTIFICATION_ID = 1001
         const val ACTION_START = "ACTION_START_TIMER"
         const val ACTION_STOP = "ACTION_STOP_TIMER"
+        const val ACTION_STOP_OTHER = "ACTION_STOP_OTHER_TIMER"
+        const val ACTION_SYNC_TIMERS = "ACTION_SYNC_TIMERS"
         const val ACTION_TIMER_STOPPED = "com.impca201.notiontimetracker.TIMER_STOPPED"
         const val EXTRA_PAGE_ID = "extra_page_id"
         const val EXTRA_ROUNDED_START = "extra_rounded_start"
@@ -67,6 +73,9 @@ class TimerForegroundService : Service() {
     private var propertyMap: PropertyMap = PropertyMap()
     private var startMillis: Long = 0L
 
+    private var otherTimers: List<RunningTimerInfo> = emptyList()
+    private var lastSecondaryNotificationIds: Set<Int> = emptySet()
+
     private val handler = Handler(Looper.getMainLooper())
     private val ticker = object : Runnable {
         override fun run() {
@@ -100,12 +109,99 @@ class TimerForegroundService : Service() {
                 startMillis = parseIso(rawStart)
 
                 val elapsed = (System.currentTimeMillis() - startMillis) / 1000L
-                startForeground(NOTIFICATION_ID, buildNotification(elapsed.coerceAtLeast(0L)))
+                startForegroundCompat(buildNotification(elapsed.coerceAtLeast(0L)))
                 handler.removeCallbacks(ticker)
                 handler.post(ticker)
             }
             ACTION_STOP -> {
                 handleStop()
+            }
+            ACTION_STOP_OTHER -> {
+                val stoppedId = intent.getStringExtra(EXTRA_PAGE_ID) ?: ""
+                val pm = PropertyMap(
+                    timeEntryTitleProp = intent.getStringExtra(EXTRA_TITLE_PROP) ?: "",
+                    timeEntryDateProp = intent.getStringExtra(EXTRA_DATE_PROP) ?: "",
+                    timeEntryStatusProp = intent.getStringExtra(EXTRA_STATUS_PROP) ?: "",
+                    timeEntryStatusDone = intent.getStringExtra(EXTRA_STATUS_DONE) ?: ""
+                )
+                val wsName = intent.getStringExtra(EXTRA_WORKSPACE_NAME) ?: ""
+                val rawStart = intent.getStringExtra(EXTRA_RAW_START) ?: ""
+                
+                if (stoppedId.isNotBlank()) {
+                    serviceScope.launch {
+                        val app = application as NotionTimeTrackerApp
+                        val rawStartMs = runCatching { parseIso(rawStart) }.getOrDefault(System.currentTimeMillis())
+                        val nowMs = System.currentTimeMillis()
+                        val startISO = toNotionDateTime(rawStartMs)
+                        val endISO = toNotionDateTime(nowMs)
+
+                        runCatching {
+                            app.notionRepository.stopTimeEntry(
+                                pageId = stoppedId,
+                                startISO = startISO,
+                                endISO = endISO,
+                                propertyMap = pm
+                            )
+                        }
+                        
+                        val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+                        nm.cancel(stoppedId.hashCode())
+                        
+                        sendBroadcast(Intent(ACTION_TIMER_STOPPED).apply {
+                            putExtra(EXTRA_PAGE_ID, stoppedId)
+                        })
+                    }
+                }
+            }
+            ACTION_SYNC_TIMERS -> {
+                val activePageId = intent.getStringExtra("active_page_id")
+                if (activePageId != null) {
+                    pageId = activePageId
+                    roundedStart = intent.getStringExtra("active_start_iso") ?: ""
+                    startMillis = runCatching { parseIso(roundedStart) }.getOrDefault(0L)
+                    workspaceName = intent.getStringExtra("active_workspace_name") ?: ""
+                    description = intent.getStringExtra("active_title") ?: ""
+                    workspaceColor = intent.getStringExtra("active_workspace_color")
+                    roundingMinutes = intent.getIntExtra("active_rounding_minutes", 15)
+                } else {
+                    pageId = ""
+                    startMillis = 0L
+                }
+
+                val jsonStr = intent.getStringExtra("running_timers_json")
+                otherTimers = if (!jsonStr.isNullOrBlank()) {
+                    runCatching { Json.decodeFromString<List<RunningTimerInfo>>(jsonStr) }.getOrDefault(emptyList())
+                } else {
+                    emptyList()
+                }
+
+                if (pageId.isBlank() && otherTimers.isEmpty()) {
+                    stopSelf()
+                } else {
+                    if (pageId.isNotBlank()) {
+                        val elapsed = (System.currentTimeMillis() - startMillis) / 1000L
+                        startForegroundCompat(buildNotification(elapsed.coerceAtLeast(0L)))
+                    } else if (otherTimers.isNotEmpty()) {
+                        val first = otherTimers.first()
+                        val firstStartMs = runCatching { parseIso(first.startISO) }.getOrDefault(0L)
+                        val elapsed = (System.currentTimeMillis() - firstStartMs) / 1000L
+                        
+                        pageId = first.pageId
+                        roundedStart = first.startISO
+                        startMillis = firstStartMs
+                        workspaceName = first.workspaceName
+                        description = first.title
+                        workspaceColor = null
+                        propertyMap = first.propertyMap
+                        roundingMinutes = 15
+                        
+                        otherTimers = otherTimers.drop(1)
+                        
+                        startForegroundCompat(buildNotification(elapsed.coerceAtLeast(0L)))
+                    }
+                    handler.removeCallbacks(ticker)
+                    handler.post(ticker)
+                }
             }
         }
         return START_STICKY
@@ -150,17 +246,96 @@ class TimerForegroundService : Service() {
     }
 
     private fun updateNotification() {
-        val elapsed = (System.currentTimeMillis() - startMillis) / 1000L
         val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        nm.notify(NOTIFICATION_ID, buildNotification(elapsed.coerceAtLeast(0L)))
+        if (pageId.isNotBlank()) {
+            val elapsed = (System.currentTimeMillis() - startMillis) / 1000L
+            nm.notify(NOTIFICATION_ID, buildNotification(elapsed.coerceAtLeast(0L)))
+        }
+
+        val currentSecondaryIds = mutableSetOf<Int>()
+        otherTimers.forEach { timer ->
+            val notificationId = timer.pageId.hashCode()
+            currentSecondaryIds.add(notificationId)
+
+            val timerStartMillis = runCatching { parseIso(timer.startISO) }.getOrDefault(0L)
+            val elapsed = (System.currentTimeMillis() - timerStartMillis) / 1000L
+
+            val notification = buildSecondaryNotification(timer, elapsed.coerceAtLeast(0L))
+            nm.notify(notificationId, notification)
+        }
+
+        val lastIds = lastSecondaryNotificationIds
+        for (oldId in lastIds) {
+            if (!currentSecondaryIds.contains(oldId)) {
+                nm.cancel(oldId)
+            }
+        }
+        lastSecondaryNotificationIds = currentSecondaryIds
+    }
+
+    private fun buildSecondaryNotification(timer: RunningTimerInfo, elapsedSecs: Long): Notification {
+        val contentTitle = if (timer.title.isNotBlank())
+            "⏱ ${timer.workspaceName} – ${timer.title}" else "⏱ ${timer.workspaceName}"
+        val elapsedStr = formatElapsed(elapsedSecs)
+        val contentText = elapsedStr
+
+        val notificationId = timer.pageId.hashCode()
+
+        val openIntent = PendingIntent.getActivity(
+            this, notificationId,
+            Intent(this, MainActivity::class.java),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val stopIntent = PendingIntent.getService(
+            this, notificationId + 10000,
+            Intent(this, TimerForegroundService::class.java).apply {
+                action = ACTION_STOP_OTHER
+                putExtra(EXTRA_PAGE_ID, timer.pageId)
+                putExtra(EXTRA_TITLE_PROP, timer.propertyMap.timeEntryTitleProp)
+                putExtra(EXTRA_DATE_PROP, timer.propertyMap.timeEntryDateProp)
+                putExtra(EXTRA_STATUS_PROP, timer.propertyMap.timeEntryStatusProp)
+                putExtra(EXTRA_STATUS_DONE, timer.propertyMap.timeEntryStatusDone)
+                putExtra(EXTRA_WORKSPACE_NAME, timer.workspaceName)
+                putExtra(EXTRA_RAW_START, timer.startISO)
+            },
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val stopAction = NotificationCompat.Action.Builder(
+            R.drawable.ic_notification,
+            getString(R.string.notification_action_stop),
+            stopIntent
+        ).build()
+
+        val builder = NotificationCompat.Builder(this, CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_notification)
+            .setContentTitle(contentTitle)
+            .setContentText(contentText)
+            .setOngoing(true)
+            .setOnlyAlertOnce(true)
+            .setContentIntent(openIntent)
+            .addAction(stopAction)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+
+        return builder.build()
+    }
+
+    override fun onDestroy() {
+        handler.removeCallbacks(ticker)
+        val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        for (id in lastSecondaryNotificationIds) {
+            nm.cancel(id)
+        }
+        serviceScope.cancel()
+        super.onDestroy()
     }
 
     private fun buildNotification(elapsedSecs: Long): Notification {
         val contentTitle = if (description.isNotBlank())
             "⏱ $workspaceName – $description" else "⏱ $workspaceName"
         val elapsedStr = formatElapsed(elapsedSecs)
-        val intervalStr = buildIntervalString(roundedStart, elapsedSecs, roundingMinutes)
-        val contentText = "$elapsedStr · $intervalStr"
+        val contentText = elapsedStr
 
         val openIntent = PendingIntent.getActivity(
             this, 0,
@@ -199,7 +374,7 @@ class TimerForegroundService : Service() {
         }
 
         if (Build.VERSION.SDK_INT >= 36) {
-            buildProgressStyleNotification(builder, elapsedSecs)
+            Api36Helper.buildProgressStyleNotification(this, builder, elapsedSecs, roundingMinutes, CHANNEL_ID)
         } else {
             val totalSecs = (roundingMinutes * 60).coerceAtLeast(1)
             val progress = ((elapsedSecs.toFloat() / totalSecs) * 100).toInt().coerceIn(0, 100)
@@ -207,49 +382,6 @@ class TimerForegroundService : Service() {
         }
 
         return builder.build()
-    }
-
-    @Suppress("DEPRECATION")
-    private fun buildProgressStyleNotification(
-        builder: NotificationCompat.Builder,
-        elapsedSecs: Long
-    ) {
-        if (Build.VERSION.SDK_INT < 36) return
-        val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        if (!nm.canPostPromotedNotifications()) return
-
-        val totalSecs = (roundingMinutes * 60L).coerceAtLeast(1L)
-        val progress = ((elapsedSecs.toFloat() / totalSecs) * 100f).coerceIn(0f, 100f)
-        val elapsed = progress.toInt().coerceAtLeast(1)
-        val remaining = (100 - elapsed).coerceAtLeast(0)
-
-        try {
-            val progressStyle = Notification.ProgressStyle()
-            progressStyle.setProgress(elapsed)
-            if (remaining > 0) {
-                progressStyle.setProgressSegments(
-                    listOf(
-                        Notification.ProgressStyle.Segment(elapsed)
-                            .setColor(Color.rgb(239, 68, 68)),
-                        Notification.ProgressStyle.Segment(remaining)
-                            .setColor(Color.rgb(113, 113, 122))
-                    )
-                )
-            }
-            val nativeBuilder = Notification.Builder(this, CHANNEL_ID)
-                .setSmallIcon(R.drawable.ic_notification)
-                .setStyle(progressStyle)
-            builder.extend(object : NotificationCompat.Extender {
-                override fun extend(b: NotificationCompat.Builder): NotificationCompat.Builder {
-                    b.notification.extras?.putString("android.progressStyle", "true")
-                    return b
-                }
-            })
-        } catch (_: Exception) {
-            // Fall through to standard progress bar
-            val p = ((elapsedSecs.toFloat() / totalSecs) * 100).toInt().coerceIn(0, 100)
-            builder.setProgress(100, p, false)
-        }
     }
 
     private fun createNotificationChannel() {
@@ -265,11 +397,7 @@ class TimerForegroundService : Service() {
         nm.createNotificationChannel(channel)
     }
 
-    override fun onDestroy() {
-        handler.removeCallbacks(ticker)
-        serviceScope.cancel()
-        super.onDestroy()
-    }
+
 
     override fun onBind(intent: Intent?) = null
 
@@ -319,4 +447,60 @@ class TimerForegroundService : Service() {
         val odt = java.time.Instant.ofEpochMilli(ms).atZone(java.time.ZoneId.systemDefault())
         return java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME.format(odt)
     }
+
+    private fun startForegroundCompat(notification: Notification) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
+        } else {
+            startForeground(NOTIFICATION_ID, notification)
+        }
+    }
 }
+
+@androidx.annotation.RequiresApi(36)
+private object Api36Helper {
+    fun buildProgressStyleNotification(
+        context: Context,
+        builder: NotificationCompat.Builder,
+        elapsedSecs: Long,
+        roundingMinutes: Int,
+        channelId: String
+    ) {
+        val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        if (!nm.canPostPromotedNotifications()) return
+
+        val totalSecs = (roundingMinutes * 60L).coerceAtLeast(1L)
+        val progress = ((elapsedSecs.toFloat() / totalSecs) * 100f).coerceIn(0f, 100f)
+        val elapsed = progress.toInt().coerceAtLeast(1)
+        val remaining = (100 - elapsed).coerceAtLeast(0)
+
+        try {
+            val progressStyle = Notification.ProgressStyle()
+            progressStyle.setProgress(elapsed)
+            if (remaining > 0) {
+                progressStyle.setProgressSegments(
+                    listOf(
+                        Notification.ProgressStyle.Segment(elapsed)
+                            .setColor(Color.rgb(239, 68, 68)),
+                        Notification.ProgressStyle.Segment(remaining)
+                            .setColor(Color.rgb(113, 113, 122))
+                    )
+                )
+            }
+            val nativeBuilder = Notification.Builder(context, channelId)
+                .setSmallIcon(R.drawable.ic_notification)
+                .setStyle(progressStyle)
+            builder.extend(object : NotificationCompat.Extender {
+                override fun extend(b: NotificationCompat.Builder): NotificationCompat.Builder {
+                    b.notification.extras?.putString("android.progressStyle", "true")
+                    return b
+                }
+            })
+        } catch (_: Exception) {
+            // Fall through to standard progress bar
+            val p = ((elapsedSecs.toFloat() / totalSecs) * 100).toInt().coerceIn(0, 100)
+            builder.setProgress(100, p, false)
+        }
+    }
+}
+

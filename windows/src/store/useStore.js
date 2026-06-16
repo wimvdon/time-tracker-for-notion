@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { computeStartTime, computeEndTime } from '../lib/rounding.js';
-import { toNotionDateTime, formatDateDDMMYYYY } from '../lib/format.js';
-import { t } from '../lib/i18n.js';
+import { toNotionDateTime, formatDateStr } from '../lib/format.js';
+import { t, setLocale } from '../lib/i18n.js';
 import { errorMessage } from '../lib/errors.js';
 import { WRITABLE_EXTRA_TYPES, emptyValueFor, buildPropertyValue } from '../lib/notionValues.js';
 
@@ -66,6 +66,8 @@ export const useStore = create((set, get) => ({
   isStopping: false,
   theme: 'auto',
   suspendedTimer: null,
+  showAlreadyRunningWarning: false,
+  pendingStartAction: null,
 
   // Session state
   selectedWorkspaceId: null,
@@ -163,12 +165,18 @@ export const useStore = create((set, get) => ({
       });
     }
 
+    const activeLocale = settings.locale || 'system';
+    setLocale(activeLocale);
+
     set({
       apiKey: settings.apiKey || '',
       workspaces,
       alwaysOnTop: settings.alwaysOnTop !== false,
       startWithWindows: settings.startWithWindows === true,
       theme: settings.theme || 'auto',
+      locale: activeLocale,
+      dateFormat: settings.dateFormat || 'DD/MM/YYYY',
+      timeFormat: settings.timeFormat || '24h',
     });
 
     if (!settings.apiKey || !workspaces.length) {
@@ -176,13 +184,24 @@ export const useStore = create((set, get) => ({
     }
 
     if (activeTimer && activeTimer.notionPageId) {
-      set({ recoveredTimer: activeTimer });
+      set({ description: activeTimer.description || '', view: 'timer' });
+      if (activeTimer.workspaceId) {
+        await get().selectWorkspace(activeTimer.workspaceId, activeTimer);
+        set({ selectedProjectId: activeTimer.projectId || null });
+      }
+      get().beginTicking({
+        pageId: activeTimer.notionPageId,
+        roundedStart: new Date(activeTimer.roundedStart),
+        startISO: activeTimer.roundedStart,
+        rawStart: new Date(activeTimer.rawStart || activeTimer.roundedStart),
+        propertyMap: activeTimer.propertyMap,
+      });
     } else if (lastUsedWorkspaceId) {
       const exists = workspaces.some((w) => w.id === lastUsedWorkspaceId);
       if (exists) get().selectWorkspace(lastUsedWorkspaceId);
     }
 
-    if (settings.apiKey && workspaces.length && !(activeTimer && activeTimer.notionPageId)) {
+    if (settings.apiKey && workspaces.length) {
       get().loadRunningTimers();
       get().loadRecentEntries();
     }
@@ -255,6 +274,84 @@ export const useStore = create((set, get) => ({
     api.notifySettingsChanged?.();
   },
 
+  saveCurrentAsPreset: async (name) => {
+    const state = get();
+    const workspaceId = state.selectedWorkspaceId;
+    if (!workspaceId) return;
+    const workspace = state.workspaces.find((w) => w.id === workspaceId);
+    const newPreset = {
+      id: Math.random().toString(36).substring(2, 9),
+      name: name.trim() || '',
+      pageTitle: state.description.trim(),
+      extraValues: { ...state.extraValues },
+      showInShortcuts: false
+    };
+    const workspaces = state.workspaces.map((w) => {
+      if (w.id === workspaceId) {
+        return {
+          ...w,
+          presets: [...(w.presets || []), newPreset]
+        };
+      }
+      return w;
+    });
+    await api.saveSettings({ workspaces });
+    set({ workspaces });
+    api.notifySettingsChanged?.();
+  },
+
+  deletePreset: async (workspaceId, presetId) => {
+    const state = get();
+    const workspaces = state.workspaces.map((w) => {
+      if (w.id === workspaceId) {
+        return {
+          ...w,
+          presets: (w.presets || []).filter((p) => p.id !== presetId)
+        };
+      }
+      return w;
+    });
+    await api.saveSettings({ workspaces });
+    set({ workspaces });
+    api.notifySettingsChanged?.();
+  },
+
+  movePresetUp: async (workspaceId, presetId) => {
+    const state = get();
+    const workspaces = state.workspaces.map((w) => {
+      if (w.id === workspaceId) {
+        const presets = [...(w.presets || [])];
+        const idx = presets.findIndex((p) => p.id === presetId);
+        if (idx > 0) {
+          [presets[idx], presets[idx - 1]] = [presets[idx - 1], presets[idx]];
+          return { ...w, presets };
+        }
+      }
+      return w;
+    });
+    await api.saveSettings({ workspaces });
+    set({ workspaces });
+    api.notifySettingsChanged?.();
+  },
+
+  movePresetDown: async (workspaceId, presetId) => {
+    const state = get();
+    const workspaces = state.workspaces.map((w) => {
+      if (w.id === workspaceId) {
+        const presets = [...(w.presets || [])];
+        const idx = presets.findIndex((p) => p.id === presetId);
+        if (idx >= 0 && idx < presets.length - 1) {
+          [presets[idx], presets[idx + 1]] = [presets[idx + 1], presets[idx]];
+          return { ...w, presets };
+        }
+      }
+      return w;
+    });
+    await api.saveSettings({ workspaces });
+    set({ workspaces });
+    api.notifySettingsChanged?.();
+  },
+
   toggleAlwaysOnTop: async (value) => {
     await api.setAlwaysOnTop(value);
     set({ alwaysOnTop: value });
@@ -265,24 +362,50 @@ export const useStore = create((set, get) => ({
     set({ startWithWindows: value });
   },
 
+  setLocale: async (locale) => {
+    await api.saveSettings({ locale });
+    setLocale(locale);
+    set({ locale });
+  },
+
+  setDateFormat: async (dateFormat) => {
+    await api.saveSettings({ dateFormat });
+    set({ dateFormat });
+  },
+
+  setTimeFormat: async (timeFormat) => {
+    await api.saveSettings({ timeFormat });
+    set({ timeFormat });
+  },
+
   // ---- Workspace / project selection ----
 
-  selectWorkspace: async (workspaceId) => {
-    const workspace = get().workspaces.find((w) => w.id === workspaceId);
+  selectWorkspace: async (workspaceId, activeOverride = null) => {
+    const state = get();
+    const workspace = state.workspaces.find((w) => w.id === workspaceId);
+
+    const active = activeOverride || (state.timer.running && state.timer.workspaceId === workspaceId
+      ? { description: state.description, projectId: state.selectedProjectId, extraValues: state.extraValues }
+      : null);
+
+    const description = active ? (active.description || '') : '';
+    const selectedProjectId = active ? (active.projectId || null) : null;
+    const extraValues = active ? (active.extraValues || {}) : {};
+
     set({
       selectedWorkspaceId: workspaceId,
-      selectedProjectId: null,
-      description: '',
+      selectedProjectId,
+      description,
       extraFieldDefs: [],
-      extraValues: {},
+      extraValues,
       extrasLoading: !!workspace && (workspace.extraProps?.length ?? 0) > 0,
     });
     api.saveSettings({ lastUsedWorkspaceId: workspaceId });
     if (!workspace) return;
-    await get().loadExtraFields(workspace);
+    await get().loadExtraFields(workspace, active);
   },
 
-  loadExtraFields: async (workspace) => {
+  loadExtraFields: async (workspace, active = null) => {
     if (!(workspace.extraProps?.length)) return;
     try {
       const schema = await api.getDatabaseSchema(workspace.timeEntriesDbId);
@@ -303,9 +426,11 @@ export const useStore = create((set, get) => ({
         defs.push(def);
       }
       if (get().selectedWorkspaceId !== workspace.id) return;
-      const extraValues = {};
+      const extraValues = { ...active?.extraValues };
       for (const def of defs) {
-        extraValues[def.name] = emptyValueFor(def.type);
+        if (extraValues[def.name] === undefined) {
+          extraValues[def.name] = emptyValueFor(def.type);
+        }
       }
       set({ extraFieldDefs: defs, extraValues, extrasLoading: false });
     } catch (err) {
@@ -334,7 +459,7 @@ export const useStore = create((set, get) => ({
 
     const rawStart = new Date();
     const startISO = toNotionDateTime(rawStart);
-    const title = state.description.trim() || formatDateDDMMYYYY(rawStart);
+    const title = state.description.trim() || formatDateStr(rawStart, state.dateFormat);
 
     const extra = {};
     for (const def of state.extraFieldDefs) {
@@ -368,6 +493,7 @@ export const useStore = create((set, get) => ({
         projectName: '',
         description: state.description,
         propertyMap: workspace.propertyMap,
+        extraValues: state.extraValues,
       },
     });
     get().beginTicking({
@@ -387,22 +513,53 @@ export const useStore = create((set, get) => ({
    * the timer immediately.
    */
   applyPreset: async (workspaceId, preset) => {
-    const state = get();
-    if (state.timer.running) return;
+    const action = async () => {
+      const state = get();
+      if (state.selectedWorkspaceId !== workspaceId) {
+        await get().selectWorkspace(workspaceId);
+      }
+      set({ description: preset.pageTitle || '' });
+      if (preset.extraValues && Object.keys(preset.extraValues).length > 0) {
+        set({ extraValues: { ...get().extraValues, ...preset.extraValues } });
+      }
+      await get().startTimer();
+    };
 
-    // Switch workspace if needed
-    if (state.selectedWorkspaceId !== workspaceId) {
-      await get().selectWorkspace(workspaceId);
+    if (get().timer.running) {
+      set({
+        showAlreadyRunningWarning: true,
+        pendingStartAction: () => {
+          get().suspendActiveToNewTimer();
+          action();
+        }
+      });
+    } else {
+      await action();
     }
+  },
 
-    // Set description and extra values from preset
-    set({ description: preset.pageTitle || '' });
-    if (preset.extraValues && Object.keys(preset.extraValues).length > 0) {
-      set({ extraValues: { ...get().extraValues, ...preset.extraValues } });
+  onConfirmAlreadyRunning: () => {
+    set({ showAlreadyRunningWarning: false });
+    const action = get().pendingStartAction;
+    set({ pendingStartAction: null });
+    if (action) action();
+  },
+
+  onCancelAlreadyRunning: () => {
+    set({ showAlreadyRunningWarning: false, pendingStartAction: null });
+  },
+
+  onPlusButtonClicked: () => {
+    if (get().timer.running) {
+      set({
+        showAlreadyRunningWarning: true,
+        pendingStartAction: () => {
+          get().suspendActiveToNewTimer();
+        }
+      });
+    } else {
+      get().suspendActiveToNewTimer();
     }
-
-    // Start timer immediately
-    await get().startTimer();
   },
 
   beginTicking: ({ pageId, roundedStart, startISO, rawStart, propertyMap }) => {
@@ -424,6 +581,7 @@ export const useStore = create((set, get) => ({
         propertyMap,
         elapsedSeconds: Math.floor((Date.now() - rawStart.getTime()) / 1000),
         tickInterval,
+        workspaceId: get().selectedWorkspaceId,
       },
     });
     const ws = get().workspaces.find((w) => w.id === get().selectedWorkspaceId);
@@ -916,6 +1074,7 @@ export const useStore = create((set, get) => ({
       projectName: '',
       description: newTitle,
       propertyMap: pm,
+      extraValues,
     };
     api.saveSettings({ activeTimer: updatedTimer });
 

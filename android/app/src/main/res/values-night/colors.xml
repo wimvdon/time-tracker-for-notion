@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="widget_background">#18181b</color>
+    <color name="widget_stroke">#27272a</color>
+    <color name="widget_text_primary">#ffffff</color>
+    <color name="widget_text_secondary">#a1a1aa</color>
+    <color name="widget_chip_background">#27272a</color>
+    <color name="widget_chip_stroke">#3f3f46</color>
+    <color name="widget_chronometer">#ef4444</color>
+    <color name="widget_stop_button_tint">#ef4444</color>
+    <color name="widget_accent">#34d399</color>
+</resources>

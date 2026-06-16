@@ -44,6 +44,7 @@
     <string name="modal_title_add_workspace">Add Workspace</string>
     <string name="modal_title_edit_workspace">Edit Workspace</string>
     <string name="label_workspace_name">Name</string>
+    <string name="placeholder_workspace_name">My workspace</string>
     <string name="label_time_entries_db">Time Entries database</string>
     <string name="hint_time_entries_db">Time entries are created here. Required: one date-range field, one status field, and ideally one relation field linking to a projects database.</string>
     <string name="label_projects_db">Projects database</string>
@@ -144,8 +145,9 @@
     <!-- QR code import -->
     <string name="btn_scan_qr">Scan QR code to import settings</string>
     <string name="btn_add_workspace_qr">Add workspace via QR code</string>
+    <string name="btn_import_settings_qr">Scan QR code (settings / workspace)</string>
     <string name="qr_scan_title">Scan QR code</string>
-    <string name="qr_scan_hint">Point the camera at a QR code from the Windows app settings.</string>
+    <string name="qr_scan_hint">Point the camera at a settings or workspace QR code from the Windows app.</string>
     <string name="qr_import_success">Settings imported successfully.</string>
     <string name="qr_import_error">Could not read QR code settings.</string>
     <string name="qr_permission_denied">Camera permission is required to scan QR codes.</string>
@@ -190,4 +192,33 @@
     <string name="btn_workspace_qr">Export workspace QR</string>
     <string name="qr_workspace_note">Scan to import this workspace on another device. API key not included.</string>
     <string name="qr_scan_hint_workspace">Point the camera at a workspace QR code from the Windows app.</string>
+
+    <!-- Additional New Strings -->
+    <string name="warn_already_running_title">Timer already running</string>
+    <string name="warn_already_running_body">A timer is already running. Do you want to start a new one simultaneously?</string>
+    <string name="btn_add_new_timer">Start new</string>
+    <string name="dialog_save_preset_title">Save Preset</string>
+    <string name="dialog_save_preset_body">Save the current description and selected workspace/fields as a preset.</string>
+    <string name="dialog_save_preset_placeholder">Preset name (e.g. Daily Standup)</string>
+    <string name="presets_manage_title">Manage Presets</string>
+    <string name="tooltip_presets_shortcuts">Top presets will be used for launcher shortcuts.</string>
+    <string name="dialog_unsaved_changes_title">Unsaved Changes</string>
+    <string name="dialog_unsaved_changes_body">You have unsaved changes. Would you like to save them before leaving?</string>
+    <string name="btn_discard">Discard</string>
+    <string name="dialog_time_error_title">End time is before start time</string>
+    <string name="dialog_time_error_body">The end time occurs before the start time. Did you mean to stop the timer on the next day?</string>
+    <string name="btn_edit">Edit</string>
+    <string name="btn_next_day">Next day</string>
+
+    <!-- Settings Formats -->
+    <string name="label_language">Language</string>
+    <string name="label_date_format">Date format</string>
+    <string name="label_time_format">Time format</string>
+    <string name="language_system">Follow device (Auto)</string>
+    <string name="language_en">English</string>
+    <string name="language_nl">Nederlands</string>
+    <string name="language_fr">Français</string>
+    <string name="language_de">Deutsch</string>
+    <string name="language_es">Español</string>
+    <string name="language_it">Italiano</string>
 </resources>

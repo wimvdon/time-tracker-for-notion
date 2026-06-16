@@ -26,7 +26,10 @@ class SettingsViewModel(private val app: Application) : AndroidViewModel(app) {
         val keyTestError: String? = null,
         val snackbarMessage: String? = null,
         val themeMode: ThemeMode = ThemeMode.AUTO,
-        val dynamicColor: Boolean = false
+        val dynamicColor: Boolean = false,
+        val locale: String = "system",
+        val dateFormat: String = "DD/MM/YYYY",
+        val timeFormat: String = "24h"
     )
 
     data class WorkspaceEditState(
@@ -77,7 +80,18 @@ class SettingsViewModel(private val app: Application) : AndroidViewModel(app) {
         val workspaces = settingsRepo.getWorkspaces()
         val themeMode = settingsRepo.themeModeFlow.first()
         val dynamicColor = settingsRepo.dynamicColorFlow.first()
-        _uiState.update { it.copy(apiKey = apiKey, workspaces = workspaces, themeMode = themeMode, dynamicColor = dynamicColor) }
+        val locale = settingsRepo.localeFlow.first()
+        val dateFormat = settingsRepo.dateFormatFlow.first()
+        val timeFormat = settingsRepo.timeFormatFlow.first()
+        _uiState.update { it.copy(
+            apiKey = apiKey,
+            workspaces = workspaces,
+            themeMode = themeMode,
+            dynamicColor = dynamicColor,
+            locale = locale,
+            dateFormat = dateFormat,
+            timeFormat = timeFormat
+        ) }
     }
 
     fun setThemeMode(mode: ThemeMode) {
@@ -88,6 +102,21 @@ class SettingsViewModel(private val app: Application) : AndroidViewModel(app) {
     fun setDynamicColor(enabled: Boolean) {
         _uiState.update { it.copy(dynamicColor = enabled) }
         viewModelScope.launch { settingsRepo.saveDynamicColor(enabled) }
+    }
+
+    fun setLocale(locale: String) {
+        _uiState.update { it.copy(locale = locale) }
+        viewModelScope.launch { settingsRepo.saveLocale(locale) }
+    }
+
+    fun setDateFormat(format: String) {
+        _uiState.update { it.copy(dateFormat = format) }
+        viewModelScope.launch { settingsRepo.saveDateFormat(format) }
+    }
+
+    fun setTimeFormat(format: String) {
+        _uiState.update { it.copy(timeFormat = format) }
+        viewModelScope.launch { settingsRepo.saveTimeFormat(format) }
     }
 
     fun importApiKey(key: String) {

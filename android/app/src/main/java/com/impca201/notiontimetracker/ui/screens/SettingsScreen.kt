@@ -27,6 +27,8 @@ import androidx.activity.compose.BackHandler
 import com.impca201.notiontimetracker.ui.components.WorkspaceModal
 import com.impca201.notiontimetracker.ui.theme.dynamicColorSupported
 import com.impca201.notiontimetracker.viewmodel.SettingsViewModel
+import com.impca201.notiontimetracker.ui.components.SearchableDropdown
+import com.impca201.notiontimetracker.data.models.NamedOption
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -65,7 +67,10 @@ fun SettingsScreen(
     onThemeModeChange: (ThemeMode) -> Unit,
     onDynamicColorChange: (Boolean) -> Unit,
     onScanQr: () -> Unit,
-    onSnackbarDismiss: () -> Unit
+    onSnackbarDismiss: () -> Unit,
+    onLocaleChange: (String) -> Unit = {},
+    onDateFormatChange: (String) -> Unit = {},
+    onTimeFormatChange: (String) -> Unit = {}
 ) {
     BackHandler(onBack = onBack)
     val snackbarHostState = remember { SnackbarHostState() }
@@ -196,6 +201,15 @@ fun SettingsScreen(
                 }
             }
 
+            OutlinedButton(
+                onClick = onScanQr,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(Icons.Default.QrCodeScanner, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text(stringResource(R.string.btn_import_settings_qr))
+            }
+
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
             // --- Workspaces section ---
@@ -235,15 +249,6 @@ fun SettingsScreen(
                 Text(stringResource(R.string.btn_add_workspace))
             }
 
-            OutlinedButton(
-                onClick = onScanQr,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Icon(Icons.Default.QrCodeScanner, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.width(8.dp))
-                Text(stringResource(R.string.btn_add_workspace_qr))
-            }
-
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
             // --- Theme section ---
@@ -275,6 +280,64 @@ fun SettingsScreen(
                     )
                 }
             }
+
+            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+
+            // --- Formats & Locale section ---
+            Text(stringResource(R.string.label_language), style = MaterialTheme.typography.titleSmall)
+            val languageOptions = listOf(
+                NamedOption("system", stringResource(R.string.language_system)),
+                NamedOption("en", stringResource(R.string.language_en)),
+                NamedOption("nl", stringResource(R.string.language_nl)),
+                NamedOption("fr", stringResource(R.string.language_fr)),
+                NamedOption("de", stringResource(R.string.language_de)),
+                NamedOption("es", stringResource(R.string.language_es)),
+                NamedOption("it", stringResource(R.string.language_it))
+            )
+            val selectedLanguage = languageOptions.firstOrNull { it.id == uiState.locale } ?: languageOptions.first()
+            SearchableDropdown(
+                options = languageOptions,
+                selected = selectedLanguage,
+                placeholder = stringResource(R.string.label_language),
+                onSelect = { opt -> if (opt != null) onLocaleChange(opt.id) },
+                searchable = false,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(Modifier.height(8.dp))
+
+            Text(stringResource(R.string.label_date_format), style = MaterialTheme.typography.titleSmall)
+            val dateFormatOptions = listOf(
+                NamedOption("DD/MM/YYYY", "DD/MM/YYYY"),
+                NamedOption("MM/DD/YYYY", "MM/DD/YYYY"),
+                NamedOption("YYYY-MM-DD", "YYYY-MM-DD")
+            )
+            val selectedDateFormat = dateFormatOptions.firstOrNull { it.id == uiState.dateFormat } ?: dateFormatOptions.first()
+            SearchableDropdown(
+                options = dateFormatOptions,
+                selected = selectedDateFormat,
+                placeholder = stringResource(R.string.label_date_format),
+                onSelect = { opt -> if (opt != null) onDateFormatChange(opt.id) },
+                searchable = false,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(Modifier.height(8.dp))
+
+            Text(stringResource(R.string.label_time_format), style = MaterialTheme.typography.titleSmall)
+            val timeFormatOptions = listOf(
+                NamedOption("24h", "24h"),
+                NamedOption("12h", "12h")
+            )
+            val selectedTimeFormat = timeFormatOptions.firstOrNull { it.id == uiState.timeFormat } ?: timeFormatOptions.first()
+            SearchableDropdown(
+                options = timeFormatOptions,
+                selected = selectedTimeFormat,
+                placeholder = stringResource(R.string.label_time_format),
+                onSelect = { opt -> if (opt != null) onTimeFormatChange(opt.id) },
+                searchable = false,
+                modifier = Modifier.fillMaxWidth()
+            )
 
             Spacer(Modifier.height(16.dp))
         }

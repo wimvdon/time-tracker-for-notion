@@ -1,0 +1,224 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Time Tracker</string>
+
+    <!-- Timer — idle -->
+    <string name="label_workspace">Espacio de trabajo</string>
+    <string name="label_project">Proyecto</string>
+    <string name="label_description">Trabajando en…</string>
+    <string name="placeholder_description">Descripción opcional</string>
+    <string name="placeholder_select_workspace">Seleccionar espacio…</string>
+    <string name="placeholder_select_project">Seleccionar proyecto…</string>
+    <string name="placeholder_loading">Cargando…</string>
+    <string name="btn_start">INICIAR</string>
+    <string name="btn_stop">DETENER</string>
+    <string name="label_start_time">Hora de inicio</string>
+    <string name="label_end_time">Hora de fin</string>
+    <string name="hint_manual_end">Rellenar una hora de fin detiene el temporizador.</string>
+    <string name="toast_end_before_start">La hora de fin debe ser posterior a la de inicio.</string>
+    <string name="warn_no_api_key">Clave API de Notion no configurada.</string>
+    <string name="warn_no_api_key_link">Abrir Ajustes</string>
+    <string name="warn_no_workspaces">Añada un espacio en los</string>
+    <string name="warn_no_workspaces_link">Ajustes</string>
+    <string name="warn_no_workspaces_suffix">para comenzar.</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Ajustes</string>
+    <string name="first_launch_hint">Introduzca su clave API de Notion y al menos un espacio de trabajo para comenzar.</string>
+    <string name="label_api_key">Clave API de Notion</string>
+    <string name="placeholder_api_key">secret_… o ntn_…</string>
+    <string name="btn_show_key">Mostrar</string>
+    <string name="btn_hide_key">Ocultar</string>
+    <string name="btn_test_and_save_key">Probar conexión &amp; guardar</string>
+    <string name="btn_testing_key">Probando…</string>
+    <string name="btn_remove_key">Eliminar clave</string>
+    <string name="label_workspaces">Espacios de trabajo</string>
+    <string name="no_workspaces_yet">No hay espacios de trabajo aún.</string>
+    <string name="title_delete_workspace">Eliminar espacio</string>
+    <string name="title_delete_workspace_disabled">Detenga el temporizador primero</string>
+    <string name="title_move_up">Subir</string>
+    <string name="title_move_down">Bajar</string>
+    <string name="btn_add_workspace">+ Añadir espacio</string>
+
+    <!-- Workspace modal -->
+    <string name="modal_title_add_workspace">Añadir espacio</string>
+    <string name="modal_title_edit_workspace">Editar espacio</string>
+    <string name="label_workspace_name">Nombre</string>
+    <string name="placeholder_workspace_name">Mi espacio de trabajo</string>
+    <string name="label_time_entries_db">Base de datos de entradas de tiempo</string>
+    <string name="hint_time_entries_db">Las entradas de tiempo se crean aquí. Requerido: uno de tipo rango de fechas, uno de estado y, idealmente, una relación que enlace con proyectos.</string>
+    <string name="label_projects_db">Base de datos de proyectos</string>
+    <string name="placeholder_select_database">Seleccionar base de datos…</string>
+    <string name="placeholder_select">Seleccionar…</string>
+    <string name="placeholder_search">Buscar…</string>
+    <string name="search_no_results">Sin resultados</string>
+    <string name="dropdown_none">– Ninguno –</string>
+    <string name="btn_clear">Limpiar</string>
+    <string name="btn_refresh_databases">Actualizar</string>
+    <string name="loading_databases">Cargando bases de datos…</string>
+    <string name="error_loading_databases">No se pudieron cargar las bases de datos</string>
+    <string name="error_loading_schema">No se pudieron cargar las propiedades de la base</string>
+    <string name="no_databases_found">No se encontraron bases de datos. Conecte su integración a las páginas correspondientes en Notion.</string>
+    <string name="btn_retry">Reintentar</string>
+    <string name="label_time_entry_date_prop">Campo de rango de fechas</string>
+    <string name="hint_time_entry_date_prop">Almacena la hora de inicio y fin.</string>
+    <string name="label_time_entry_status_prop">Campo de estado</string>
+    <string name="hint_time_entry_status_prop">Indica si el temporizador está activo o terminado.</string>
+    <string name="label_time_entry_status_running">Opción de estado "Activo"</string>
+    <string name="hint_time_entry_status_running">La opción que marca una entrada como en curso.</string>
+    <string name="label_time_entry_status_done">Opción de estado "Terminado"</string>
+    <string name="hint_time_entry_status_done">La opción que marca una entrada como terminada.</string>
+    <string name="label_relation_prop">Campo de relación (proyectos)</string>
+    <string name="loading_properties">Cargando…</string>
+    <string name="section_extra_fields">Campos adicionales (opcional)</string>
+    <string name="hint_extra_fields">Hasta cinco campos adicionales de la base de datos de tiempos, para rellenar manualmente en el temporizador.</string>
+    <string name="btn_add_extra_field">+ Añadir campo</string>
+    <string name="title_remove_extra_field">Eliminar campo</string>
+    <string name="placeholder_select_field">Seleccionar campo…</string>
+    <string name="label_required_field">Requerido</string>
+    <string name="toast_required_fields_missing">Por favor, rellene todos los campos requeridos antes de comenzar.</string>
+    <string name="toast_required_before_stopping">Rellene los campos requeridos antes de detener.</string>
+    <string name="error_loading_extras">No se pudieron cargar los campos adicionales</string>
+    <string name="no_properties_of_type">No se encontraron campos compatibles.</string>
+    <string name="label_workspace_rounding">Redondeo de tiempo</string>
+    <string name="rounding_off">Sin redondeo</string>
+    <string name="rounding_5">Redondear a los 5 minutos más cercanos</string>
+    <string name="rounding_10">Redondear a los 10 minutos más cercanos</string>
+    <string name="rounding_15">Redondear a los 15 minutos más cercanos</string>
+    <string name="workspace_rounding_hint">Redondea las horas de inicio y fin (incluidas manuales) al intervalo más cercano.</string>
+    <string name="workspace_rounding_summary">Redondeo: %1$d min</string>
+    <string name="label_workspace_color">Color del espacio</string>
+    <string name="label_custom_color">Hex personalizado</string>
+    <string name="btn_apply_color">Aplicar</string>
+    <string name="save_incomplete_hint">Rellene todos los campos antes de guardar.</string>
+    <string name="btn_cancel">Cancelar</string>
+    <string name="btn_save">Guardar</string>
+
+    <!-- Recovery dialog -->
+    <string name="recovery_title">Temporizador activo</string>
+    <string name="recovery_body">Había un temporizador activo cuando se cerró la aplicación.</string>
+    <string name="recovery_stop">Detener ahora</string>
+    <string name="recovery_resume">Reanudar</string>
+    <string name="recovery_discard">Descartar</string>
+
+    <!-- Toasts / errors -->
+    <string name="toast_api_key_saved">La clave API funciona y ha sido guardada.</string>
+    <string name="toast_api_key_removed">Clave API eliminada.</string>
+    <string name="toast_connection_failed">La conexión ha fallado</string>
+    <string name="toast_workspace_added">Espacio de trabajo \"%1$s\" añadido.</string>
+    <string name="toast_workspace_saved">Espacio de trabajo \"%1$s\" guardado.</string>
+    <string name="toast_projects_error">No se pudieron cargar los proyectos</string>
+    <string name="toast_start_error">No se pudo iniciar el temporizador</string>
+    <string name="toast_stop_error">No se pudo detener el temporizador</string>
+    <string name="toast_stop_retry">Reintentar</string>
+    <string name="toast_recovery_stop_error">No se pudo detener el temporizador recuperado</string>
+    <string name="title_dismiss">Descartar</string>
+    <string name="btn_back">Volver</string>
+    <string name="title_settings">Ajustes</string>
+
+    <!-- Running timers list -->
+    <string name="running_timers_heading">Temporizadores activos</string>
+    <string name="stop_running_timer">Detener temporizador</string>
+    <string name="refresh_running_timers">Actualizar temporizadores activos</string>
+    <string name="start_new_timer">Iniciar nuevo temporizador</string>
+
+    <!-- Recent entries -->
+    <string name="recent_entries_heading">Entradas de tiempo recientes</string>
+    <string name="title_delete_entry">Eliminar</string>
+    <string name="title_open_in_notion">Abrir en Notion</string>
+    <string name="confirm_delete_title">¿Archivar esta entrada?</string>
+    <string name="confirm_delete_message">\"%1$s\" será archivado en Notion.</string>
+    <string name="confirm_delete_confirm">Archivar</string>
+    <string name="toast_delete_error">No se pudo eliminar la entrada</string>
+
+    <!-- Database integration hint -->
+    <string name="hint_database_integration">Asegúrese de compartir esta base de datos con su integración de Notion.</string>
+
+    <!-- Theme -->
+    <string name="label_theme">Apariencia</string>
+    <string name="theme_auto">Usar la del sistema (Auto)</string>
+    <string name="theme_light">Claro</string>
+    <string name="theme_dark">Oscuro</string>
+    <string name="label_dynamic_color">Color dinámico</string>
+    <string name="dynamic_color_hint">Usar colores de su fondo de pantalla.</string>
+
+    <!-- QR code import -->
+    <string name="btn_scan_qr">Escanear código QR para importar</string>
+    <string name="btn_add_workspace_qr">Añadir espacio vía código QR</string>
+    <string name="btn_import_settings_qr">Escanear código QR (ajustes / espacio de trabajo)</string>
+    <string name="qr_scan_title">Escanear código QR</string>
+    <string name="qr_scan_hint">Apunte la cámara a un código QR de ajustes o espacio de trabajo desde la aplicación de Windows.</string>
+    <string name="qr_import_success">Ajustes importados correctamente.</string>
+    <string name="qr_import_error">No se pudo leer el código QR de ajustes.</string>
+    <string name="qr_permission_denied">Se necesita permiso de cámara para escanear códigos QR.</string>
+
+    <!-- Refresh -->
+    <string name="btn_refresh_all">Actualizar</string>
+
+    <!-- Edit running timer -->
+    <string name="hint_timer_title">Título del temporizador…</string>
+    <string name="btn_edit_timer">Editar</string>
+    <string name="title_edit_timer">Editar temporizador</string>
+    <string name="btn_save_changes">Guardar</string>
+    <string name="hint_edit_timer_saving">Guardando…</string>
+
+    <!-- Notification -->
+    <string name="notification_channel_name">Temporizador</string>
+    <string name="notification_channel_description">Muestra el temporizador activo</string>
+    <string name="notification_action_stop">Detener</string>
+
+    <!-- Presets -->
+    <string name="section_presets">Preajustes (opcional)</string>
+    <string name="hint_presets">Hasta 5 preajustes. Toque un chip para iniciar el temporizador inmediatamente.</string>
+    <string name="btn_add_preset">+ Añadir preajuste</string>
+    <string name="title_remove_preset">Eliminar preajuste</string>
+    <string name="preset_name_placeholder">ej. Standup matinal</string>
+    <string name="label_preset_title">Título por defecto</string>
+    <string name="preset_title_placeholder">Título por defecto opcional…</string>
+    <string name="label_show_in_shortcuts">Mostrar en accesos directos de launcher</string>
+
+    <!-- Timer stopped elsewhere -->
+    <string name="timer_stopped_elsewhere">El temporizador se detuvo en otro dispositivo.</string>
+
+    <!-- Deleted page dialog -->
+    <string name="deleted_page_title">Página no encontrada en Notion</string>
+    <string name="deleted_page_body">La entrada no pudo guardarse porque la página fue eliminada o ya no es accesible.</string>
+    <string name="deleted_page_hint">Si es necesario, restaure la página desde la papelera de Notion o recréela manualmente.</string>
+    <string name="deleted_page_confirm">Descartar</string>
+    <string name="toast_deleted_page_discarded">Página no encontrada – entrada descartada.</string>
+    <string name="toast_update_error">No se pudo actualizar el temporizador</string>
+
+    <!-- Per-workspace QR -->
+    <string name="btn_workspace_qr">Exportar espacio en QR</string>
+    <string name="qr_workspace_note">Escanee para importar este espacio en otro dispositivo. Clave API no incluida.</string>
+    <string name="qr_scan_hint_workspace">Apunte la cámara al código QR de espacio de la aplicación Windows.</string>
+
+    <!-- Additional New Strings -->
+    <string name="warn_already_running_title">Temporizador activo</string>
+    <string name="warn_already_running_body">Ya hay un temporizador activo. ¿Desea iniciar uno nuevo simultáneamente?</string>
+    <string name="btn_add_new_timer">Iniciar nuevo</string>
+    <string name="dialog_save_preset_title">Guardar preajuste</string>
+    <string name="dialog_save_preset_body">Guardar la descripción y campos actuales como preajuste.</string>
+    <string name="dialog_save_preset_placeholder">Nombre del preajuste (ej. Standup diario)</string>
+    <string name="presets_manage_title">Gestionar preajustes</string>
+    <string name="tooltip_presets_shortcuts">Los preajustes superiores se usarán como accesos directos.</string>
+    <string name="dialog_unsaved_changes_title">Cambios sin guardar</string>
+    <string name="dialog_unsaved_changes_body">Tiene cambios sin guardar. ¿Desea guardarlos antes de salir?</string>
+    <string name="btn_discard">Descartar</string>
+    <string name="dialog_time_error_title">La hora de fin es anterior al inicio</string>
+    <string name="dialog_time_error_body">La hora de fin ocurre antes de la hora de inicio. ¿Desea detener el temporizador al día siguiente?</string>
+    <string name="btn_edit">Editar</string>
+    <string name="btn_next_day">Día siguiente</string>
+
+    <!-- Settings Formats -->
+    <string name="label_language">Idioma</string>
+    <string name="label_date_format">Formato de fecha</string>
+    <string name="label_time_format">Formato de hora</string>
+    <string name="language_system">Idioma del sistema (Auto)</string>
+    <string name="language_en">English</string>
+    <string name="language_nl">Nederlands</string>
+    <string name="language_fr">Français</string>
+    <string name="language_de">Deutsch</string>
+    <string name="language_es">Español</string>
+    <string name="language_it">Italiano</string>
+</resources>

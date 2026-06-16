@@ -17,6 +17,7 @@
     "dist:dir": "npm run build && electron-builder --win --dir"
   },
   "dependencies": {
+    "@fluentui/react-icons": "^2.0.330",
     "electron-store": "^8.2.0",
     "qrcode": "^1.5.4",
     "react": "^19.0.0",

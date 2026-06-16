@@ -5,6 +5,25 @@ import { WRITABLE_EXTRA_TYPES } from '../lib/notionValues.js';
 import { t } from '../lib/i18n.js';
 import { errorMessage } from '../lib/errors.js';
 import SearchableSelect from '../components/SearchableSelect.jsx';
+import {
+  Settings20Regular,
+  Delete20Regular,
+  Edit20Regular,
+  Save20Regular,
+  Stop20Regular,
+  Play20Regular,
+  ArrowUp20Regular,
+  ArrowDown20Regular,
+  Bookmark20Regular,
+  Add20Regular,
+  ArrowClockwise20Regular,
+  Eye20Regular,
+  EyeOff20Regular,
+  Dismiss20Regular,
+  Open20Regular,
+  Info20Regular,
+  QrCode20Regular
+} from '@fluentui/react-icons';
 
 export default function Settings() {
   const apiKey = useStore((s) => s.apiKey);
@@ -21,39 +40,46 @@ export default function Settings() {
   const setView = useStore((s) => s.setView);
   const addToast = useStore((s) => s.addToast);
   const timerRunning = useStore((s) => s.timer.running);
+  const locale = useStore((s) => s.locale);
+  const dateFormat = useStore((s) => s.dateFormat);
+  const timeFormat = useStore((s) => s.timeFormat);
+  const setLocale = useStore((s) => s.setLocale);
+  const setDateFormat = useStore((s) => s.setDateFormat);
+  const setTimeFormat = useStore((s) => s.setTimeFormat);
 
   const [keyInput, setKeyInput] = useState(apiKey);
   const [showKey, setShowKey] = useState(false);
   const [testing, setTesting] = useState(false);
   const [showAddWorkspace, setShowAddWorkspace] = useState(false);
   const [editingWorkspace, setEditingWorkspace] = useState(null);
-  // Per-workspace QR: { workspaceId, dataUrl } or null
-  const [activeQr, setActiveQr] = useState(null);
-  const qrDismissTimer = useRef(null);
+  // Global settings QR code
+  const [globalQrUrl, setGlobalQrUrl] = useState(null);
+  const globalQrTimer = useRef(null);
 
-  const firstLaunch = !apiKey || workspaces.length === 0;
-
-  const generateWorkspaceQr = async (workspace) => {
-    if (qrDismissTimer.current) clearTimeout(qrDismissTimer.current);
-    if (activeQr?.workspaceId === workspace.id) {
-      setActiveQr(null);
+  const generateGlobalQr = async () => {
+    if (globalQrTimer.current) clearTimeout(globalQrTimer.current);
+    if (globalQrUrl) {
+      setGlobalQrUrl(null);
       return;
     }
     try {
-      const payload = JSON.stringify({ workspace });
+      const payload = JSON.stringify({ apiKey, workspaces });
       const QRCode = (await import('qrcode')).default;
       const dataUrl = await QRCode.toDataURL(payload, { width: 512, margin: 2 });
-      setActiveQr({ workspaceId: workspace.id, dataUrl });
-      qrDismissTimer.current = setTimeout(() => setActiveQr(null), 30_000);
+      setGlobalQrUrl(dataUrl);
+      globalQrTimer.current = setTimeout(() => setGlobalQrUrl(null), 60_000);
     } catch (err) {
       addToast({ type: 'error', message: `QR: ${errorMessage(err)}` });
     }
   };
 
-  const dismissQr = () => {
-    if (qrDismissTimer.current) clearTimeout(qrDismissTimer.current);
-    setActiveQr(null);
-  };
+  useEffect(() => {
+    return () => {
+      if (globalQrTimer.current) clearTimeout(globalQrTimer.current);
+    };
+  }, []);
+
+  const firstLaunch = !apiKey || workspaces.length === 0;
 
   const handleSaveAndTestKey = async () => {
     const key = keyInput.trim();
@@ -101,9 +127,9 @@ export default function Settings() {
           <button
             onClick={() => setShowKey((v) => !v)}
             title={showKey ? t('btnHideKey') : t('btnShowKey')}
-            className="px-2 bg-zinc-800 border border-zinc-700 rounded-md text-sm hover:bg-zinc-700"
+            className="px-2 bg-zinc-800 border border-zinc-700 rounded-md hover:bg-zinc-700 flex items-center justify-center"
           >
-            {showKey ? '🙈' : '👁'}
+            {showKey ? <EyeOff20Regular className="w-4 h-4" /> : <Eye20Regular className="w-4 h-4" />}
           </button>
         </div>
         <button
@@ -125,70 +151,83 @@ export default function Settings() {
             <div key={w.id}>
               <div className="flex items-center justify-between bg-zinc-800 border border-zinc-700 rounded-md px-3 py-2">
                 <span className="text-sm truncate">{w.name}</span>
-                <span className="flex items-center gap-1 ml-2 shrink-0">
+                <span className="flex items-center gap-1.5 ml-2 shrink-0">
                   <button
                     onClick={() => moveWorkspace(w.id, 'up')}
                     disabled={i === 0}
                     title={t('titleMoveUp')}
-                    className="text-zinc-500 hover:text-zinc-200 disabled:opacity-30 px-0.5"
+                    className="text-zinc-500 hover:text-zinc-200 disabled:opacity-30 p-0.5 flex items-center justify-center"
                   >
-                    ↑
+                    <ArrowUp20Regular className="w-4 h-4" />
                   </button>
                   <button
                     onClick={() => moveWorkspace(w.id, 'down')}
                     disabled={i === workspaces.length - 1}
                     title={t('titleMoveDown')}
-                    className="text-zinc-500 hover:text-zinc-200 disabled:opacity-30 px-0.5"
+                    className="text-zinc-500 hover:text-zinc-200 disabled:opacity-30 p-0.5 flex items-center justify-center"
                   >
-                    ↓
+                    <ArrowDown20Regular className="w-4 h-4" />
                   </button>
-                  <button
-                    onClick={() => generateWorkspaceQr(w)}
-                    title={t('labelWorkspaceQr')}
-                    className="text-zinc-500 hover:text-zinc-200 ml-1 leading-none"
-                  >
-                    {activeQr?.workspaceId === w.id ? '✕' : (
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 inline">
-                        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-                        <circle cx="12" cy="13" r="4"/>
-                      </svg>
-                    )}
-                  </button>
+
                   <button
                     onClick={() => setEditingWorkspace(w)}
                     title={t('modalTitleEditWorkspace')}
-                    className="text-zinc-500 hover:text-zinc-200"
+                    className="text-zinc-500 hover:text-zinc-200 p-0.5 flex items-center justify-center"
                   >
-                    ✏️
+                    <Edit20Regular className="w-4 h-4" />
                   </button>
                   <button
                     onClick={() => deleteWorkspace(w.id)}
                     disabled={timerRunning}
                     title={timerRunning ? t('titleDeleteWorkspaceDisabled') : t('titleDeleteWorkspace')}
-                    className="text-zinc-500 hover:text-red-400 disabled:opacity-40"
+                    className="text-zinc-500 hover:text-red-400 disabled:opacity-40 p-0.5 flex items-center justify-center"
                   >
-                    🗑
+                    <Delete20Regular className="w-4 h-4" />
                   </button>
                 </span>
               </div>
-              {activeQr?.workspaceId === w.id && (
-                <div className="mt-1 ml-2 flex flex-col gap-1">
-                  <p className="text-xs text-zinc-500">{t('qrWorkspaceNote')}</p>
-                  <img src={activeQr.dataUrl} alt="QR code" className="w-48 h-48 rounded border border-zinc-600" />
-                  <p className="text-xs text-zinc-600">{t('qrAutoDismiss')}</p>
-                </div>
-              )}
+
             </div>
           ))}
         </div>
-        <button
-          onClick={() => setShowAddWorkspace(true)}
-          disabled={!apiKey}
-          title={!apiKey ? t('warnNoApiKey') : undefined}
-          className="mt-2 px-3 py-1.5 rounded-md bg-zinc-700 hover:bg-zinc-600 disabled:opacity-50 text-sm"
-        >
-          {t('btnAddWorkspace')}
-        </button>
+        <div className="flex flex-wrap gap-2 mt-2">
+          <button
+            onClick={() => setShowAddWorkspace(true)}
+            disabled={!apiKey}
+            title={!apiKey ? t('warnNoApiKey') : undefined}
+            className="px-3 py-1.5 rounded-md bg-zinc-700 hover:bg-zinc-600 disabled:opacity-50 text-sm"
+          >
+            {t('btnAddWorkspace')}
+          </button>
+          {workspaces.length > 0 && (
+            <button
+              onClick={generateGlobalQr}
+              className="px-3 py-1.5 rounded-md bg-zinc-700 hover:bg-zinc-600 text-sm flex items-center gap-1.5 justify-center"
+            >
+              <QrCode20Regular className="w-4 h-4" />
+              {t('btnGlobalQr')}
+            </button>
+          )}
+        </div>
+
+        {globalQrUrl && (
+          <div className="mt-4 p-4 rounded-lg bg-white text-zinc-900 flex flex-col items-center gap-3 relative shadow-lg max-w-xs mx-auto border border-zinc-300">
+            <button
+              onClick={() => setGlobalQrUrl(null)}
+              className="absolute top-2 right-2 text-zinc-400 hover:text-zinc-600 p-1 flex items-center justify-center rounded-full"
+              title={t('btnDismiss')}
+            >
+              <Dismiss20Regular className="w-4 h-4" />
+            </button>
+            <p className="text-xs text-zinc-600 text-center font-medium px-2 mt-1">
+              {t('qrGlobalNote')}
+            </p>
+            <img src={globalQrUrl} alt="Settings QR code" className="w-48 h-48 rounded border border-zinc-200" />
+            <p className="text-[10px] text-zinc-400">
+              {t('qrAutoDismiss')}
+            </p>
+          </div>
+        )}
       </div>
 
       <label className="flex items-center gap-2 text-sm cursor-pointer">
@@ -231,6 +270,51 @@ export default function Settings() {
         </div>
       </div>
 
+      {/* Language */}
+      <div>
+        <label className="block text-xs text-zinc-400 mb-1">{t('labelLanguage')}</label>
+        <select
+          value={locale}
+          onChange={(e) => setLocale(e.target.value)}
+          className="w-full bg-zinc-900 border border-zinc-755 rounded-md px-2.5 py-1.5 text-xs text-zinc-200 focus:outline-none focus:border-zinc-500"
+        >
+          <option value="system">{t('optSystem')}</option>
+          <option value="en-GB">English</option>
+          <option value="nl-BE">Nederlands</option>
+          <option value="fr">Français</option>
+          <option value="de">Deutsch</option>
+          <option value="es">Español</option>
+          <option value="it">Italiano</option>
+        </select>
+      </div>
+
+      {/* Date Format */}
+      <div>
+        <label className="block text-xs text-zinc-400 mb-1">{t('labelDateFormat')}</label>
+        <select
+          value={dateFormat}
+          onChange={(e) => setDateFormat(e.target.value)}
+          className="w-full bg-zinc-900 border border-zinc-755 rounded-md px-2.5 py-1.5 text-xs text-zinc-200 focus:outline-none focus:border-zinc-500"
+        >
+          <option value="DD/MM/YYYY">DD/MM/YYYY</option>
+          <option value="MM/DD/YYYY">MM/DD/YYYY</option>
+          <option value="YYYY-MM-DD">YYYY-MM-DD</option>
+        </select>
+      </div>
+
+      {/* Time Format */}
+      <div>
+        <label className="block text-xs text-zinc-400 mb-1">{t('labelTimeFormat')}</label>
+        <select
+          value={timeFormat}
+          onChange={(e) => setTimeFormat(e.target.value)}
+          className="w-full bg-zinc-900 border border-zinc-755 rounded-md px-2.5 py-1.5 text-xs text-zinc-200 focus:outline-none focus:border-zinc-500"
+        >
+          <option value="12h">{t('opt12h')}</option>
+          <option value="24h">{t('opt24h')}</option>
+        </select>
+      </div>
+
       {showAddWorkspace && <WorkspaceModal onClose={() => setShowAddWorkspace(false)} />}
       {editingWorkspace && (
         <WorkspaceModal
@@ -268,12 +352,7 @@ function WorkspaceModal({ workspace, onClose }) {
       typeof ep === 'string' ? { propName: ep, required: false } : ep
     )
   );
-  const [presets, setPresets] = useState(workspace?.presets || []);
   const [color, setColor] = useState(workspace?.color || '');
-
-  // Relation field options for presets: { [propName]: [{ value, label }] }
-  const [relationOptions, setRelationOptions] = useState({});
-  const loadedRelations = useRef(new Set());
 
   // Database list — fetched once per modal lifetime (Retry/Refresh re-fetches)
   const [dbs, setDbs] = useState({ loading: true, error: null, items: [] });
@@ -323,29 +402,7 @@ function WorkspaceModal({ workspace, onClose }) {
     else setTeSchema({ loading: false, error: null, schema: null });
   }, [timeEntriesDbId]);
 
-  // Load pages for any relation-type extra fields so presets can offer a searchable dropdown
-  useEffect(() => {
-    if (!teSchema.schema) return;
-    extraProps.forEach((ep) => {
-      if (!ep.propName || loadedRelations.current.has(ep.propName)) return;
-      const prop = teSchema.schema[ep.propName];
-      if (prop?.type !== 'relation') return;
-      const relDbId = prop.relation?.database_id;
-      if (!relDbId) return;
-      loadedRelations.current.add(ep.propName);
-      window.notionAPI
-        .fetchDatabasePages(relDbId)
-        .then((pages) =>
-          setRelationOptions((prev) => ({
-            ...prev,
-            [ep.propName]: pages.map((p) => ({ value: p.id, label: p.name })),
-          }))
-        )
-        .catch(() =>
-          setRelationOptions((prev) => ({ ...prev, [ep.propName]: [] }))
-        );
-    });
-  }, [teSchema.schema, extraProps]);
+
 
   const teDateOpts = teSchema.schema ? propertiesByType(teSchema.schema, 'date') : [];
   const teStatusOpts = teSchema.schema ? propertiesByType(teSchema.schema, 'status') : [];
@@ -403,15 +460,7 @@ function WorkspaceModal({ workspace, onClose }) {
         propName: ep.propName,
         required: !!ep.required,
       })),
-      presets: presets
-        .map((p) => ({
-          ...p,
-          name: p.name.trim(),
-          pageTitle: (p.pageTitle || '').trim(),
-          extraValues: Object.fromEntries(
-            Object.entries(p.extraValues || {}).filter(([, v]) => v !== '' && v != null)
-          ),
-        })),
+      presets: workspace?.presets || [],
     };
     if (workspace) {
       await updateWorkspace(saved);
@@ -471,7 +520,7 @@ function WorkspaceModal({ workspace, onClose }) {
               className="text-xs text-zinc-500 hover:text-zinc-300 disabled:opacity-50 flex items-center gap-1"
               title={t('btnRefreshDatabases')}
             >
-              ↻ {t('btnRefreshDatabases')}
+              <ArrowClockwise20Regular className="w-3.5 h-3.5 inline mr-1" /> {t('btnRefreshDatabases')}
             </button>
           </div>
           <SearchableSelect
@@ -588,9 +637,9 @@ function WorkspaceModal({ workspace, onClose }) {
                   <button
                     onClick={() => setExtraProps((prev) => prev.filter((_, j) => j !== i))}
                     title={t('titleRemoveExtraField')}
-                    className="text-zinc-500 hover:text-red-400 shrink-0"
+                    className="text-zinc-500 hover:text-red-400 shrink-0 flex items-center justify-center p-0.5"
                   >
-                    ✕
+                    <Dismiss20Regular className="w-4 h-4" />
                   </button>
                 </div>
               );
@@ -606,38 +655,7 @@ function WorkspaceModal({ workspace, onClose }) {
           </div>
         )}
 
-        {/* Section E — Presets (optional, max 5) */}
-        <div className="flex flex-col gap-2 border-t border-zinc-700 pt-3">
-          <p className="text-xs font-semibold text-zinc-300">{t('sectionPresets')}</p>
-          <p className="text-xs text-zinc-500">{t('hintPresets')}</p>
-          {presets.map((preset, i) => (
-            <PresetRow
-              key={preset.id || i}
-              preset={preset}
-              workspaceName={name}
-              extraProps={extraProps.filter((ep) => !!ep.propName)}
-              schema={teSchema.schema}
-              relationOptions={relationOptions}
-              onChange={(updated) =>
-                setPresets((prev) => prev.map((p, j) => (j === i ? updated : p)))
-              }
-              onRemove={() => setPresets((prev) => prev.filter((_, j) => j !== i))}
-            />
-          ))}
-          {presets.length < 5 && (
-            <button
-              onClick={() =>
-                setPresets((prev) => [
-                  ...prev,
-                  { id: crypto.randomUUID(), name: '', pageTitle: '', extraValues: {} },
-                ])
-              }
-              className="self-start px-3 py-1.5 rounded-md bg-zinc-700 hover:bg-zinc-600 text-xs"
-            >
-              {t('btnAddPreset')}
-            </button>
-          )}
-        </div>
+
 
         {/* Section F — Rounding */}
         <div className="border-t border-zinc-700 pt-3">
@@ -658,7 +676,9 @@ function WorkspaceModal({ workspace, onClose }) {
           <WorkspaceColorPicker value={color} onChange={setColor} />
         </div>
 
-        {/* Section H — Buttons */}
+
+
+        {/* Section I — Buttons */}
         {!complete && (
           <p className="text-xs text-zinc-500">{t('saveIncompleteHint')}</p>
         )}
@@ -713,160 +733,6 @@ function PropSelect({ label, hint, loading, options, value, onChange }) {
 }
 
 
-function PresetRow({ preset, workspaceName, extraProps, schema, relationOptions, onChange, onRemove }) {
-  const propDefs = extraProps
-    .filter((ep) => ep.propName && (schema?.[ep.propName] || ep.type))
-    .map((ep) => {
-      const prop = schema?.[ep.propName];
-      const type = prop?.type ?? ep.type ?? 'rich_text';
-      let options = [];
-      if (type === 'select' || type === 'multi_select') {
-        options = (prop?.[type]?.options ?? []).map((o) => ({ value: o.name, label: o.name }));
-      } else if (type === 'status') {
-        options = (prop?.status?.options ?? []).map((o) => ({ value: o.name, label: o.name }));
-      } else if (type === 'relation' || type === 'people') {
-        options = relationOptions?.[ep.propName] ?? [];
-      }
-      return { name: ep.propName, type, options };
-    });
-
-  return (
-    <div className="border border-zinc-700 rounded-md p-2 flex flex-col gap-2">
-      <div className="flex items-center gap-2">
-        <span className="text-xs text-zinc-500 shrink-0 truncate max-w-[80px]">{workspaceName} –</span>
-        <input
-          type="text"
-          value={preset.name}
-          onChange={(e) => onChange({ ...preset, name: e.target.value })}
-          placeholder={t('presetNamePlaceholder')}
-          className="flex-1 bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-xs min-w-0"
-        />
-        <button
-          onClick={onRemove}
-          title={t('titleRemovePreset')}
-          className="text-zinc-500 hover:text-red-400 shrink-0"
-        >
-          ✕
-        </button>
-      </div>
-      <div>
-        <label className="block text-xs text-zinc-500 mb-0.5">{t('labelPresetTitle')}</label>
-        <input
-          type="text"
-          value={preset.pageTitle || ''}
-          onChange={(e) => onChange({ ...preset, pageTitle: e.target.value })}
-          placeholder={t('presetTitlePlaceholder')}
-          className="w-full bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-xs"
-        />
-      </div>
-      {propDefs.map((def) => (
-          <div key={def.name}>
-            <label className="block text-xs text-zinc-500 mb-0.5">
-              {def.name}
-            </label>
-            <PresetFieldInput
-              type={def.type}
-              options={def.options}
-              value={preset.extraValues?.[def.name] ?? ''}
-              onChange={(v) =>
-                onChange({
-                  ...preset,
-                  extraValues: { ...(preset.extraValues || {}), [def.name]: v },
-                })
-              }
-            />
-          </div>
-        ))}
-    </div>
-  );
-}
-
-function PresetFieldInput({ type, options, value, onChange }) {
-  if (type === 'checkbox') {
-    return (
-      <label className="flex items-center gap-2 text-xs text-zinc-300 cursor-pointer">
-        <input
-          type="checkbox"
-          checked={value === 'true' || value === true}
-          onChange={(e) => onChange(String(e.target.checked))}
-          className="accent-emerald-500"
-        />
-        {t('labelDefaultValue')}
-      </label>
-    );
-  }
-  if (type === 'select' || type === 'status') {
-    return (
-      <SearchableSelect
-        value={value ?? ''}
-        onChange={onChange}
-        options={options}
-        placeholder={t('placeholderSelect')}
-        triggerClass="bg-zinc-900"
-        className="w-full"
-      />
-    );
-  }
-  if (type === 'relation' || type === 'people') {
-    return (
-      <SearchableSelect
-        value={value ?? ''}
-        onChange={onChange}
-        options={options}
-        placeholder={t('placeholderSelect')}
-        triggerClass="bg-zinc-900"
-        className="w-full"
-      />
-    );
-  }
-  if (type === 'multi_select') {
-    const selected = value ? value.split(',').map((v) => v.trim()).filter(Boolean) : [];
-    return (
-      <div className="flex flex-wrap gap-1">
-        {options.map((o) => {
-          const active = selected.includes(o.value);
-          return (
-            <button
-              key={o.value}
-              type="button"
-              onClick={() => {
-                const next = active
-                  ? selected.filter((v) => v !== o.value)
-                  : [...selected, o.value];
-                onChange(next.join(','));
-              }}
-              className={`px-2 py-0.5 rounded text-xs border transition-colors ${
-                active
-                  ? 'bg-emerald-600 border-emerald-500 text-white'
-                  : 'bg-zinc-700 border-zinc-600 text-zinc-200 hover:border-zinc-400'
-              }`}
-            >
-              {o.label}
-            </button>
-          );
-        })}
-      </div>
-    );
-  }
-  if (type === 'number') {
-    return (
-      <input
-        type="number"
-        value={value ?? ''}
-        onChange={(e) => onChange(e.target.value)}
-        className="w-full bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-xs"
-      />
-    );
-  }
-  return (
-    <input
-      type={type === 'date' ? 'datetime-local' : 'text'}
-      value={value ?? ''}
-      onChange={(e) => onChange(e.target.value)}
-      className="w-full bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-xs"
-    />
-  );
-}
 
 const PRESET_PALETTE = [
   '#ef4444', '#f97316', '#eab308', '#22c55e',
@@ -964,3 +830,5 @@ function validateTeSelection(sel, schema) {
   }
   return next;
 }
+
+

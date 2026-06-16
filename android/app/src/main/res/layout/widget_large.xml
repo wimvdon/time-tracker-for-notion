@@ -1,0 +1,225 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_background"
+    android:orientation="vertical"
+    android:padding="12dp">
+
+    <!-- Top Part: Active or Idle Timer Info -->
+    <FrameLayout
+        android:id="@+id/widget_timer_header"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:minHeight="48dp">
+
+        <!-- Idle View -->
+        <LinearLayout
+            android:id="@+id/widget_idle_container"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Notion Time Tracker"
+                android:textColor="@color/widget_text_primary"
+                android:textSize="13sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="1dp"
+                android:text="Tap to start tracking"
+                android:textColor="@color/widget_text_secondary"
+                android:textSize="10sp" />
+        </LinearLayout>
+
+        <!-- Active View -->
+        <RelativeLayout
+            android:id="@+id/widget_active_container"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_alignParentStart="true"
+                android:layout_centerVertical="true"
+                android:layout_toStartOf="@+id/widget_right_side"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/widget_description"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:ellipsize="end"
+                    android:singleLine="true"
+                    android:text="Timer Description"
+                    android:textColor="@color/widget_text_primary"
+                    android:textSize="13sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/widget_workspace"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="1dp"
+                    android:text="Workspace Name"
+                    android:textColor="@color/widget_accent"
+                    android:textSize="11sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/widget_right_side"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_alignParentEnd="true"
+                android:layout_centerVertical="true"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <Chronometer
+                    android:id="@+id/widget_chronometer"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textColor="@color/widget_chronometer"
+                    android:textSize="15sp"
+                    android:textStyle="bold" />
+
+                <ImageButton
+                    android:id="@+id/widget_stop_button"
+                    android:layout_width="28dp"
+                    android:layout_height="28dp"
+                    android:layout_marginStart="6dp"
+                    android:background="?android:attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="Stop Timer"
+                    android:padding="3dp"
+                    android:scaleType="fitCenter"
+                    android:src="@drawable/ic_stop"
+                    android:tint="@color/widget_stop_button_tint" />
+            </LinearLayout>
+        </RelativeLayout>
+    </FrameLayout>
+
+    <!-- Divider -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginTop="8dp"
+        android:layout_marginBottom="8dp"
+        android:background="@color/widget_stroke" />
+
+    <!-- Presets Section -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Presets"
+            android:textColor="@color/widget_text_secondary"
+            android:textSize="10sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="4dp" />
+
+        <GridLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:columnCount="2"
+            android:alignmentMode="alignBounds"
+            android:columnOrderPreserved="false">
+
+            <TextView
+                android:id="@+id/preset_btn_1"
+                android:layout_width="0dp"
+                android:layout_height="32dp"
+                android:layout_columnWeight="1"
+                android:layout_margin="2dp"
+                android:background="@drawable/widget_chip_background"
+                android:gravity="center"
+                android:padding="4dp"
+                android:text="Preset 1"
+                android:textColor="@color/widget_text_primary"
+                android:textSize="10sp"
+                android:singleLine="true"
+                android:ellipsize="end"
+                android:clickable="true"
+                android:focusable="true"
+                android:visibility="gone"/>
+
+            <TextView
+                android:id="@+id/preset_btn_2"
+                android:layout_width="0dp"
+                android:layout_height="32dp"
+                android:layout_columnWeight="1"
+                android:layout_margin="2dp"
+                android:background="@drawable/widget_chip_background"
+                android:gravity="center"
+                android:padding="4dp"
+                android:text="Preset 2"
+                android:textColor="@color/widget_text_primary"
+                android:textSize="10sp"
+                android:singleLine="true"
+                android:ellipsize="end"
+                android:clickable="true"
+                android:focusable="true"
+                android:visibility="gone"/>
+
+            <TextView
+                android:id="@+id/preset_btn_3"
+                android:layout_width="0dp"
+                android:layout_height="32dp"
+                android:layout_columnWeight="1"
+                android:layout_margin="2dp"
+                android:background="@drawable/widget_chip_background"
+                android:gravity="center"
+                android:padding="4dp"
+                android:text="Preset 3"
+                android:textColor="@color/widget_text_primary"
+                android:textSize="10sp"
+                android:singleLine="true"
+                android:ellipsize="end"
+                android:clickable="true"
+                android:focusable="true"
+                android:visibility="gone"/>
+
+            <TextView
+                android:id="@+id/preset_btn_4"
+                android:layout_width="0dp"
+                android:layout_height="32dp"
+                android:layout_columnWeight="1"
+                android:layout_margin="2dp"
+                android:background="@drawable/widget_chip_background"
+                android:gravity="center"
+                android:padding="4dp"
+                android:text="Preset 4"
+                android:textColor="@color/widget_text_primary"
+                android:textSize="10sp"
+                android:singleLine="true"
+                android:ellipsize="end"
+                android:clickable="true"
+                android:focusable="true"
+                android:visibility="gone"/>
+        </GridLayout>
+
+        <TextView
+            android:id="@+id/widget_no_presets_text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="No presets configured"
+            android:textColor="@color/widget_text_secondary"
+            android:textSize="10sp"
+            android:textStyle="italic"
+            android:visibility="visible"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="4dp"/>
+    </LinearLayout>
+</LinearLayout>

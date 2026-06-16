@@ -37,6 +37,29 @@
                 android:value="timer" />
         </service>
 
+        <receiver
+            android:name=".widget.SmallWidgetProvider"
+            android:label="Timer Widget (Small)"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_info_small" />
+        </receiver>
+
+        <receiver
+            android:name=".widget.LargeWidgetProvider"
+            android:label="Timer Widget (Large)"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_info_large" />
+        </receiver>
     </application>
 
 </manifest>

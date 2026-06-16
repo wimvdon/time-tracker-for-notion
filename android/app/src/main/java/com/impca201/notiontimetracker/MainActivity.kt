@@ -28,8 +28,18 @@ import com.impca201.notiontimetracker.ui.screens.TimerScreen
 import com.impca201.notiontimetracker.ui.theme.NotionTimeTrackerTheme
 import com.impca201.notiontimetracker.viewmodel.SettingsViewModel
 import com.impca201.notiontimetracker.viewmodel.TimerViewModel
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
 
 class MainActivity : ComponentActivity() {
+
+    override fun attachBaseContext(newBase: Context) {
+        val settingsRepo = com.impca201.notiontimetracker.data.repository.SettingsRepository(newBase)
+        val localeCode = runBlocking {
+            runCatching { settingsRepo.localeFlow.first() }.getOrDefault("system")
+        }
+        super.attachBaseContext(LocaleHelper.wrap(newBase, localeCode))
+    }
 
     private lateinit var timerViewModel: TimerViewModel
     private lateinit var settingsViewModel: SettingsViewModel
@@ -84,7 +94,7 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         val filter = IntentFilter(TimerForegroundService.ACTION_TIMER_STOPPED)
-        registerReceiver(timerStoppedReceiver, filter, RECEIVER_NOT_EXPORTED)
+        ContextCompat.registerReceiver(this, timerStoppedReceiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
         timerViewModel.refreshSettings()
     }
 
@@ -137,14 +147,11 @@ private fun AppNavigation(
                 onStop = timerViewModel::stopTimer,
                 onUpdateStartTime = timerViewModel::updateStartTime,
                 onNavigateToSettings = { navController.navigate("settings") },
-                onRecoveryStop = timerViewModel::stopRecoveredTimer,
-                onRecoveryResume = timerViewModel::resumeRecoveredTimer,
-                onRecoveryDiscard = timerViewModel::discardRecoveredTimer,
                 onClearError = timerViewModel::clearError,
                 onRetryStop = { timerViewModel.stopTimer() },
                 onLoadRunningTimer = timerViewModel::loadRunningTimer,
                 onStopOtherRunningTimer = timerViewModel::stopOtherRunningTimer,
-                onSuspendActiveToNewTimer = timerViewModel::suspendActiveToNewTimer,
+                onSuspendActiveToNewTimer = timerViewModel::onPlusButtonClicked,
                 onRefreshRunningTimers = { timerViewModel.loadRunningTimers() },
                 onRefreshAll = timerViewModel::refreshAll,
                 onOpenEditTimer = timerViewModel::openEditTimer,
@@ -157,7 +164,13 @@ private fun AppNavigation(
                 onOpenUrl = { url -> context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) },
                 onApplyPreset = timerViewModel::applyPreset,
                 onDismissDeletedPage = timerViewModel::dismissDeletedPage,
-                onClearInfoToast = timerViewModel::clearInfoToast
+                onClearInfoToast = timerViewModel::clearInfoToast,
+                onConfirmAlreadyRunning = timerViewModel::onConfirmAlreadyRunning,
+                onCancelAlreadyRunning = timerViewModel::onCancelAlreadyRunning,
+                onSavePreset = timerViewModel::saveCurrentAsPreset,
+                onDeletePreset = timerViewModel::deletePreset,
+                onMovePresetUp = timerViewModel::movePresetUp,
+                onMovePresetDown = timerViewModel::movePresetDown
             )
         }
 
@@ -200,7 +213,13 @@ private fun AppNavigation(
                 onThemeModeChange = settingsViewModel::setThemeMode,
                 onDynamicColorChange = settingsViewModel::setDynamicColor,
                 onScanQr = { navController.navigate("qr_scan") },
-                onSnackbarDismiss = settingsViewModel::clearSnackbar
+                onSnackbarDismiss = settingsViewModel::clearSnackbar,
+                onLocaleChange = { locale ->
+                    settingsViewModel.setLocale(locale)
+                    (context as? android.app.Activity)?.recreate()
+                },
+                onDateFormatChange = settingsViewModel::setDateFormat,
+                onTimeFormatChange = settingsViewModel::setTimeFormat
             )
         }
 

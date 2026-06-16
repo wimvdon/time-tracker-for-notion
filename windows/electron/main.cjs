@@ -237,28 +237,7 @@ function applyPresetById(presetId) {
   }
 }
 
-function rebuildJumpList() {
-  if (!app.isPackaged) return;
-  const items = [];
-  for (const ws of cachedWorkspaces) {
-    for (const preset of (ws.presets || [])) {
-      if (!preset.name || !preset.id) continue;
-      items.push({
-        type: 'task',
-        program: process.execPath,
-        args: `--preset=${preset.id}`,
-        title: `${ws.name} – ${preset.name}`,
-        iconPath: process.execPath,
-        iconIndex: 0,
-      });
-    }
-  }
-  if (items.length === 0) {
-    app.setJumpList(null);
-    return;
-  }
-  app.setJumpList([{ type: 'custom', name: trayStrings.quickStart, items: items.slice(0, 10) }]);
-}
+
 
 // ---- IPC handlers ----
 
@@ -349,7 +328,6 @@ ipcMain.on('timer:state', (_event, data) => {
 ipcMain.on('settings:changed', () => {
   cachedWorkspaces = store.get('workspaces') || [];
   if (tray) rebuildTrayMenu();
-  rebuildJumpList();
 });
 
 // ---- App lifecycle ----
@@ -381,7 +359,6 @@ if (!gotLock) {
 
     createWindow();
     createTray();
-    rebuildJumpList();
 
     // Handle --preset arg when launched fresh (app was not already running)
     const presetArg = process.argv.find((a) => a.startsWith('--preset='));

@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import com.impca201.notiontimetracker.widget.WidgetHelper
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "notion_settings")
 
@@ -37,18 +38,45 @@ class SettingsRepository(private val context: Context) {
     private val ACTIVE_TIMER_KEY = stringPreferencesKey("active_timer_json")
     private val THEME_MODE_KEY = stringPreferencesKey("theme_mode")
     private val DYNAMIC_COLOR_KEY = booleanPreferencesKey("dynamic_color")
+    private val LOCALE_KEY = stringPreferencesKey("locale")
+    private val DATE_FORMAT_KEY = stringPreferencesKey("date_format")
+    private val TIME_FORMAT_KEY = stringPreferencesKey("time_format")
 
     private val encryptedPrefs: SharedPreferences by lazy {
-        val masterKey = MasterKey.Builder(context)
-            .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
-            .build()
-        EncryptedSharedPreferences.create(
-            context,
-            "NotionTimeTracker_encrypted_prefs",
-            masterKey,
-            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-        )
+        runCatching {
+            val masterKey = MasterKey.Builder(context)
+                .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+                .build()
+            EncryptedSharedPreferences.create(
+                context,
+                "NotionTimeTracker_encrypted_prefs",
+                masterKey,
+                EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+                EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+            )
+        }.getOrElse { e ->
+            android.util.Log.e("SettingsRepository", "EncryptedSharedPreferences creation failed, falling back", e)
+            runCatching {
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
+                    context.deleteSharedPreferences("NotionTimeTracker_encrypted_prefs")
+                } else {
+                    context.getSharedPreferences("NotionTimeTracker_encrypted_prefs", Context.MODE_PRIVATE).edit().clear().apply()
+                }
+                val masterKey = MasterKey.Builder(context)
+                    .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+                    .build()
+                EncryptedSharedPreferences.create(
+                    context,
+                    "NotionTimeTracker_encrypted_prefs",
+                    masterKey,
+                    EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+                    EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+                )
+            }.getOrElse { e2 ->
+                android.util.Log.e("SettingsRepository", "Recreation of EncryptedSharedPreferences failed, using plain fallback", e2)
+                context.getSharedPreferences("NotionTimeTracker_plain_fallback_prefs", Context.MODE_PRIVATE)
+            }
+        }
     }
 
     fun getApiKey(): String = encryptedPrefs.getString("api_key", "") ?: ""
@@ -70,6 +98,7 @@ class SettingsRepository(private val context: Context) {
         context.dataStore.edit { prefs ->
             prefs[WORKSPACES_KEY] = json.encodeToString(workspaces)
         }
+        WidgetHelper.updateAllWidgets(context)
     }
 
     val lastWorkspaceIdFlow: Flow<String?> = context.dataStore.data.map { prefs ->
@@ -93,12 +122,14 @@ class SettingsRepository(private val context: Context) {
         context.dataStore.edit { prefs ->
             prefs[ACTIVE_TIMER_KEY] = json.encodeToString(timer)
         }
+        WidgetHelper.updateAllWidgets(context)
     }
 
     suspend fun clearActiveTimer() {
         context.dataStore.edit { prefs ->
             prefs[ACTIVE_TIMER_KEY] = ""
         }
+        WidgetHelper.updateAllWidgets(context)
     }
 
     val themeModeFlow: Flow<ThemeMode> = context.dataStore.data.map { prefs ->
@@ -119,5 +150,29 @@ class SettingsRepository(private val context: Context) {
 
     suspend fun saveThemeMode(mode: ThemeMode) {
         context.dataStore.edit { prefs -> prefs[THEME_MODE_KEY] = mode.name }
+    }
+
+    val localeFlow: Flow<String> = context.dataStore.data.map { prefs ->
+        prefs[LOCALE_KEY] ?: "system"
+    }
+
+    suspend fun saveLocale(locale: String) {
+        context.dataStore.edit { prefs -> prefs[LOCALE_KEY] = locale }
+    }
+
+    val dateFormatFlow: Flow<String> = context.dataStore.data.map { prefs ->
+        prefs[DATE_FORMAT_KEY] ?: "DD/MM/YYYY"
+    }
+
+    suspend fun saveDateFormat(format: String) {
+        context.dataStore.edit { prefs -> prefs[DATE_FORMAT_KEY] = format }
+    }
+
+    val timeFormatFlow: Flow<String> = context.dataStore.data.map { prefs ->
+        prefs[TIME_FORMAT_KEY] ?: "24h"
+    }
+
+    suspend fun saveTimeFormat(format: String) {
+        context.dataStore.edit { prefs -> prefs[TIME_FORMAT_KEY] = format }
     }
 }

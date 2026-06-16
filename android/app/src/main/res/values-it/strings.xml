@@ -1,0 +1,224 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Time Tracker</string>
+
+    <!-- Timer — idle -->
+    <string name="label_workspace">Spazio di lavoro</string>
+    <string name="label_project">Progetto</string>
+    <string name="label_description">Lavorando a…</string>
+    <string name="placeholder_description">Descrizione opzionale</string>
+    <string name="placeholder_select_workspace">Seleziona spazio…</string>
+    <string name="placeholder_select_project">Seleziona progetto…</string>
+    <string name="placeholder_loading">Caricamento…</string>
+    <string name="btn_start">AVVIA</string>
+    <string name="btn_stop">FERMA</string>
+    <string name="label_start_time">Ora di inizio</string>
+    <string name="label_end_time">Ora di fine</string>
+    <string name="hint_manual_end">Inserire un\'ora di fine arresta il timer.</string>
+    <string name="toast_end_before_start">L\'ora di fine deve essere successiva a quella di inizio.</string>
+    <string name="warn_no_api_key">Chiave API Notion non configurata.</string>
+    <string name="warn_no_api_key_link">Apri Impostazioni</string>
+    <string name="warn_no_workspaces">Aggiungi uno spazio nelle</string>
+    <string name="warn_no_workspaces_link">Impostazioni</string>
+    <string name="warn_no_workspaces_suffix">per iniziare.</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Impostazioni</string>
+    <string name="first_launch_hint">Inserisci la chiave API di Notion e almeno uno spazio di lavoro per iniziare.</string>
+    <string name="label_api_key">Chiave API di Notion</string>
+    <string name="placeholder_api_key">secret_… o ntn_…</string>
+    <string name="btn_show_key">Mostra</string>
+    <string name="btn_hide_key">Nascondi</string>
+    <string name="btn_test_and_save_key">Testa connessione &amp; salva</string>
+    <string name="btn_testing_key">Verifica…</string>
+    <string name="btn_remove_key">Rimuovi chiave</string>
+    <string name="label_workspaces">Spazi di lavoro</string>
+    <string name="no_workspaces_yet">Nessuno spazio di lavoro.</string>
+    <string name="title_delete_workspace">Elimina spazio</string>
+    <string name="title_delete_workspace_disabled">Arresta prima il timer</string>
+    <string name="title_move_up">Sposta su</string>
+    <string name="title_move_down">Sposta giù</string>
+    <string name="btn_add_workspace">+ Aggiungi spazio</string>
+
+    <!-- Workspace modal -->
+    <string name="modal_title_add_workspace">Aggiungi spazio</string>
+    <string name="modal_title_edit_workspace">Modifica spazio</string>
+    <string name="label_workspace_name">Nome</string>
+    <string name="placeholder_workspace_name">Il mio spazio di lavoro</string>
+    <string name="label_time_entries_db">Database registrazioni tempo</string>
+    <string name="hint_time_entries_db">Le registrazioni vengono create qui. Richiesto: uno di tipo intervallo di date, uno di stato e, idealmente, una relazione per i progetti.</string>
+    <string name="label_projects_db">Database progetti</string>
+    <string name="placeholder_select_database">Seleziona database…</string>
+    <string name="placeholder_select">Seleziona…</string>
+    <string name="placeholder_search">Cerca…</string>
+    <string name="search_no_results">Nessun risultato</string>
+    <string name="dropdown_none">– Nessuno –</string>
+    <string name="btn_clear">Pulisci</string>
+    <string name="btn_refresh_databases">Aggiorna</string>
+    <string name="loading_databases">Caricamento database…</string>
+    <string name="error_loading_databases">Impossibile caricare i database</string>
+    <string name="error_loading_schema">Impossibile caricare le proprietà del database</string>
+    <string name="no_databases_found">Nessun database trovato. Collega la tua integrazione Notion alle pagine corrispondenti.</string>
+    <string name="btn_retry">Riprova</string>
+    <string name="label_time_entry_date_prop">Campo intervallo di date</string>
+    <string name="hint_time_entry_date_prop">Memorizza l\'ora di inizio e di fine.</string>
+    <string name="label_time_entry_status_prop">Campo di stato</string>
+    <string name="hint_time_entry_status_prop">Indica se il timer è attivo o completato.</string>
+    <string name="label_time_entry_status_running">Opzione stato "In corso"</string>
+    <string name="hint_time_entry_status_running">L\'opzione che indica una registrazione come in corso.</string>
+    <string name="label_time_entry_status_done">Opzione stato "Completato"</string>
+    <string name="hint_time_entry_status_done">L\'opzione che indica una registrazione come completata.</string>
+    <string name="label_relation_prop">Campo relazione (progetti)</string>
+    <string name="loading_properties">Caricamento…</string>
+    <string name="section_extra_fields">Campi aggiuntivi (opzionale)</string>
+    <string name="hint_extra_fields">Fino a cinque campi aggiuntivi del database delle registrazioni, da compilare manualmente nel timer.</string>
+    <string name="btn_add_extra_field">+ Aggiungi campo</string>
+    <string name="title_remove_extra_field">Rimuovi campo</string>
+    <string name="placeholder_select_field">Seleziona campo…</string>
+    <string name="label_required_field">Richiesto</string>
+    <string name="toast_required_fields_missing">Compila tutti i campi richiesti prima di avviare il timer.</string>
+    <string name="toast_required_before_stopping">Compila i campi richiesti prima di fermare il timer.</string>
+    <string name="error_loading_extras">Impossibile caricare i campi aggiuntivi</string>
+    <string name="no_properties_of_type">Nessun campo compatibile trovato.</string>
+    <string name="label_workspace_rounding">Arrotondamento tempo</string>
+    <string name="rounding_off">Nessun arrotondamento</string>
+    <string name="rounding_5">Arrotonda ai 5 minuti più vicini</string>
+    <string name="rounding_10">Arrotonda ai 10 minuti più vicini</string>
+    <string name="rounding_15">Arrotonda ai 15 minuti più vicini</string>
+    <string name="workspace_rounding_hint">Arrotonda gli orari di inizio e fine (inclusi quelli manuali) all\'intervallo più vicino.</string>
+    <string name="workspace_rounding_summary">Arrotondamento: %1$d min</string>
+    <string name="label_workspace_color">Colore spazio di lavoro</string>
+    <string name="label_custom_color">Hex personalizzato</string>
+    <string name="btn_apply_color">Applica</string>
+    <string name="save_incomplete_hint">Compila tutti i campi prima di salvare.</string>
+    <string name="btn_cancel">Annulla</string>
+    <string name="btn_save">Salva</string>
+
+    <!-- Recovery dialog -->
+    <string name="recovery_title">Timer ancora attivo</string>
+    <string name="recovery_body">Un timer era attivo all\'ultima chiusura dell\'app.</string>
+    <string name="recovery_stop">Ferma ora</string>
+    <string name="recovery_resume">Riprendi</string>
+    <string name="recovery_discard">Scarta</string>
+
+    <!-- Toasts / errors -->
+    <string name="toast_api_key_saved">La chiave API funziona ed è stata salvata.</string>
+    <string name="toast_api_key_removed">Chiave API rimossa.</string>
+    <string name="toast_connection_failed">Connessione fallita</string>
+    <string name="toast_workspace_added">Spazio di lavoro \"%1$s\" aggiunto.</string>
+    <string name="toast_workspace_saved">Spazio di lavoro \"%1$s\" salvato.</string>
+    <string name="toast_projects_error">Impossibile caricare i progetti</string>
+    <string name="toast_start_error">Impossibile avviare il timer</string>
+    <string name="toast_stop_error">Impossibile arrestare il timer</string>
+    <string name="toast_stop_retry">Riprova</string>
+    <string name="toast_recovery_stop_error">Impossibile arrestare il timer recuperato</string>
+    <string name="title_dismiss">Chiudi</string>
+    <string name="btn_back">Indietro</string>
+    <string name="title_settings">Impostazioni</string>
+
+    <!-- Running timers list -->
+    <string name="running_timers_heading">Timer attivi</string>
+    <string name="stop_running_timer">Arresta timer</string>
+    <string name="refresh_running_timers">Aggiorna timer attivi</string>
+    <string name="start_new_timer">Avvia nuovo timer</string>
+
+    <!-- Recent entries -->
+    <string name="recent_entries_heading">Registrazioni recenti</string>
+    <string name="title_delete_entry">Elimina</string>
+    <string name="title_open_in_notion">Apri in Notion</string>
+    <string name="confirm_delete_title">Archiviare questa registrazione?</string>
+    <string name="confirm_delete_message">\"%1$s\" sarà archiviata in Notion.</string>
+    <string name="confirm_delete_confirm">Archivia</string>
+    <string name="toast_delete_error">Impossibile eliminare la registrazione</string>
+
+    <!-- Database integration hint -->
+    <string name="hint_database_integration">Assicurati di condividere questo database con la tua integrazione Notion.</string>
+
+    <!-- Theme -->
+    <string name="label_theme">Aspetto</string>
+    <string name="theme_auto">Segui sistema (Auto)</string>
+    <string name="theme_light">Chiaro</string>
+    <string name="theme_dark">Scuro</string>
+    <string name="label_dynamic_color">Colore dinamico</string>
+    <string name="dynamic_color_hint">Usa i colori del tuo sfondo.</string>
+
+    <!-- QR code import -->
+    <string name="btn_scan_qr">Scansiona codice QR per importare</string>
+    <string name="btn_add_workspace_qr">Aggiungi spazio via codice QR</string>
+    <string name="btn_import_settings_qr">Scansiona codice QR (impostazioni / spazio di lavoro)</string>
+    <string name="qr_scan_title">Scansiona codice QR</string>
+    <string name="qr_scan_hint">Punta la fotocamera su un codice QR di impostazioni o spazio di lavoro dall\'app Windows.</string>
+    <string name="qr_import_success">Impostazioni importate con successo.</string>
+    <string name="qr_import_error">Impossibile leggere il codice QR delle impostazioni.</string>
+    <string name="qr_permission_denied">È necessario l\'accesso alla fotocamera per scansionare i codici QR.</string>
+
+    <!-- Refresh -->
+    <string name="btn_refresh_all">Aggiorna</string>
+
+    <!-- Edit running timer -->
+    <string name="hint_timer_title">Titolo del timer…</string>
+    <string name="btn_edit_timer">Modifica</string>
+    <string name="title_edit_timer">Modifica timer</string>
+    <string name="btn_save_changes">Salva</string>
+    <string name="hint_edit_timer_saving">Salvataggio…</string>
+
+    <!-- Notification -->
+    <string name="notification_channel_name">Timer</string>
+    <string name="notification_channel_description">Mostra il timer attivo</string>
+    <string name="notification_action_stop">Arresta</string>
+
+    <!-- Presets -->
+    <string name="section_presets">Preimpostazioni (opzionale)</string>
+    <string name="hint_presets">Fino a 5 preimpostazioni. Tocca un chip per avviare il timer immediatamente.</string>
+    <string name="btn_add_preset">+ Aggiungi preimpostazione</string>
+    <string name="title_remove_preset">Rimuovi preimpostazione</string>
+    <string name="preset_name_placeholder">es. Standup mattutino</string>
+    <string name="label_preset_title">Titolo predefinito</string>
+    <string name="preset_title_placeholder">Titolo predefinito opzionale…</string>
+    <string name="label_show_in_shortcuts">Mostra nelle scorciatoie di avvio</string>
+
+    <!-- Timer stopped elsewhere -->
+    <string name="timer_stopped_elsewhere">Il timer è stato fermato su un altro dispositivo.</string>
+
+    <!-- Deleted page dialog -->
+    <string name="deleted_page_title">Pagina non trovata in Notion</string>
+    <string name="deleted_page_body">La registrazione non può essere salvata perché la pagina corrispondente è stata eliminata.</string>
+    <string name="deleted_page_hint">Se necessario, ripristina la pagina dal cestino di Notion o ricreala manualmente.</string>
+    <string name="deleted_page_confirm">Chiudi</string>
+    <string name="toast_deleted_page_discarded">Pagina non trovata – registrazione scartata.</string>
+    <string name="toast_update_error">Impossibile aggiornare il timer</string>
+
+    <!-- Per-workspace QR -->
+    <string name="btn_workspace_qr">Esporta spazio via QR</string>
+    <string name="qr_workspace_note">Scansiona per importare questo spazio su un altro dispositivo. Chiave API non inclusa.</string>
+    <string name="qr_scan_hint_workspace">Punta la fotocamera verso il codice QR di spazio dell\'applicazione Windows.</string>
+
+    <!-- Additional New Strings -->
+    <string name="warn_already_running_title">Timer già attivo</string>
+    <string name="warn_already_running_body">Un timer è già attivo. Vuoi avviare un nuovo timer contemporaneamente?</string>
+    <string name="btn_add_new_timer">Avvia nuovo</string>
+    <string name="dialog_save_preset_title">Salva preimpostazione</string>
+    <string name="dialog_save_preset_body">Salva la descrizione e i campi correnti come preimpostazione.</string>
+    <string name="dialog_save_preset_placeholder">Nome preimpostazione (es. Standup giornaliero)</string>
+    <string name="presets_manage_title">Gestisci preimpostazioni</string>
+    <string name="tooltip_presets_shortcuts">Le preimpostazioni in alto saranno usate per le scorciatoie di avvio.</string>
+    <string name="dialog_unsaved_changes_title">Modifiche non salvate</string>
+    <string name="dialog_unsaved_changes_body">Hai modifiche non salvate. Vuoi salvarle prima di uscire?</string>
+    <string name="btn_discard">Scarta</string>
+    <string name="dialog_time_error_title">L\'ora di fine è antecedente all\'inizio</string>
+    <string name="dialog_time_error_body">L\'ora di fine si colloca prima dell\'ora di inizio. Vuoi fermare il timer il giorno successivo?</string>
+    <string name="btn_edit">Modifica</string>
+    <string name="btn_next_day">Giorno successivo</string>
+
+    <!-- Settings Formats -->
+    <string name="label_language">Lingua</string>
+    <string name="label_date_format">Formato data</string>
+    <string name="label_time_format">Formato ora</string>
+    <string name="language_system">Lingua di sistema (Auto)</string>
+    <string name="language_en">English</string>
+    <string name="language_nl">Nederlands</string>
+    <string name="language_fr">Français</string>
+    <string name="language_de">Deutsch</string>
+    <string name="language_es">Español</string>
+    <string name="language_it">Italiano</string>
+</resources>

@@ -1,5 +1,6 @@
 package com.impca201.notiontimetracker.ui.components
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -57,6 +58,73 @@ fun WorkspaceModal(
 ) {
     val scrollState = rememberScrollState()
 
+    val hasChanges = remember(state, allWorkspaces) {
+        if (state.isNew) {
+            state.name.isNotBlank() ||
+            state.timeEntriesDbId.isNotBlank() ||
+            state.color.isNotBlank() ||
+            state.extraProps.isNotEmpty() ||
+            state.roundingMinutes != 15
+        } else {
+            val original = allWorkspaces.find { it.id == state.workspaceId }
+            original == null ||
+            state.name != original.name ||
+            state.color != original.color ||
+            state.timeEntriesDbId != original.timeEntriesDbId ||
+            state.timeEntryDateProp != original.propertyMap.timeEntryDateProp ||
+            state.timeEntryStatusProp != original.propertyMap.timeEntryStatusProp ||
+            state.timeEntryStatusRunning != original.propertyMap.timeEntryStatusRunning ||
+            state.timeEntryStatusDone != original.propertyMap.timeEntryStatusDone ||
+            state.extraProps != original.extraProps ||
+            state.roundingMinutes != original.roundingMinutes
+        }
+    }
+
+    var showUnsavedDialog by remember { mutableStateOf(false) }
+
+    val handleDismissRequest = {
+        if (hasChanges) {
+            showUnsavedDialog = true
+        } else {
+            onDismiss()
+        }
+    }
+
+    BackHandler(enabled = true, onBack = handleDismissRequest)
+
+    if (showUnsavedDialog) {
+        AlertDialog(
+            onDismissRequest = { showUnsavedDialog = false },
+            title = { Text(stringResource(R.string.dialog_unsaved_changes_title)) },
+            text = { Text(stringResource(R.string.dialog_unsaved_changes_body)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showUnsavedDialog = false
+                        onSave()
+                    },
+                    enabled = isValid && !state.saving
+                ) {
+                    Text(stringResource(R.string.btn_save))
+                }
+            },
+            dismissButton = {
+                Row {
+                    TextButton(onClick = {
+                        showUnsavedDialog = false
+                        onDismiss()
+                    }) {
+                        Text(stringResource(R.string.btn_discard))
+                    }
+                    Spacer(Modifier.width(8.dp))
+                    TextButton(onClick = { showUnsavedDialog = false }) {
+                        Text(stringResource(R.string.btn_cancel))
+                    }
+                }
+            }
+        )
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -67,7 +135,7 @@ fun WorkspaceModal(
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = onDismiss) {
+                    IconButton(onClick = handleDismissRequest) {
                         Icon(Icons.Default.Close, contentDescription = stringResource(R.string.btn_cancel))
                     }
                 },
@@ -95,7 +163,7 @@ fun WorkspaceModal(
                 onValueChange = onNameChange,
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
-                placeholder = { Text("My workspace") }
+                placeholder = { Text(stringResource(R.string.placeholder_workspace_name)) }
             )
 
             Spacer(Modifier.height(16.dp))
@@ -194,50 +262,7 @@ fun WorkspaceModal(
                 }
             }
 
-            // Presets
-            Spacer(Modifier.height(16.dp))
-            Text(stringResource(R.string.section_presets), style = MaterialTheme.typography.titleSmall)
-            Text(
-                stringResource(R.string.hint_presets),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(Modifier.height(8.dp))
 
-            val relationOptionsByName = state.extraProps
-                .mapIndexedNotNull { idx, ep ->
-                    val opts = state.extraPropRelationPages[idx]
-                    if (ep.propName.isNotBlank() && opts != null) ep.propName to opts else null
-                }
-                .toMap()
-
-            val filteredExtraProps = state.extraProps.filter { it.propName.isNotBlank() }
-            val context = androidx.compose.ui.platform.LocalContext.current
-            val maxShortcuts = remember(context) { androidx.core.content.pm.ShortcutManagerCompat.getMaxShortcutCountPerActivity(context).coerceAtMost(4) }
-            val otherWorkspaces = allWorkspaces.filter { it.id != state.workspaceId }
-            val otherShortcutsCount = otherWorkspaces.flatMap { it.presets.filter { it.showInShortcuts } }.size
-            val currentShortcutsCount = state.presets.filter { it.showInShortcuts } .size
-            val shortcutLimitReached = (otherShortcutsCount + currentShortcutsCount) >= maxShortcuts
-
-            state.presets.forEachIndexed { index, preset ->
-                PresetRow(
-                    preset = preset,
-                    workspaceName = state.name,
-                    extraProps = filteredExtraProps,
-                    schema = state.schema,
-                    relationOptions = relationOptionsByName,
-                    shortcutCheckboxEnabled = preset.showInShortcuts || !shortcutLimitReached,
-                    onUpdate = { onUpdatePreset(index, it) },
-                    onRemove = { onRemovePreset(index) }
-                )
-                Spacer(Modifier.height(8.dp))
-            }
-
-            if (state.presets.size < 5) {
-                TextButton(onClick = onAddPreset) {
-                    Text(stringResource(R.string.btn_add_preset))
-                }
-            }
 
             // Rounding
             Spacer(Modifier.height(16.dp))
@@ -255,6 +280,8 @@ fun WorkspaceModal(
             Text(stringResource(R.string.label_workspace_color), style = MaterialTheme.typography.titleSmall)
             Spacer(Modifier.height(8.dp))
             ColorPicker(selected = state.color, onSelect = onColorChange)
+
+
 
             if (!isValid) {
                 Spacer(Modifier.height(8.dp))
@@ -371,143 +398,7 @@ private fun ExtraPropRow(
 }
 
 
-@Composable
-private fun PresetRow(
-    preset: Preset,
-    workspaceName: String,
-    extraProps: List<ExtraProp>,
-    schema: Map<String, SchemaProperty>,
-    relationOptions: Map<String, List<NamedOption>>,
-    shortcutCheckboxEnabled: Boolean,
-    onUpdate: (Preset) -> Unit,
-    onRemove: () -> Unit
-) {
-    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    "$workspaceName – ",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.widthIn(max = 100.dp)
-                )
-                OutlinedTextField(
-                    value = preset.name,
-                    onValueChange = { onUpdate(preset.copy(name = it)) },
-                    modifier = Modifier.weight(1f),
-                    singleLine = true,
-                    placeholder = { Text(stringResource(R.string.preset_name_placeholder), style = MaterialTheme.typography.bodySmall) },
-                    textStyle = MaterialTheme.typography.bodySmall
-                )
-                Spacer(Modifier.width(4.dp))
-                IconButton(onClick = onRemove) {
-                    Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.title_remove_preset))
-                }
-            }
-            Spacer(Modifier.height(8.dp))
-            Text(stringResource(R.string.label_preset_title), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            OutlinedTextField(
-                value = preset.pageTitle,
-                onValueChange = { onUpdate(preset.copy(pageTitle = it)) },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                placeholder = { Text(stringResource(R.string.preset_title_placeholder), style = MaterialTheme.typography.bodySmall) },
-                textStyle = MaterialTheme.typography.bodySmall
-            )
-            Spacer(Modifier.height(8.dp))
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Checkbox(
-                    checked = preset.showInShortcuts,
-                    enabled = shortcutCheckboxEnabled,
-                    onCheckedChange = { checked ->
-                        onUpdate(preset.copy(showInShortcuts = checked))
-                    }
-                )
-                Spacer(Modifier.width(4.dp))
-                Text(
-                    stringResource(R.string.label_show_in_shortcuts),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = if (shortcutCheckboxEnabled) MaterialTheme.colorScheme.onSurfaceVariant
-                            else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
-                )
-            }
-            extraProps.forEach { ep ->
-                val schemaProp = schema[ep.propName]
-                // Resolve type schema-first (matches Windows): the stored ep.type can be
-                // blank/stale (e.g. QR-imported workspaces), which would otherwise make
-                // relation/select fields fall back to a plain text field.
-                val type = schemaProp?.type ?: ep.type.ifBlank { "rich_text" }
-                if (type == "files") return@forEach
-                Spacer(Modifier.height(4.dp))
-                val currentVal = preset.extraValues[ep.propName] ?: ""
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        ep.propName,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                when (type) {
-                    "checkbox" -> {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Switch(
-                                checked = currentVal == "true",
-                                onCheckedChange = { checked ->
-                                    onUpdate(preset.copy(extraValues = preset.extraValues + (ep.propName to if (checked) "true" else "false")))
-                                }
-                            )
-                        }
-                    }
-                    "select" -> {
-                        val opts = schemaProp?.selectOptions?.map { NamedOption(it.name, it.name) } ?: emptyList()
-                        SearchableDropdown(
-                            options = opts,
-                            selected = opts.firstOrNull { it.id == currentVal },
-                            placeholder = stringResource(R.string.placeholder_select),
-                            onSelect = { opt -> onUpdate(preset.copy(extraValues = preset.extraValues + (ep.propName to (opt?.name ?: "")))) },
-                            allowClear = true,
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    }
-                    "status" -> {
-                        val opts = schemaProp?.statusOptions?.map { NamedOption(it.name, it.name) } ?: emptyList()
-                        SearchableDropdown(
-                            options = opts,
-                            selected = opts.firstOrNull { it.id == currentVal },
-                            placeholder = stringResource(R.string.placeholder_select),
-                            onSelect = { opt -> onUpdate(preset.copy(extraValues = preset.extraValues + (ep.propName to (opt?.name ?: "")))) },
-                            allowClear = true,
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    }
-                    "relation" -> {
-                        val opts = relationOptions[ep.propName] ?: emptyList()
-                        SearchableDropdown(
-                            options = opts,
-                            selected = opts.firstOrNull { it.id == currentVal },
-                            placeholder = stringResource(R.string.placeholder_select),
-                            onSelect = { opt -> onUpdate(preset.copy(extraValues = preset.extraValues + (ep.propName to (opt?.id ?: "")))) },
-                            allowClear = true,
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    }
-                    else -> {
-                        OutlinedTextField(
-                            value = currentVal,
-                            onValueChange = { onUpdate(preset.copy(extraValues = preset.extraValues + (ep.propName to it))) },
-                            modifier = Modifier.fillMaxWidth(),
-                            singleLine = true,
-                            textStyle = MaterialTheme.typography.bodySmall
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
+
 
 @Composable
 private fun RoundingSelector(selected: Int, onSelect: (Int) -> Unit) {

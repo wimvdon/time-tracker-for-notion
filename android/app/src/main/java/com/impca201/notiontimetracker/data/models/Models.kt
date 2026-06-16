@@ -64,6 +64,7 @@ data class RunningTimerResult(
     val url: String = ""
 )
 
+@Serializable
 data class RunningTimerInfo(
     val pageId: String,
     val title: String,

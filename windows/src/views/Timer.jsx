@@ -1,15 +1,29 @@
 import { useEffect, useState } from 'react';
 import { useStore } from '../store/useStore.js';
 import { computeEndTime } from '../lib/rounding.js';
-import { formatHHMM, formatElapsed } from '../lib/format.js';
+import { formatHHMM, formatElapsed, formatDateStr, formatTimeStr, parseTimeStr } from '../lib/format.js';
 import { t } from '../lib/i18n.js';
 import { buildPropertyValue } from '../lib/notionValues.js';
 import ExtraFieldInput from '../components/ExtraFieldInput.jsx';
 import SearchableSelect from '../components/SearchableSelect.jsx';
+import {
+  ArrowClockwise20Regular,
+  Add20Regular,
+  Settings20Regular,
+  Play20Regular,
+  Edit20Regular,
+  Bookmark20Regular,
+  ArrowUp20Regular,
+  ArrowDown20Regular,
+  Delete20Regular,
+  Stop20Regular,
+  Open20Regular,
+  Info20Regular
+} from '@fluentui/react-icons';
 
 /** Combines the date of `base` with an "HH:MM" string from a time input. */
 function timeOnDate(base, hhmm) {
-  const [hours, minutes] = hhmm.split(':').map(Number);
+  const { hours, minutes } = parseTimeStr(hhmm);
   const result = new Date(base);
   result.setHours(hours, minutes, 0, 0);
   return result;
@@ -30,7 +44,6 @@ export default function Timer() {
   const startTimer = useStore((s) => s.startTimer);
   const isStarting = useStore((s) => s.isStarting);
   const setView = useStore((s) => s.setView);
-  const recoveredTimer = useStore((s) => s.recoveredTimer);
   const runningTimers = useStore((s) => s.runningTimers);
   const runningTimersLoading = useStore((s) => s.runningTimersLoading);
   const loadRunningTimers = useStore((s) => s.loadRunningTimers);
@@ -51,50 +64,61 @@ export default function Timer() {
   const deletedPageInfo = useStore((s) => s.deletedPageInfo);
   const dismissDeletedPage = useStore((s) => s.dismissDeletedPage);
 
+  const showAlreadyRunningWarning = useStore((s) => s.showAlreadyRunningWarning);
+  const onConfirmAlreadyRunning = useStore((s) => s.onConfirmAlreadyRunning);
+  const onCancelAlreadyRunning = useStore((s) => s.onCancelAlreadyRunning);
+  const onPlusButtonClicked = useStore((s) => s.onPlusButtonClicked);
+  const saveCurrentAsPreset = useStore((s) => s.saveCurrentAsPreset);
+  const deletePreset = useStore((s) => s.deletePreset);
+  const movePresetUp = useStore((s) => s.movePresetUp);
+  const movePresetDown = useStore((s) => s.movePresetDown);
+
+  const [showSavePresetModal, setShowSavePresetModal] = useState(false);
+  const [showManagePresetsModal, setShowManagePresetsModal] = useState(false);
+  const [presetNameInput, setPresetNameInput] = useState('');
+
   const selectedWorkspace = workspaces.find((w) => w.id === selectedWorkspaceId);
 
-  // Reload running timers and recent entries on every state transition (except during crash recovery)
+  // Reload running timers and recent entries on every state transition
   const timerRunning = timer.running;
-  const hasRecovery = !!recoveredTimer;
   useEffect(() => {
-    if (!hasRecovery) {
-      loadRunningTimers();
-      loadRecentEntries();
-    }
+    loadRunningTimers();
+    loadRecentEntries();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [timerRunning, hasRecovery]);
+  }, [timerRunning]);
 
   const settingsButton = (
     <div className="flex justify-end gap-2 px-4 pb-3">
       <button
         onClick={refreshAll}
         title={t('btnRefreshAll')}
-        className="text-zinc-500 hover:text-zinc-200 text-xl leading-none transition-colors"
+        className="text-zinc-500 hover:text-zinc-200 transition-colors flex items-center justify-center"
       >
-        ↺
+        <ArrowClockwise20Regular className="w-5 h-5" />
       </button>
       {timer.running && (
         <button
-          onClick={suspendActiveToNewTimer}
+          onClick={onPlusButtonClicked}
           title={t('titleStartNewTimer')}
-          className="text-zinc-500 hover:text-zinc-200 text-xl leading-none transition-colors"
+          className="text-zinc-500 hover:text-zinc-200 transition-colors flex items-center justify-center"
         >
-          ➕
+          <Add20Regular className="w-5 h-5" />
         </button>
       )}
       <button
         onClick={() => setView('settings')}
         title={t('titleSettings')}
-        className="text-zinc-500 hover:text-zinc-200 text-xl leading-none transition-colors"
+        className="text-zinc-500 hover:text-zinc-200 transition-colors flex items-center justify-center"
       >
-        ⚙️
+        <Settings20Regular className="w-5 h-5" />
       </button>
     </div>
   );
 
   // ---- Running state ----
+  let content;
   if (timer.running) {
-    return (
+    content = (
       <RunningView
         workspaceName={selectedWorkspace?.name || '–'}
         workspaceColor={selectedWorkspace?.color?.trim() || null}
@@ -113,146 +137,315 @@ export default function Timer() {
         onOpenUrl={openNotionPage}
       />
     );
-  }
+  } else {
+    // ---- Idle state ----
+    const canStart = !!apiKey && !!selectedWorkspaceId && !extrasLoading && !isStarting;
 
-  // ---- Idle state ----
-  const canStart = !!apiKey && !!selectedWorkspaceId && !extrasLoading && !isStarting;
+    content = (
+      <div className="flex flex-col h-full">
+        <div className="flex-1 flex flex-col px-5 pt-5 gap-4 overflow-y-auto">
+          {!apiKey && (
+            <div className="text-xs bg-amber-900/40 border border-amber-700 text-amber-200 rounded-md p-2">
+              {t('warnNoApiKey')}{' '}
+              <button onClick={() => setView('settings')} className="underline font-semibold">
+                {t('warnNoApiKeyLink')}
+              </button>
+            </div>
+          )}
+          {apiKey && workspaces.length === 0 && (
+            <div className="text-xs bg-zinc-800 border border-zinc-700 text-zinc-300 rounded-md p-2">
+              {t('warnNoWorkspaces')}{' '}
+              <button onClick={() => setView('settings')} className="underline font-semibold">
+                {t('warnNoWorkspacesLink')}
+              </button>{' '}
+              {t('warnNoWorkspacesSuffix')}
+            </div>
+          )}
 
-  return (
-    <div className="flex flex-col h-full">
-      <div className="flex-1 flex flex-col px-5 pt-5 gap-4 overflow-y-auto">
-        {!apiKey && (
-          <div className="text-xs bg-amber-900/40 border border-amber-700 text-amber-200 rounded-md p-2">
-            {t('warnNoApiKey')}{' '}
-            <button onClick={() => setView('settings')} className="underline font-semibold">
-              {t('warnNoApiKeyLink')}
+          {/* Preset chips — shown when any workspace has presets */}
+          {workspaces.some((w) => (w.presets?.length ?? 0) > 0) && (
+            <div className="flex flex-wrap items-center gap-1.5">
+              {workspaces.flatMap((w) =>
+                (w.presets || []).map((preset) => {
+                  const hex = w.color?.trim();
+                  const chipStyle = hex
+                    ? { borderColor: hex + '66', color: hex, backgroundColor: hex + '22' }
+                    : {};
+                  return (
+                    <button
+                      key={`${w.id}:${preset.id}`}
+                      onClick={() => applyPreset(w.id, preset)}
+                      disabled={!apiKey}
+                      title={preset.name && preset.name !== w.name ? `${w.name} – ${preset.name}` : w.name}
+                      style={chipStyle}
+                      className="flex items-center gap-1 px-2.5 py-1 bg-zinc-800 hover:bg-emerald-700 border border-zinc-700 hover:border-emerald-600 rounded-full text-xs text-zinc-300 hover:text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      <Play20Regular className="w-3 h-3" />
+                      <span className="max-w-[140px] truncate">{preset.name && preset.name !== w.name ? `${w.name} – ${preset.name}` : w.name}</span>
+                    </button>
+                  );
+                })
+              )}
+              <button
+                onClick={() => setShowManagePresetsModal(true)}
+                title={t('presetsManageTitle')}
+                className="p-1 text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800 rounded-full transition-colors flex items-center justify-center text-sm"
+              >
+                <Edit20Regular className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+
+          <div>
+            <label className="block text-xs text-zinc-400 mb-1">{t('labelWorkspace')}</label>
+            <SearchableSelect
+              value={selectedWorkspaceId || ''}
+              onChange={(v) => selectWorkspace(v || null)}
+              options={workspaces.map((w) => ({ value: w.id, label: w.name }))}
+              placeholder={t('placeholderSelectWorkspace')}
+              disabled={workspaces.length === 0}
+              triggerClass="bg-zinc-800"
+              className="w-full"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs text-zinc-400 mb-1">{t('labelDescription')}</label>
+            <input
+              type="text"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder={t('placeholderDescription')}
+              className="w-full bg-zinc-800 border border-zinc-700 rounded-md px-3 py-2 text-sm placeholder-zinc-600"
+            />
+          </div>
+
+          {selectedWorkspaceId && extrasLoading && (
+            <div className="text-xs text-zinc-500">{t('placeholderLoading')}</div>
+          )}
+          {selectedWorkspaceId &&
+            extraFieldDefs.map((def) => (
+              <ExtraFieldInput
+                key={def.name}
+                def={def}
+                value={extraValues[def.name]}
+                error={def.required && buildPropertyValue(def.type, extraValues[def.name]) === null}
+                onChange={(value) => setExtraValue(def.name, value)}
+              />
+            ))}
+
+          <div className="flex gap-2 items-stretch mt-2">
+            <button
+              onClick={startTimer}
+              disabled={!canStart || isStarting}
+              className={`flex-1 py-3 rounded-lg font-semibold text-lg transition-colors flex items-center justify-center ${
+                selectedWorkspace?.color
+                  ? 'text-white hover:brightness-110 active:brightness-90 disabled:bg-zinc-800 disabled:text-zinc-600'
+                  : 'bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 disabled:bg-zinc-800 disabled:text-zinc-600'
+              }`}
+              style={
+                selectedWorkspace?.color && canStart && !isStarting
+                  ? { backgroundColor: selectedWorkspace.color }
+                  : undefined
+              }
+            >
+              {isStarting ? (
+                <span className="animate-spin inline-block w-5 h-5 border-2 border-current border-t-transparent rounded-full" />
+              ) : (
+                t('btnStart')
+              )}
+            </button>
+            
+            <button
+              onClick={() => setShowSavePresetModal(true)}
+              disabled={!selectedWorkspaceId || isStarting}
+              title={t('dialogSavePresetTitle')}
+              className="px-3.5 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 hover:border-zinc-600 rounded-lg text-lg text-zinc-400 hover:text-zinc-200 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center"
+            >
+              <Bookmark20Regular className="w-5 h-5" />
             </button>
           </div>
-        )}
-        {apiKey && workspaces.length === 0 && (
-          <div className="text-xs bg-zinc-800 border border-zinc-700 text-zinc-300 rounded-md p-2">
-            {t('warnNoWorkspaces')}{' '}
-            <button onClick={() => setView('settings')} className="underline font-semibold">
-              {t('warnNoWorkspacesLink')}
-            </button>{' '}
-            {t('warnNoWorkspacesSuffix')}
-          </div>
-        )}
 
-        {/* Preset chips — shown when any workspace has presets */}
-        {workspaces.some((w) => (w.presets?.length ?? 0) > 0) && (
-          <div className="flex flex-wrap gap-1.5">
-            {workspaces.flatMap((w) =>
-              (w.presets || []).map((preset) => {
-                const hex = w.color?.trim();
-                const chipStyle = hex
-                  ? { borderColor: hex + '66', color: hex, backgroundColor: hex + '22' }
-                  : {};
-                return (
-                  <button
-                    key={`${w.id}:${preset.id}`}
-                    onClick={() => applyPreset(w.id, preset)}
-                    disabled={!apiKey}
-                    title={preset.name ? `${w.name} – ${preset.name}` : w.name}
-                    style={chipStyle}
-                    className="flex items-center gap-1 px-2.5 py-1 bg-zinc-800 hover:bg-emerald-700 border border-zinc-700 hover:border-emerald-600 rounded-full text-xs text-zinc-300 hover:text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                  >
-                    <span className="leading-none">▶</span>
-                    <span className="max-w-[140px] truncate">{preset.name ? `${w.name} – ${preset.name}` : w.name}</span>
-                  </button>
-                );
-              })
-            )}
-          </div>
-        )}
-
-        <div>
-          <label className="block text-xs text-zinc-400 mb-1">{t('labelWorkspace')}</label>
-          <SearchableSelect
-            value={selectedWorkspaceId || ''}
-            onChange={(v) => selectWorkspace(v || null)}
-            options={workspaces.map((w) => ({ value: w.id, label: w.name }))}
-            placeholder={t('placeholderSelectWorkspace')}
-            disabled={workspaces.length === 0}
-            triggerClass="bg-zinc-800"
-            className="w-full"
+          <OtherRunningTimers
+            timers={runningTimers}
+            loading={runningTimersLoading}
+            activePageId={null}
+            onLoad={loadRunningTimer}
+            onStop={stopOtherRunningTimer}
+            onDelete={(rt) => confirmDelete(rt, 'running')}
+            onOpenUrl={openNotionPage}
+          />
+          <RecentEntries
+            entries={recentEntries}
+            loading={recentEntriesLoading}
+            onDelete={(entry) => confirmDelete(entry, 'recent')}
+            onOpenUrl={openNotionPage}
           />
         </div>
-
-        <div>
-          <label className="block text-xs text-zinc-400 mb-1">{t('labelDescription')}</label>
-          <input
-            type="text"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder={t('placeholderDescription')}
-            className="w-full bg-zinc-800 border border-zinc-700 rounded-md px-3 py-2 text-sm placeholder-zinc-600"
+        {settingsButton}
+        {deleteConfirm && (
+          <DeleteConfirmDialog
+            title={deleteConfirm.title}
+            onConfirm={deleteEntry}
+            onCancel={cancelDelete}
           />
-        </div>
-
-        {selectedWorkspaceId && extrasLoading && (
-          <div className="text-xs text-zinc-500">{t('placeholderLoading')}</div>
         )}
-        {selectedWorkspaceId &&
-          extraFieldDefs.map((def) => (
-            <ExtraFieldInput
-              key={def.name}
-              def={def}
-              value={extraValues[def.name]}
-              error={def.required && buildPropertyValue(def.type, extraValues[def.name]) === null}
-              onChange={(value) => setExtraValue(def.name, value)}
-            />
-          ))}
-
-        <button
-          onClick={startTimer}
-          disabled={!canStart || isStarting}
-          className={`mt-2 w-full py-3 rounded-lg font-semibold text-lg transition-colors flex items-center justify-center ${
-            selectedWorkspace?.color
-              ? 'text-white hover:brightness-110 active:brightness-90 disabled:bg-zinc-800 disabled:text-zinc-600'
-              : 'bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 disabled:bg-zinc-800 disabled:text-zinc-600'
-          }`}
-          style={
-            selectedWorkspace?.color && canStart && !isStarting
-              ? { backgroundColor: selectedWorkspace.color }
-              : undefined
-          }
-        >
-          {isStarting ? (
-            <span className="animate-spin inline-block w-5 h-5 border-2 border-current border-t-transparent rounded-full" />
-          ) : (
-            t('btnStart')
-          )}
-        </button>
-
-        <OtherRunningTimers
-          timers={runningTimers}
-          loading={runningTimersLoading}
-          activePageId={null}
-          onLoad={loadRunningTimer}
-          onStop={stopOtherRunningTimer}
-          onDelete={(rt) => confirmDelete(rt, 'running')}
-          onOpenUrl={openNotionPage}
-        />
-        <RecentEntries
-          entries={recentEntries}
-          loading={recentEntriesLoading}
-          onDelete={(entry) => confirmDelete(entry, 'recent')}
-          onOpenUrl={openNotionPage}
-        />
+        {deletedPageInfo && (
+          <DeletedPageDialog info={deletedPageInfo} onDismiss={dismissDeletedPage} />
+        )}
       </div>
-      {settingsButton}
-      {deleteConfirm && (
-        <DeleteConfirmDialog
-          title={deleteConfirm.title}
-          onConfirm={deleteEntry}
-          onCancel={cancelDelete}
-        />
+    );
+  }
+
+  return (
+    <>
+      {content}
+
+      {showAlreadyRunningWarning && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+          <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-4 w-full flex flex-col gap-3">
+            <h2 className="text-sm font-semibold text-zinc-100">{t('warnAlreadyRunningTitle')}</h2>
+            <p className="text-xs text-zinc-300">{t('warnAlreadyRunningBody')}</p>
+            {timer.running && (
+              <p className="text-xs text-zinc-400">
+                Currently running in: <span className="font-semibold text-zinc-200">{workspaces.find(w => w.id === timer.workspaceId)?.name || 'Notion'}</span>
+              </p>
+            )}
+            <div className="flex flex-col gap-2 mt-1">
+              <button
+                type="button"
+                onClick={onConfirmAlreadyRunning}
+                className="w-full py-2 rounded-md bg-emerald-600 hover:bg-emerald-500 text-sm font-semibold text-white"
+              >
+                {t('btnAddOption')}
+              </button>
+              <button
+                type="button"
+                onClick={onCancelAlreadyRunning}
+                className="w-full py-2 rounded-md bg-zinc-700 hover:bg-zinc-600 text-sm text-zinc-300"
+              >
+                {t('btnCancel')}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
-      {deletedPageInfo && (
-        <DeletedPageDialog info={deletedPageInfo} onDismiss={dismissDeletedPage} />
+
+      {showSavePresetModal && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+          <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-4 w-full flex flex-col gap-3">
+            <h2 className="text-sm font-semibold">{t('dialogSavePresetTitle')}</h2>
+            <p className="text-xs text-zinc-300">{t('dialogSavePresetBody')}</p>
+            <div className="flex items-center w-full bg-zinc-900 border border-zinc-700 rounded-md px-3 py-2 text-xs focus-within:border-zinc-500">
+              <span className="text-zinc-300 select-none mr-1 font-medium whitespace-nowrap">
+                {`${workspaces.find((w) => w.id === selectedWorkspaceId)?.name || ''} -`}
+              </span>
+              <input
+                type="text"
+                value={presetNameInput}
+                onChange={(e) => setPresetNameInput(e.target.value)}
+                placeholder={t('dialogSavePresetPlaceholder')}
+                className="w-full bg-transparent p-0 focus:outline-none placeholder-zinc-500"
+              />
+            </div>
+            <div className="flex gap-2 mt-1">
+              <button
+                onClick={async () => {
+                  await saveCurrentAsPreset(presetNameInput);
+                  setPresetNameInput('');
+                  setShowSavePresetModal(false);
+                }}
+                className="flex-1 py-2 rounded-md bg-emerald-600 hover:bg-emerald-500 text-sm font-semibold text-white"
+              >
+                {t('btnSave')}
+              </button>
+              <button
+                onClick={() => {
+                  setPresetNameInput('');
+                  setShowSavePresetModal(false);
+                }}
+                className="flex-1 py-2 rounded-md bg-zinc-700 hover:bg-zinc-600 text-sm"
+              >
+                {t('btnCancel')}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
-    </div>
+
+      {showManagePresetsModal && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+          <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-4 w-full flex flex-col gap-3 max-h-[90vh]">
+            <h2 className="text-sm font-semibold">{t('presetsManageTitle')}</h2>
+            
+            <div className="bg-zinc-900/50 border border-zinc-700/50 rounded-lg p-3 flex gap-2.5 items-start text-xs text-zinc-400">
+              <Info20Regular className="w-4 h-4 text-zinc-400 mt-0.5" />
+              <p>{t('tooltipPresetsShortcuts')}</p>
+            </div>
+
+            <div className="flex-1 overflow-y-auto pr-1 flex flex-col gap-2">
+              {(() => {
+                const allPresets = workspaces.flatMap((ws) =>
+                  (ws.presets || []).map((p, index, arr) => ({ ws, p, index, arr }))
+                );
+                if (allPresets.length === 0) {
+                  return <div className="text-xs text-zinc-500 py-4 text-center">No presets configured</div>;
+                }
+                return allPresets.map(({ ws, p, index, arr }) => (
+                  <div key={p.id} className="flex items-center justify-between bg-zinc-900 border border-zinc-800 rounded px-2.5 py-1.5 text-xs">
+                    <div className="flex flex-col min-w-0 flex-1 pr-2">
+                      <span className="font-semibold text-zinc-100 truncate">{p.name || ws.name}</span>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        {ws.color?.trim() && (
+                          <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: ws.color.trim() }} />
+                        )}
+                        <span className="text-[10px] text-zinc-400 truncate">{ws.name}</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => movePresetUp(ws.id, p.id)}
+                        disabled={index === 0}
+                        title={t('titleMoveUp')}
+                        className="p-1 hover:bg-zinc-800 rounded disabled:opacity-30 disabled:hover:bg-transparent flex items-center justify-center text-zinc-400 hover:text-zinc-200"
+                      >
+                        <ArrowUp20Regular className="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => movePresetDown(ws.id, p.id)}
+                        disabled={index === arr.length - 1}
+                        title={t('titleMoveDown')}
+                        className="p-1 hover:bg-zinc-800 rounded disabled:opacity-30 disabled:hover:bg-transparent flex items-center justify-center text-zinc-400 hover:text-zinc-200"
+                      >
+                        <ArrowDown20Regular className="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => deletePreset(ws.id, p.id)}
+                        title={t('titleRemovePreset')}
+                        className="p-1 hover:bg-zinc-800 text-red-400 hover:text-red-300 rounded flex items-center justify-center"
+                      >
+                        <Delete20Regular className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                ));
+              })()}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setShowManagePresetsModal(false)}
+              className="w-full py-2 rounded-md bg-zinc-700 hover:bg-zinc-600 text-sm mt-1"
+            >
+              {t('titleDismiss')}
+            </button>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
@@ -284,15 +477,51 @@ function RunningView({
   const stopTimer = useStore((s) => s.stopTimer);
   const updateStartTime = useStore((s) => s.updateStartTime);
   const getRoundingMinutes = useStore((s) => s.getRoundingMinutes);
+  const timeFormat = useStore((s) => s.timeFormat);
+  const dateFormat = useStore((s) => s.dateFormat);
 
-  const [startInput, setStartInput] = useState(() => formatHHMM(timer.roundedStart));
+  const [startInput, setStartInput] = useState(() => formatTimeStr(timer.roundedStart, timeFormat));
   const [endInput, setEndInput] = useState('');
   const [localDesc, setLocalDesc] = useState(description);
   const [localExtras, setLocalExtras] = useState({ ...extraValues });
 
+  const selectedWorkspaceId = useStore((s) => s.selectedWorkspaceId);
+
+  const [showTimeErrorModal, setShowTimeErrorModal] = useState(false);
+  const [pendingEndTime, setPendingEndTime] = useState(null);
+
+  const activeTimerInfo = timer.running ? {
+    pageId: timer.notionPageId,
+    title: description,
+    startISO: timer.startISO,
+    workspaceId: selectedWorkspaceId,
+    workspaceName: workspaceName,
+    propertyMap: timer.propertyMap,
+  } : null;
+
+  const allRunning = [...runningTimers];
+  let currentIndex = allRunning.findIndex((rt) => rt.pageId === timer.notionPageId);
+
+  if (timer.running) {
+    const activeTimerInfo = {
+      pageId: timer.notionPageId,
+      title: description,
+      startISO: timer.startISO,
+      workspaceId: selectedWorkspaceId,
+      workspaceName: workspaceName,
+      propertyMap: timer.propertyMap,
+    };
+    if (currentIndex !== -1) {
+      allRunning[currentIndex] = activeTimerInfo;
+    } else {
+      allRunning.unshift(activeTimerInfo);
+      currentIndex = 0;
+    }
+  }
+
   useEffect(() => {
-    setStartInput(formatHHMM(timer.roundedStart));
-  }, [timer.startISO]); // eslint-disable-line react-hooks/exhaustive-deps
+    setStartInput(formatTimeStr(timer.roundedStart, timeFormat));
+  }, [timer.startISO, timeFormat]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     setLocalDesc(description);
@@ -301,7 +530,7 @@ function RunningView({
 
   const commitStart = () => {
     if (!startInput) {
-      setStartInput(formatHHMM(timer.roundedStart));
+      setStartInput(formatTimeStr(timer.roundedStart, timeFormat));
       return;
     }
     updateStartTime(timeOnDate(timer.rawStart, startInput));
@@ -320,7 +549,13 @@ function RunningView({
 
   const commitEnd = () => {
     if (!endInput) return;
-    handleStop(timeOnDate(timer.rawStart, endInput));
+    const endDate = timeOnDate(timer.rawStart, endInput);
+    if (endDate < timer.rawStart) {
+      setPendingEndTime(endDate);
+      setShowTimeErrorModal(true);
+    } else {
+      handleStop(endDate);
+    }
   };
 
   const blurOnEnter = (e) => {
@@ -339,9 +574,52 @@ function RunningView({
       style={workspaceColor ? { backgroundColor: workspaceColor + '33' } : undefined}
     >
       <div className="flex-1 flex flex-col items-center px-6 pt-6 gap-1 overflow-y-auto">
-        <div className="text-sm font-semibold text-zinc-300 truncate max-w-full">
-          {workspaceName}
-        </div>
+        {allRunning.length > 1 ? (
+          <div className="flex flex-col items-center gap-1.5 w-full">
+            <div className="flex items-center justify-between w-full max-w-[200px]">
+              <button
+                type="button"
+                onClick={() => {
+                  const prevIndex = (currentIndex - 1 + allRunning.length) % allRunning.length;
+                  onLoadRunningTimer(allRunning[prevIndex]);
+                }}
+                className="p-1 text-zinc-400 hover:text-zinc-200 select-none text-xs leading-none"
+              >
+                ◀
+              </button>
+              <span className="text-sm font-semibold text-zinc-100 truncate px-2 text-center flex-1">
+                {workspaceName}
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  const nextIndex = (currentIndex + 1) % allRunning.length;
+                  onLoadRunningTimer(allRunning[nextIndex]);
+                }}
+                className="p-1 text-zinc-400 hover:text-zinc-200 select-none text-xs leading-none"
+              >
+                ▶
+              </button>
+            </div>
+            <div className="flex gap-1.5 justify-center">
+              {allRunning.map((rt, idx) => (
+                <button
+                  type="button"
+                  key={rt.pageId}
+                  onClick={() => onLoadRunningTimer(rt)}
+                  className={`w-1.5 h-1.5 rounded-full transition-colors ${
+                    idx === currentIndex ? 'bg-red-400' : 'bg-zinc-600 hover:bg-zinc-500'
+                  }`}
+                  title={rt.title || rt.workspaceName}
+                />
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className="text-sm font-semibold text-zinc-100 truncate max-w-full">
+            {workspaceName}
+          </div>
+        )}
         <input
           type="text"
           value={localDesc}
@@ -437,6 +715,40 @@ function RunningView({
           onCancel={onCancelDelete}
         />
       )}
+      {showTimeErrorModal && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+          <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-4 w-full max-w-xs flex flex-col gap-3">
+            <h2 className="text-sm font-semibold text-zinc-100">{t('dialogTimeErrorTitle')}</h2>
+            <p className="text-xs text-zinc-300">{t('dialogTimeErrorBody')}</p>
+            <div className="flex gap-2 mt-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowTimeErrorModal(false);
+                  const nextDayDate = new Date(pendingEndTime.getTime() + 24 * 3600 * 1000);
+                  handleStop(nextDayDate);
+                  setEndInput('');
+                  setPendingEndTime(null);
+                }}
+                className="flex-1 py-2 rounded-md bg-emerald-600 hover:bg-emerald-500 text-xs font-semibold text-white"
+              >
+                {t('btnNextDay')}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowTimeErrorModal(false);
+                  setEndInput('');
+                  setPendingEndTime(null);
+                }}
+                className="flex-1 py-2 rounded-md bg-zinc-700 hover:bg-zinc-600 text-xs font-semibold text-zinc-200"
+              >
+                {t('btnEdit')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -466,6 +778,62 @@ function DeletedPageDialog({ info, onDismiss }) {
   );
 }
 
+function RunningTimerItem({ rt, isActive, onLoad, onStop, onDelete, onOpenUrl }) {
+  const [elapsed, setElapsed] = useState(0);
+
+  useEffect(() => {
+    const startMs = new Date(rt.startISO).getTime();
+    const updateElapsed = () => {
+      setElapsed(Math.max(0, Math.floor((Date.now() - startMs) / 1000)));
+    };
+    updateElapsed();
+    const interval = setInterval(updateElapsed, 1000);
+    return () => clearInterval(interval);
+  }, [rt.startISO]);
+
+  return (
+    <div
+      onClick={isActive ? undefined : () => onLoad(rt)}
+      className={`flex items-center gap-2 px-3 py-2 bg-zinc-800 rounded-md mb-1 transition-colors ${isActive ? 'opacity-60' : 'hover:bg-zinc-700 cursor-pointer'}`}
+    >
+      <div className="flex-1 min-w-0">
+        <div className="text-sm truncate text-zinc-200">{rt.title}</div>
+        <div className="flex flex-col gap-0.5 text-xs text-zinc-500 mt-0.5">
+          <span className="truncate">{rt.workspaceName}</span>
+          <span className="font-mono text-emerald-400 font-semibold">{formatElapsed(elapsed)}</span>
+        </div>
+      </div>
+      <div className="flex items-center gap-1 shrink-0">
+        {rt.url && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onOpenUrl(rt.url); }}
+            title={t('titleOpenInNotion')}
+            className="text-zinc-500 hover:text-zinc-200 transition-colors flex items-center justify-center p-1"
+          >
+            <Open20Regular className="w-4 h-4" />
+          </button>
+        )}
+        <button
+          onClick={(e) => { e.stopPropagation(); onDelete(rt); }}
+          title={t('titleDeleteEntry')}
+          className="text-zinc-500 hover:text-red-400 transition-colors flex items-center justify-center p-1"
+        >
+          <Delete20Regular className="w-4 h-4" />
+        </button>
+        {!isActive && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onStop(rt); }}
+            title={t('titleStopRunningTimer')}
+            className="text-zinc-500 hover:text-red-400 transition-colors flex items-center justify-center p-1"
+          >
+            <Stop20Regular className="w-4 h-4" />
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function OtherRunningTimers({ timers, loading, activePageId, onLoad, onStop, onDelete, onOpenUrl }) {
   if (!timers.length && !loading) return null;
   return (
@@ -476,50 +844,41 @@ function OtherRunningTimers({ timers, loading, activePageId, onLoad, onStop, onD
       {loading && !timers.length && (
         <div className="text-xs text-zinc-600 py-1">…</div>
       )}
-      {timers.map((rt) => {
-        const isActive = rt.pageId === activePageId;
-        return (
-          <div
-            key={rt.pageId}
-            onClick={isActive ? undefined : () => onLoad(rt)}
-            className={`flex items-center gap-2 px-3 py-2 bg-zinc-800 rounded-md mb-1 transition-colors ${isActive ? 'opacity-60' : 'hover:bg-zinc-700 cursor-pointer'}`}
-          >
-            <div className="flex-1 min-w-0">
-              <div className="text-sm truncate text-zinc-200">{rt.title}</div>
-              <div className="text-xs text-zinc-500">{rt.workspaceName}</div>
-            </div>
-            <div className="flex items-center gap-1 shrink-0">
-              {rt.url && (
-                <button
-                  onClick={(e) => { e.stopPropagation(); onOpenUrl(rt.url); }}
-                  title={t('titleOpenInNotion')}
-                  className="text-zinc-500 hover:text-zinc-200 text-base transition-colors leading-none"
-                >
-                  ↗
-                </button>
-              )}
-              <button
-                onClick={(e) => { e.stopPropagation(); onDelete(rt); }}
-                title={t('titleDeleteEntry')}
-                className="text-zinc-500 hover:text-red-400 text-base transition-colors leading-none"
-              >
-                🗑
-              </button>
-              {!isActive && (
-                <button
-                  onClick={(e) => { e.stopPropagation(); onStop(rt); }}
-                  title={t('titleStopRunningTimer')}
-                  className="text-zinc-500 hover:text-red-400 text-base transition-colors leading-none"
-                >
-                  ⏹
-                </button>
-              )}
-            </div>
-          </div>
-        );
-      })}
+      {timers.map((rt) => (
+        <RunningTimerItem
+          key={rt.pageId}
+          rt={rt}
+          isActive={rt.pageId === activePageId}
+          onLoad={onLoad}
+          onStop={onStop}
+          onDelete={onDelete}
+          onOpenUrl={onOpenUrl}
+        />
+      ))}
     </div>
   );
+}
+
+function formatRecentRange(startISO, endISO) {
+  if (!startISO) return '';
+  const { dateFormat, timeFormat } = useStore.getState();
+  const dateStr = formatDateStr(startISO, dateFormat);
+  const startStr = formatTimeStr(startISO, timeFormat);
+  if (endISO) {
+    const start = new Date(startISO);
+    const end = new Date(endISO);
+    const isSameDay = start.getFullYear() === end.getFullYear() &&
+                      start.getMonth() === end.getMonth() &&
+                      start.getDate() === end.getDate();
+    const endStr = formatTimeStr(endISO, timeFormat);
+    if (isSameDay) {
+      return `${dateStr} ${startStr} → ${endStr}`;
+    } else {
+      const endDateStr = formatDateStr(endISO, dateFormat);
+      return `${dateStr} ${startStr} → ${endDateStr} ${endStr}`;
+    }
+  }
+  return `${dateStr} ${startStr} → …`;
 }
 
 function RecentEntries({ entries, loading, onDelete, onOpenUrl }) {
@@ -539,24 +898,27 @@ function RecentEntries({ entries, loading, onDelete, onOpenUrl }) {
         >
           <div className="flex-1 min-w-0">
             <div className="text-sm truncate text-zinc-400">{entry.title}</div>
-            <div className="text-xs text-zinc-600">{entry.workspaceName}</div>
+            <div className="flex flex-col gap-0.5 text-xs text-zinc-600 mt-0.5">
+              <span className="truncate">{entry.workspaceName}</span>
+              <span className="font-mono text-zinc-500 whitespace-nowrap">{formatRecentRange(entry.startISO, entry.endISO)}</span>
+            </div>
           </div>
           <div className="flex items-center gap-1 shrink-0">
             {entry.url && (
               <button
                 onClick={() => onOpenUrl(entry.url)}
                 title={t('titleOpenInNotion')}
-                className="text-zinc-500 hover:text-zinc-200 text-base transition-colors leading-none"
+                className="text-zinc-500 hover:text-zinc-200 transition-colors flex items-center justify-center p-1"
               >
-                ↗
+                <Open20Regular className="w-4 h-4" />
               </button>
             )}
             <button
               onClick={() => onDelete(entry)}
               title={t('titleDeleteEntry')}
-              className="text-zinc-500 hover:text-red-400 text-base transition-colors leading-none"
+              className="text-zinc-500 hover:text-red-400 transition-colors flex items-center justify-center p-1"
             >
-              🗑
+              <Delete20Regular className="w-4 h-4" />
             </button>
           </div>
         </div>

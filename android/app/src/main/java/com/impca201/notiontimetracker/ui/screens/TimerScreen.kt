@@ -1,6 +1,7 @@
 package com.impca201.notiontimetracker.ui.screens
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.rememberScrollState
@@ -8,18 +9,15 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.OpenInNew
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import com.impca201.notiontimetracker.ui.components.parseWorkspaceColor
@@ -31,6 +29,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -60,9 +59,6 @@ fun TimerScreen(
     onStop: (Long?) -> Unit,
     onUpdateStartTime: (String) -> Unit,
     onNavigateToSettings: () -> Unit,
-    onRecoveryStop: () -> Unit,
-    onRecoveryResume: () -> Unit,
-    onRecoveryDiscard: () -> Unit,
     onClearError: () -> Unit,
     onRetryStop: () -> Unit,
     onLoadRunningTimer: (RunningTimerInfo) -> Unit,
@@ -80,15 +76,84 @@ fun TimerScreen(
     onOpenUrl: (String) -> Unit,
     onApplyPreset: (String, Preset) -> Unit = { _, _ -> },
     onDismissDeletedPage: () -> Unit = {},
-    onClearInfoToast: () -> Unit = {}
+    onClearInfoToast: () -> Unit = {},
+    onConfirmAlreadyRunning: () -> Unit,
+    onCancelAlreadyRunning: () -> Unit,
+    onSavePreset: (String) -> Unit,
+    onDeletePreset: (String, String) -> Unit,
+    onMovePresetUp: (String, String) -> Unit,
+    onMovePresetDown: (String, String) -> Unit
 ) {
-    if (uiState.recoveredTimer != null) {
-        RecoveryDialog(
-            timer = uiState.recoveredTimer,
-            busy = uiState.recoveryBusy,
-            onStop = onRecoveryStop,
-            onResume = onRecoveryResume,
-            onDiscard = onRecoveryDiscard
+    if (uiState.showAlreadyRunningWarning) {
+        AlertDialog(
+            onDismissRequest = onCancelAlreadyRunning,
+            title = { Text(stringResource(R.string.warn_already_running_title)) },
+            text = { Text(stringResource(R.string.warn_already_running_body)) },
+            confirmButton = {
+                TextButton(onClick = onConfirmAlreadyRunning) {
+                    Text(stringResource(R.string.btn_add_new_timer))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = onCancelAlreadyRunning) {
+                    Text(stringResource(R.string.btn_cancel))
+                }
+            }
+        )
+    }
+
+    var showSavePresetDialog by remember { mutableStateOf(false) }
+    var presetNameInput by remember { mutableStateOf("") }
+    val activeWorkspace = uiState.workspaces.firstOrNull { it.id == uiState.selectedWorkspaceId }
+    val activeWorkspaceName = activeWorkspace?.name ?: ""
+    if (showSavePresetDialog) {
+        AlertDialog(
+            onDismissRequest = { showSavePresetDialog = false },
+            title = { Text(stringResource(R.string.dialog_save_preset_title)) },
+            text = {
+                Column {
+                    Text(stringResource(R.string.dialog_save_preset_body))
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = presetNameInput,
+                        onValueChange = { presetNameInput = it },
+                        placeholder = { Text(stringResource(R.string.dialog_save_preset_placeholder)) },
+                        prefix = { Text("[$activeWorkspaceName] - ") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        onSavePreset(presetNameInput.trim())
+                        presetNameInput = ""
+                        showSavePresetDialog = false
+                    }
+                ) {
+                    Text(stringResource(R.string.btn_save))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    presetNameInput = ""
+                    showSavePresetDialog = false
+                }) {
+                    Text(stringResource(R.string.btn_cancel))
+                }
+            }
+        )
+    }
+
+    var showManagePresetsDialog by remember { mutableStateOf(false) }
+    if (showManagePresetsDialog) {
+        ManagePresetsDialog(
+            workspaces = uiState.workspaces,
+            onDeletePreset = onDeletePreset,
+            onMovePresetUp = onMovePresetUp,
+            onMovePresetDown = onMovePresetDown,
+            onDismiss = { showManagePresetsDialog = false }
         )
     }
 
@@ -186,7 +251,9 @@ fun TimerScreen(
             onRefreshAll = onRefreshAll,
             onConfirmDelete = onConfirmDelete,
             onOpenUrl = onOpenUrl,
-            onApplyPreset = onApplyPreset
+            onApplyPreset = onApplyPreset,
+            onSavePresetClick = { showSavePresetDialog = true },
+            onManagePresetsClick = { showManagePresetsDialog = true }
         )
     }
 }
@@ -208,7 +275,9 @@ private fun IdleView(
     onRefreshAll: () -> Unit,
     onConfirmDelete: (String, String, Boolean) -> Unit,
     onOpenUrl: (String) -> Unit,
-    onApplyPreset: (String, Preset) -> Unit = { _, _ -> }
+    onApplyPreset: (String, Preset) -> Unit = { _, _ -> },
+    onSavePresetClick: () -> Unit,
+    onManagePresetsClick: () -> Unit
 ) {
     val scrollState = rememberScrollState()
 
@@ -285,7 +354,8 @@ private fun IdleView(
             PresetChips(
                 workspaces = uiState.workspaces,
                 apiKey = uiState.apiKey,
-                onApplyPreset = onApplyPreset
+                onApplyPreset = onApplyPreset,
+                onManageClick = onManagePresetsClick
             )
 
             FieldLabel(stringResource(R.string.label_workspace))
@@ -343,22 +413,39 @@ private fun IdleView(
             val buttonColor = startWorkspaceColor ?: MaterialTheme.colorScheme.tertiary
             val onButtonColor = if (startWorkspaceColor != null) Color.White else MaterialTheme.colorScheme.onTertiary
 
-            Button(
-                onClick = onStart,
-                enabled = canStart,
-                modifier = Modifier.fillMaxWidth().height(56.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = buttonColor,
-                    contentColor = onButtonColor
-                )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                if (uiState.isStarting) {
-                    CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 3.dp, color = onButtonColor)
-                } else {
-                    Text(
-                        stringResource(R.string.btn_start),
-                        fontSize = 18.sp,
-                        color = onButtonColor
+                Button(
+                    onClick = onStart,
+                    enabled = canStart,
+                    modifier = Modifier.weight(1f).height(56.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = buttonColor,
+                        contentColor = onButtonColor
+                    )
+                ) {
+                    if (uiState.isStarting) {
+                        CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 3.dp, color = onButtonColor)
+                    } else {
+                        Text(
+                            stringResource(R.string.btn_start),
+                            fontSize = 18.sp,
+                            color = onButtonColor
+                        )
+                    }
+                }
+                IconButton(
+                    onClick = onSavePresetClick,
+                    enabled = canStart,
+                    modifier = Modifier.size(56.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.BookmarkBorder,
+                        contentDescription = "Save Preset",
+                        tint = if (canStart) buttonColor else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
                     )
                 }
             }
@@ -377,7 +464,9 @@ private fun IdleView(
                 entries = uiState.recentEntries,
                 loading = uiState.recentEntriesLoading,
                 onDelete = { re -> onConfirmDelete(re.pageId, re.title, false) },
-                onOpenUrl = onOpenUrl
+                onOpenUrl = onOpenUrl,
+                dateFormat = uiState.dateFormat,
+                timeFormat = uiState.timeFormat
             )
 
             Spacer(Modifier.height(16.dp))
@@ -408,8 +497,123 @@ private fun RunningView(
     val rounding = workspace?.roundingMinutes ?: 15
 
 
-    var startTimeInput by remember(timer.roundedStart) { mutableStateOf(formatHHMM(timer.roundedStart)) }
+    var startTimeInput by remember(timer.roundedStart, uiState.timeFormat) { mutableStateOf(formatHHMM(timer.roundedStart, uiState.timeFormat == "12h")) }
     var endTimeInput by remember { mutableStateOf("") }
+
+    val activeTimer = timer
+    val allRunning = remember(activeTimer, uiState.runningTimers) {
+        val list = uiState.runningTimers.toMutableList()
+        val idx = list.indexOfFirst { it.pageId == activeTimer.notionPageId }
+        val activeInfo = RunningTimerInfo(
+            pageId = activeTimer.notionPageId,
+            title = activeTimer.description,
+            startISO = activeTimer.roundedStart,
+            workspaceId = activeTimer.workspaceId,
+            workspaceName = uiState.workspaces.firstOrNull { it.id == activeTimer.workspaceId }?.name ?: "",
+            propertyMap = activeTimer.propertyMap
+        )
+        if (idx != -1) {
+            list[idx] = activeInfo
+        } else {
+            list.add(0, activeInfo)
+        }
+        list
+    }
+    val currentTimerIndex = remember(activeTimer, allRunning) {
+        allRunning.indexOfFirst { it.pageId == activeTimer.notionPageId }.coerceAtLeast(0)
+    }
+    val hasMultiple = allRunning.size > 1
+    val totalTimersCount = allRunning.size
+
+    val onNextTimer = {
+        if (allRunning.isNotEmpty()) {
+            val nextIdx = (currentTimerIndex + 1) % allRunning.size
+            onLoadRunningTimer(allRunning[nextIdx])
+        }
+    }
+    val onPrevTimer = {
+        if (allRunning.isNotEmpty()) {
+            val prevIdx = (currentTimerIndex - 1 + allRunning.size) % allRunning.size
+            onLoadRunningTimer(allRunning[prevIdx])
+        }
+    }
+
+    var showTimeErrorDialog by remember { mutableStateOf(false) }
+    var pendingEndTimeMs by remember { mutableStateOf(0L) }
+
+    if (showTimeErrorDialog) {
+        AlertDialog(
+            onDismissRequest = { showTimeErrorDialog = false },
+            title = { Text(stringResource(R.string.dialog_time_error_title)) },
+            text = { Text(stringResource(R.string.dialog_time_error_body)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showTimeErrorDialog = false
+                        val nextDayMs = pendingEndTimeMs + 24 * 3600 * 1000L
+                        onStop(nextDayMs)
+                        endTimeInput = ""
+                    }
+                ) {
+                    Text(stringResource(R.string.btn_next_day))
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        showTimeErrorDialog = false
+                        endTimeInput = ""
+                    }
+                ) {
+                    Text(stringResource(R.string.btn_edit))
+                }
+            }
+        )
+    }
+
+    val context = LocalContext.current
+
+    val showStartTimePicker = {
+        val odt = runCatching { OffsetDateTime.parse(timer.roundedStart) }.getOrNull() ?: OffsetDateTime.now()
+        val initialHour = odt.hour
+        val initialMinute = odt.minute
+        val is24h = uiState.timeFormat != "12h"
+        android.app.TimePickerDialog(context, { _, hour, minute ->
+            val formatted24 = String.format("%02d:%02d", hour, minute)
+            val iso = parseHHMMToISO(formatted24, timer.roundedStart)
+            if (iso != null) {
+                onUpdateStartTime(iso)
+                startTimeInput = formatHHMM(iso, uiState.timeFormat == "12h")
+            }
+        }, initialHour, initialMinute, is24h).show()
+    }
+
+    val showEndTimePicker = {
+        val cal = java.util.Calendar.getInstance()
+        val initialHour = cal.get(java.util.Calendar.HOUR_OF_DAY)
+        val initialMinute = cal.get(java.util.Calendar.MINUTE)
+        val is24h = uiState.timeFormat != "12h"
+        android.app.TimePickerDialog(context, { _, hour, minute ->
+            val formatted24 = String.format("%02d:%02d", hour, minute)
+            val iso = parseHHMMToISO(formatted24, timer.roundedStart)
+            if (iso != null) {
+                endTimeInput = formatHHMM(iso, uiState.timeFormat == "12h")
+            }
+        }, initialHour, initialMinute, is24h).show()
+    }
+
+    val handleStopClick = {
+        val manualEnd = endTimeInput.takeIf { it.isNotBlank() }?.let {
+            runCatching { parseHHMMToMillis(it, timer.roundedStart) }.getOrNull()
+        }
+        val startMs = runCatching { OffsetDateTime.parse(timer.roundedStart).toInstant().toEpochMilli() }.getOrDefault(0L)
+        if (manualEnd != null && startMs > 0 && manualEnd < startMs) {
+            pendingEndTimeMs = manualEnd
+            showTimeErrorDialog = true
+        } else {
+            onStop(manualEnd)
+        }
+    }
 
     val workspaceColor = workspace?.color?.ifBlank { null }?.let { parseWorkspaceColor(it) }
     val scaffoldBg = if (workspaceColor != null) {
@@ -466,17 +670,52 @@ private fun RunningView(
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
 
-
-            Text(
-                workspace?.name ?: "",
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                if (hasMultiple) {
+                    IconButton(onClick = onPrevTimer) {
+                        Icon(Icons.Default.KeyboardArrowLeft, contentDescription = "Previous Timer")
+                    }
+                }
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        workspace?.name ?: "",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
+                    )
+                    if (hasMultiple) {
+                        Spacer(Modifier.height(4.dp))
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            for (i in 0 until totalTimersCount) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(6.dp)
+                                        .clip(CircleShape)
+                                        .background(
+                                            if (i == currentTimerIndex) MaterialTheme.colorScheme.primary
+                                            else MaterialTheme.colorScheme.onBackground.copy(alpha = 0.3f)
+                                        )
+                                        .clickable { onLoadRunningTimer(allRunning[i]) }
+                                )
+                            }
+                        }
+                    }
+                }
+                if (hasMultiple) {
+                    IconButton(onClick = onNextTimer) {
+                        Icon(Icons.Default.KeyboardArrowRight, contentDescription = "Next Timer")
+                    }
+                }
+            }
 
             var titleDraft by remember(timer.description) { mutableStateOf(timer.description) }
             val isTitleDirty = titleDraft.trim() != timer.description.trim()
-            // Inline-editable project & extra fields, seeded from the active timer and
-            // re-seeded when the underlying fields change (e.g. after loading another timer).
             var localProjectId by remember(timer.notionPageId) { mutableStateOf(uiState.selectedProjectId) }
             var localExtras by remember(timer.notionPageId) { mutableStateOf(uiState.extraValues) }
             var pendingSave by remember(timer.notionPageId) { mutableStateOf(false) }
@@ -484,9 +723,6 @@ private fun RunningView(
                 localProjectId = uiState.selectedProjectId
                 localExtras = uiState.extraValues
             }
-            // Debounce inline edits so we don't hit the Notion API on every keystroke.
-            // The title is saved separately (its own check button / IME action), so we
-            // keep the last-committed title here to avoid clobbering an in-progress edit.
             LaunchedEffect(localProjectId, localExtras, pendingSave) {
                 if (!pendingSave) return@LaunchedEffect
                 kotlinx.coroutines.delay(600)
@@ -537,8 +773,6 @@ private fun RunningView(
                 textAlign = TextAlign.Center
             )
 
-
-
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                 Text(
                     stringResource(R.string.label_start_time),
@@ -546,24 +780,26 @@ private fun RunningView(
                     modifier = Modifier.width(100.dp),
                     color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
                 )
-                OutlinedTextField(
-                    value = startTimeInput,
-                    onValueChange = { startTimeInput = it },
-                    modifier = Modifier.weight(1f),
-                    singleLine = true,
-                    textStyle = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onBackground),
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                    keyboardActions = KeyboardActions(onDone = {
-                        val iso = parseHHMMToISO(startTimeInput, timer.roundedStart)
-                        if (iso != null) onUpdateStartTime(iso)
-                    }),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = MaterialTheme.colorScheme.onBackground,
-                        unfocusedTextColor = MaterialTheme.colorScheme.onBackground,
-                        focusedBorderColor = workspaceColor ?: MaterialTheme.colorScheme.primary,
-                        unfocusedBorderColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.3f)
+                Box(modifier = Modifier.weight(1f)) {
+                    OutlinedTextField(
+                        value = startTimeInput,
+                        onValueChange = { },
+                        readOnly = true,
+                        enabled = false,
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        textStyle = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onBackground),
+                        trailingIcon = {
+                            Icon(Icons.Default.AccessTime, contentDescription = "Select start time", tint = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f))
+                        },
+                        colors = OutlinedTextFieldDefaults.colors(
+                            disabledTextColor = MaterialTheme.colorScheme.onBackground,
+                            disabledBorderColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.3f),
+                            disabledTrailingIconColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
+                        )
                     )
-                )
+                    Box(modifier = Modifier.matchParentSize().clickable { showStartTimePicker() })
+                }
             }
 
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
@@ -573,28 +809,28 @@ private fun RunningView(
                     modifier = Modifier.width(100.dp),
                     color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
                 )
-                OutlinedTextField(
-                    value = endTimeInput,
-                    onValueChange = { endTimeInput = it },
-                    modifier = Modifier.weight(1f),
-                    singleLine = true,
-                    textStyle = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onBackground),
-                    placeholder = { Text(stringResource(R.string.hint_manual_end), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f)) },
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                    keyboardActions = KeyboardActions(onDone = {
-                        val ms = parseHHMMToMillis(endTimeInput, timer.roundedStart)
-                        if (ms != null) onStop(ms)
-                    }),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = MaterialTheme.colorScheme.onBackground,
-                        unfocusedTextColor = MaterialTheme.colorScheme.onBackground,
-                        focusedBorderColor = workspaceColor ?: MaterialTheme.colorScheme.primary,
-                        unfocusedBorderColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.3f)
+                Box(modifier = Modifier.weight(1f)) {
+                    OutlinedTextField(
+                        value = endTimeInput,
+                        onValueChange = { },
+                        readOnly = true,
+                        enabled = false,
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        placeholder = { Text(stringResource(R.string.hint_manual_end), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f)) },
+                        textStyle = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onBackground),
+                        trailingIcon = {
+                            Icon(Icons.Default.AccessTime, contentDescription = "Select end time", tint = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f))
+                        },
+                        colors = OutlinedTextFieldDefaults.colors(
+                            disabledTextColor = MaterialTheme.colorScheme.onBackground,
+                            disabledBorderColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.3f),
+                            disabledTrailingIconColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
+                        )
                     )
-                )
+                    Box(modifier = Modifier.matchParentSize().clickable { showEndTimePicker() })
+                }
             }
-
-
 
             if (uiState.extraFieldDefs.isNotEmpty()) {
                 Spacer(Modifier.height(4.dp))
@@ -632,12 +868,7 @@ private fun RunningView(
             }
 
             Button(
-                onClick = {
-                    val manualEnd = endTimeInput.takeIf { it.isNotBlank() }?.let {
-                        runCatching { parseHHMMToMillis(it, timer.roundedStart) }.getOrNull()
-                    }
-                    onStop(manualEnd)
-                },
+                onClick = handleStopClick,
                 enabled = !uiState.isStopping,
                 modifier = Modifier.fillMaxWidth().height(56.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
@@ -663,7 +894,9 @@ private fun RunningView(
                 entries = uiState.recentEntries,
                 loading = uiState.recentEntriesLoading,
                 onDelete = { re -> onConfirmDelete(re.pageId, re.title, false) },
-                onOpenUrl = onOpenUrl
+                onOpenUrl = onOpenUrl,
+                dateFormat = uiState.dateFormat,
+                timeFormat = uiState.timeFormat
             )
 
             Spacer(Modifier.height(16.dp))
@@ -683,6 +916,16 @@ private fun OtherRunningTimers(
 ) {
     if (timers.isEmpty() && !loading) return
 
+    var tick by remember { mutableStateOf(0) }
+    LaunchedEffect(timers) {
+        if (timers.isNotEmpty()) {
+            while (true) {
+                kotlinx.coroutines.delay(1000L)
+                tick++
+            }
+        }
+    }
+
     HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -701,6 +944,10 @@ private fun OtherRunningTimers(
     }
     timers.forEach { rt ->
         val isActive = rt.pageId == activePageId
+        val startMs = runCatching { OffsetDateTime.parse(rt.startISO).toInstant().toEpochMilli() }.getOrDefault(0L)
+        val elapsedSecs = if (startMs > 0) (System.currentTimeMillis() - startMs) / 1000L else 0L
+        val elapsedStr = formatElapsed(elapsedSecs.coerceAtLeast(0L))
+
         Card(
             modifier = Modifier
                 .fillMaxWidth()
@@ -723,10 +970,20 @@ private fun OtherRunningTimers(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                    Text(
+                        elapsedStr,
+                        style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
                 if (!isActive) {
                     IconButton(onClick = { onStop(rt) }, modifier = Modifier.size(36.dp)) {
-                        Text("⏹", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Icon(
+                            Icons.Default.Stop,
+                            contentDescription = stringResource(R.string.btn_stop),
+                            modifier = Modifier.size(18.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                 }
                 IconButton(onClick = { onDelete(rt) }, modifier = Modifier.size(36.dp)) {
@@ -757,7 +1014,9 @@ private fun RecentEntriesSection(
     entries: List<RecentEntryInfo>,
     loading: Boolean,
     onDelete: (RecentEntryInfo) -> Unit,
-    onOpenUrl: (String) -> Unit
+    onOpenUrl: (String) -> Unit,
+    dateFormat: String,
+    timeFormat: String
 ) {
     if (entries.isEmpty() && !loading) return
 
@@ -778,6 +1037,8 @@ private fun RecentEntriesSection(
         }
     }
     entries.forEach { re ->
+        val timeRange = formatRecentRange(re.startISO, re.endISO, dateFormat, timeFormat == "12h")
+
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
@@ -791,7 +1052,16 @@ private fun RecentEntriesSection(
                     Text(
                         re.workspaceName,
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        timeRange,
+                        style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
                 IconButton(onClick = { onDelete(re) }, modifier = Modifier.size(36.dp)) {
@@ -822,17 +1092,18 @@ private fun RecentEntriesSection(
 private fun PresetChips(
     workspaces: List<com.impca201.notiontimetracker.data.models.Workspace>,
     apiKey: String,
-    onApplyPreset: (String, Preset) -> Unit
+    onApplyPreset: (String, Preset) -> Unit,
+    onManageClick: () -> Unit
 ) {
     val allPresets = workspaces.flatMap { ws -> ws.presets.map { ws to it } }
     if (allPresets.isEmpty() || apiKey.isBlank()) return
     FlowRow(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp)
+        verticalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterVertically)
     ) {
         allPresets.forEach { (ws, preset) ->
             val wsColor = parseWorkspaceColor(ws.color)
-            val chipLabel = if (preset.name.isBlank()) "▶ ${ws.name}" else "▶ ${ws.name} – ${preset.name}"
+            val chipLabel = if (preset.name.isBlank() || preset.name == ws.name) "▶ ${ws.name}" else "▶ ${ws.name} – ${preset.name}"
             SuggestionChip(
                 onClick = { onApplyPreset(ws.id, preset) },
                 label = { Text(chipLabel, style = MaterialTheme.typography.labelMedium) },
@@ -844,6 +1115,21 @@ private fun PresetChips(
                     enabled = true,
                     borderColor = wsColor.copy(alpha = 0.4f)
                 ) else SuggestionChipDefaults.suggestionChipBorder(enabled = true)
+            )
+        }
+
+        Box(
+            modifier = Modifier
+                .size(32.dp)
+                .clip(CircleShape)
+                .clickable(onClick = onManageClick),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                Icons.Default.Edit,
+                contentDescription = "Manage Presets",
+                modifier = Modifier.size(16.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }
@@ -883,35 +1169,49 @@ private fun formatElapsed(totalSeconds: Long): String {
     return "%02d:%02d:%02d".format(h, m, s)
 }
 
-private fun formatHHMM(iso: String): String = runCatching {
+private fun formatHHMM(iso: String, is12h: Boolean = false): String = runCatching {
     val odt = OffsetDateTime.parse(iso)
-    "%02d:%02d".format(odt.hour, odt.minute)
-}.getOrDefault("")
-
-private fun buildIntervalText(roundedStart: String, elapsedSecs: Long, rounding: Int): String = runCatching {
-    val startMs = OffsetDateTime.parse(roundedStart).toInstant().toEpochMilli()
-    val nowMs = startMs + elapsedSecs * 1000L
-    val startFmt = formatHHMMMs(startMs)
-    if (rounding == 0) {
-        "$startFmt → ${formatHHMMMs(nowMs)}"
+    if (is12h) {
+        val hr = odt.hour
+        val ampm = if (hr >= 12) "PM" else "AM"
+        val h12 = when {
+            hr == 0 -> 12
+            hr > 12 -> hr - 12
+            else -> hr
+        }
+        "%d:%02d %s".format(h12, odt.minute, ampm)
     } else {
-        val intervalMs = rounding * 60_000L
-        val rounded = Math.round(nowMs.toDouble() / intervalMs) * intervalMs
-        val minEnd = startMs + intervalMs
-        val endMs = if (rounded < minEnd) minEnd else rounded
-        "$startFmt → ${formatHHMMMs(endMs)}"
+        "%02d:%02d".format(odt.hour, odt.minute)
     }
 }.getOrDefault("")
 
-private fun formatHHMMMs(ms: Long): String {
+private fun formatHHMMMs(ms: Long, is12h: Boolean = false): String {
     val inst = Instant.ofEpochMilli(ms).atZone(ZoneId.systemDefault())
-    return "%02d:%02d".format(inst.hour, inst.minute)
+    if (is12h) {
+        val hr = inst.hour
+        val ampm = if (hr >= 12) "PM" else "AM"
+        val h12 = when {
+            hr == 0 -> 12
+            hr > 12 -> hr - 12
+            else -> hr
+        }
+        return "%d:%02d %s".format(h12, inst.minute, ampm)
+    } else {
+        return "%02d:%02d".format(inst.hour, inst.minute)
+    }
 }
 
 private fun parseHHMMToISO(hhMM: String, referenceISO: String): String? = runCatching {
-    val parts = hhMM.trim().split(":")
+    val clean = hhMM.trim().uppercase()
+    val isPM = clean.contains("PM")
+    val isAM = clean.contains("AM")
+    val timePart = clean.replace("AM", "").replace("PM", "").trim()
+    val parts = timePart.split(":")
     if (parts.size < 2) return null
-    val h = parts[0].toInt(); val m = parts[1].toInt()
+    var h = parts[0].toInt()
+    val m = parts[1].toInt()
+    if (isPM && h < 12) h += 12
+    if (isAM && h == 12) h = 0
     val base = OffsetDateTime.parse(referenceISO)
     val target = base.withHour(h).withMinute(m).withSecond(0).withNano(0)
     DateTimeFormatter.ISO_OFFSET_DATE_TIME.format(target)
@@ -921,4 +1221,120 @@ private fun parseHHMMToMillis(hhMM: String, referenceISO: String): Long? = runCa
     val iso = parseHHMMToISO(hhMM, referenceISO) ?: return null
     OffsetDateTime.parse(iso).toInstant().toEpochMilli()
 }.getOrNull()
+
+private fun formatDate(iso: String, format: String = "DD/MM/YYYY"): String = runCatching {
+    val odt = OffsetDateTime.parse(iso)
+    when (format) {
+        "MM/DD/YYYY" -> "%02d/%02d/%04d".format(odt.monthValue, odt.dayOfMonth, odt.year)
+        "YYYY-MM-DD" -> "%04d-%02d-%02d".format(odt.year, odt.monthValue, odt.dayOfMonth)
+        else -> "%02d/%02d/%04d".format(odt.dayOfMonth, odt.monthValue, odt.year) // default DD/MM/YYYY
+    }
+}.getOrDefault("")
+
+private fun formatRecentRange(startISO: String?, endISO: String?, dateFormat: String, is12h: Boolean): String {
+    if (startISO == null) return ""
+    val startDateStr = formatDate(startISO, dateFormat)
+    val startTimeStr = formatHHMM(startISO, is12h)
+    if (endISO == null || endISO.isBlank()) {
+        return "$startDateStr $startTimeStr"
+    }
+    val endDateStr = formatDate(endISO, dateFormat)
+    val endTimeStr = formatHHMM(endISO, is12h)
+    return if (startDateStr == endDateStr) {
+        "$startDateStr $startTimeStr → $endTimeStr"
+    } else {
+        "$startDateStr $startTimeStr → $endDateStr $endTimeStr"
+    }
+}
+
+@Composable
+private fun ManagePresetsDialog(
+    workspaces: List<com.impca201.notiontimetracker.data.models.Workspace>,
+    onDeletePreset: (String, String) -> Unit,
+    onMovePresetUp: (String, String) -> Unit,
+    onMovePresetDown: (String, String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.presets_manage_title)) },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 400.dp)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(Icons.Default.Info, contentDescription = "Info", tint = MaterialTheme.colorScheme.onSecondaryContainer)
+                        Text(
+                            text = stringResource(R.string.tooltip_presets_shortcuts),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer
+                        )
+                    }
+                }
+
+                val flatPresets = workspaces.flatMap { ws ->
+                    ws.presets.mapIndexed { index, preset ->
+                        Triple(ws, preset, index)
+                    }
+                }
+                flatPresets.forEach { (ws, preset, indexInWorkspace) ->
+                    val label = if (preset.name.isBlank()) ws.name else "${ws.name} – ${preset.name}"
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = label,
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.weight(1f)
+                            )
+                            IconButton(
+                                onClick = { onMovePresetUp(ws.id, preset.id) },
+                                enabled = indexInWorkspace > 0,
+                                modifier = Modifier.size(32.dp)
+                            ) {
+                                Icon(Icons.Default.ArrowUpward, contentDescription = "Move up", modifier = Modifier.size(16.dp))
+                            }
+                            IconButton(
+                                onClick = { onMovePresetDown(ws.id, preset.id) },
+                                enabled = indexInWorkspace < ws.presets.size - 1,
+                                modifier = Modifier.size(32.dp)
+                            ) {
+                                Icon(Icons.Default.ArrowDownward, contentDescription = "Move down", modifier = Modifier.size(16.dp))
+                            }
+                            IconButton(
+                                onClick = { onDeletePreset(ws.id, preset.id) },
+                                modifier = Modifier.size(32.dp)
+                            ) {
+                                Icon(Icons.Default.Delete, contentDescription = "Delete", modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.error)
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.title_dismiss))
+            }
+        }
+    )
+}
+
 
