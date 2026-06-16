@@ -175,12 +175,16 @@ private fun AppNavigation(
         }
 
         composable("settings") {
+            // Reload workspaces/settings into the timer screen whenever Settings is left,
+            // regardless of how (back arrow, system back or gesture) — no app restart needed.
+            DisposableEffect(Unit) {
+                onDispose { timerViewModel.refreshSettings() }
+            }
             SettingsScreen(
                 uiState = settingsState,
                 editState = editState,
                 isEditValid = editState?.let { settingsViewModel.isEditValid(it) } ?: false,
                 onBack = {
-                    timerViewModel.refreshSettings()
                     navController.popBackStack()
                 },
                 onApiKeyChange = settingsViewModel::setApiKey,
@@ -215,21 +219,26 @@ private fun AppNavigation(
                 onScanQr = { navController.navigate("qr_scan") },
                 onSnackbarDismiss = settingsViewModel::clearSnackbar,
                 onLocaleChange = { locale ->
-                    settingsViewModel.setLocale(locale)
-                    (context as? android.app.Activity)?.recreate()
+                    settingsViewModel.setLocale(locale) {
+                        (context as? android.app.Activity)?.recreate()
+                    }
                 },
                 onDateFormatChange = settingsViewModel::setDateFormat,
-                onTimeFormatChange = settingsViewModel::setTimeFormat
+                onTimeFormatChange = settingsViewModel::setTimeFormat,
+                onShowNotionLinkChange = settingsViewModel::setShowNotionLink,
+                onShowArchiveActionChange = settingsViewModel::setShowArchiveAction
             )
         }
 
         composable("qr_scan") {
             QrScannerScreen(
                 onBack = { navController.popBackStack() },
-                onImport = { apiKey, workspaces, theme ->
+                onImport = { apiKey, workspaces, theme, showNotionLink, showArchiveAction ->
                     if (apiKey != null) settingsViewModel.importApiKey(apiKey)
                     if (workspaces != null) settingsViewModel.importWorkspaces(workspaces)
                     if (theme != null) settingsViewModel.setThemeMode(theme)
+                    if (showNotionLink != null) settingsViewModel.setShowNotionLink(showNotionLink)
+                    if (showArchiveAction != null) settingsViewModel.setShowArchiveAction(showArchiveAction)
                     navController.popBackStack()
                 },
                 onImportWorkspace = { workspace ->

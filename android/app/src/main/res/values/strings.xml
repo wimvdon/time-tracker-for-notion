@@ -200,6 +200,8 @@
     <string name="dialog_save_preset_title">Save Preset</string>
     <string name="dialog_save_preset_body">Save the current description and selected workspace/fields as a preset.</string>
     <string name="dialog_save_preset_placeholder">Preset name (e.g. Daily Standup)</string>
+    <string name="dialog_save_preset_workspace">Workspace: %1</string>
+    <string name="dialog_save_preset_name_optional">Preset name (optional)</string>
     <string name="presets_manage_title">Manage Presets</string>
     <string name="tooltip_presets_shortcuts">Top presets will be used for launcher shortcuts.</string>
     <string name="dialog_unsaved_changes_title">Unsaved Changes</string>
@@ -214,6 +216,9 @@
     <string name="label_language">Language</string>
     <string name="label_date_format">Date format</string>
     <string name="label_time_format">Time format</string>
+    <string name="label_notion_actions">Notion entry actions</string>
+    <string name="label_show_notion_link">Show “Open in Notion” link on active/recent timers</string>
+    <string name="label_show_archive_action">Show archive action on active/recent timers</string>
     <string name="language_system">Follow device (Auto)</string>
     <string name="language_en">English</string>
     <string name="language_nl">Nederlands</string>

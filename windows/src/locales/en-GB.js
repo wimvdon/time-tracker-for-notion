@@ -37,6 +37,9 @@ export default {
   btnAddWorkspace: '+ Add workspace',
   labelAlwaysOnTop: 'Keep window on top',
   labelStartWithWindows: 'Start with Windows',
+  labelNotionActions: 'Notion entry actions',
+  labelShowNotionLink: 'Show “Open in Notion” link on active/recent timers',
+  labelShowArchiveAction: 'Show archive action on active/recent timers',
 
   // Add/Edit workspace modal
   modalTitleAddWorkspace: 'Add Workspace',
@@ -167,6 +170,7 @@ export default {
   btnAddOption: 'Start new',
   dialogSavePresetTitle: 'Save Preset',
   dialogSavePresetBody: 'Save the current description and selected workspace/fields as a preset.',
+  dialogSavePresetOptional: 'The preset name is optional.',
   dialogSavePresetPlaceholder: 'Preset name (e.g. Daily Standup)',
   presetsManageTitle: 'Manage Presets',
   tooltipPresetsShortcuts: 'All presets are added to tray shortcuts.',

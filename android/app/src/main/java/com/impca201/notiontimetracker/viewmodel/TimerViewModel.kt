@@ -55,7 +55,9 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
         val showAlreadyRunningWarning: Boolean = false,
         val locale: String = "system",
         val dateFormat: String = "DD/MM/YYYY",
-        val timeFormat: String = "24h"
+        val timeFormat: String = "24h",
+        val showNotionLink: Boolean = true,
+        val showArchiveAction: Boolean = true
     )
 
     private val _uiState = MutableStateFlow(UiState())
@@ -103,6 +105,8 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
             val locale = settingsRepo.localeFlow.first()
             val dateFormat = settingsRepo.dateFormatFlow.first()
             val timeFormat = settingsRepo.timeFormatFlow.first()
+            val showNotionLink = settingsRepo.showNotionLinkFlow.first()
+            val showArchiveAction = settingsRepo.showArchiveActionFlow.first()
 
             _uiState.update { state ->
                 state.copy(
@@ -110,7 +114,9 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
                     workspaces = workspaces,
                     locale = locale,
                     dateFormat = dateFormat,
-                    timeFormat = timeFormat
+                    timeFormat = timeFormat,
+                    showNotionLink = showNotionLink,
+                    showArchiveAction = showArchiveAction
                 )
             }
 
@@ -169,12 +175,16 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
             val locale = settingsRepo.localeFlow.first()
             val dateFormat = settingsRepo.dateFormatFlow.first()
             val timeFormat = settingsRepo.timeFormatFlow.first()
+            val showNotionLink = settingsRepo.showNotionLinkFlow.first()
+            val showArchiveAction = settingsRepo.showArchiveActionFlow.first()
             _uiState.update { it.copy(
                 apiKey = apiKey,
                 workspaces = workspaces,
                 locale = locale,
                 dateFormat = dateFormat,
-                timeFormat = timeFormat
+                timeFormat = timeFormat,
+                showNotionLink = showNotionLink,
+                showArchiveAction = showArchiveAction
             ) }
             ShortcutHelper.updateShortcuts(app, workspaces)
             val current = _uiState.value.selectedWorkspaceId
@@ -682,7 +692,10 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
             }
         }
         allRunning.sortByDescending { it.startISO }
-        _uiState.update { it.copy(runningTimersLoading = false, runningTimers = allRunning) }
+        // Merge deltas into the existing list instead of replacing it wholesale, so
+        // entries that are still running keep their identity/position (no flicker or
+        // momentary disappearance while switching timers).
+        _uiState.update { it.copy(runningTimersLoading = false, runningTimers = mergeById(it.runningTimers, allRunning) { r -> r.pageId }) }
         syncServiceNotifications()
         val updatedState = _uiState.value
         if (!updatedState.running && updatedState.activeTimer == null && allRunning.isNotEmpty()) {
@@ -731,7 +744,16 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
                 }
             }
             allRecent.sortByDescending { it.endISO ?: it.startISO ?: "" }
-            _uiState.update { it.copy(recentEntriesLoading = false, recentEntries = allRecent.take(15)) }
+            val top = allRecent.take(15)
+            // Merge deltas (keeping existing entries' identity), then re-apply the
+            // recent ordering so newly completed entries surface without a full reload.
+            _uiState.update { state ->
+                val topIds = top.map { it.pageId }.toSet()
+                val merged = mergeById(state.recentEntries, top) { r -> r.pageId }
+                    .filter { it.pageId in topIds }
+                    .sortedByDescending { it.endISO ?: it.startISO ?: "" }
+                state.copy(recentEntriesLoading = false, recentEntries = merged)
+            }
         }
     }
 
@@ -805,6 +827,8 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
         )}
 
         viewModelScope.launch { settingsRepo.clearActiveTimer() }
+        // No active timer is shown in the running view now, so clear the notification.
+        syncServiceNotifications()
     }
 
     fun loadRunningTimer(rt: RunningTimerInfo) {
@@ -1009,6 +1033,19 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
         return result
     }
 
+    /**
+     * Merges [incoming] into [current] keyed by [id]: existing entries keep their
+     * position and are updated in place, entries no longer present are dropped, and
+     * genuinely new entries are appended. Avoids clearing/reloading the whole list.
+     */
+    private fun <T> mergeById(current: List<T>, incoming: List<T>, id: (T) -> String): List<T> {
+        val incomingById = incoming.associateBy(id)
+        val merged = current.filter { incomingById.containsKey(id(it)) }
+            .map { incomingById.getValue(id(it)) }
+        val existingIds = merged.map(id).toSet()
+        return merged + incoming.filter { id(it) !in existingIds }
+    }
+
     private fun isPageDeletedError(msg: String): Boolean {
         val lower = msg.lowercase()
         return lower.contains("404") || lower.contains("not_found") ||
@@ -1155,32 +1192,24 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
 
     fun syncServiceNotifications() {
         val state = _uiState.value
-        // Nothing to surface in a foreground service. Starting one here just so it can
-        // immediately stopSelf() crashes the app on Android 8+ (the system requires
-        // startForeground() to be called within ~5s of startForegroundService()). This is
-        // the idle case that runs whenever an API key is set, so guard it out and simply
-        // make sure any existing service is stopped instead.
-        if (state.activeTimer == null && state.runningTimers.isEmpty()) {
+        // Only the active timer (the one shown in the running view) has a permanent
+        // notification. When there is no active timer there is nothing to surface, so
+        // make sure any existing service is stopped instead. Starting a service only to
+        // immediately stopSelf() risks a ForegroundServiceDidNotStartInTimeException.
+        val active = state.activeTimer
+        if (active == null) {
             stopService()
             return
         }
         val intent = Intent(app, TimerForegroundService::class.java).apply {
             action = TimerForegroundService.ACTION_SYNC_TIMERS
-            val active = state.activeTimer
-            if (active != null) {
-                putExtra("active_page_id", active.notionPageId)
-                putExtra("active_title", active.description)
-                putExtra("active_start_iso", active.rawStart)
-                val ws = state.workspaces.firstOrNull { it.id == active.workspaceId }
-                putExtra("active_workspace_name", ws?.name ?: "")
-                putExtra("active_workspace_color", ws?.color)
-                putExtra("active_rounding_minutes", ws?.roundingMinutes ?: 15)
-            }
-            val jsonStr = kotlinx.serialization.json.Json.encodeToString(
-                kotlinx.serialization.builtins.ListSerializer(RunningTimerInfo.serializer()),
-                state.runningTimers
-            )
-            putExtra("running_timers_json", jsonStr)
+            putExtra("active_page_id", active.notionPageId)
+            putExtra("active_title", active.description)
+            putExtra("active_start_iso", active.rawStart)
+            val ws = state.workspaces.firstOrNull { it.id == active.workspaceId }
+            putExtra("active_workspace_name", ws?.name ?: "")
+            putExtra("active_workspace_color", ws?.color)
+            putExtra("active_rounding_minutes", ws?.roundingMinutes ?: 15)
         }
         runCatching {
             app.startForegroundService(intent)

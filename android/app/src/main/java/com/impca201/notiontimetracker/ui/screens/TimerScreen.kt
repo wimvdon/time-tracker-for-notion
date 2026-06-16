@@ -113,12 +113,18 @@ fun TimerScreen(
             text = {
                 Column {
                     Text(stringResource(R.string.dialog_save_preset_body))
+                    Spacer(Modifier.height(12.dp))
+                    Text(
+                        stringResource(R.string.dialog_save_preset_workspace, activeWorkspaceName),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                     Spacer(Modifier.height(8.dp))
                     OutlinedTextField(
                         value = presetNameInput,
                         onValueChange = { presetNameInput = it },
+                        label = { Text(stringResource(R.string.dialog_save_preset_name_optional)) },
                         placeholder = { Text(stringResource(R.string.dialog_save_preset_placeholder)) },
-                        prefix = { Text("[$activeWorkspaceName] - ") },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -457,7 +463,9 @@ private fun IdleView(
                 onLoad = onLoadRunningTimer,
                 onStop = onStopOtherRunningTimer,
                 onDelete = { rt -> onConfirmDelete(rt.pageId, rt.title, true) },
-                onOpenUrl = onOpenUrl
+                onOpenUrl = onOpenUrl,
+                showNotionLink = uiState.showNotionLink,
+                showArchiveAction = uiState.showArchiveAction
             )
 
             RecentEntriesSection(
@@ -466,7 +474,9 @@ private fun IdleView(
                 onDelete = { re -> onConfirmDelete(re.pageId, re.title, false) },
                 onOpenUrl = onOpenUrl,
                 dateFormat = uiState.dateFormat,
-                timeFormat = uiState.timeFormat
+                timeFormat = uiState.timeFormat,
+                showNotionLink = uiState.showNotionLink,
+                showArchiveAction = uiState.showArchiveAction
             )
 
             Spacer(Modifier.height(16.dp))
@@ -887,7 +897,9 @@ private fun RunningView(
                 onLoad = onLoadRunningTimer,
                 onStop = onStopOtherRunningTimer,
                 onDelete = { rt -> onConfirmDelete(rt.pageId, rt.title, true) },
-                onOpenUrl = onOpenUrl
+                onOpenUrl = onOpenUrl,
+                showNotionLink = uiState.showNotionLink,
+                showArchiveAction = uiState.showArchiveAction
             )
 
             RecentEntriesSection(
@@ -896,7 +908,9 @@ private fun RunningView(
                 onDelete = { re -> onConfirmDelete(re.pageId, re.title, false) },
                 onOpenUrl = onOpenUrl,
                 dateFormat = uiState.dateFormat,
-                timeFormat = uiState.timeFormat
+                timeFormat = uiState.timeFormat,
+                showNotionLink = uiState.showNotionLink,
+                showArchiveAction = uiState.showArchiveAction
             )
 
             Spacer(Modifier.height(16.dp))
@@ -912,7 +926,9 @@ private fun OtherRunningTimers(
     onLoad: (RunningTimerInfo) -> Unit,
     onStop: (RunningTimerInfo) -> Unit,
     onDelete: (RunningTimerInfo) -> Unit,
-    onOpenUrl: (String) -> Unit
+    onOpenUrl: (String) -> Unit,
+    showNotionLink: Boolean = true,
+    showArchiveAction: Boolean = true
 ) {
     if (timers.isEmpty() && !loading) return
 
@@ -986,15 +1002,17 @@ private fun OtherRunningTimers(
                         )
                     }
                 }
-                IconButton(onClick = { onDelete(rt) }, modifier = Modifier.size(36.dp)) {
-                    Icon(
-                        Icons.Default.Delete,
-                        contentDescription = stringResource(R.string.title_delete_entry),
-                        modifier = Modifier.size(18.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                if (showArchiveAction) {
+                    IconButton(onClick = { onDelete(rt) }, modifier = Modifier.size(36.dp)) {
+                        Icon(
+                            Icons.Default.Delete,
+                            contentDescription = stringResource(R.string.title_delete_entry),
+                            modifier = Modifier.size(18.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
-                if (rt.url.isNotBlank()) {
+                if (showNotionLink && rt.url.isNotBlank()) {
                     IconButton(onClick = { onOpenUrl(rt.url) }, modifier = Modifier.size(36.dp)) {
                         Icon(
                             Icons.Default.OpenInNew,
@@ -1016,7 +1034,9 @@ private fun RecentEntriesSection(
     onDelete: (RecentEntryInfo) -> Unit,
     onOpenUrl: (String) -> Unit,
     dateFormat: String,
-    timeFormat: String
+    timeFormat: String,
+    showNotionLink: Boolean = true,
+    showArchiveAction: Boolean = true
 ) {
     if (entries.isEmpty() && !loading) return
 
@@ -1064,15 +1084,17 @@ private fun RecentEntriesSection(
                         overflow = TextOverflow.Ellipsis
                     )
                 }
-                IconButton(onClick = { onDelete(re) }, modifier = Modifier.size(36.dp)) {
-                    Icon(
-                        Icons.Default.Delete,
-                        contentDescription = stringResource(R.string.title_delete_entry),
-                        modifier = Modifier.size(18.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                if (showArchiveAction) {
+                    IconButton(onClick = { onDelete(re) }, modifier = Modifier.size(36.dp)) {
+                        Icon(
+                            Icons.Default.Delete,
+                            contentDescription = stringResource(R.string.title_delete_entry),
+                            modifier = Modifier.size(18.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
-                if (re.url.isNotBlank()) {
+                if (showNotionLink && re.url.isNotBlank()) {
                     IconButton(onClick = { onOpenUrl(re.url) }, modifier = Modifier.size(36.dp)) {
                         Icon(
                             Icons.Default.OpenInNew,
@@ -1099,7 +1121,8 @@ private fun PresetChips(
     if (allPresets.isEmpty() || apiKey.isBlank()) return
     FlowRow(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterVertically)
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+        itemVerticalAlignment = Alignment.CenterVertically
     ) {
         allPresets.forEach { (ws, preset) ->
             val wsColor = parseWorkspaceColor(ws.color)

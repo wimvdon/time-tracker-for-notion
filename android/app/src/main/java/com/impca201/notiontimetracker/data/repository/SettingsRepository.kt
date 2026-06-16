@@ -19,7 +19,6 @@ import kotlinx.coroutines.flow.map
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
-import com.impca201.notiontimetracker.widget.WidgetHelper
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "notion_settings")
 
@@ -41,6 +40,8 @@ class SettingsRepository(private val context: Context) {
     private val LOCALE_KEY = stringPreferencesKey("locale")
     private val DATE_FORMAT_KEY = stringPreferencesKey("date_format")
     private val TIME_FORMAT_KEY = stringPreferencesKey("time_format")
+    private val SHOW_NOTION_LINK_KEY = booleanPreferencesKey("show_notion_link")
+    private val SHOW_ARCHIVE_ACTION_KEY = booleanPreferencesKey("show_archive_action")
 
     private val encryptedPrefs: SharedPreferences by lazy {
         runCatching {
@@ -98,7 +99,6 @@ class SettingsRepository(private val context: Context) {
         context.dataStore.edit { prefs ->
             prefs[WORKSPACES_KEY] = json.encodeToString(workspaces)
         }
-        WidgetHelper.updateAllWidgets(context)
     }
 
     val lastWorkspaceIdFlow: Flow<String?> = context.dataStore.data.map { prefs ->
@@ -122,14 +122,12 @@ class SettingsRepository(private val context: Context) {
         context.dataStore.edit { prefs ->
             prefs[ACTIVE_TIMER_KEY] = json.encodeToString(timer)
         }
-        WidgetHelper.updateAllWidgets(context)
     }
 
     suspend fun clearActiveTimer() {
         context.dataStore.edit { prefs ->
             prefs[ACTIVE_TIMER_KEY] = ""
         }
-        WidgetHelper.updateAllWidgets(context)
     }
 
     val themeModeFlow: Flow<ThemeMode> = context.dataStore.data.map { prefs ->
@@ -174,5 +172,22 @@ class SettingsRepository(private val context: Context) {
 
     suspend fun saveTimeFormat(format: String) {
         context.dataStore.edit { prefs -> prefs[TIME_FORMAT_KEY] = format }
+    }
+
+    // Global toggles for the per-entry Notion actions on active/recent timers.
+    val showNotionLinkFlow: Flow<Boolean> = context.dataStore.data.map { prefs ->
+        prefs[SHOW_NOTION_LINK_KEY] ?: true
+    }
+
+    suspend fun saveShowNotionLink(enabled: Boolean) {
+        context.dataStore.edit { prefs -> prefs[SHOW_NOTION_LINK_KEY] = enabled }
+    }
+
+    val showArchiveActionFlow: Flow<Boolean> = context.dataStore.data.map { prefs ->
+        prefs[SHOW_ARCHIVE_ACTION_KEY] ?: true
+    }
+
+    suspend fun saveShowArchiveAction(enabled: Boolean) {
+        context.dataStore.edit { prefs -> prefs[SHOW_ARCHIVE_ACTION_KEY] = enabled }
     }
 }

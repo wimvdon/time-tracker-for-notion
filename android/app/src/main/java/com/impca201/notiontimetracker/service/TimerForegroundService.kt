@@ -12,10 +12,7 @@ import com.impca201.notiontimetracker.NotionTimeTrackerApp
 import com.impca201.notiontimetracker.R
 import com.impca201.notiontimetracker.data.models.ActiveTimer
 import com.impca201.notiontimetracker.data.models.PropertyMap
-import com.impca201.notiontimetracker.data.models.RunningTimerInfo
 import kotlinx.coroutines.*
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.decodeFromString
 
 class TimerForegroundService : Service() {
 
@@ -24,7 +21,6 @@ class TimerForegroundService : Service() {
         const val NOTIFICATION_ID = 1001
         const val ACTION_START = "ACTION_START_TIMER"
         const val ACTION_STOP = "ACTION_STOP_TIMER"
-        const val ACTION_STOP_OTHER = "ACTION_STOP_OTHER_TIMER"
         const val ACTION_SYNC_TIMERS = "ACTION_SYNC_TIMERS"
         const val ACTION_TIMER_STOPPED = "com.impca201.notiontimetracker.TIMER_STOPPED"
         const val EXTRA_PAGE_ID = "extra_page_id"
@@ -73,9 +69,6 @@ class TimerForegroundService : Service() {
     private var propertyMap: PropertyMap = PropertyMap()
     private var startMillis: Long = 0L
 
-    private var otherTimers: List<RunningTimerInfo> = emptyList()
-    private var lastSecondaryNotificationIds: Set<Int> = emptySet()
-
     private val handler = Handler(Looper.getMainLooper())
     private val ticker = object : Runnable {
         override fun run() {
@@ -116,44 +109,9 @@ class TimerForegroundService : Service() {
             ACTION_STOP -> {
                 handleStop()
             }
-            ACTION_STOP_OTHER -> {
-                val stoppedId = intent.getStringExtra(EXTRA_PAGE_ID) ?: ""
-                val pm = PropertyMap(
-                    timeEntryTitleProp = intent.getStringExtra(EXTRA_TITLE_PROP) ?: "",
-                    timeEntryDateProp = intent.getStringExtra(EXTRA_DATE_PROP) ?: "",
-                    timeEntryStatusProp = intent.getStringExtra(EXTRA_STATUS_PROP) ?: "",
-                    timeEntryStatusDone = intent.getStringExtra(EXTRA_STATUS_DONE) ?: ""
-                )
-                val wsName = intent.getStringExtra(EXTRA_WORKSPACE_NAME) ?: ""
-                val rawStart = intent.getStringExtra(EXTRA_RAW_START) ?: ""
-                
-                if (stoppedId.isNotBlank()) {
-                    serviceScope.launch {
-                        val app = application as NotionTimeTrackerApp
-                        val rawStartMs = runCatching { parseIso(rawStart) }.getOrDefault(System.currentTimeMillis())
-                        val nowMs = System.currentTimeMillis()
-                        val startISO = toNotionDateTime(rawStartMs)
-                        val endISO = toNotionDateTime(nowMs)
-
-                        runCatching {
-                            app.notionRepository.stopTimeEntry(
-                                pageId = stoppedId,
-                                startISO = startISO,
-                                endISO = endISO,
-                                propertyMap = pm
-                            )
-                        }
-                        
-                        val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-                        nm.cancel(stoppedId.hashCode())
-                        
-                        sendBroadcast(Intent(ACTION_TIMER_STOPPED).apply {
-                            putExtra(EXTRA_PAGE_ID, stoppedId)
-                        })
-                    }
-                }
-            }
             ACTION_SYNC_TIMERS -> {
+                // Only the timer currently shown in the running view (the active timer)
+                // gets a permanent notification. Background running timers do not.
                 val activePageId = intent.getStringExtra("active_page_id")
                 if (activePageId != null) {
                     pageId = activePageId
@@ -168,14 +126,7 @@ class TimerForegroundService : Service() {
                     startMillis = 0L
                 }
 
-                val jsonStr = intent.getStringExtra("running_timers_json")
-                otherTimers = if (!jsonStr.isNullOrBlank()) {
-                    runCatching { Json.decodeFromString<List<RunningTimerInfo>>(jsonStr) }.getOrDefault(emptyList())
-                } else {
-                    emptyList()
-                }
-
-                if (pageId.isBlank() && otherTimers.isEmpty()) {
+                if (pageId.isBlank()) {
                     // This may have been launched via startForegroundService(); we must
                     // promote to the foreground before stopping, otherwise the system
                     // throws ForegroundServiceDidNotStartInTimeException and crashes the app.
@@ -187,27 +138,8 @@ class TimerForegroundService : Service() {
                     }
                     stopSelf()
                 } else {
-                    if (pageId.isNotBlank()) {
-                        val elapsed = (System.currentTimeMillis() - startMillis) / 1000L
-                        startForegroundCompat(buildNotification(elapsed.coerceAtLeast(0L)))
-                    } else if (otherTimers.isNotEmpty()) {
-                        val first = otherTimers.first()
-                        val firstStartMs = runCatching { parseIso(first.startISO) }.getOrDefault(0L)
-                        val elapsed = (System.currentTimeMillis() - firstStartMs) / 1000L
-                        
-                        pageId = first.pageId
-                        roundedStart = first.startISO
-                        startMillis = firstStartMs
-                        workspaceName = first.workspaceName
-                        description = first.title
-                        workspaceColor = null
-                        propertyMap = first.propertyMap
-                        roundingMinutes = 15
-                        
-                        otherTimers = otherTimers.drop(1)
-                        
-                        startForegroundCompat(buildNotification(elapsed.coerceAtLeast(0L)))
-                    }
+                    val elapsed = (System.currentTimeMillis() - startMillis) / 1000L
+                    startForegroundCompat(buildNotification(elapsed.coerceAtLeast(0L)))
                     handler.removeCallbacks(ticker)
                     handler.post(ticker)
                 }
@@ -255,87 +187,14 @@ class TimerForegroundService : Service() {
     }
 
     private fun updateNotification() {
+        if (pageId.isBlank()) return
         val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        if (pageId.isNotBlank()) {
-            val elapsed = (System.currentTimeMillis() - startMillis) / 1000L
-            nm.notify(NOTIFICATION_ID, buildNotification(elapsed.coerceAtLeast(0L)))
-        }
-
-        val currentSecondaryIds = mutableSetOf<Int>()
-        otherTimers.forEach { timer ->
-            val notificationId = timer.pageId.hashCode()
-            currentSecondaryIds.add(notificationId)
-
-            val timerStartMillis = runCatching { parseIso(timer.startISO) }.getOrDefault(0L)
-            val elapsed = (System.currentTimeMillis() - timerStartMillis) / 1000L
-
-            val notification = buildSecondaryNotification(timer, elapsed.coerceAtLeast(0L))
-            nm.notify(notificationId, notification)
-        }
-
-        val lastIds = lastSecondaryNotificationIds
-        for (oldId in lastIds) {
-            if (!currentSecondaryIds.contains(oldId)) {
-                nm.cancel(oldId)
-            }
-        }
-        lastSecondaryNotificationIds = currentSecondaryIds
-    }
-
-    private fun buildSecondaryNotification(timer: RunningTimerInfo, elapsedSecs: Long): Notification {
-        val contentTitle = if (timer.title.isNotBlank())
-            "⏱ ${timer.workspaceName} – ${timer.title}" else "⏱ ${timer.workspaceName}"
-        val elapsedStr = formatElapsed(elapsedSecs)
-        val contentText = elapsedStr
-
-        val notificationId = timer.pageId.hashCode()
-
-        val openIntent = PendingIntent.getActivity(
-            this, notificationId,
-            Intent(this, MainActivity::class.java),
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-
-        val stopIntent = PendingIntent.getService(
-            this, notificationId + 10000,
-            Intent(this, TimerForegroundService::class.java).apply {
-                action = ACTION_STOP_OTHER
-                putExtra(EXTRA_PAGE_ID, timer.pageId)
-                putExtra(EXTRA_TITLE_PROP, timer.propertyMap.timeEntryTitleProp)
-                putExtra(EXTRA_DATE_PROP, timer.propertyMap.timeEntryDateProp)
-                putExtra(EXTRA_STATUS_PROP, timer.propertyMap.timeEntryStatusProp)
-                putExtra(EXTRA_STATUS_DONE, timer.propertyMap.timeEntryStatusDone)
-                putExtra(EXTRA_WORKSPACE_NAME, timer.workspaceName)
-                putExtra(EXTRA_RAW_START, timer.startISO)
-            },
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-
-        val stopAction = NotificationCompat.Action.Builder(
-            R.drawable.ic_notification,
-            getString(R.string.notification_action_stop),
-            stopIntent
-        ).build()
-
-        val builder = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle(contentTitle)
-            .setContentText(contentText)
-            .setOngoing(true)
-            .setOnlyAlertOnce(true)
-            .setContentIntent(openIntent)
-            .addAction(stopAction)
-            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-
-        return builder.build()
+        val elapsed = (System.currentTimeMillis() - startMillis) / 1000L
+        nm.notify(NOTIFICATION_ID, buildNotification(elapsed.coerceAtLeast(0L)))
     }
 
     override fun onDestroy() {
         handler.removeCallbacks(ticker)
-        val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        for (id in lastSecondaryNotificationIds) {
-            nm.cancel(id)
-        }
         serviceScope.cancel()
         super.onDestroy()
     }

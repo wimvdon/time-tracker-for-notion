@@ -29,7 +29,9 @@ class SettingsViewModel(private val app: Application) : AndroidViewModel(app) {
         val dynamicColor: Boolean = false,
         val locale: String = "system",
         val dateFormat: String = "DD/MM/YYYY",
-        val timeFormat: String = "24h"
+        val timeFormat: String = "24h",
+        val showNotionLink: Boolean = true,
+        val showArchiveAction: Boolean = true
     )
 
     data class WorkspaceEditState(
@@ -83,6 +85,8 @@ class SettingsViewModel(private val app: Application) : AndroidViewModel(app) {
         val locale = settingsRepo.localeFlow.first()
         val dateFormat = settingsRepo.dateFormatFlow.first()
         val timeFormat = settingsRepo.timeFormatFlow.first()
+        val showNotionLink = settingsRepo.showNotionLinkFlow.first()
+        val showArchiveAction = settingsRepo.showArchiveActionFlow.first()
         _uiState.update { it.copy(
             apiKey = apiKey,
             workspaces = workspaces,
@@ -90,8 +94,20 @@ class SettingsViewModel(private val app: Application) : AndroidViewModel(app) {
             dynamicColor = dynamicColor,
             locale = locale,
             dateFormat = dateFormat,
-            timeFormat = timeFormat
+            timeFormat = timeFormat,
+            showNotionLink = showNotionLink,
+            showArchiveAction = showArchiveAction
         ) }
+    }
+
+    fun setShowNotionLink(enabled: Boolean) {
+        _uiState.update { it.copy(showNotionLink = enabled) }
+        viewModelScope.launch { settingsRepo.saveShowNotionLink(enabled) }
+    }
+
+    fun setShowArchiveAction(enabled: Boolean) {
+        _uiState.update { it.copy(showArchiveAction = enabled) }
+        viewModelScope.launch { settingsRepo.saveShowArchiveAction(enabled) }
     }
 
     fun setThemeMode(mode: ThemeMode) {
@@ -104,9 +120,14 @@ class SettingsViewModel(private val app: Application) : AndroidViewModel(app) {
         viewModelScope.launch { settingsRepo.saveDynamicColor(enabled) }
     }
 
-    fun setLocale(locale: String) {
+    fun setLocale(locale: String, onSaved: () -> Unit = {}) {
         _uiState.update { it.copy(locale = locale) }
-        viewModelScope.launch { settingsRepo.saveLocale(locale) }
+        viewModelScope.launch {
+            // Persist before notifying, so a subsequent Activity.recreate() reads the
+            // new locale in attachBaseContext() (otherwise the change needs an app restart).
+            settingsRepo.saveLocale(locale)
+            onSaved()
+        }
     }
 
     fun setDateFormat(format: String) {
@@ -384,7 +405,8 @@ class SettingsViewModel(private val app: Application) : AndroidViewModel(app) {
             edit.timeEntryDateProp.isBlank() ||
             edit.timeEntryStatusProp.isBlank() ||
             edit.timeEntryStatusRunning.isBlank() ||
-            edit.timeEntryStatusDone.isBlank()
+            edit.timeEntryStatusDone.isBlank() ||
+            edit.timeEntryStatusRunning == edit.timeEntryStatusDone
         ) return false
         return true
     }

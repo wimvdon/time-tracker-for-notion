@@ -9,8 +9,11 @@ import androidx.camera.core.CameraSelector
 import androidx.camera.core.ExperimentalGetImage
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.Preview
+import androidx.camera.core.resolutionselector.ResolutionSelector
+import androidx.camera.core.resolutionselector.ResolutionStrategy
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
+import android.util.Size
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
@@ -24,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.barcode.common.Barcode
 import com.google.mlkit.vision.common.InputImage
@@ -39,7 +43,9 @@ import java.util.concurrent.Executors
 data class QrSettingsPayload(
     val apiKey: String? = null,
     val workspaces: List<Workspace>? = null,
-    val theme: String? = null
+    val theme: String? = null,
+    val showNotionLink: Boolean? = null,
+    val showArchiveAction: Boolean? = null
 )
 
 @Serializable
@@ -56,7 +62,7 @@ private val qrJson = Json {
 @Composable
 fun QrScannerScreen(
     onBack: () -> Unit,
-    onImport: (apiKey: String?, workspaces: List<Workspace>?, theme: ThemeMode?) -> Unit,
+    onImport: (apiKey: String?, workspaces: List<Workspace>?, theme: ThemeMode?, showNotionLink: Boolean?, showArchiveAction: Boolean?) -> Unit,
     onImportWorkspace: ((Workspace) -> Unit)? = null
 ) {
     val context = LocalContext.current
@@ -142,7 +148,7 @@ fun QrScannerScreen(
                                         if (onImportWorkspace != null) {
                                             onImportWorkspace(workspacePayload.workspace)
                                         } else {
-                                            onImport(null, listOf(workspacePayload.workspace), null)
+                                            onImport(null, listOf(workspacePayload.workspace), null, null, null)
                                         }
                                     } else {
                                         // Fall back to legacy global settings format
@@ -153,7 +159,7 @@ fun QrScannerScreen(
                                             "AUTO" -> ThemeMode.AUTO
                                             else -> null
                                         }
-                                        onImport(payload.apiKey, payload.workspaces, theme)
+                                        onImport(payload.apiKey, payload.workspaces, theme, payload.showNotionLink, payload.showArchiveAction)
                                     }
                                 } catch (e: Exception) {
                                     errorMsg = context.getString(R.string.qr_import_error)
@@ -187,8 +193,24 @@ private fun CameraPreview(
                 val preview = Preview.Builder().build().also {
                     it.setSurfaceProvider(previewView.surfaceProvider)
                 }
-                val scanner = BarcodeScanning.getClient()
+                // Restrict to QR codes — faster and more reliable than all-format scanning.
+                val scanner = BarcodeScanning.getClient(
+                    BarcodeScannerOptions.Builder()
+                        .setBarcodeFormats(Barcode.FORMAT_QR_CODE)
+                        .build()
+                )
+                // Request a higher analysis resolution so dense QR codes (large settings
+                // payloads) still resolve; the default ~640x480 can fail to decode them.
+                val resolutionSelector = ResolutionSelector.Builder()
+                    .setResolutionStrategy(
+                        ResolutionStrategy(
+                            Size(1280, 720),
+                            ResolutionStrategy.FALLBACK_RULE_CLOSEST_HIGHER_THEN_LOWER
+                        )
+                    )
+                    .build()
                 val analysis = ImageAnalysis.Builder()
+                    .setResolutionSelector(resolutionSelector)
                     .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                     .build()
                     .also { ia ->

@@ -1,12 +1,3 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="widget_background">#ffffff</color>
-    <color name="widget_stroke">#e4e4e7</color>
-    <color name="widget_text_primary">#18181b</color>
-    <color name="widget_text_secondary">#71717a</color>
-    <color name="widget_chip_background">#f4f4f5</color>
-    <color name="widget_chip_stroke">#e4e4e7</color>
-    <color name="widget_chronometer">#ef4444</color>
-    <color name="widget_stop_button_tint">#ef4444</color>
-    <color name="widget_accent">#059669</color>
 </resources>

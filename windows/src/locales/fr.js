@@ -37,6 +37,9 @@ export default {
   btnAddWorkspace: '+ Ajouter un espace',
   labelAlwaysOnTop: 'Garder la fenêtre au-premier plan',
   labelStartWithWindows: 'Lancer avec Windows',
+  labelNotionActions: 'Actions Notion',
+  labelShowNotionLink: 'Afficher le lien « Ouvrir dans Notion » sur les minuteurs actifs/récents',
+  labelShowArchiveAction: 'Afficher l’action d’archivage sur les minuteurs actifs/récents',
 
   // Add/Edit workspace modal
   modalTitleAddWorkspace: 'Ajouter un espace',
@@ -167,6 +170,7 @@ export default {
   btnAddOption: 'Démarrer nouveau',
   dialogSavePresetTitle: 'Enregistrer le préréglage',
   dialogSavePresetBody: 'Enregistrer la description et les champs actuels en tant que préréglage.',
+  dialogSavePresetOptional: 'Le nom du préréglage est facultatif.',
   dialogSavePresetPlaceholder: 'Nom du préréglage (ex. Standup quotidien)',
   presetsManageTitle: 'Gérer les préréglages',
   tooltipPresetsShortcuts: 'Tous les préréglages sont ajoutés aux raccourcis de la barre des tâches.',

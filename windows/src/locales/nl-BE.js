@@ -37,6 +37,9 @@ export default {
   btnAddWorkspace: '+ Werkruimte toevoegen',
   labelAlwaysOnTop: 'Venster altijd bovenaan houden',
   labelStartWithWindows: 'Starten met Windows',
+  labelNotionActions: 'Notion-acties',
+  labelShowNotionLink: 'Toon “Openen in Notion”-link bij actieve/recente timers',
+  labelShowArchiveAction: 'Toon archiveeractie bij actieve/recente timers',
 
   // Add/Edit workspace modal
   modalTitleAddWorkspace: 'Werkruimte toevoegen',
@@ -163,6 +166,7 @@ export default {
   btnAddOption: 'Nieuwe starten',
   dialogSavePresetTitle: 'Snelstarter opslaan',
   dialogSavePresetBody: 'Sla de huidige omschrijving en geselecteerde werkruimte/velden op als een snelstarter.',
+  dialogSavePresetOptional: 'De naam van de snelstarter is optioneel.',
   dialogSavePresetPlaceholder: 'Naam snelstarter (bijv. Dagelijkse stand-up)',
   presetsManageTitle: 'Snelstarters beheren',
   tooltipPresetsShortcuts: 'Alle snelstarters worden toegevoegd aan tray-snelkoppelingen.',

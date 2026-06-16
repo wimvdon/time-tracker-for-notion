@@ -200,6 +200,8 @@
     <string name="dialog_save_preset_title">Enregistrer le préréglage</string>
     <string name="dialog_save_preset_body">Enregistrer la description et les champs actuels en tant que préréglage.</string>
     <string name="dialog_save_preset_placeholder">Nom du préréglage (ex. Standup quotidien)</string>
+    <string name="dialog_save_preset_workspace">Espace de travail : %1</string>
+    <string name="dialog_save_preset_name_optional">Nom du préréglage (facultatif)</string>
     <string name="presets_manage_title">Gérer les préréglages</string>
     <string name="tooltip_presets_shortcuts">Les préréglages du haut seront utilisés pour les raccourcis du lanceur.</string>
     <string name="dialog_unsaved_changes_title">Modifications non enregistrées</string>
@@ -214,6 +216,9 @@
     <string name="label_language">Langue</string>
     <string name="label_date_format">Format de date</string>
     <string name="label_time_format">Format d\'heure</string>
+    <string name="label_notion_actions">Actions Notion</string>
+    <string name="label_show_notion_link">Afficher le lien « Ouvrir dans Notion » sur les minuteurs actifs/récents</string>
+    <string name="label_show_archive_action">Afficher l’action d’archivage sur les minuteurs actifs/récents</string>
     <string name="language_system">Langue du système (Auto)</string>
     <string name="language_en">English</string>
     <string name="language_nl">Nederlands</string>

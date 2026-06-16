@@ -56,6 +56,9 @@ export const useStore = create((set, get) => ({
   workspaces: [],
   alwaysOnTop: true,
   startWithWindows: false,
+  // Global toggles for the per-entry Notion actions on active/recent timers.
+  showNotionLink: true,
+  showArchiveAction: true,
 
   // UI
   view: 'timer',
@@ -173,6 +176,8 @@ export const useStore = create((set, get) => ({
       workspaces,
       alwaysOnTop: settings.alwaysOnTop !== false,
       startWithWindows: settings.startWithWindows === true,
+      showNotionLink: settings.showNotionLink !== false,
+      showArchiveAction: settings.showArchiveAction !== false,
       theme: settings.theme || 'auto',
       locale: activeLocale,
       dateFormat: settings.dateFormat || 'DD/MM/YYYY',
@@ -360,6 +365,16 @@ export const useStore = create((set, get) => ({
   toggleStartWithWindows: async (value) => {
     await api.setStartWithWindows(value);
     set({ startWithWindows: value });
+  },
+
+  setShowNotionLink: async (value) => {
+    await api.saveSettings({ showNotionLink: value });
+    set({ showNotionLink: value });
+  },
+
+  setShowArchiveAction: async (value) => {
+    await api.saveSettings({ showArchiveAction: value });
+    set({ showArchiveAction: value });
   },
 
   setLocale: async (locale) => {
@@ -750,7 +765,10 @@ export const useStore = create((set, get) => ({
     }
 
     allRunning.sort((a, b) => new Date(b.startISO) - new Date(a.startISO));
-    set({ runningTimersLoading: false, runningTimers: allRunning });
+    // Merge deltas into the existing list instead of replacing it wholesale, so
+    // entries that are still running keep their identity/position (no flicker or
+    // momentary disappearance while switching timers).
+    set({ runningTimersLoading: false, runningTimers: mergeById(get().runningTimers, allRunning) });
 
     // If the active timer is no longer running in Notion (stopped elsewhere), clear it
     const activeTimer = get().timer;
@@ -792,7 +810,13 @@ export const useStore = create((set, get) => ({
       }
     }
     allRecent.sort((a, b) => (b.endISO || b.startISO || '').localeCompare(a.endISO || a.startISO || ''));
-    set({ recentEntriesLoading: false, recentEntries: allRecent.slice(0, 15) });
+    const top = allRecent.slice(0, 15);
+    // Merge deltas (keeping existing entries' identity), then re-apply the recent
+    // ordering so newly completed entries surface without a full list reload.
+    const merged = mergeById(get().recentEntries, top)
+      .filter((r) => top.some((x) => x.pageId === r.pageId))
+      .sort((a, b) => (b.endISO || b.startISO || '').localeCompare(a.endISO || a.startISO || ''));
+    set({ recentEntriesLoading: false, recentEntries: merged });
   },
 
   confirmDelete: (entry, context) => set({ deleteConfirm: { pageId: entry.pageId, title: entry.title, context } }),
@@ -1114,6 +1138,24 @@ export const useStore = create((set, get) => ({
 }));
 
 // ---- Helpers ----
+
+/**
+ * Merges `incoming` into `current` keyed by pageId: existing entries keep their
+ * position and are updated in place, entries no longer present are dropped, and
+ * genuinely new entries are appended. This avoids clearing and fully reloading
+ * the list on every refresh.
+ */
+function mergeById(current, incoming) {
+  const incomingById = new Map(incoming.map((x) => [x.pageId, x]));
+  const merged = current
+    .filter((x) => incomingById.has(x.pageId))
+    .map((x) => ({ ...x, ...incomingById.get(x.pageId) }));
+  const existingIds = new Set(merged.map((x) => x.pageId));
+  for (const item of incoming) {
+    if (!existingIds.has(item.pageId)) merged.push(item);
+  }
+  return merged;
+}
 
 function isPageDeletedError(msg) {
   const lower = (msg || '').toLowerCase();

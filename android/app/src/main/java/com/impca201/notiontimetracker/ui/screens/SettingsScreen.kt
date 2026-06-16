@@ -70,7 +70,9 @@ fun SettingsScreen(
     onSnackbarDismiss: () -> Unit,
     onLocaleChange: (String) -> Unit = {},
     onDateFormatChange: (String) -> Unit = {},
-    onTimeFormatChange: (String) -> Unit = {}
+    onTimeFormatChange: (String) -> Unit = {},
+    onShowNotionLinkChange: (Boolean) -> Unit = {},
+    onShowArchiveActionChange: (Boolean) -> Unit = {}
 ) {
     BackHandler(onBack = onBack)
     val snackbarHostState = remember { SnackbarHostState() }
@@ -283,6 +285,21 @@ fun SettingsScreen(
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
+            // --- Notion entry actions section ---
+            Text(stringResource(R.string.label_notion_actions), style = MaterialTheme.typography.titleSmall)
+            SettingSwitchRow(
+                label = stringResource(R.string.label_show_notion_link),
+                checked = uiState.showNotionLink,
+                onCheckedChange = onShowNotionLinkChange
+            )
+            SettingSwitchRow(
+                label = stringResource(R.string.label_show_archive_action),
+                checked = uiState.showArchiveAction,
+                onCheckedChange = onShowArchiveActionChange
+            )
+
+            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+
             // --- Formats & Locale section ---
             Text(stringResource(R.string.label_language), style = MaterialTheme.typography.titleSmall)
             val languageOptions = listOf(
@@ -341,6 +358,24 @@ fun SettingsScreen(
 
             Spacer(Modifier.height(16.dp))
         }
+    }
+}
+
+@Composable
+private fun SettingSwitchRow(label: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(label, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
+        Switch(
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+            colors = SwitchDefaults.colors(
+                uncheckedThumbColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                uncheckedBorderColor = MaterialTheme.colorScheme.outline
+            )
+        )
     }
 }
 

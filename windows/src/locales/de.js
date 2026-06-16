@@ -37,6 +37,9 @@ export default {
   btnAddWorkspace: '+ Workspace hinzufügen',
   labelAlwaysOnTop: 'Fenster im Vordergrund halten',
   labelStartWithWindows: 'Mit Windows starten',
+  labelNotionActions: 'Notion-Aktionen',
+  labelShowNotionLink: '„In Notion öffnen“-Link bei aktiven/letzten Timern anzeigen',
+  labelShowArchiveAction: 'Archivieren-Aktion bei aktiven/letzten Timern anzeigen',
 
   // Add/Edit workspace modal
   modalTitleAddWorkspace: 'Workspace hinzufügen',
@@ -167,6 +170,7 @@ export default {
   btnAddOption: 'Neu starten',
   dialogSavePresetTitle: 'Vorlage speichern',
   dialogSavePresetBody: 'Aktuelle Beschreibung und ausgewählte Workspace/Felder als Vorlage speichern.',
+  dialogSavePresetOptional: 'Der Vorlagenname ist optional.',
   dialogSavePresetPlaceholder: 'Vorlagenname (z.B. Tägliches Standup)',
   presetsManageTitle: 'Vorlagen verwalten',
   tooltipPresetsShortcuts: 'Alle Vorlagen werden zu Tray-Verknüpfungen hinzugefügt.',
