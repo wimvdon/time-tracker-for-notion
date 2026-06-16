@@ -1121,8 +1121,7 @@ private fun PresetChips(
     if (allPresets.isEmpty() || apiKey.isBlank()) return
     FlowRow(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
-        itemVerticalAlignment = Alignment.CenterVertically
+        verticalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterVertically)
     ) {
         allPresets.forEach { (ws, preset) ->
             val wsColor = parseWorkspaceColor(ws.color)
@@ -1143,6 +1142,7 @@ private fun PresetChips(
 
         Box(
             modifier = Modifier
+                .align(Alignment.CenterVertically)
                 .size(32.dp)
                 .clip(CircleShape)
                 .clickable(onClick = onManageClick),
