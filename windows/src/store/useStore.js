@@ -48,6 +48,10 @@ const migrateActiveTimer = (at) => {
   };
 };
 
+// How long a locally-stopped timer is hidden from the running-timer list while
+// Notion's query catches up.
+const RECENTLY_STOPPED_TTL_MS = 60_000;
+
 let toastSeq = 0;
 
 export const useStore = create((set, get) => ({
@@ -86,6 +90,10 @@ export const useStore = create((set, get) => ({
   // Running timers from Notion
   runningTimers: [],
   runningTimersLoading: false,
+  // pageId -> timestamp of timers stopped locally. Notion's running-timer query
+  // can briefly still return a just-stopped entry (replication lag); we ignore
+  // those so the app doesn't re-adopt them (which would re-colour the tray icon).
+  recentlyStopped: {},
   recentEntries: [],
   recentEntriesLoading: false,
   deleteConfirm: null,
@@ -334,9 +342,10 @@ export const useStore = create((set, get) => ({
       }
       return w;
     });
-    await api.saveSettings({ workspaces });
+    // Update state first so the reorder is visible immediately, then persist.
     set({ workspaces });
     api.notifySettingsChanged?.();
+    await api.saveSettings({ workspaces });
   },
 
   movePresetDown: async (workspaceId, presetId) => {
@@ -352,9 +361,10 @@ export const useStore = create((set, get) => ({
       }
       return w;
     });
-    await api.saveSettings({ workspaces });
+    // Update state first so the reorder is visible immediately, then persist.
     set({ workspaces });
     api.notifySettingsChanged?.();
+    await api.saveSettings({ workspaces });
   },
 
   toggleAlwaysOnTop: async (value) => {
@@ -662,6 +672,7 @@ export const useStore = create((set, get) => ({
         });
         return;
       }
+      get()._markStopped(suspendedTimer.pageId);
       const remainingRunning = get().runningTimers.filter((x) => x.pageId !== suspendedTimer.pageId);
       api.saveSettings({ activeTimer: null });
       if (remainingRunning.length > 0) {
@@ -718,6 +729,7 @@ export const useStore = create((set, get) => ({
     }
 
     clearInterval(timer.tickInterval);
+    get()._markStopped(timer.notionPageId);
     const remainingRunning = get().runningTimers.filter((x) => x.pageId !== timer.notionPageId);
     api.saveSettings({ activeTimer: null });
 
@@ -765,15 +777,25 @@ export const useStore = create((set, get) => ({
     }
 
     allRunning.sort((a, b) => new Date(b.startISO) - new Date(a.startISO));
+
+    // Drop entries that were just stopped locally (Notion replication lag), and
+    // prune the guard map of anything older than its TTL.
+    const now = Date.now();
+    const recentlyStopped = {};
+    for (const [pid, ts] of Object.entries(get().recentlyStopped)) {
+      if (now - ts < RECENTLY_STOPPED_TTL_MS) recentlyStopped[pid] = ts;
+    }
+    const visibleRunning = allRunning.filter((rt) => !recentlyStopped[rt.pageId]);
+
     // Merge deltas into the existing list instead of replacing it wholesale, so
     // entries that are still running keep their identity/position (no flicker or
     // momentary disappearance while switching timers).
-    set({ runningTimersLoading: false, runningTimers: mergeById(get().runningTimers, allRunning) });
+    set({ runningTimersLoading: false, runningTimers: mergeById(get().runningTimers, visibleRunning), recentlyStopped });
 
     // If the active timer is no longer running in Notion (stopped elsewhere), clear it
     const activeTimer = get().timer;
     if (activeTimer.running && activeTimer.notionPageId) {
-      const stillRunning = allRunning.some((rt) => rt.pageId === activeTimer.notionPageId);
+      const stillRunning = visibleRunning.some((rt) => rt.pageId === activeTimer.notionPageId);
       if (!stillRunning) {
         clearInterval(activeTimer.tickInterval);
         api.saveSettings({ activeTimer: null });
@@ -781,9 +803,14 @@ export const useStore = create((set, get) => ({
         set({ timer: { ...idleTimer } });
         get().addToast({ type: 'info', message: t('timerStoppedElsewhere') });
       }
-    } else if (!activeTimer.running && allRunning.length > 0 && !get().suspendedTimer) {
-      get().loadRunningTimer(allRunning[0]);
+    } else if (!activeTimer.running && visibleRunning.length > 0 && !get().suspendedTimer) {
+      get().loadRunningTimer(visibleRunning[0]);
     }
+  },
+
+  _markStopped: (pageId) => {
+    if (!pageId) return;
+    set((s) => ({ recentlyStopped: { ...s.recentlyStopped, [pageId]: Date.now() } }));
   },
 
   loadRecentEntries: async () => {
@@ -829,6 +856,7 @@ export const useStore = create((set, get) => ({
     set({ deleteConfirm: null });
     try {
       await api.deletePage(pageId);
+      get()._markStopped(pageId);
       if (context === 'active') {
         const { timer } = get();
         if (timer.tickInterval) clearInterval(timer.tickInterval);
@@ -867,6 +895,8 @@ export const useStore = create((set, get) => ({
 
     clearInterval(state.timer.tickInterval);
     api.saveSettings({ activeTimer: null });
+    // No timer is shown in the running view now, so reset the tray icon to idle.
+    api.setTimerRunning(false);
 
     const alreadyExists = state.runningTimers.some((t) => t.pageId === aside.pageId);
     const newRunning = alreadyExists ? state.runningTimers : [...state.runningTimers, aside];
@@ -931,6 +961,7 @@ export const useStore = create((set, get) => ({
         endISO: toNotionDateTime(endTime),
         props: rt.propertyMap,
       });
+      get()._markStopped(rt.pageId);
       const isSuspended = get().suspendedTimer?.pageId === rt.pageId;
       const remainingRunning = get().runningTimers.filter((x) => x.pageId !== rt.pageId);
       set((s) => ({
