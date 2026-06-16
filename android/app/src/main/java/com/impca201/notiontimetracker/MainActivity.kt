@@ -175,12 +175,16 @@ private fun AppNavigation(
         }
 
         composable("settings") {
+            // Reload workspaces/settings into the timer screen whenever Settings is left,
+            // regardless of how (back arrow, system back or gesture) — no app restart needed.
+            DisposableEffect(Unit) {
+                onDispose { timerViewModel.refreshSettings() }
+            }
             SettingsScreen(
                 uiState = settingsState,
                 editState = editState,
                 isEditValid = editState?.let { settingsViewModel.isEditValid(it) } ?: false,
                 onBack = {
-                    timerViewModel.refreshSettings()
                     navController.popBackStack()
                 },
                 onApiKeyChange = settingsViewModel::setApiKey,
@@ -215,8 +219,9 @@ private fun AppNavigation(
                 onScanQr = { navController.navigate("qr_scan") },
                 onSnackbarDismiss = settingsViewModel::clearSnackbar,
                 onLocaleChange = { locale ->
-                    settingsViewModel.setLocale(locale)
-                    (context as? android.app.Activity)?.recreate()
+                    settingsViewModel.setLocale(locale) {
+                        (context as? android.app.Activity)?.recreate()
+                    }
                 },
                 onDateFormatChange = settingsViewModel::setDateFormat,
                 onTimeFormatChange = settingsViewModel::setTimeFormat

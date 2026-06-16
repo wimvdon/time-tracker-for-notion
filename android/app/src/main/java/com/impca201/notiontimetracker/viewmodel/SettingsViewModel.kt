@@ -104,9 +104,14 @@ class SettingsViewModel(private val app: Application) : AndroidViewModel(app) {
         viewModelScope.launch { settingsRepo.saveDynamicColor(enabled) }
     }
 
-    fun setLocale(locale: String) {
+    fun setLocale(locale: String, onSaved: () -> Unit = {}) {
         _uiState.update { it.copy(locale = locale) }
-        viewModelScope.launch { settingsRepo.saveLocale(locale) }
+        viewModelScope.launch {
+            // Persist before notifying, so a subsequent Activity.recreate() reads the
+            // new locale in attachBaseContext() (otherwise the change needs an app restart).
+            settingsRepo.saveLocale(locale)
+            onSaved()
+        }
     }
 
     fun setDateFormat(format: String) {
