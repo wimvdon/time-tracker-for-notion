@@ -176,6 +176,15 @@ class TimerForegroundService : Service() {
                 }
 
                 if (pageId.isBlank() && otherTimers.isEmpty()) {
+                    // This may have been launched via startForegroundService(); we must
+                    // promote to the foreground before stopping, otherwise the system
+                    // throws ForegroundServiceDidNotStartInTimeException and crashes the app.
+                    startForegroundCompat(buildNotification(0L))
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                        stopForeground(STOP_FOREGROUND_REMOVE)
+                    } else {
+                        @Suppress("DEPRECATION") stopForeground(true)
+                    }
                     stopSelf()
                 } else {
                     if (pageId.isNotBlank()) {
