@@ -827,6 +827,8 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
         )}
 
         viewModelScope.launch { settingsRepo.clearActiveTimer() }
+        // No active timer is shown in the running view now, so clear the notification.
+        syncServiceNotifications()
     }
 
     fun loadRunningTimer(rt: RunningTimerInfo) {
