@@ -1155,32 +1155,24 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
 
     fun syncServiceNotifications() {
         val state = _uiState.value
-        // Nothing to surface in a foreground service. Starting one here just so it can
-        // immediately stopSelf() crashes the app on Android 8+ (the system requires
-        // startForeground() to be called within ~5s of startForegroundService()). This is
-        // the idle case that runs whenever an API key is set, so guard it out and simply
-        // make sure any existing service is stopped instead.
-        if (state.activeTimer == null && state.runningTimers.isEmpty()) {
+        // Only the active timer (the one shown in the running view) has a permanent
+        // notification. When there is no active timer there is nothing to surface, so
+        // make sure any existing service is stopped instead. Starting a service only to
+        // immediately stopSelf() risks a ForegroundServiceDidNotStartInTimeException.
+        val active = state.activeTimer
+        if (active == null) {
             stopService()
             return
         }
         val intent = Intent(app, TimerForegroundService::class.java).apply {
             action = TimerForegroundService.ACTION_SYNC_TIMERS
-            val active = state.activeTimer
-            if (active != null) {
-                putExtra("active_page_id", active.notionPageId)
-                putExtra("active_title", active.description)
-                putExtra("active_start_iso", active.rawStart)
-                val ws = state.workspaces.firstOrNull { it.id == active.workspaceId }
-                putExtra("active_workspace_name", ws?.name ?: "")
-                putExtra("active_workspace_color", ws?.color)
-                putExtra("active_rounding_minutes", ws?.roundingMinutes ?: 15)
-            }
-            val jsonStr = kotlinx.serialization.json.Json.encodeToString(
-                kotlinx.serialization.builtins.ListSerializer(RunningTimerInfo.serializer()),
-                state.runningTimers
-            )
-            putExtra("running_timers_json", jsonStr)
+            putExtra("active_page_id", active.notionPageId)
+            putExtra("active_title", active.description)
+            putExtra("active_start_iso", active.rawStart)
+            val ws = state.workspaces.firstOrNull { it.id == active.workspaceId }
+            putExtra("active_workspace_name", ws?.name ?: "")
+            putExtra("active_workspace_color", ws?.color)
+            putExtra("active_rounding_minutes", ws?.roundingMinutes ?: 15)
         }
         runCatching {
             app.startForegroundService(intent)
