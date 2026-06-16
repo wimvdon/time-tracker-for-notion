@@ -384,7 +384,8 @@ class SettingsViewModel(private val app: Application) : AndroidViewModel(app) {
             edit.timeEntryDateProp.isBlank() ||
             edit.timeEntryStatusProp.isBlank() ||
             edit.timeEntryStatusRunning.isBlank() ||
-            edit.timeEntryStatusDone.isBlank()
+            edit.timeEntryStatusDone.isBlank() ||
+            edit.timeEntryStatusRunning == edit.timeEntryStatusDone
         ) return false
         return true
     }

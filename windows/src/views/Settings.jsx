@@ -409,6 +409,10 @@ function WorkspaceModal({ workspace, onClose }) {
   const teStatusOptions = teSchema.schema
     ? statusOptions(teSchema.schema, sel.timeEntryStatusProp)
     : [];
+  // The running and ended statuses must differ, so each dropdown hides the
+  // option already chosen in the other.
+  const teRunningOptions = teStatusOptions.filter((o) => o.name !== sel.timeEntryStatusDone);
+  const teDoneOptions = teStatusOptions.filter((o) => o.name !== sel.timeEntryStatusRunning);
 
   // Candidates for an extra-field row: writable types, minus the managed
   // properties and the names already chosen in other rows
@@ -434,7 +438,8 @@ function WorkspaceModal({ workspace, onClose }) {
     !!sel.timeEntryDateProp &&
     !!sel.timeEntryStatusProp &&
     !!sel.timeEntryStatusRunning &&
-    !!sel.timeEntryStatusDone;
+    !!sel.timeEntryStatusDone &&
+    sel.timeEntryStatusRunning !== sel.timeEntryStatusDone;
 
   const handleSave = async () => {
     if (!complete) return;
@@ -579,7 +584,7 @@ function WorkspaceModal({ workspace, onClose }) {
                   label={t('labelTimeEntryStatusRunning')}
                   hint={t('hintTimeEntryStatusRunning')}
                   loading={teSchema.loading}
-                  options={teStatusOptions}
+                  options={teRunningOptions}
                   value={sel.timeEntryStatusRunning}
                   onChange={(v) => setProp('timeEntryStatusRunning', v)}
                 />
@@ -587,7 +592,7 @@ function WorkspaceModal({ workspace, onClose }) {
                   label={t('labelTimeEntryStatusDone')}
                   hint={t('hintTimeEntryStatusDone')}
                   loading={teSchema.loading}
-                  options={teStatusOptions}
+                  options={teDoneOptions}
                   value={sel.timeEntryStatusDone}
                   onChange={(v) => setProp('timeEntryStatusDone', v)}
                 />

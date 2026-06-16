@@ -335,11 +335,15 @@ private fun SchemaFields(
 
     if (statusProp.isNotBlank() && statusOptions.isNotEmpty()) {
         val optionItems = statusOptions.map { NamedOption(it.name, it.name) }
+        // The running and ended statuses must differ, so each dropdown hides the
+        // option already chosen in the other.
+        val runningItems = optionItems.filter { it.id != statusDone }
+        val doneItems = optionItems.filter { it.id != statusRunning }
 
         SectionLabel(stringResource(R.string.label_time_entry_status_running))
         SearchableDropdown(
-            options = optionItems,
-            selected = optionItems.firstOrNull { it.id == statusRunning },
+            options = runningItems,
+            selected = runningItems.firstOrNull { it.id == statusRunning },
             placeholder = stringResource(R.string.placeholder_select),
             onSelect = { onStatusRunningChange(it?.id ?: "") },
             modifier = Modifier.fillMaxWidth()
@@ -348,8 +352,8 @@ private fun SchemaFields(
 
         SectionLabel(stringResource(R.string.label_time_entry_status_done))
         SearchableDropdown(
-            options = optionItems,
-            selected = optionItems.firstOrNull { it.id == statusDone },
+            options = doneItems,
+            selected = doneItems.firstOrNull { it.id == statusDone },
             placeholder = stringResource(R.string.placeholder_select),
             onSelect = { onStatusDoneChange(it?.id ?: "") },
             modifier = Modifier.fillMaxWidth()
