@@ -94,7 +94,7 @@ export default function Timer() {
         title={t('btnRefreshAll')}
         className="text-zinc-500 hover:text-zinc-200 transition-colors flex items-center justify-center"
       >
-        <ArrowClockwise20Regular className="w-5 h-5" />
+        <ArrowClockwise20Regular className={`w-5 h-5 ${runningTimersLoading || recentEntriesLoading ? 'animate-spin' : ''}`} />
       </button>
       {timer.running && (
         <button
@@ -840,15 +840,12 @@ function RunningTimerItem({ rt, isActive, onLoad, onStop, onDelete, onOpenUrl })
 }
 
 function OtherRunningTimers({ timers, loading, activePageId, onLoad, onStop, onDelete, onOpenUrl }) {
-  if (!timers.length && !loading) return null;
+  if (!timers.length) return null;
   return (
     <div className="w-full mt-2 pt-3 border-t border-zinc-700">
       <div className="mb-2">
         <span className="text-xs text-zinc-500">{t('runningTimersHeading')}</span>
       </div>
-      {loading && !timers.length && (
-        <div className="text-xs text-zinc-600 py-1">…</div>
-      )}
       {timers.map((rt) => (
         <RunningTimerItem
           key={rt.pageId}
@@ -889,15 +886,12 @@ function formatRecentRange(startISO, endISO) {
 function RecentEntries({ entries, loading, onDelete, onOpenUrl }) {
   const showNotionLink = useStore((s) => s.showNotionLink);
   const showArchiveAction = useStore((s) => s.showArchiveAction);
-  if (!entries.length && !loading) return null;
+  if (!entries.length) return null;
   return (
     <div className="w-full mt-2 pt-3 border-t border-zinc-700">
       <div className="flex items-center justify-between mb-2">
         <span className="text-xs text-zinc-500">{t('recentEntriesHeading')}</span>
       </div>
-      {loading && !entries.length && (
-        <div className="text-xs text-zinc-600 py-1">…</div>
-      )}
       {entries.map((entry) => (
         <div
           key={entry.pageId}

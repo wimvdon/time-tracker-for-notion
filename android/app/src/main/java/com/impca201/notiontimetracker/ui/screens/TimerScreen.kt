@@ -1,5 +1,9 @@
 package com.impca201.notiontimetracker.ui.screens
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -16,6 +20,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.Color
@@ -304,9 +309,10 @@ private fun IdleView(
                     fontWeight = FontWeight.Bold
                 )
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = onRefreshAll) {
-                        Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.btn_refresh_all))
-                    }
+                    RefreshIconButton(
+                        loading = uiState.runningTimersLoading || uiState.recentEntriesLoading,
+                        onClick = onRefreshAll
+                    )
                     IconButton(onClick = onNavigateToSettings) {
                         Icon(Icons.Default.Settings, contentDescription = stringResource(R.string.title_settings))
                     }
@@ -661,9 +667,10 @@ private fun RunningView(
                     IconButton(onClick = onSuspendActiveToNewTimer) {
                         Icon(Icons.Default.Add, contentDescription = stringResource(R.string.start_new_timer))
                     }
-                    IconButton(onClick = onRefreshAll) {
-                        Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.btn_refresh_all))
-                    }
+                    RefreshIconButton(
+                        loading = uiState.runningTimersLoading || uiState.recentEntriesLoading,
+                        onClick = onRefreshAll
+                    )
                     IconButton(onClick = onNavigateToSettings) {
                         Icon(Icons.Default.Settings, contentDescription = stringResource(R.string.title_settings))
                     }
@@ -930,7 +937,7 @@ private fun OtherRunningTimers(
     showNotionLink: Boolean = true,
     showArchiveAction: Boolean = true
 ) {
-    if (timers.isEmpty() && !loading) return
+    if (timers.isEmpty()) return
 
     var tick by remember { mutableStateOf(0) }
     LaunchedEffect(timers) {
@@ -1038,7 +1045,7 @@ private fun RecentEntriesSection(
     showNotionLink: Boolean = true,
     showArchiveAction: Boolean = true
 ) {
-    if (entries.isEmpty() && !loading) return
+    if (entries.isEmpty()) return
 
     HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
     Row(
@@ -1172,6 +1179,30 @@ private fun FlowingWarningCard(text: androidx.compose.ui.text.AnnotatedString, o
             text,
             modifier = Modifier.padding(12.dp),
             style = MaterialTheme.typography.bodySmall
+        )
+    }
+}
+
+/** Refresh icon button that spins while a refresh is in progress. */
+@Composable
+private fun RefreshIconButton(loading: Boolean, onClick: () -> Unit) {
+    val rotation = remember { Animatable(0f) }
+    LaunchedEffect(loading) {
+        if (loading) {
+            rotation.snapTo(0f)
+            rotation.animateTo(
+                targetValue = 360f,
+                animationSpec = infiniteRepeatable(tween(durationMillis = 900, easing = LinearEasing))
+            )
+        } else {
+            rotation.snapTo(0f)
+        }
+    }
+    IconButton(onClick = onClick) {
+        Icon(
+            Icons.Default.Refresh,
+            contentDescription = stringResource(R.string.btn_refresh_all),
+            modifier = Modifier.rotate(rotation.value)
         )
     }
 }
