@@ -113,12 +113,18 @@ fun TimerScreen(
             text = {
                 Column {
                     Text(stringResource(R.string.dialog_save_preset_body))
+                    Spacer(Modifier.height(12.dp))
+                    Text(
+                        stringResource(R.string.dialog_save_preset_workspace, activeWorkspaceName),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                     Spacer(Modifier.height(8.dp))
                     OutlinedTextField(
                         value = presetNameInput,
                         onValueChange = { presetNameInput = it },
+                        label = { Text(stringResource(R.string.dialog_save_preset_name_optional)) },
                         placeholder = { Text(stringResource(R.string.dialog_save_preset_placeholder)) },
-                        prefix = { Text("[$activeWorkspaceName] - ") },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )

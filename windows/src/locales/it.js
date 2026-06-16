@@ -167,6 +167,7 @@ export default {
   btnAddOption: 'Avvia nuovo',
   dialogSavePresetTitle: 'Salva preimpostazione',
   dialogSavePresetBody: 'Salva la descrizione e i campi correnti come preimpostazione.',
+  dialogSavePresetOptional: 'Il nome della preimpostazione è facoltativo.',
   dialogSavePresetPlaceholder: 'Nome preimpostazione (es. Standup giornaliero)',
   presetsManageTitle: 'Gestisci preimpostazioni',
   tooltipPresetsShortcuts: 'Tutte le preimpostazioni vengono aggiunte alle scorciatoie della barra delle applicazioni.',

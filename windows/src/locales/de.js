@@ -167,6 +167,7 @@ export default {
   btnAddOption: 'Neu starten',
   dialogSavePresetTitle: 'Vorlage speichern',
   dialogSavePresetBody: 'Aktuelle Beschreibung und ausgewählte Workspace/Felder als Vorlage speichern.',
+  dialogSavePresetOptional: 'Der Vorlagenname ist optional.',
   dialogSavePresetPlaceholder: 'Vorlagenname (z.B. Tägliches Standup)',
   presetsManageTitle: 'Vorlagen verwalten',
   tooltipPresetsShortcuts: 'Alle Vorlagen werden zu Tray-Verknüpfungen hinzugefügt.',

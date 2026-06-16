@@ -167,6 +167,7 @@ export default {
   btnAddOption: 'Start new',
   dialogSavePresetTitle: 'Save Preset',
   dialogSavePresetBody: 'Save the current description and selected workspace/fields as a preset.',
+  dialogSavePresetOptional: 'The preset name is optional.',
   dialogSavePresetPlaceholder: 'Preset name (e.g. Daily Standup)',
   presetsManageTitle: 'Manage Presets',
   tooltipPresetsShortcuts: 'All presets are added to tray shortcuts.',

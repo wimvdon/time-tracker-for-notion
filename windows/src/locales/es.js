@@ -167,6 +167,7 @@ export default {
   btnAddOption: 'Iniciar nuevo',
   dialogSavePresetTitle: 'Guardar preajuste',
   dialogSavePresetBody: 'Guardar la descripción y campos actuales como preajuste.',
+  dialogSavePresetOptional: 'El nombre del preajuste es opcional.',
   dialogSavePresetPlaceholder: 'Nombre del preajuste (ej. Standup diario)',
   presetsManageTitle: 'Gestionar preajustes',
   tooltipPresetsShortcuts: 'Todos los preajustes se agregarán a los accesos directos de la bandeja.',
