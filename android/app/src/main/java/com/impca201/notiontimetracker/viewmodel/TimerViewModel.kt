@@ -682,7 +682,10 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
             }
         }
         allRunning.sortByDescending { it.startISO }
-        _uiState.update { it.copy(runningTimersLoading = false, runningTimers = allRunning) }
+        // Merge deltas into the existing list instead of replacing it wholesale, so
+        // entries that are still running keep their identity/position (no flicker or
+        // momentary disappearance while switching timers).
+        _uiState.update { it.copy(runningTimersLoading = false, runningTimers = mergeById(it.runningTimers, allRunning) { r -> r.pageId }) }
         syncServiceNotifications()
         val updatedState = _uiState.value
         if (!updatedState.running && updatedState.activeTimer == null && allRunning.isNotEmpty()) {
@@ -731,7 +734,16 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
                 }
             }
             allRecent.sortByDescending { it.endISO ?: it.startISO ?: "" }
-            _uiState.update { it.copy(recentEntriesLoading = false, recentEntries = allRecent.take(15)) }
+            val top = allRecent.take(15)
+            // Merge deltas (keeping existing entries' identity), then re-apply the
+            // recent ordering so newly completed entries surface without a full reload.
+            _uiState.update { state ->
+                val topIds = top.map { it.pageId }.toSet()
+                val merged = mergeById(state.recentEntries, top) { r -> r.pageId }
+                    .filter { it.pageId in topIds }
+                    .sortedByDescending { it.endISO ?: it.startISO ?: "" }
+                state.copy(recentEntriesLoading = false, recentEntries = merged)
+            }
         }
     }
 
@@ -1007,6 +1019,19 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
             result[def.propName] = notionValue
         }
         return result
+    }
+
+    /**
+     * Merges [incoming] into [current] keyed by [id]: existing entries keep their
+     * position and are updated in place, entries no longer present are dropped, and
+     * genuinely new entries are appended. Avoids clearing/reloading the whole list.
+     */
+    private fun <T> mergeById(current: List<T>, incoming: List<T>, id: (T) -> String): List<T> {
+        val incomingById = incoming.associateBy(id)
+        val merged = current.filter { incomingById.containsKey(id(it)) }
+            .map { incomingById.getValue(id(it)) }
+        val existingIds = merged.map(id).toSet()
+        return merged + incoming.filter { id(it) !in existingIds }
     }
 
     private fun isPageDeletedError(msg: String): Boolean {
