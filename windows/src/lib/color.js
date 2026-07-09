@@ -1,11 +1,13 @@
 // Derives contrast-safe variants of a user-chosen workspace color, one for
 // use on the light theme's near-white background and one for the dark
 // theme's near-black background. Hue/saturation are preserved; lightness is
-// only nudged when the original color wouldn't meet ~4.5:1 contrast.
+// only nudged when the original color wouldn't meet ~3:1 contrast (WCAG's
+// non-text/UI-component minimum — enough to stay legible without pulling
+// saturated colors like yellow so dark they read as brown).
 
 const LIGHT_BG_LUMINANCE = 1; // page background in light theme (white)
 const DARK_BG_LUMINANCE = 0.012; // page background in dark theme (zinc-900 ~ #18181b)
-const MIN_CONTRAST = 4.5;
+const MIN_CONTRAST = 3;
 
 // Max luminance a color can have and still hit MIN_CONTRAST against a white
 // background (also covers white text drawn on top of a solid fill of that
@@ -105,7 +107,7 @@ function solveLightness(h, s, targetLuminance, direction) {
 
 /**
  * Given a user-chosen hex color, returns { light, dark } variants that keep
- * the same hue/saturation but guarantee ~4.5:1 contrast against the app's
+ * the same hue/saturation but guarantee ~3:1 contrast against the app's
  * light-theme (near-white) and dark-theme (near-black) backgrounds. Also
  * safe to use as a solid fill behind white text/icons.
  */

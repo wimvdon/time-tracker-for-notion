@@ -9,9 +9,11 @@ import androidx.core.graphics.ColorUtils
 // Derives contrast-safe variants of a user-chosen workspace color: one for
 // use on the light theme's near-white background, one for the dark theme's
 // near-black background. Hue/saturation are preserved; lightness is only
-// nudged when the original color wouldn't meet ~4.5:1 contrast.
+// nudged when the original color wouldn't meet ~3:1 contrast (WCAG's
+// non-text/UI-component minimum — enough to stay legible without pulling
+// saturated colors like yellow so dark they read as brown).
 
-private const val MIN_CONTRAST = 4.5
+private const val MIN_CONTRAST = 3.0
 private const val LIGHT_BG_LUMINANCE = 1.0 // light theme background (white/zinc-50)
 private const val DARK_BG_LUMINANCE = 0.014 // dark theme background (zinc-900)
 
@@ -51,7 +53,7 @@ private fun solveLightness(h: Float, s: Float, targetLuminance: Double, darken: 
 
 /**
  * Given a user-chosen color, returns (light, dark) variants that keep the
- * same hue/saturation but guarantee ~4.5:1 contrast against the app's
+ * same hue/saturation but guarantee ~3:1 contrast against the app's
  * light-theme and dark-theme backgrounds. Also safe to use as a solid fill
  * behind white text/icons.
  */

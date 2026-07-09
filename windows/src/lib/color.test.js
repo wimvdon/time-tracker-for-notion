@@ -2,30 +2,36 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { getWorkspaceColorVariants, contrastRatio } from './color.js';
 
-test('light variant contrasts >=4.5:1 against white for bright colors', () => {
+test('light variant contrasts >=3:1 against white for bright colors', () => {
   const { light } = getWorkspaceColorVariants('#eab308'); // bright yellow
-  assert.ok(contrastRatio(light, '#ffffff') >= 4.45);
+  assert.ok(contrastRatio(light, '#ffffff') >= 2.95);
 });
 
-test('dark variant contrasts >=4.5:1 against near-black for dark colors', () => {
+test('dark variant contrasts >=3:1 against near-black for dark colors', () => {
   const { dark } = getWorkspaceColorVariants('#1e3a5f'); // dark navy
-  assert.ok(contrastRatio(dark, '#18181b') >= 4.45);
+  assert.ok(contrastRatio(dark, '#18181b') >= 2.95);
 });
 
 test('already-compliant colors are left close to the original', () => {
   const hex = '#3b82f6'; // preset blue, already reasonably dark
   const { light } = getWorkspaceColorVariants(hex);
-  assert.ok(contrastRatio(light, '#ffffff') >= 4.45);
+  assert.ok(contrastRatio(light, '#ffffff') >= 2.95);
 });
 
 test('white input still produces usable variants', () => {
   const { light, dark } = getWorkspaceColorVariants('#ffffff');
-  assert.ok(contrastRatio(light, '#ffffff') >= 4.45);
-  assert.ok(contrastRatio(dark, '#18181b') >= 4.45);
+  assert.ok(contrastRatio(light, '#ffffff') >= 2.95);
+  assert.ok(contrastRatio(dark, '#18181b') >= 2.95);
 });
 
 test('black input still produces usable variants', () => {
   const { light, dark } = getWorkspaceColorVariants('#000000');
-  assert.ok(contrastRatio(light, '#ffffff') >= 4.45);
-  assert.ok(contrastRatio(dark, '#18181b') >= 4.45);
+  assert.ok(contrastRatio(light, '#ffffff') >= 2.95);
+  assert.ok(contrastRatio(dark, '#18181b') >= 2.95);
+});
+
+test('bright yellow stays recognizably yellow, not brown', () => {
+  const { light } = getWorkspaceColorVariants('#eab308');
+  // Should move noticeably less than the old 4.5:1 threshold did (#957205).
+  assert.ok(contrastRatio(light, '#957205') > 1.15);
 });
