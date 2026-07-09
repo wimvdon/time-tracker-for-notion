@@ -137,12 +137,6 @@
     <!-- QR code import -->
     <string name="btn_scan_qr">Scanner le QR code pour importer</string>
     <string name="btn_add_workspace_qr">Ajouter un espace via QR code</string>
-    <string name="btn_import_settings_qr">Scanner le QR code (paramètres / espace de travail)</string>
-    <string name="qr_scan_title">Scanner le code QR</string>
-    <string name="qr_scan_hint">Pointez l\'appareil photo vers un code QR de paramètres ou d\'espace de travail depuis l\'application Windows.</string>
-    <string name="qr_import_success">Paramètres importés avec succès.</string>
-    <string name="qr_import_error">Impossible de lire les paramètres du QR code.</string>
-    <string name="qr_permission_denied">L\'autorisation de la caméra est requise pour scanner les codes QR.</string>
 
     <!-- Refresh -->
     <string name="btn_refresh_all">Actualiser</string>
@@ -181,8 +175,6 @@
 
     <!-- Per-workspace QR -->
     <string name="btn_workspace_qr">Exporter l\'espace en QR</string>
-    <string name="qr_workspace_note">Scannez pour importer cet espace sur un autre appareil. Clé API non incluse.</string>
-    <string name="qr_scan_hint_workspace">Pointez la caméra vers le code QR d\'espace de l\'application Windows.</string>
 
     <!-- Additional New Strings -->
     <string name="warn_already_running_title">Minuteur déjà en cours</string>

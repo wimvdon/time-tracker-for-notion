@@ -137,12 +137,6 @@
     <!-- QR code import -->
     <string name="btn_scan_qr">Scansiona codice QR per importare</string>
     <string name="btn_add_workspace_qr">Aggiungi spazio via codice QR</string>
-    <string name="btn_import_settings_qr">Scansiona codice QR (impostazioni / spazio di lavoro)</string>
-    <string name="qr_scan_title">Scansiona codice QR</string>
-    <string name="qr_scan_hint">Punta la fotocamera su un codice QR di impostazioni o spazio di lavoro dall\'app Windows.</string>
-    <string name="qr_import_success">Impostazioni importate con successo.</string>
-    <string name="qr_import_error">Impossibile leggere il codice QR delle impostazioni.</string>
-    <string name="qr_permission_denied">È necessario l\'accesso alla fotocamera per scansionare i codici QR.</string>
 
     <!-- Refresh -->
     <string name="btn_refresh_all">Aggiorna</string>
@@ -181,8 +175,6 @@
 
     <!-- Per-workspace QR -->
     <string name="btn_workspace_qr">Esporta spazio via QR</string>
-    <string name="qr_workspace_note">Scansiona per importare questo spazio su un altro dispositivo. Chiave API non inclusa.</string>
-    <string name="qr_scan_hint_workspace">Punta la fotocamera verso il codice QR di spazio dell\'applicazione Windows.</string>
 
     <!-- Additional New Strings -->
     <string name="warn_already_running_title">Timer già attivo</string>

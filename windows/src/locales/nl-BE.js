@@ -130,7 +130,6 @@ export default {
   qrWorkspaceNote: 'Scan om deze werkruimte te importeren op een ander apparaat. API-sleutel niet inbegrepen.',
   btnShowQr: 'QR-code',
   btnClose: 'Sluiten',
-  qrAutoDismiss: 'Verdwijnt automatisch na 30 seconden.',
 
   // Snelstarters
   sectionPresets: 'Snelstarters (optioneel)',
@@ -161,13 +160,10 @@ export default {
   dialogSavePresetPlaceholder: 'Naam snelstarter (bijv. Dagelijkse stand-up)',
   presetsManageTitle: 'Snelstarters beheren',
   tooltipPresetsShortcuts: 'Alle snelstarters worden toegevoegd aan tray-snelkoppelingen.',
-  btnGlobalQr: 'Exporteer instellingen via QR',
-  qrGlobalNote: 'Scan om instellingen te importeren (inclusief API-sleutel, werkruimtes en snelstarters).',
   dialogTimeErrorTitle: 'Eindtijd ligt voor starttijd',
   dialogTimeErrorBody: 'De eindtijd is eerder dan de starttijd. Wilde je de timer op de volgende dag stoppen?',
   btnEdit: 'Bewerken',
   btnNextDay: 'Volgende dag',
-  btnDismiss: 'Sluiten',
   labelLanguage: 'Taal',
   optSystem: 'Systeem',
   labelDateFormat: 'Datumindeling',

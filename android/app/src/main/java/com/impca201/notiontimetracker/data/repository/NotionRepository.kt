@@ -61,4 +61,15 @@ class NotionRepository(
         client.updatePageProperties(apiKey(), pageId, properties)
 
     suspend fun deletePage(pageId: String) = client.deletePage(apiKey(), pageId)
+
+    suspend fun searchPages(): List<NamedOption> = client.searchPages(apiKey())
+
+    suspend fun createSyncPage(title: String, payload: SyncPayload): String =
+        client.createSyncPage(apiKey(), title, payload)
+
+    suspend fun fetchSyncPageContent(pageId: String): SyncFetchResult? =
+        client.fetchSyncPageContent(apiKey(), pageId)
+
+    suspend fun updateSyncBlock(blockId: String, payload: SyncPayload) =
+        client.updateSyncBlock(apiKey(), blockId, payload)
 }

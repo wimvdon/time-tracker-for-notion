@@ -137,12 +137,6 @@
     <!-- QR code import -->
     <string name="btn_scan_qr">QR-Code scannen, um zu importieren</string>
     <string name="btn_add_workspace_qr">Workspace via QR-Code hinzufügen</string>
-    <string name="btn_import_settings_qr">QR-Code scannen (Einstellungen / Arbeitsbereich)</string>
-    <string name="qr_scan_title">QR-Code scannen</string>
-    <string name="qr_scan_hint">Richten Sie die Kamera auf einen Einstellungs- oder Arbeitsbereich-QR-Code aus der Windows-App.</string>
-    <string name="qr_import_success">Einstellungen erfolgreich importiert.</string>
-    <string name="qr_import_error">QR-Code konnte nicht gelesen werden.</string>
-    <string name="qr_permission_denied">Kamerazugriff wird benötigt, um QR-Codes zu scannen.</string>
 
     <!-- Refresh -->
     <string name="btn_refresh_all">Aktualisieren</string>
@@ -181,8 +175,6 @@
 
     <!-- Per-workspace QR -->
     <string name="btn_workspace_qr">Workspace-QR exportieren</string>
-    <string name="qr_workspace_note">Scannen, um diesen Workspace auf einem anderen Gerät zu importieren. API-Schlüssel nicht enthalten.</string>
-    <string name="qr_scan_hint_workspace">Richten Sie die Kamera auf den Workspace-QR-Code der Windows-App.</string>
 
     <!-- Additional New Strings -->
     <string name="warn_already_running_title">Timer läuft bereits</string>

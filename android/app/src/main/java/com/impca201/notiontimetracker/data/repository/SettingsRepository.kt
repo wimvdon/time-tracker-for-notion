@@ -42,6 +42,10 @@ class SettingsRepository(private val context: Context) {
     private val TIME_FORMAT_KEY = stringPreferencesKey("time_format")
     private val SHOW_NOTION_LINK_KEY = booleanPreferencesKey("show_notion_link")
     private val SHOW_ARCHIVE_ACTION_KEY = booleanPreferencesKey("show_archive_action")
+    private val SYNC_PAGE_ID_KEY = stringPreferencesKey("sync_page_id")
+    private val SYNC_PAGE_TITLE_KEY = stringPreferencesKey("sync_page_title")
+    private val SETTINGS_UPDATED_AT_KEY = stringPreferencesKey("settings_updated_at")
+    private val LAST_SYNCED_UPDATED_AT_KEY = stringPreferencesKey("last_synced_updated_at")
 
     private val encryptedPrefs: SharedPreferences by lazy {
         runCatching {
@@ -189,5 +193,49 @@ class SettingsRepository(private val context: Context) {
 
     suspend fun saveShowArchiveAction(enabled: Boolean) {
         context.dataStore.edit { prefs -> prefs[SHOW_ARCHIVE_ACTION_KEY] = enabled }
+    }
+
+    // ---- Notion-page sync ----
+
+    val syncPageIdFlow: Flow<String?> = context.dataStore.data.map { prefs -> prefs[SYNC_PAGE_ID_KEY] }
+    suspend fun getSyncPageId(): String? = syncPageIdFlow.first()
+
+    val syncPageTitleFlow: Flow<String> = context.dataStore.data.map { prefs -> prefs[SYNC_PAGE_TITLE_KEY] ?: "" }
+
+    val settingsUpdatedAtFlow: Flow<String?> = context.dataStore.data.map { prefs -> prefs[SETTINGS_UPDATED_AT_KEY] }
+    suspend fun getSettingsUpdatedAt(): String? = settingsUpdatedAtFlow.first()
+
+    val lastSyncedUpdatedAtFlow: Flow<String?> = context.dataStore.data.map { prefs -> prefs[LAST_SYNCED_UPDATED_AT_KEY] }
+    suspend fun getLastSyncedUpdatedAt(): String? = lastSyncedUpdatedAtFlow.first()
+
+    suspend fun saveSyncPage(pageId: String, title: String) {
+        context.dataStore.edit { prefs ->
+            prefs[SYNC_PAGE_ID_KEY] = pageId
+            prefs[SYNC_PAGE_TITLE_KEY] = title
+        }
+    }
+
+    suspend fun clearSyncPage() {
+        context.dataStore.edit { prefs ->
+            prefs.remove(SYNC_PAGE_ID_KEY)
+            prefs.remove(SYNC_PAGE_TITLE_KEY)
+            prefs.remove(LAST_SYNCED_UPDATED_AT_KEY)
+        }
+    }
+
+    /** Bumped whenever a synced field changes locally, so sync knows this
+     * device has edits that need pushing. */
+    suspend fun touchSettingsUpdatedAt(): String {
+        val now = java.time.Instant.now().toString()
+        context.dataStore.edit { prefs -> prefs[SETTINGS_UPDATED_AT_KEY] = now }
+        return now
+    }
+
+    suspend fun saveSettingsUpdatedAt(value: String) {
+        context.dataStore.edit { prefs -> prefs[SETTINGS_UPDATED_AT_KEY] = value }
+    }
+
+    suspend fun saveLastSyncedUpdatedAt(value: String) {
+        context.dataStore.edit { prefs -> prefs[LAST_SYNCED_UPDATED_AT_KEY] = value }
     }
 }

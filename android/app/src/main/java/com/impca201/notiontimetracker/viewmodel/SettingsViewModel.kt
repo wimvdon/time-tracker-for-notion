@@ -31,7 +31,11 @@ class SettingsViewModel(private val app: Application) : AndroidViewModel(app) {
         val dateFormat: String = "DD/MM/YYYY",
         val timeFormat: String = "24h",
         val showNotionLink: Boolean = true,
-        val showArchiveAction: Boolean = true
+        val showArchiveAction: Boolean = true,
+        val syncPageId: String? = null,
+        val syncPageTitle: String = "",
+        val syncing: Boolean = false,
+        val syncError: String? = null
     )
 
     data class WorkspaceEditState(
@@ -67,9 +71,13 @@ class SettingsViewModel(private val app: Application) : AndroidViewModel(app) {
 
     private val settingsRepo get() = (app as NotionTimeTrackerApp).settingsRepository
     private val notionRepo get() = (app as NotionTimeTrackerApp).notionRepository
+    private val syncer get() = (app as NotionTimeTrackerApp).settingsSyncer
 
     init {
-        viewModelScope.launch { loadSettings() }
+        viewModelScope.launch {
+            loadSettings()
+            if (_uiState.value.apiKey.isNotBlank() && _uiState.value.syncPageId != null) syncNow()
+        }
         viewModelScope.launch {
             settingsRepo.workspacesFlow.collect { workspaces ->
                 _uiState.update { it.copy(workspaces = workspaces) }
@@ -87,6 +95,8 @@ class SettingsViewModel(private val app: Application) : AndroidViewModel(app) {
         val timeFormat = settingsRepo.timeFormatFlow.first()
         val showNotionLink = settingsRepo.showNotionLinkFlow.first()
         val showArchiveAction = settingsRepo.showArchiveActionFlow.first()
+        val syncPageId = settingsRepo.getSyncPageId()
+        val syncPageTitle = settingsRepo.syncPageTitleFlow.first()
         _uiState.update { it.copy(
             apiKey = apiKey,
             workspaces = workspaces,
@@ -96,26 +106,29 @@ class SettingsViewModel(private val app: Application) : AndroidViewModel(app) {
             dateFormat = dateFormat,
             timeFormat = timeFormat,
             showNotionLink = showNotionLink,
-            showArchiveAction = showArchiveAction
+            showArchiveAction = showArchiveAction,
+            syncPageId = syncPageId,
+            syncPageTitle = syncPageTitle
         ) }
     }
 
     fun setShowNotionLink(enabled: Boolean) {
         _uiState.update { it.copy(showNotionLink = enabled) }
-        viewModelScope.launch { settingsRepo.saveShowNotionLink(enabled) }
+        viewModelScope.launch { settingsRepo.saveShowNotionLink(enabled); settingsRepo.touchSettingsUpdatedAt() }
     }
 
     fun setShowArchiveAction(enabled: Boolean) {
         _uiState.update { it.copy(showArchiveAction = enabled) }
-        viewModelScope.launch { settingsRepo.saveShowArchiveAction(enabled) }
+        viewModelScope.launch { settingsRepo.saveShowArchiveAction(enabled); settingsRepo.touchSettingsUpdatedAt() }
     }
 
     fun setThemeMode(mode: ThemeMode) {
         _uiState.update { it.copy(themeMode = mode) }
-        viewModelScope.launch { settingsRepo.saveThemeMode(mode) }
+        viewModelScope.launch { settingsRepo.saveThemeMode(mode); settingsRepo.touchSettingsUpdatedAt() }
     }
 
     fun setDynamicColor(enabled: Boolean) {
+        // Device-local — not part of the synced payload.
         _uiState.update { it.copy(dynamicColor = enabled) }
         viewModelScope.launch { settingsRepo.saveDynamicColor(enabled) }
     }
@@ -126,36 +139,19 @@ class SettingsViewModel(private val app: Application) : AndroidViewModel(app) {
             // Persist before notifying, so a subsequent Activity.recreate() reads the
             // new locale in attachBaseContext() (otherwise the change needs an app restart).
             settingsRepo.saveLocale(locale)
+            settingsRepo.touchSettingsUpdatedAt()
             onSaved()
         }
     }
 
     fun setDateFormat(format: String) {
         _uiState.update { it.copy(dateFormat = format) }
-        viewModelScope.launch { settingsRepo.saveDateFormat(format) }
+        viewModelScope.launch { settingsRepo.saveDateFormat(format); settingsRepo.touchSettingsUpdatedAt() }
     }
 
     fun setTimeFormat(format: String) {
         _uiState.update { it.copy(timeFormat = format) }
-        viewModelScope.launch { settingsRepo.saveTimeFormat(format) }
-    }
-
-    fun importApiKey(key: String) {
-        _uiState.update { it.copy(apiKey = key) }
-        viewModelScope.launch { settingsRepo.saveApiKey(key) }
-    }
-
-    fun importWorkspaces(workspaces: List<Workspace>) {
-        viewModelScope.launch { saveWorkspaces(workspaces) }
-    }
-
-    fun importWorkspace(workspace: Workspace) {
-        viewModelScope.launch {
-            val existing = settingsRepo.getWorkspaces().toMutableList()
-            val idx = existing.indexOfFirst { it.id == workspace.id }
-            if (idx >= 0) existing[idx] = workspace else existing.add(workspace)
-            saveWorkspaces(existing)
-        }
+        viewModelScope.launch { settingsRepo.saveTimeFormat(format); settingsRepo.touchSettingsUpdatedAt() }
     }
 
     fun setTimerRunning(running: Boolean) = _uiState.update { it.copy(timerRunning = running) }
@@ -420,5 +416,73 @@ class SettingsViewModel(private val app: Application) : AndroidViewModel(app) {
     private suspend fun saveWorkspaces(list: List<Workspace>) {
         settingsRepo.saveWorkspaces(list)
         ShortcutHelper.updateShortcuts(app, list)
+        settingsRepo.touchSettingsUpdatedAt()
+    }
+
+    // ---- Notion-page sync ----
+
+    suspend fun searchSyncPages(): List<NamedOption> = notionRepo.searchPages()
+
+    fun createSyncPage(title: String) {
+        if (title.isBlank()) return
+        _uiState.update { it.copy(syncing = true, syncError = null) }
+        viewModelScope.launch {
+            try {
+                val now = java.time.Instant.now().toString()
+                val payload = syncer.buildPayload(now)
+                val pageId = notionRepo.createSyncPage(title.trim(), payload)
+                settingsRepo.saveSyncPage(pageId, title.trim())
+                settingsRepo.saveSettingsUpdatedAt(now)
+                settingsRepo.saveLastSyncedUpdatedAt(now)
+                _uiState.update { it.copy(syncPageId = pageId, syncPageTitle = title.trim(), syncing = false) }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(syncing = false, syncError = e.message) }
+            }
+        }
+    }
+
+    fun loadExistingSyncPage(pageId: String, title: String) {
+        _uiState.update { it.copy(syncing = true, syncError = null) }
+        viewModelScope.launch {
+            try {
+                val result = notionRepo.fetchSyncPageContent(pageId)
+                if (result == null) {
+                    _uiState.update { it.copy(syncing = false, syncError = "not_a_sync_page") }
+                    return@launch
+                }
+                syncer.applyPayload(result.payload)
+                settingsRepo.saveSyncPage(pageId, title)
+                settingsRepo.saveSettingsUpdatedAt(result.payload.updatedAt)
+                settingsRepo.saveLastSyncedUpdatedAt(result.payload.updatedAt)
+                loadSettings()
+                _uiState.update { it.copy(syncPageId = pageId, syncPageTitle = title, syncing = false) }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(syncing = false, syncError = e.message) }
+            }
+        }
+    }
+
+    fun disconnectSync() {
+        viewModelScope.launch { settingsRepo.clearSyncPage() }
+        _uiState.update { it.copy(syncPageId = null, syncPageTitle = "") }
+    }
+
+    /** Pull-or-push against the configured sync page, whichever side is newer. */
+    fun syncNow() {
+        if (_uiState.value.syncPageId == null || _uiState.value.syncing) return
+        _uiState.update { it.copy(syncing = true, syncError = null) }
+        viewModelScope.launch {
+            try {
+                val ok = syncer.syncNow()
+                if (!ok) {
+                    _uiState.update { it.copy(syncing = false, syncError = "not_a_sync_page") }
+                    return@launch
+                }
+                loadSettings()
+                _uiState.update { it.copy(syncing = false) }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(syncing = false, syncError = e.message) }
+            }
+        }
     }
 }

@@ -57,6 +57,24 @@ data class ActiveTimer(
 
 data class NamedOption(val id: String, val name: String)
 
+/**
+ * Cross-device sync payload stored as a JSON code block on a Notion page.
+ * Excludes the API key and per-device toggles (dynamic color on Android,
+ * always-on-top/start-with-Windows on the desktop app).
+ */
+data class SyncPayload(
+    val updatedAt: String,
+    val workspaces: List<Workspace> = emptyList(),
+    val theme: String? = null,
+    val locale: String? = null,
+    val dateFormat: String? = null,
+    val timeFormat: String? = null,
+    val showNotionLink: Boolean? = null,
+    val showArchiveAction: Boolean? = null
+)
+
+data class SyncFetchResult(val blockId: String, val payload: SyncPayload)
+
 data class RunningTimerResult(
     val pageId: String,
     val title: String,

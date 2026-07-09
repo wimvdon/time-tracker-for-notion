@@ -134,7 +134,6 @@ export default {
   qrWorkspaceNote: 'Scannez pour importer cet espace sur un autre appareil. Clé API non incluse.',
   btnShowQr: 'Code QR',
   btnClose: 'Fermer',
-  qrAutoDismiss: 'Masquage automatique après 30 secondes.',
 
   // Presets
   sectionPresets: 'Préréglages (facultatif)',
@@ -165,13 +164,10 @@ export default {
   dialogSavePresetPlaceholder: 'Nom du préréglage (ex. Standup quotidien)',
   presetsManageTitle: 'Gérer les préréglages',
   tooltipPresetsShortcuts: 'Tous les préréglages sont ajoutés aux raccourcis de la barre des tâches.',
-  btnGlobalQr: 'Exporter les paramètres via QR',
-  qrGlobalNote: 'Scannez pour importer tous les paramètres (inclut clé API, espaces et préréglages).',
   dialogTimeErrorTitle: 'L\'heure de fin est antérieure à l\'heure de début',
   dialogTimeErrorBody: 'L\'heure de fin se situe avant l\'heure de début. Souhaitez-vous arrêter le minuteur le jour suivant ?',
   btnEdit: 'Modifier',
   btnNextDay: 'Jour suivant',
-  btnDismiss: 'Fermer',
   labelLanguage: 'Langue',
   optSystem: 'Système',
   labelDateFormat: 'Format de date',

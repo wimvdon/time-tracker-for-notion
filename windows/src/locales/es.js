@@ -134,7 +134,6 @@ export default {
   qrWorkspaceNote: 'Escanee para importar este espacio en otro dispositivo. Clave API no incluida.',
   btnShowQr: 'Código QR',
   btnClose: 'Cerrar',
-  qrAutoDismiss: 'Se oculta automáticamente tras 30 segundos.',
 
   // Presets
   sectionPresets: 'Preajustes (opcional)',
@@ -165,13 +164,10 @@ export default {
   dialogSavePresetPlaceholder: 'Nombre del preajuste (ej. Standup diario)',
   presetsManageTitle: 'Gestionar preajustes',
   tooltipPresetsShortcuts: 'Todos los preajustes se agregarán a los accesos directos de la bandeja.',
-  btnGlobalQr: 'Exportar ajustes vía QR',
-  qrGlobalNote: 'Escanee para importar los ajustes (incluye clave API, espacios y preajustes).',
   dialogTimeErrorTitle: 'La hora de fin es anterior a la de inicio',
   dialogTimeErrorBody: 'La hora de fin ocurre antes de la hora de inicio. ¿Quería detener el temporizador al día siguiente?',
   btnEdit: 'Editar',
   btnNextDay: 'Día siguiente',
-  btnDismiss: 'Descartar',
   labelLanguage: 'Idioma',
   optSystem: 'Sistema',
   labelDateFormat: 'Formato de fecha',

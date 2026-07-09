@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useStore } from '../store/useStore.js';
 import { propertiesByType, statusOptions } from '../lib/schema.js';
 import { WRITABLE_EXTRA_TYPES } from '../lib/notionValues.js';
@@ -21,8 +21,7 @@ import {
   EyeOff20Regular,
   Dismiss20Regular,
   Open20Regular,
-  Info20Regular,
-  QrCode20Regular
+  Info20Regular
 } from '@fluentui/react-icons';
 
 export default function Settings() {
@@ -50,41 +49,17 @@ export default function Settings() {
   const setLocale = useStore((s) => s.setLocale);
   const setDateFormat = useStore((s) => s.setDateFormat);
   const setTimeFormat = useStore((s) => s.setTimeFormat);
+  const syncPageId = useStore((s) => s.syncPageId);
+  const syncPageTitle = useStore((s) => s.syncPageTitle);
+  const disconnectSync = useStore((s) => s.disconnectSync);
 
   const [keyInput, setKeyInput] = useState(apiKey);
   const [showKey, setShowKey] = useState(false);
   const [testing, setTesting] = useState(false);
   const [showAddWorkspace, setShowAddWorkspace] = useState(false);
   const [editingWorkspace, setEditingWorkspace] = useState(null);
-  // Global settings QR code
-  const [globalQrUrl, setGlobalQrUrl] = useState(null);
-  const globalQrTimer = useRef(null);
-
-  const generateGlobalQr = async () => {
-    if (globalQrTimer.current) clearTimeout(globalQrTimer.current);
-    if (globalQrUrl) {
-      setGlobalQrUrl(null);
-      return;
-    }
-    try {
-      const payload = JSON.stringify({ apiKey, workspaces, showNotionLink, showArchiveAction });
-      const QRCode = (await import('qrcode')).default;
-      // Use the lowest error-correction level: large settings payloads otherwise
-      // produce an overly dense code that phones struggle to scan (or that exceeds
-      // QR capacity entirely).
-      const dataUrl = await QRCode.toDataURL(payload, { width: 512, margin: 2, errorCorrectionLevel: 'L' });
-      setGlobalQrUrl(dataUrl);
-      globalQrTimer.current = setTimeout(() => setGlobalQrUrl(null), 60_000);
-    } catch (err) {
-      addToast({ type: 'error', message: `QR: ${errorMessage(err)}` });
-    }
-  };
-
-  useEffect(() => {
-    return () => {
-      if (globalQrTimer.current) clearTimeout(globalQrTimer.current);
-    };
-  }, []);
+  const [showCreateSync, setShowCreateSync] = useState(false);
+  const [showLoadSync, setShowLoadSync] = useState(false);
 
   const firstLaunch = !apiKey || workspaces.length === 0;
 
@@ -206,34 +181,46 @@ export default function Settings() {
           >
             {t('btnAddWorkspace')}
           </button>
-          {workspaces.length > 0 && (
-            <button
-              onClick={generateGlobalQr}
-              className="px-3 py-1.5 rounded-md bg-zinc-700 hover:bg-zinc-600 text-sm flex items-center gap-1.5 justify-center"
-            >
-              <QrCode20Regular className="w-4 h-4" />
-              {t('btnGlobalQr')}
-            </button>
-          )}
         </div>
+      </div>
 
-        {globalQrUrl && (
-          <div className="mt-4 p-4 rounded-lg bg-white text-zinc-900 flex flex-col items-center gap-3 relative shadow-lg max-w-xs mx-auto border border-zinc-300">
+      {/* Notion-page sync */}
+      <div>
+        <label className="block text-xs text-zinc-400 mb-1">{t('labelSync')}</label>
+        {syncPageId ? (
+          <div className="flex items-center justify-between bg-zinc-800 border border-zinc-700 rounded-md px-3 py-2 gap-2">
+            <span className="text-sm truncate flex items-center gap-1.5">
+              <ArrowClockwise20Regular className="w-4 h-4 shrink-0 text-emerald-500" />
+              {t('syncStatusConnected').replace('{title}', syncPageTitle || syncPageId)}
+            </span>
             <button
-              onClick={() => setGlobalQrUrl(null)}
-              className="absolute top-2 right-2 text-zinc-400 hover:text-zinc-600 p-1 flex items-center justify-center rounded-full"
-              title={t('btnDismiss')}
+              onClick={disconnectSync}
+              className="text-xs text-zinc-500 hover:text-red-400 shrink-0"
             >
-              <Dismiss20Regular className="w-4 h-4" />
+              {t('btnDisconnectSync')}
             </button>
-            <p className="text-xs text-zinc-600 text-center font-medium px-2 mt-1">
-              {t('qrGlobalNote')}
-            </p>
-            <img src={globalQrUrl} alt="Settings QR code" className="w-48 h-48 rounded border border-zinc-200" />
-            <p className="text-[10px] text-zinc-400">
-              {t('qrAutoDismiss')}
-            </p>
           </div>
+        ) : (
+          <>
+            <p className="text-xs text-zinc-500 mb-2">{t('syncStatusNotConnected')}</p>
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => setShowCreateSync(true)}
+                disabled={!apiKey}
+                className="px-3 py-1.5 rounded-md bg-zinc-700 hover:bg-zinc-600 disabled:opacity-50 text-sm flex items-center gap-1.5"
+              >
+                <ArrowClockwise20Regular className="w-4 h-4" />
+                {t('btnCreateSyncPage')}
+              </button>
+              <button
+                onClick={() => setShowLoadSync(true)}
+                disabled={!apiKey}
+                className="px-3 py-1.5 rounded-md bg-zinc-700 hover:bg-zinc-600 disabled:opacity-50 text-sm"
+              >
+                {t('btnLoadExistingSync')}
+              </button>
+            </div>
+          </>
         )}
       </div>
 
@@ -354,6 +341,127 @@ export default function Settings() {
           onClose={() => setEditingWorkspace(null)}
         />
       )}
+      {showCreateSync && <CreateSyncModal onClose={() => setShowCreateSync(false)} />}
+      {showLoadSync && <LoadSyncModal onClose={() => setShowLoadSync(false)} />}
+    </div>
+  );
+}
+
+/** Dialog to create a new top-level Notion page holding the sync payload. */
+function CreateSyncModal({ onClose }) {
+  const createSyncPage = useStore((s) => s.createSyncPage);
+  const [title, setTitle] = useState('Time Tracker Sync');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
+
+  const handleCreate = async () => {
+    if (!title.trim()) return;
+    setSaving(true);
+    setError(null);
+    const ok = await createSyncPage(title);
+    setSaving(false);
+    if (ok) onClose();
+    else setError(t('errorNotASyncPage'));
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-40 p-4">
+      <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-4 w-full max-w-sm flex flex-col gap-4">
+        <h2 className="text-sm font-semibold">{t('modalTitleCreateSync')}</h2>
+        <Field label={t('placeholderSyncPageTitle')} hint={t('hintCreateSync')}>
+          <input
+            type="text"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder={t('placeholderSyncPageTitle')}
+            className="w-full bg-zinc-900 border border-zinc-700 rounded-md px-3 py-2 text-sm"
+          />
+        </Field>
+        {error && <p className="text-xs text-red-400">{error}</p>}
+        <div className="flex justify-end gap-2">
+          <button onClick={onClose} className="px-3 py-1.5 rounded-md bg-zinc-700 hover:bg-zinc-600 text-sm">
+            {t('btnCancel')}
+          </button>
+          <button
+            onClick={handleCreate}
+            disabled={saving || !title.trim()}
+            className="px-3 py-1.5 rounded-md bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-sm font-semibold"
+          >
+            {t('btnCreate')}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** Dialog to attach to an existing Notion page containing a sync code block. */
+function LoadSyncModal({ onClose }) {
+  const loadExistingSyncPage = useStore((s) => s.loadExistingSyncPage);
+  const [pages, setPages] = useState({ loading: true, error: null, items: [] });
+  const [pageId, setPageId] = useState('');
+  const [attaching, setAttaching] = useState(false);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const items = await window.notionAPI.searchPages();
+        setPages({ loading: false, error: null, items });
+      } catch (err) {
+        setPages({ loading: false, error: errorMessage(err), items: [] });
+      }
+    })();
+  }, []);
+
+  const handleAttach = async () => {
+    if (!pageId) return;
+    setAttaching(true);
+    setError(null);
+    const selected = pages.items.find((p) => p.id === pageId);
+    const ok = await loadExistingSyncPage(pageId, selected?.name || '');
+    setAttaching(false);
+    if (ok) onClose();
+    else setError(t('errorNotASyncPage'));
+  };
+
+  const pageOptions = pages.items.map((p) => ({ value: p.id, label: p.name }));
+
+  return (
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-40 p-4">
+      <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-4 w-full max-w-sm flex flex-col gap-4">
+        <h2 className="text-sm font-semibold">{t('modalTitleLoadSync')}</h2>
+        <Field hint={t('hintLoadSync')}>
+          {pages.error ? (
+            <div className="text-xs bg-red-950 border border-red-700 text-red-200 rounded-md p-2">
+              {pages.error}
+            </div>
+          ) : (
+            <SearchableSelect
+              value={pageId}
+              onChange={setPageId}
+              options={pageOptions}
+              placeholder={pages.loading ? t('loadingDatabases') : t('placeholderSelectSyncPage')}
+              disabled={pages.loading}
+              loading={pages.loading}
+              className="w-full"
+            />
+          )}
+        </Field>
+        {error && <p className="text-xs text-red-400">{error}</p>}
+        <div className="flex justify-end gap-2">
+          <button onClick={onClose} className="px-3 py-1.5 rounded-md bg-zinc-700 hover:bg-zinc-600 text-sm">
+            {t('btnCancel')}
+          </button>
+          <button
+            onClick={handleAttach}
+            disabled={attaching || !pageId}
+            className="px-3 py-1.5 rounded-md bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-sm font-semibold"
+          >
+            {t('btnAttach')}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
