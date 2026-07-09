@@ -85,7 +85,6 @@ export default {
   workspaceRoundingHint: 'Arrotonda gli orari di inizio e fine (inclusi quelli manuali) all\'intervallo più vicino.',
   labelWorkspaceColor: 'Colore spazio di lavoro',
   btnApplyColor: 'Applica',
-  hintColorLightDarkPreview: 'Tema chiaro · Tema scuro',
   saveIncompleteHint: 'Compila tutti i campi prima di salvare.',
   btnCancel: 'Annulla',
   btnSave: 'Salva',
