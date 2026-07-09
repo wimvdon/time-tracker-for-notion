@@ -824,6 +824,8 @@ export const useStore = create((set, get) => ({
         api.setTimerRunning(false);
         set({ timer: { ...idleTimer } });
         get().addToast({ type: 'info', message: t('timerStoppedElsewhere') });
+      } else {
+        get().refreshActiveTimerFieldsFromNotion(activeTimer.notionPageId, get().selectedWorkspaceId, activeTimer.propertyMap);
       }
     } else if (!activeTimer.running && visibleRunning.length > 0) {
       get().loadRunningTimer(visibleRunning[0]);
@@ -940,15 +942,26 @@ export const useStore = create((set, get) => ({
     });
 
     // The running-timers list only carries title/start/url, so fetch the page's
-    // full properties to restore its connected project and extra field values
-    // (relation, select, etc.) instead of leaving them blank.
-    const workspace = get().workspaces.find((w) => w.id === rt.workspaceId);
+    // full properties to restore its connected project and extra field values.
+    await get().refreshActiveTimerFieldsFromNotion(rt.pageId, rt.workspaceId, rt.propertyMap);
+  },
+
+  /**
+   * Re-reads the active timer's connected project and extra field values straight
+   * from its Notion page, so Notion stays the source of truth instead of whatever
+   * was last cached locally (e.g. if the page was edited directly in Notion, or
+   * from another device, while this device had it loaded). Called when a running
+   * timer is first loaded, and on every subsequent sync (manual refresh, 60s
+   * auto-refresh) while it's still the active one.
+   */
+  refreshActiveTimerFieldsFromNotion: async (pageId, workspaceId, propertyMap) => {
+    const workspace = get().workspaces.find((w) => w.id === workspaceId);
     if (!workspace) return;
     try {
-      const props = await api.getPageProperties(rt.pageId);
-      if (get().timer.notionPageId !== rt.pageId) return;
+      const props = await api.getPageProperties(pageId);
+      if (get().timer.notionPageId !== pageId) return;
 
-      const relProp = rt.propertyMap?.timeEntryRelationProp;
+      const relProp = propertyMap?.timeEntryRelationProp;
       const projectId = relProp ? parsePropertyValue('relation', props[relProp]) || null : null;
       let projectName = '';
       if (projectId && workspace.projectsDbId) {
@@ -970,23 +983,23 @@ export const useStore = create((set, get) => ({
         }
       }
 
-      if (get().timer.notionPageId !== rt.pageId) return;
+      if (get().timer.notionPageId !== pageId) return;
       set({ selectedProjectId: projectId, extraValues });
       api.saveSettings({
         activeTimer: {
-          notionPageId: rt.pageId,
-          roundedStart: rt.startISO,
-          rawStart: rt.startISO,
-          workspaceId: rt.workspaceId,
+          notionPageId: pageId,
+          roundedStart: get().timer.startISO,
+          rawStart: get().timer.startISO,
+          workspaceId,
           projectId,
           projectName,
-          description: rt.title,
-          propertyMap: rt.propertyMap,
+          description: get().description,
+          propertyMap,
         },
       });
     } catch {
-      // Keep the blank project/extra values on failure — the timer itself is
-      // already loaded and usable.
+      // Keep whatever values were already loaded on failure — the timer itself
+      // is already usable.
     }
   },
 
