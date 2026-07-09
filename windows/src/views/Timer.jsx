@@ -4,7 +4,7 @@ import { computeEndTime } from '../lib/rounding.js';
 import { formatHHMM, formatElapsed, formatDateStr, formatTimeStr, parseTimeStr } from '../lib/format.js';
 import { t } from '../lib/i18n.js';
 import { buildPropertyValue } from '../lib/notionValues.js';
-import { getWorkspaceAccentColor, getWorkspaceSolidFillColor, getWorkspaceColorVariants } from '../lib/color.js';
+import { getWorkspaceAccentColor, getWorkspaceSolidFillColor } from '../lib/color.js';
 import { useIsDarkTheme } from '../hooks/useIsDarkTheme.js';
 import ExtraFieldInput from '../components/ExtraFieldInput.jsx';
 import SearchableSelect from '../components/SearchableSelect.jsx';
@@ -79,6 +79,7 @@ export default function Timer() {
   const [presetNameInput, setPresetNameInput] = useState('');
 
   const selectedWorkspace = workspaces.find((w) => w.id === selectedWorkspaceId);
+  const isDarkTheme = useIsDarkTheme();
 
   // Reload running timers and recent entries on every state transition
   const timerRunning = timer.running;
@@ -373,15 +374,9 @@ export default function Timer() {
                     <div className="flex flex-col min-w-0 flex-1 pr-2">
                       <span className="font-semibold text-zinc-100 truncate">{p.name || ws.name}</span>
                       <div className="flex items-center gap-1.5 mt-0.5">
-                        {ws.color?.trim() && (() => {
-                          const { light, dark } = getWorkspaceColorVariants(ws.color.trim());
-                          return (
-                            <span
-                              className="w-2.5 h-2.5 rounded-full shrink-0"
-                              style={{ background: `linear-gradient(to right, ${light} 50%, ${dark} 50%)` }}
-                            />
-                          );
-                        })()}
+                        {ws.color?.trim() && (
+                          <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: getWorkspaceAccentColor(ws.color.trim(), isDarkTheme) }} />
+                        )}
                         <span className="text-[10px] text-zinc-400 truncate">{ws.name}</span>
                       </div>
                     </div>

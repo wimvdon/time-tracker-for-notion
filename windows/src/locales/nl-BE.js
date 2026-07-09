@@ -85,6 +85,7 @@ export default {
   workspaceRoundingHint: 'Rondt start- en stoptijden af, inclusief manueel ingevulde tijden.',
   labelWorkspaceColor: 'Werkruimtekleur',
   btnApplyColor: 'Toepassen',
+  hintColorLightDarkPreview: 'Licht thema · Donker thema',
   saveIncompleteHint: 'Vul alle velden in voor je kan opslaan.',
   btnCancel: 'Annuleer',
   btnSave: 'Opslaan',

@@ -4,6 +4,7 @@ import { propertiesByType, statusOptions } from '../lib/schema.js';
 import { WRITABLE_EXTRA_TYPES } from '../lib/notionValues.js';
 import { t } from '../lib/i18n.js';
 import { errorMessage } from '../lib/errors.js';
+import { getWorkspaceColorVariants } from '../lib/color.js';
 import SearchableSelect from '../components/SearchableSelect.jsx';
 import {
   Settings20Regular,
@@ -815,6 +816,18 @@ function WorkspaceColorPicker({ value, onChange }) {
           </button>
         ))}
       </div>
+      {value && (() => {
+        const { light, dark } = getWorkspaceColorVariants(value);
+        return (
+          <div className="flex items-center gap-2">
+            <span
+              className="w-6 h-6 rounded-full border border-zinc-600 shrink-0"
+              style={{ background: `linear-gradient(to right, ${light} 50%, ${dark} 50%)` }}
+            />
+            <span className="text-[11px] text-zinc-500">{t('hintColorLightDarkPreview')}</span>
+          </div>
+        );
+      })()}
       <div className="flex items-center gap-2">
         <input
           type="text"
