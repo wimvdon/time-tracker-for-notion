@@ -1064,42 +1064,49 @@ private fun PresetChips(
 ) {
     val allPresets = workspaces.flatMap { ws -> ws.presets.map { ws to it } }
     if (allPresets.isEmpty() || apiKey.isBlank()) return
-    FlowRow(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterVertically)
-    ) {
-        allPresets.forEach { (ws, preset) ->
-            val wsColor = workspaceAccentColor(ws.color)
-            val chipLabel = if (preset.name.isBlank() || preset.name == ws.name) "▶ ${ws.name}" else "▶ ${ws.name} – ${preset.name}"
-            SuggestionChip(
-                onClick = { onApplyPreset(ws.id, preset) },
-                label = { Text(chipLabel, style = MaterialTheme.typography.labelMedium) },
-                colors = if (wsColor != null) SuggestionChipDefaults.suggestionChipColors(
-                    containerColor = wsColor.copy(alpha = 0.15f),
-                    labelColor = wsColor
-                ) else SuggestionChipDefaults.suggestionChipColors(),
-                border = if (wsColor != null) SuggestionChipDefaults.suggestionChipBorder(
-                    enabled = true,
-                    borderColor = wsColor.copy(alpha = 0.4f)
-                ) else SuggestionChipDefaults.suggestionChipBorder(enabled = true)
-            )
-        }
-
-        Box(
-            modifier = Modifier
-                .align(Alignment.CenterVertically)
-                .size(32.dp)
-                .clip(CircleShape)
-                .clickable(onClick = onManageClick),
-            contentAlignment = Alignment.Center
+    // SuggestionChip pads itself out to Material3's ~48dp minimum touch target, which
+    // makes each chip's laid-out height much taller than its visible ~32dp content —
+    // that invisible padding was stacking on top of the declared line spacing below,
+    // making wrapped rows look far apart. Disabling it here lets the chips (and the
+    // gap between wrapped lines) size to their actual visual content.
+    CompositionLocalProvider(LocalMinimumInteractiveComponentEnforcement provides false) {
+        FlowRow(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically)
         ) {
-            Icon(
-                Icons.Default.Edit,
-                contentDescription = "Manage Presets",
-                modifier = Modifier.size(16.dp),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            allPresets.forEach { (ws, preset) ->
+                val wsColor = workspaceAccentColor(ws.color)
+                val chipLabel = if (preset.name.isBlank() || preset.name == ws.name) "▶ ${ws.name}" else "▶ ${ws.name} – ${preset.name}"
+                SuggestionChip(
+                    onClick = { onApplyPreset(ws.id, preset) },
+                    label = { Text(chipLabel, style = MaterialTheme.typography.labelMedium) },
+                    colors = if (wsColor != null) SuggestionChipDefaults.suggestionChipColors(
+                        containerColor = wsColor.copy(alpha = 0.15f),
+                        labelColor = wsColor
+                    ) else SuggestionChipDefaults.suggestionChipColors(),
+                    border = if (wsColor != null) SuggestionChipDefaults.suggestionChipBorder(
+                        enabled = true,
+                        borderColor = wsColor.copy(alpha = 0.4f)
+                    ) else SuggestionChipDefaults.suggestionChipBorder(enabled = true)
+                )
+            }
+
+            Box(
+                modifier = Modifier
+                    .align(Alignment.CenterVertically)
+                    .size(32.dp)
+                    .clip(CircleShape)
+                    .clickable(onClick = onManageClick),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    Icons.Default.Edit,
+                    contentDescription = "Manage Presets",
+                    modifier = Modifier.size(16.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
     }
 }

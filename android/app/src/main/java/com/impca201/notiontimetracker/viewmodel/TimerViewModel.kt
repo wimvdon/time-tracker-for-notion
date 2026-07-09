@@ -84,6 +84,7 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
                     if (state.running) {
                         checkActiveTimerStillRunning()
                         if (_uiState.value.running) {
+                            refreshActiveTimerFieldsIfRunning()
                             loadRunningTimers()
                             loadRecentEntries()
                         }
@@ -328,7 +329,10 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
         val state = _uiState.value
         if (state.apiKey.isBlank() || state.workspaces.isEmpty()) return
         if (state.running && state.activeTimer != null) {
-            viewModelScope.launch { checkActiveTimerStillRunning() }
+            viewModelScope.launch {
+                checkActiveTimerStillRunning()
+                if (_uiState.value.running) refreshActiveTimerFieldsIfRunning()
+            }
         }
         viewModelScope.launch {
             if (settingsRepo.getSyncPageId() != null) {
@@ -885,42 +889,60 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
         syncServiceNotifications()
 
         // The running-timers list only carries title/start/url, so fetch the page's
-        // full properties to restore its connected project and extra field values
-        // (relation, select, etc.) instead of leaving them blank.
-        viewModelScope.launch {
-            val props = runCatching { notionRepo.fetchPageProperties(rt.pageId) }.getOrNull() ?: return@launch
-            if (_uiState.value.activeTimer?.notionPageId != rt.pageId) return@launch
+        // full properties to restore its connected project and extra field values.
+        viewModelScope.launch { refreshActiveTimerFieldsFromNotion(rt.pageId, workspace, rt.propertyMap) }
+    }
 
-            val relProp = rt.propertyMap.timeEntryRelationProp
-            val projectId = relProp.takeIf { it.isNotBlank() }
-                ?.let { parsePropertyValue(props.getAsJsonObject(it), "relation") }
-                ?.split(",")?.firstOrNull { it.isNotBlank() }
-            val projectName = if (projectId != null && workspace.projectsDbId.isNotBlank()) {
-                runCatching { notionRepo.fetchDatabasePages(workspace.projectsDbId) }.getOrDefault(emptyList())
-                    .firstOrNull { it.id == projectId }?.name ?: ""
-            } else ""
+    /**
+     * Re-reads the active timer's connected project and extra field values straight
+     * from its Notion page, so Notion stays the source of truth instead of whatever
+     * was last cached locally (e.g. if the page was edited directly in Notion, or
+     * from another device, while this device had it loaded). Called when a running
+     * timer is first loaded, and on every subsequent sync (manual refresh, 60s
+     * auto-refresh) while it's still the active one.
+     */
+    private suspend fun refreshActiveTimerFieldsFromNotion(pageId: String, workspace: Workspace, propertyMap: PropertyMap) {
+        val props = runCatching { notionRepo.fetchPageProperties(pageId) }.getOrNull() ?: return
+        if (_uiState.value.activeTimer?.notionPageId != pageId) return
 
-            // workspace.extraProps[].type is not a reliable source of the real Notion
-            // property type (it's never populated on save) — fetch the live schema,
-            // same as loadExtraFieldDefs does, to know how to parse each value.
-            val schema = if (workspace.extraProps.isNotEmpty() && workspace.timeEntriesDbId.isNotBlank()) {
-                runCatching { notionRepo.getDatabaseSchema(workspace.timeEntriesDbId) }.getOrDefault(emptyMap())
-            } else emptyMap()
-            val extraValues = workspace.extraProps.associate { prop ->
-                val type = schema[prop.propName]?.type ?: prop.type
-                prop.propName to parsePropertyValue(props.getAsJsonObject(prop.propName), type)
-            }
+        val relProp = propertyMap.timeEntryRelationProp
+        val projectId = relProp.takeIf { it.isNotBlank() }
+            ?.let { parsePropertyValue(props.getAsJsonObject(it), "relation") }
+            ?.split(",")?.firstOrNull { it.isNotBlank() }
+        val projectName = if (projectId != null && workspace.projectsDbId.isNotBlank()) {
+            runCatching { notionRepo.fetchDatabasePages(workspace.projectsDbId) }.getOrDefault(emptyList())
+                .firstOrNull { it.id == projectId }?.name ?: ""
+        } else ""
 
-            val updatedTimer = _uiState.value.activeTimer?.takeIf { it.notionPageId == rt.pageId }
-                ?.copy(projectId = projectId, projectName = projectName, extraValues = extraValues) ?: return@launch
-
-            _uiState.update { it.copy(
-                activeTimer = updatedTimer,
-                selectedProjectId = projectId,
-                extraValues = extraValues
-            )}
-            settingsRepo.saveActiveTimer(updatedTimer)
+        // workspace.extraProps[].type is not a reliable source of the real Notion
+        // property type (it's never populated on save) — fetch the live schema,
+        // same as loadExtraFieldDefs does, to know how to parse each value.
+        val schema = if (workspace.extraProps.isNotEmpty() && workspace.timeEntriesDbId.isNotBlank()) {
+            runCatching { notionRepo.getDatabaseSchema(workspace.timeEntriesDbId) }.getOrDefault(emptyMap())
+        } else emptyMap()
+        val extraValues = workspace.extraProps.associate { prop ->
+            val type = schema[prop.propName]?.type ?: prop.type
+            prop.propName to parsePropertyValue(props.getAsJsonObject(prop.propName), type)
         }
+
+        val updatedTimer = _uiState.value.activeTimer?.takeIf { it.notionPageId == pageId }
+            ?.copy(projectId = projectId, projectName = projectName, extraValues = extraValues) ?: return
+
+        _uiState.update { it.copy(
+            activeTimer = updatedTimer,
+            selectedProjectId = projectId,
+            extraValues = extraValues
+        )}
+        settingsRepo.saveActiveTimer(updatedTimer)
+    }
+
+    /** Refetches the active timer's fields from Notion, if there is one. Safe to call
+     *  from any sync path (manual refresh, periodic auto-refresh). */
+    private suspend fun refreshActiveTimerFieldsIfRunning() {
+        val state = _uiState.value
+        val timer = state.activeTimer ?: return
+        val workspace = state.workspaces.firstOrNull { it.id == timer.workspaceId } ?: return
+        refreshActiveTimerFieldsFromNotion(timer.notionPageId, workspace, timer.propertyMap)
     }
 
     fun stopOtherRunningTimer(rt: RunningTimerInfo) {
