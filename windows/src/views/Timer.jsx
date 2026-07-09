@@ -90,7 +90,7 @@ export default function Timer() {
   }, [timerRunning]);
 
   const settingsButton = (
-    <div className="flex justify-end gap-2 px-4 pb-3">
+    <div className="flex justify-end gap-2 px-4 pt-3 pb-3 border-t border-zinc-800">
       <button
         onClick={refreshAll}
         title={t('btnRefreshAll')}
