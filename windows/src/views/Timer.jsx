@@ -356,8 +356,8 @@ export default function Timer() {
           <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-4 w-full flex flex-col gap-3 max-h-[90vh]">
             <h2 className="text-sm font-semibold">{t('presetsManageTitle')}</h2>
             
-            <div className="bg-zinc-900/50 border border-zinc-700/50 rounded-lg p-3 flex gap-2.5 items-start text-xs text-zinc-400">
-              <Info20Regular className="w-4 h-4 text-zinc-400 mt-0.5" />
+            <div className="bg-zinc-900/50 border border-zinc-700/50 rounded-lg p-3 flex gap-2.5 items-start text-xs text-zinc-200">
+              <Info20Regular className="w-4 h-4 text-zinc-300 mt-0.5" />
               <p>{t('tooltipPresetsShortcuts')}</p>
             </div>
 
