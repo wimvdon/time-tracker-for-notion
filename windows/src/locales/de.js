@@ -85,7 +85,6 @@ export default {
   workspaceRoundingHint: 'Rundet Start- und Endzeiten (inklusive manueller Eingaben) auf das nächste Intervall.',
   labelWorkspaceColor: 'Workspace-Farbe',
   btnApplyColor: 'Übernehmen',
-  hintColorLightDarkPreview: 'Helles Design · Dunkles Design',
   saveIncompleteHint: 'Füllen Sie alle Felder aus, bevor Sie speichern.',
   btnCancel: 'Abbrechen',
   btnSave: 'Speichern',

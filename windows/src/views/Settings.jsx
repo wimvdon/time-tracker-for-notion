@@ -801,33 +801,24 @@ function WorkspaceColorPicker({ value, onChange }) {
         >
           {!value && <span className="text-zinc-300">✓</span>}
         </button>
-        {PRESET_PALETTE.map((hex) => (
-          <button
-            key={hex}
-            type="button"
-            onClick={() => { onChange(hex); setCustomHex(''); }}
-            title={hex}
-            style={{ backgroundColor: hex }}
-            className={`w-7 h-7 rounded-full border-2 flex items-center justify-center transition-colors ${
-              value === hex ? 'border-white' : 'border-transparent hover:border-white/50'
-            }`}
-          >
-            {value === hex && <span className="text-white text-xs">✓</span>}
-          </button>
-        ))}
-      </div>
-      {value && (() => {
-        const { light, dark } = getWorkspaceColorVariants(value);
-        return (
-          <div className="flex items-center gap-2">
-            <span
-              className="w-6 h-6 rounded-full border border-zinc-600 shrink-0"
+        {PRESET_PALETTE.map((hex) => {
+          const { light, dark } = getWorkspaceColorVariants(hex);
+          return (
+            <button
+              key={hex}
+              type="button"
+              onClick={() => { onChange(hex); setCustomHex(''); }}
+              title={hex}
               style={{ background: `linear-gradient(to right, ${light} 50%, ${dark} 50%)` }}
-            />
-            <span className="text-[11px] text-zinc-500">{t('hintColorLightDarkPreview')}</span>
-          </div>
-        );
-      })()}
+              className={`w-7 h-7 rounded-full border-2 flex items-center justify-center transition-colors ${
+                value === hex ? 'border-white' : 'border-transparent hover:border-white/50'
+              }`}
+            >
+              {value === hex && <span className="text-white text-xs">✓</span>}
+            </button>
+          );
+        })}
+      </div>
       <div className="flex items-center gap-2">
         <input
           type="text"
@@ -837,16 +828,22 @@ function WorkspaceColorPicker({ value, onChange }) {
           className="flex-1 bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-xs font-mono"
           onKeyDown={(e) => e.key === 'Enter' && applyCustom()}
         />
-        {customHex && (
-          <div
-            className="w-6 h-6 rounded border border-zinc-600 shrink-0"
-            style={{
-              backgroundColor: /^#?[0-9a-fA-F]{6}$/.test(customHex.trim())
-                ? (customHex.trim().startsWith('#') ? customHex.trim() : `#${customHex.trim()}`)
-                : 'transparent',
-            }}
-          />
-        )}
+        {customHex && (() => {
+          const trimmed = customHex.trim();
+          const valid = /^#?[0-9a-fA-F]{6}$/.test(trimmed);
+          const hex = valid ? (trimmed.startsWith('#') ? trimmed : `#${trimmed}`) : null;
+          const variants = hex ? getWorkspaceColorVariants(hex) : null;
+          return (
+            <div
+              className="w-6 h-6 rounded-full border border-zinc-600 shrink-0"
+              style={
+                variants
+                  ? { background: `linear-gradient(to right, ${variants.light} 50%, ${variants.dark} 50%)` }
+                  : { backgroundColor: 'transparent' }
+              }
+            />
+          );
+        })()}
         <button
           type="button"
           onClick={applyCustom}
