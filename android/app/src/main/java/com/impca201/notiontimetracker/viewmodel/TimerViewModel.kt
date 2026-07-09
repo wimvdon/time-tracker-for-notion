@@ -629,7 +629,23 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
         val updated = timer.copy(roundedStart = newStartISO, rawStart = newStartISO)
         tickStartMs = parsedMs
         _uiState.update { it.copy(activeTimer = updated) }
-        viewModelScope.launch { settingsRepo.saveActiveTimer(updated) }
+        viewModelScope.launch {
+            settingsRepo.saveActiveTimer(updated)
+            if (timer.propertyMap.timeEntryDateProp.isBlank()) return@launch
+            runCatching {
+                notionRepo.updatePageProperties(
+                    timer.notionPageId,
+                    mapOf(timer.propertyMap.timeEntryDateProp to mapOf("date" to mapOf("start" to newStartISO, "end" to null)))
+                )
+            }.onFailure { err ->
+                val msg = err.message ?: ""
+                if (isPageDeletedError(msg)) {
+                    _uiState.update { it.copy(deletedPageDialogVisible = true, deletedPageDialogTitle = timer.description.ifBlank { null }) }
+                } else {
+                    _uiState.update { it.copy(error = msg) }
+                }
+            }
+        }
     }
 
     fun handleTimerStoppedFromService(stoppedPageId: String? = null) {

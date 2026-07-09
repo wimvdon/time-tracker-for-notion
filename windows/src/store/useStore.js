@@ -652,10 +652,11 @@ export const useStore = create((set, get) => ({
     api.setTimerRunning(true, ws?.color?.trim() || null);
   },
 
-  updateStartTime: (newStart) => {
+  updateStartTime: async (newStart) => {
     const state = get();
     if (!state.timer.running) return;
     const startISO = toNotionDateTime(newStart);
+    const pm = state.timer.propertyMap;
     set((s) => ({
       timer: {
         ...s.timer,
@@ -674,9 +675,23 @@ export const useStore = create((set, get) => ({
         projectId: state.selectedProjectId,
         projectName: '',
         description: state.description,
-        propertyMap: state.timer.propertyMap,
+        propertyMap: pm,
       },
     });
+
+    if (!pm?.timeEntryDateProp) return;
+    try {
+      await api.updatePage(state.timer.notionPageId, {
+        [pm.timeEntryDateProp]: { date: { start: startISO, end: null } },
+      });
+    } catch (err) {
+      const msg = errorMessage(err);
+      if (isPageDeletedError(msg)) {
+        get()._showDeletedPageDialog(state.timer);
+        return;
+      }
+      get().addToast({ type: 'error', message: `${t('toastUpdateError')}: ${msg}` });
+    }
   },
 
   /**
