@@ -648,6 +648,13 @@ private fun RunningView(
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
 
+            PresetChips(
+                workspaces = uiState.workspaces,
+                apiKey = uiState.apiKey,
+                onApplyPreset = onApplyPreset,
+                onManageClick = onManagePresetsClick
+            )
+
             Text(
                 workspace?.name ?: "",
                 style = MaterialTheme.typography.labelLarge,
@@ -820,13 +827,6 @@ private fun RunningView(
                 }
             }
 
-            PresetChips(
-                workspaces = uiState.workspaces,
-                apiKey = uiState.apiKey,
-                onApplyPreset = onApplyPreset,
-                onManageClick = onManagePresetsClick
-            )
-
             OtherRunningTimers(
                 timers = uiState.runningTimers,
                 loading = uiState.runningTimersLoading,
@@ -939,21 +939,21 @@ private fun OtherRunningTimers(
                         )
                     }
                 }
-                if (showArchiveAction) {
-                    IconButton(onClick = { onDelete(rt) }, modifier = Modifier.size(36.dp)) {
-                        Icon(
-                            Icons.Default.Delete,
-                            contentDescription = stringResource(R.string.title_delete_entry),
-                            modifier = Modifier.size(18.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
                 if (showNotionLink && rt.url.isNotBlank()) {
                     IconButton(onClick = { onOpenUrl(rt.url) }, modifier = Modifier.size(36.dp)) {
                         Icon(
                             Icons.Default.OpenInNew,
                             contentDescription = stringResource(R.string.title_open_in_notion),
+                            modifier = Modifier.size(18.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                if (showArchiveAction) {
+                    IconButton(onClick = { onDelete(rt) }, modifier = Modifier.size(36.dp)) {
+                        Icon(
+                            Icons.Default.Delete,
+                            contentDescription = stringResource(R.string.title_delete_entry),
                             modifier = Modifier.size(18.dp),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -1021,21 +1021,21 @@ private fun RecentEntriesSection(
                         overflow = TextOverflow.Ellipsis
                     )
                 }
-                if (showArchiveAction) {
-                    IconButton(onClick = { onDelete(re) }, modifier = Modifier.size(36.dp)) {
-                        Icon(
-                            Icons.Default.Delete,
-                            contentDescription = stringResource(R.string.title_delete_entry),
-                            modifier = Modifier.size(18.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
                 if (showNotionLink && re.url.isNotBlank()) {
                     IconButton(onClick = { onOpenUrl(re.url) }, modifier = Modifier.size(36.dp)) {
                         Icon(
                             Icons.Default.OpenInNew,
                             contentDescription = stringResource(R.string.title_open_in_notion),
+                            modifier = Modifier.size(18.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                if (showArchiveAction) {
+                    IconButton(onClick = { onDelete(re) }, modifier = Modifier.size(36.dp)) {
+                        Icon(
+                            Icons.Default.Delete,
+                            contentDescription = stringResource(R.string.title_delete_entry),
                             modifier = Modifier.size(18.dp),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )

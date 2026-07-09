@@ -54,7 +54,7 @@ export default {
   placeholderSelectSyncPage: 'Seite auswählen…',
   loadingPages: 'Seiten werden geladen…',
   labelParentPage: 'Erstellen in',
-  hintCreateSync: 'Notion erlaubt dieser Integration nicht, Seiten auf oberster Ebene des Workspace zu erstellen. Wähle daher eine Seite, auf die sie Zugriff hat — die Synchronisierungsseite wird darin erstellt. Du kannst sie danach verschieben oder umbenennen.',
+  hintCreateSync: 'Gib einen Seitentitel ein und wähle eine übergeordnete Seite aus. Stelle sicher, dass die übergeordnete Seite für deine Notion-Integration freigegeben ist.',
   hintLoadSync: 'Wähle eine Seite, die bereits einen Time-Tracker-Synchronisierungscode enthält (auf einem anderen Gerät erstellt).',
   errorNotASyncPage: 'Diese Seite enthält keinen Time-Tracker-Synchronisierungscode.',
   toastSyncCreated: 'Synchronisierungsseite erstellt',

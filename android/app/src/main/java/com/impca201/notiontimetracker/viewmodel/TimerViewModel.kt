@@ -330,6 +330,11 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
         if (state.running && state.activeTimer != null) {
             viewModelScope.launch { checkActiveTimerStillRunning() }
         }
+        viewModelScope.launch {
+            if (settingsRepo.getSyncPageId() != null) {
+                runCatching { syncer.syncNow() }.onSuccess { refreshSettings() }
+            }
+        }
         loadRunningTimers()
         loadRecentEntries()
     }

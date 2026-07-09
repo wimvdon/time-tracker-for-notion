@@ -54,7 +54,7 @@ export default {
   placeholderSelectSyncPage: 'Select a page…',
   loadingPages: 'Loading pages…',
   labelParentPage: 'Create inside',
-  hintCreateSync: "Notion doesn't allow this integration to create pages at the workspace root, so pick a page it can access — the sync page is created inside it. You can move or rename it afterwards.",
+  hintCreateSync: 'Enter a page title and choose a parent page. Make sure the parent page is shared with your Notion integration.',
   hintLoadSync: 'Pick a page that already contains a Time Tracker sync code (created from another device).',
   errorNotASyncPage: "This page doesn't contain a Time Tracker sync code.",
   toastSyncCreated: 'Sync page created',

@@ -214,7 +214,7 @@
     <string name="modal_title_load_sync">Mit bestehender Seite verknüpfen</string>
     <string name="placeholder_sync_page_title">Seitentitel</string>
     <string name="placeholder_select_sync_page">Seite auswählen…</string>
-    <string name="hint_create_sync">Notion erlaubt dieser Integration nicht, Seiten auf oberster Ebene des Workspace zu erstellen. Wähle daher eine Seite, auf die sie Zugriff hat — die Synchronisierungsseite wird darin erstellt. Du kannst sie danach verschieben oder umbenennen.</string>
+    <string name="hint_create_sync">Gib einen Seitentitel ein und wähle eine übergeordnete Seite aus. Stelle sicher, dass die übergeordnete Seite für deine Notion-Integration freigegeben ist.</string>
     <string name="hint_load_sync">Wähle eine Seite, die bereits einen Time-Tracker-Synchronisierungscode enthält (auf einem anderen Gerät erstellt).</string>
     <string name="error_not_a_sync_page">Diese Seite enthält keinen Time-Tracker-Synchronisierungscode.</string>
     <string name="btn_create">Erstellen</string>
