@@ -89,13 +89,6 @@ export default {
   btnCancel: 'Cancelar',
   btnSave: 'Guardar',
 
-  // Recovery modal
-  recoveryTitle: 'Temporizador aún activo',
-  recoveryBody: 'Había un temporizador activo cuando se cerró la aplicación.',
-  recoveryStop: 'Detener ahora',
-  recoveryResume: 'Reanudar',
-  recoveryDiscard: 'Descartar',
-
   // Toasts
   toastApiKeySaved: 'La clave API funciona y ha sido guardada.',
   toastConnectionFailed: 'La conexión ha fallado',
@@ -104,7 +97,6 @@ export default {
   toastStartError: 'No se pudo iniciar el temporizador',
   toastStopError: 'No se pudo detener el temporizador',
   toastStopRetry: 'Reintentar',
-  toastRecoveryStopError: 'No se pudo detener el temporizador recuperado',
   runningTimersHeading: 'Temporizadores activos',
   titleStopRunningTimer: 'Detener temporizador',
   titleRefreshTimers: 'Actualizar temporizadores activos',
@@ -160,14 +152,13 @@ export default {
   toastUpdateError: 'No se pudo actualizar el temporizador',
 
   // Deleted page
-  toastDeletedPageDiscarded: 'Página no encontrada – entrada descartada.',
   deletedPageTitle: 'Página no encontrada en Notion',
   deletedPageBody: 'La entrada no pudo guardarse porque la página fue eliminada o ya no es accesible.',
   deletedPageHint: 'Si es necesario, restaure la página desde la papelera de Notion o recréela manualmente.',
   deletedPageConfirm: 'Descartar',
   warnAlreadyRunningTitle: 'Temporizador ya activo',
-  warnAlreadyRunningBody: 'Ya hay un temporizador activo. Iniciar uno nuevo ejecutará múltiples temporizadores simultáneamente. ¿Desea iniciar o cancelar?',
-  btnAddOption: 'Iniciar nuevo',
+  warnAlreadyRunningBody: 'Ya hay un temporizador activo. ¿Desea detenerlo y comenzar el nuevo, o cancelar?',
+  btnStopAndStartNew: 'Detener e iniciar nuevo',
   dialogSavePresetTitle: 'Guardar preajuste',
   dialogSavePresetBody: 'Guardar la descripción y campos actuales como preajuste.',
   dialogSavePresetOptional: 'El nombre del preajuste es opcional.',

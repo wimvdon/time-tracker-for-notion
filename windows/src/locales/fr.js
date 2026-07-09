@@ -89,13 +89,6 @@ export default {
   btnCancel: 'Annuler',
   btnSave: 'Enregistrer',
 
-  // Recovery modal
-  recoveryTitle: 'Minuteur en cours',
-  recoveryBody: 'Un minuteur était en cours lors de la dernière fermeture de l\'application.',
-  recoveryStop: 'Arrêter maintenant',
-  recoveryResume: 'Reprendre',
-  recoveryDiscard: 'Abandonner',
-
   // Toasts
   toastApiKeySaved: 'La clé API fonctionne et a été enregistrée.',
   toastConnectionFailed: 'La connexion a échoué',
@@ -104,7 +97,6 @@ export default {
   toastStartError: 'Impossible de démarrer le minuteur',
   toastStopError: 'Impossible d\'arrêter le minuteur',
   toastStopRetry: 'Réessayer',
-  toastRecoveryStopError: 'Impossible d\'arrêter le minuteur récupéré',
   runningTimersHeading: 'Minuteurs actifs',
   titleStopRunningTimer: 'Arrêter le minuteur',
   titleRefreshTimers: 'Actualiser les minuteurs en cours',
@@ -160,14 +152,13 @@ export default {
   toastUpdateError: 'Impossible de mettre à jour le minuteur',
 
   // Deleted page
-  toastDeletedPageDiscarded: 'Page non trouvée – saisie abandonnée.',
   deletedPageTitle: 'Page non trouvée dans Notion',
   deletedPageBody: 'La saisie n\'a pas pu être enregistrée car la page a été supprimée ou n\'est plus accessible.',
   deletedPageHint: 'Si nécessaire, restaurez la page depuis la corbeille Notion ou recréez-la manuellement.',
   deletedPageConfirm: 'Fermer',
   warnAlreadyRunningTitle: 'Minuteur déjà en cours',
-  warnAlreadyRunningBody: 'Un minuteur est déjà en cours. Démarrer un nouveau lancera plusieurs minuteurs en même temps. Voulez-vous démarrer ou annuler ?',
-  btnAddOption: 'Démarrer nouveau',
+  warnAlreadyRunningBody: 'Un minuteur est déjà en cours. Voulez-vous l\'arrêter et démarrer le nouveau, ou annuler ?',
+  btnStopAndStartNew: 'Arrêter & démarrer nouveau',
   dialogSavePresetTitle: 'Enregistrer le préréglage',
   dialogSavePresetBody: 'Enregistrer la description et les champs actuels en tant que préréglage.',
   dialogSavePresetOptional: 'Le nom du préréglage est facultatif.',

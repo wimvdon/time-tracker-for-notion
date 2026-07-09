@@ -94,13 +94,6 @@
     <string name="btn_cancel">Annuleer</string>
     <string name="btn_save">Opslaan</string>
 
-    <!-- Recovery dialog -->
-    <string name="recovery_title">Timer nog actief</string>
-    <string name="recovery_body">Een timer was nog actief toen de app sloot.</string>
-    <string name="recovery_stop">Nu stoppen</string>
-    <string name="recovery_resume">Hervatten</string>
-    <string name="recovery_discard">Negeren</string>
-
     <!-- Toasts / errors -->
     <string name="toast_api_key_saved">API-sleutel werkt en is opgeslagen.</string>
     <string name="toast_api_key_removed">API-sleutel verwijderd.</string>
@@ -111,7 +104,6 @@
     <string name="toast_start_error">Kon timer niet starten</string>
     <string name="toast_stop_error">Kon timer niet stoppen</string>
     <string name="toast_stop_retry">Opnieuw proberen</string>
-    <string name="toast_recovery_stop_error">Kon de herstelde timer niet stoppen</string>
     <string name="title_dismiss">Sluiten</string>
     <string name="btn_back">Terug</string>
     <string name="title_settings">Instellingen</string>
@@ -185,7 +177,6 @@
     <string name="deleted_page_body">De tijdsregistratie kon niet worden opgeslagen omdat de pagina is verwijderd of niet meer toegankelijk is.</string>
     <string name="deleted_page_hint">Zet de pagina terug vanuit de Notion-prullenbak of maak hem opnieuw aan als de registratie nodig is.</string>
     <string name="deleted_page_confirm">Sluiten</string>
-    <string name="toast_deleted_page_discarded">Pagina niet gevonden – registratie verwijderd.</string>
     <string name="toast_update_error">Kon timer niet bijwerken</string>
 
     <!-- Per-workspace QR -->
@@ -195,8 +186,8 @@
 
     <!-- Additional New Strings -->
     <string name="warn_already_running_title">Timer is al actief</string>
-    <string name="warn_already_running_body">Er is al een timer actief. Wil je een nieuwe starten die tegelijkertijd loopt?</string>
-    <string name="btn_add_new_timer">Nieuwe starten</string>
+    <string name="warn_already_running_body">Er is al een timer actief. Wil je die stoppen en de nieuwe starten, of annuleren?</string>
+    <string name="btn_stop_and_start_new">Stoppen &amp; nieuwe starten</string>
     <string name="dialog_save_preset_title">Snelstarter opslaan</string>
     <string name="dialog_save_preset_body">Sla de huidige omschrijving en geselecteerde werkruimte/velden op als een snelstarter.</string>
     <string name="dialog_save_preset_placeholder">Naam snelstarter (bijv. Dagelijkse stand-up)</string>

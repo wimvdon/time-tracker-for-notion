@@ -89,13 +89,6 @@ export default {
   btnCancel: 'Cancel',
   btnSave: 'Save',
 
-  // Recovery modal
-  recoveryTitle: 'Timer still running',
-  recoveryBody: 'A timer was running when the app last closed.',
-  recoveryStop: 'Stop now',
-  recoveryResume: 'Resume',
-  recoveryDiscard: 'Discard',
-
   // Toasts
   toastApiKeySaved: 'API key works and was saved.',
   toastConnectionFailed: 'Connection failed',
@@ -104,7 +97,6 @@ export default {
   toastStartError: 'Could not start timer',
   toastStopError: 'Could not stop timer',
   toastStopRetry: 'Retry',
-  toastRecoveryStopError: 'Could not stop the recovered timer',
   runningTimersHeading: 'Active timers',
   titleStopRunningTimer: 'Stop timer',
   titleRefreshTimers: 'Refresh running timers',
@@ -160,14 +152,13 @@ export default {
   toastUpdateError: 'Could not update timer',
 
   // Deleted page
-  toastDeletedPageDiscarded: 'Page not found – entry discarded.',
   deletedPageTitle: 'Page not found in Notion',
   deletedPageBody: 'The time entry could not be saved because the page was deleted or is no longer accessible.',
   deletedPageHint: 'If this entry is needed, restore the page from Notion trash or recreate it manually.',
   deletedPageConfirm: 'Dismiss',
   warnAlreadyRunningTitle: 'Timer already running',
-  warnAlreadyRunningBody: 'A timer is already running. Starting a new one will run multiple timers simultaneously. Do you want to add the new timer or cancel?',
-  btnAddOption: 'Start new',
+  warnAlreadyRunningBody: 'A timer is already running. Stop it and start the new one, or cancel?',
+  btnStopAndStartNew: 'Stop & start new',
   dialogSavePresetTitle: 'Save Preset',
   dialogSavePresetBody: 'Save the current description and selected workspace/fields as a preset.',
   dialogSavePresetOptional: 'The preset name is optional.',

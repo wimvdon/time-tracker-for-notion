@@ -94,13 +94,6 @@
     <string name="btn_cancel">Cancelar</string>
     <string name="btn_save">Guardar</string>
 
-    <!-- Recovery dialog -->
-    <string name="recovery_title">Temporizador activo</string>
-    <string name="recovery_body">Había un temporizador activo cuando se cerró la aplicación.</string>
-    <string name="recovery_stop">Detener ahora</string>
-    <string name="recovery_resume">Reanudar</string>
-    <string name="recovery_discard">Descartar</string>
-
     <!-- Toasts / errors -->
     <string name="toast_api_key_saved">La clave API funciona y ha sido guardada.</string>
     <string name="toast_api_key_removed">Clave API eliminada.</string>
@@ -111,7 +104,6 @@
     <string name="toast_start_error">No se pudo iniciar el temporizador</string>
     <string name="toast_stop_error">No se pudo detener el temporizador</string>
     <string name="toast_stop_retry">Reintentar</string>
-    <string name="toast_recovery_stop_error">No se pudo detener el temporizador recuperado</string>
     <string name="title_dismiss">Descartar</string>
     <string name="btn_back">Volver</string>
     <string name="title_settings">Ajustes</string>
@@ -185,7 +177,6 @@
     <string name="deleted_page_body">La entrada no pudo guardarse porque la página fue eliminada o ya no es accesible.</string>
     <string name="deleted_page_hint">Si es necesario, restaure la página desde la papelera de Notion o recréela manualmente.</string>
     <string name="deleted_page_confirm">Descartar</string>
-    <string name="toast_deleted_page_discarded">Página no encontrada – entrada descartada.</string>
     <string name="toast_update_error">No se pudo actualizar el temporizador</string>
 
     <!-- Per-workspace QR -->
@@ -195,8 +186,8 @@
 
     <!-- Additional New Strings -->
     <string name="warn_already_running_title">Temporizador activo</string>
-    <string name="warn_already_running_body">Ya hay un temporizador activo. ¿Desea iniciar uno nuevo simultáneamente?</string>
-    <string name="btn_add_new_timer">Iniciar nuevo</string>
+    <string name="warn_already_running_body">Ya hay un temporizador activo. ¿Desea detenerlo y comenzar el nuevo, o cancelar?</string>
+    <string name="btn_stop_and_start_new">Detener e iniciar nuevo</string>
     <string name="dialog_save_preset_title">Guardar preajuste</string>
     <string name="dialog_save_preset_body">Guardar la descripción y campos actuales como preajuste.</string>
     <string name="dialog_save_preset_placeholder">Nombre del preajuste (ej. Standup diario)</string>

@@ -45,7 +45,6 @@ import com.impca201.notiontimetracker.data.models.RecentEntryInfo
 import com.impca201.notiontimetracker.data.models.RunningTimerInfo
 import com.impca201.notiontimetracker.ui.components.EditTimerModal
 import com.impca201.notiontimetracker.ui.components.ExtraFieldInput
-import com.impca201.notiontimetracker.ui.components.RecoveryDialog
 import com.impca201.notiontimetracker.ui.components.SearchableDropdown
 import com.impca201.notiontimetracker.viewmodel.TimerViewModel
 import java.time.Instant
@@ -68,8 +67,7 @@ fun TimerScreen(
     onRetryStop: () -> Unit,
     onLoadRunningTimer: (RunningTimerInfo) -> Unit,
     onStopOtherRunningTimer: (RunningTimerInfo) -> Unit,
-    onSuspendActiveToNewTimer: () -> Unit,
-    onRefreshRunningTimers: () -> Unit,
+    onPlusButtonClicked: () -> Unit,
     onRefreshAll: () -> Unit,
     onOpenEditTimer: () -> Unit,
     onCloseEditTimer: () -> Unit,
@@ -96,7 +94,7 @@ fun TimerScreen(
             text = { Text(stringResource(R.string.warn_already_running_body)) },
             confirmButton = {
                 TextButton(onClick = onConfirmAlreadyRunning) {
-                    Text(stringResource(R.string.btn_add_new_timer))
+                    Text(stringResource(R.string.btn_stop_and_start_new))
                 }
             },
             dismissButton = {
@@ -237,8 +235,7 @@ fun TimerScreen(
             onRetryStop = onRetryStop,
             onLoadRunningTimer = onLoadRunningTimer,
             onStopOtherRunningTimer = onStopOtherRunningTimer,
-            onSuspendActiveToNewTimer = onSuspendActiveToNewTimer,
-            onRefreshRunningTimers = onRefreshRunningTimers,
+            onPlusButtonClicked = onPlusButtonClicked,
             onRefreshAll = onRefreshAll,
             onQuickSaveDescription = onQuickSaveDescription,
             onUpdateTimerDetails = onUpdateTimerDetails,
@@ -258,7 +255,6 @@ fun TimerScreen(
             onClearError = onClearError,
             onLoadRunningTimer = onLoadRunningTimer,
             onStopOtherRunningTimer = onStopOtherRunningTimer,
-            onRefreshRunningTimers = onRefreshRunningTimers,
             onRefreshAll = onRefreshAll,
             onConfirmDelete = onConfirmDelete,
             onOpenUrl = onOpenUrl,
@@ -282,7 +278,6 @@ private fun IdleView(
     onClearError: () -> Unit,
     onLoadRunningTimer: (RunningTimerInfo) -> Unit,
     onStopOtherRunningTimer: (RunningTimerInfo) -> Unit,
-    onRefreshRunningTimers: () -> Unit,
     onRefreshAll: () -> Unit,
     onConfirmDelete: (String, String, Boolean) -> Unit,
     onOpenUrl: (String) -> Unit,
@@ -499,8 +494,7 @@ private fun RunningView(
     onRetryStop: () -> Unit,
     onLoadRunningTimer: (RunningTimerInfo) -> Unit,
     onStopOtherRunningTimer: (RunningTimerInfo) -> Unit,
-    onSuspendActiveToNewTimer: () -> Unit,
-    onRefreshRunningTimers: () -> Unit,
+    onPlusButtonClicked: () -> Unit,
     onRefreshAll: () -> Unit,
     onQuickSaveDescription: (String) -> Unit = {},
     onUpdateTimerDetails: (String?, String, Map<String, String>) -> Unit,
@@ -515,44 +509,6 @@ private fun RunningView(
 
     var startTimeInput by remember(timer.roundedStart, uiState.timeFormat) { mutableStateOf(formatHHMM(timer.roundedStart, uiState.timeFormat == "12h")) }
     var endTimeInput by remember { mutableStateOf("") }
-
-    val activeTimer = timer
-    val allRunning = remember(activeTimer, uiState.runningTimers) {
-        val list = uiState.runningTimers.toMutableList()
-        val idx = list.indexOfFirst { it.pageId == activeTimer.notionPageId }
-        val activeInfo = RunningTimerInfo(
-            pageId = activeTimer.notionPageId,
-            title = activeTimer.description,
-            startISO = activeTimer.roundedStart,
-            workspaceId = activeTimer.workspaceId,
-            workspaceName = uiState.workspaces.firstOrNull { it.id == activeTimer.workspaceId }?.name ?: "",
-            propertyMap = activeTimer.propertyMap
-        )
-        if (idx != -1) {
-            list[idx] = activeInfo
-        } else {
-            list.add(0, activeInfo)
-        }
-        list
-    }
-    val currentTimerIndex = remember(activeTimer, allRunning) {
-        allRunning.indexOfFirst { it.pageId == activeTimer.notionPageId }.coerceAtLeast(0)
-    }
-    val hasMultiple = allRunning.size > 1
-    val totalTimersCount = allRunning.size
-
-    val onNextTimer = {
-        if (allRunning.isNotEmpty()) {
-            val nextIdx = (currentTimerIndex + 1) % allRunning.size
-            onLoadRunningTimer(allRunning[nextIdx])
-        }
-    }
-    val onPrevTimer = {
-        if (allRunning.isNotEmpty()) {
-            val prevIdx = (currentTimerIndex - 1 + allRunning.size) % allRunning.size
-            onLoadRunningTimer(allRunning[prevIdx])
-        }
-    }
 
     var showTimeErrorDialog by remember { mutableStateOf(false) }
     var pendingEndTimeMs by remember { mutableStateOf(0L) }
@@ -664,7 +620,7 @@ private fun RunningView(
                     fontWeight = FontWeight.Bold
                 )
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = onSuspendActiveToNewTimer) {
+                    IconButton(onClick = onPlusButtonClicked) {
                         Icon(Icons.Default.Add, contentDescription = stringResource(R.string.start_new_timer))
                     }
                     RefreshIconButton(
@@ -687,49 +643,11 @@ private fun RunningView(
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
 
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                if (hasMultiple) {
-                    IconButton(onClick = onPrevTimer) {
-                        Icon(Icons.Default.KeyboardArrowLeft, contentDescription = "Previous Timer")
-                    }
-                }
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        workspace?.name ?: "",
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
-                    )
-                    if (hasMultiple) {
-                        Spacer(Modifier.height(4.dp))
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(4.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            for (i in 0 until totalTimersCount) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(6.dp)
-                                        .clip(CircleShape)
-                                        .background(
-                                            if (i == currentTimerIndex) MaterialTheme.colorScheme.primary
-                                            else MaterialTheme.colorScheme.onBackground.copy(alpha = 0.3f)
-                                        )
-                                        .clickable { onLoadRunningTimer(allRunning[i]) }
-                                )
-                            }
-                        }
-                    }
-                }
-                if (hasMultiple) {
-                    IconButton(onClick = onNextTimer) {
-                        Icon(Icons.Default.KeyboardArrowRight, contentDescription = "Next Timer")
-                    }
-                }
-            }
+            Text(
+                workspace?.name ?: "",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
+            )
 
             var titleDraft by remember(timer.description) { mutableStateOf(timer.description) }
             val isTitleDirty = titleDraft.trim() != timer.description.trim()

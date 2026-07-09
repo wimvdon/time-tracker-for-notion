@@ -51,7 +51,6 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
         val deletedPageDialogVisible: Boolean = false,
         val deletedPageDialogTitle: String? = null,
         val infoToast: String? = null,
-        val suspendedTimer: RunningTimerInfo? = null,
         val showAlreadyRunningWarning: Boolean = false,
         val locale: String = "system",
         val dateFormat: String = "DD/MM/YYYY",
@@ -427,12 +426,6 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
         _uiState.update { it.copy(isStarting = true, error = null) }
 
         viewModelScope.launch {
-            val currentState = _uiState.value
-            val suspended = currentState.suspendedTimer
-            if (suspended != null) {
-                _uiState.update { it.copy(suspendedTimer = null) }
-            }
-
             runCatching {
                 val nowMs = System.currentTimeMillis()
                 val rawStartISO = toNotionDateTime(nowMs)
@@ -490,55 +483,61 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun stopTimer(manualEndMs: Long? = null) {
-        val state = _uiState.value
-        val timer = state.activeTimer
-        val suspended = state.suspendedTimer
+    private sealed class StopResult {
+        object Success : StopResult()
+        object Deleted : StopResult()
+        data class Failed(val message: String) : StopResult()
+    }
 
-        if (timer == null && suspended != null) {
-            val workspace = state.workspaces.firstOrNull { it.id == suspended.workspaceId } ?: return
-            _uiState.update { it.copy(isStopping = true, stopError = null) }
-            viewModelScope.launch {
-                runCatching {
-                    val rounding = workspace.roundingMinutes
-                    val rawStartMs = runCatching { parseIso(suspended.startISO) }.getOrElse { System.currentTimeMillis() }
-                    val startMs = if (rounding == 0) rawStartMs else roundToNearest(rawStartMs, rounding)
-                    val nowMs = manualEndMs ?: System.currentTimeMillis()
-                    val endMs = if (rounding == 0) nowMs
-                    else {
-                        val minEnd = startMs + rounding * 60_000L
-                        val rounded = roundToNearest(nowMs, rounding)
-                        if (rounded < minEnd) minEnd else rounded
-                    }
-                    val startISO = toNotionDateTime(startMs)
-                    val endISO = toNotionDateTime(endMs)
-                    notionRepo.stopTimeEntry(
-                        pageId = suspended.pageId,
-                        startISO = startISO,
-                        endISO = endISO,
-                        propertyMap = suspended.propertyMap
-                    )
-                }.onSuccess {
-                    tickJob?.cancel()
-                    val remainingRunning = _uiState.value.runningTimers.filter { it.pageId != suspended.pageId }
-                    if (remainingRunning.isNotEmpty()) {
-                        _uiState.update { it.copy(isStopping = false, suspendedTimer = null, runningTimers = remainingRunning, stopError = null) }
-                        loadRunningTimer(remainingRunning.first())
-                    } else {
-                        stopService()
-                        _uiState.update { it.copy(isStopping = false, suspendedTimer = null, runningTimers = emptyList(), stopError = null) }
-                    }
-                    loadRunningTimers()
-                    loadRecentEntries()
-                }.onFailure { err ->
-                    _uiState.update { it.copy(isStopping = false, stopError = err.message ?: "Could not stop timer") }
-                }
+    /**
+     * Stops the currently active timer's Notion page and clears the local
+     * "active" slot (tickJob cancelled, uiState reset to not-running). Does
+     * not touch `runningTimers` or the foreground service — callers decide
+     * what happens next (promote another running timer, leave idle, or
+     * immediately start a new one).
+     */
+    private suspend fun stopActivePage(manualEndMs: Long? = null): StopResult {
+        val timer = _uiState.value.activeTimer ?: return StopResult.Success
+        val workspace = _uiState.value.workspaces.firstOrNull { it.id == timer.workspaceId }
+        val rounding = workspace?.roundingMinutes ?: 15
+
+        val outcome = runCatching {
+            val rawStartMs = parseIso(timer.rawStart)
+            val startMs = if (rounding == 0) rawStartMs else roundToNearest(rawStartMs, rounding)
+            val nowMs = manualEndMs ?: System.currentTimeMillis()
+            val endMs = if (rounding == 0) nowMs else {
+                val minEnd = startMs + rounding * 60_000L
+                val rounded = roundToNearest(nowMs, rounding)
+                if (rounded < minEnd) minEnd else rounded
             }
-            return
+            notionRepo.stopTimeEntry(
+                pageId = timer.notionPageId,
+                startISO = toNotionDateTime(startMs),
+                endISO = toNotionDateTime(endMs),
+                propertyMap = timer.propertyMap
+            )
         }
 
-        if (timer == null) return
-        val workspace = state.workspaces.firstOrNull { it.id == timer.workspaceId } ?: return
+        if (outcome.isSuccess) {
+            settingsRepo.clearActiveTimer()
+            tickJob?.cancel()
+            _uiState.update { it.copy(running = false, activeTimer = null, elapsedSeconds = 0L) }
+            return StopResult.Success
+        }
+
+        val msg = outcome.exceptionOrNull()?.message ?: ""
+        if (isPageDeletedError(msg)) {
+            settingsRepo.clearActiveTimer()
+            tickJob?.cancel()
+            _uiState.update { it.copy(running = false, activeTimer = null, elapsedSeconds = 0L) }
+            return StopResult.Deleted
+        }
+        return StopResult.Failed(msg.ifBlank { "Could not stop timer" })
+    }
+
+    fun stopTimer(manualEndMs: Long? = null) {
+        val state = _uiState.value
+        val timer = state.activeTimer ?: return
 
         if (state.extraFieldDefs.any { def ->
                 def.required && (state.extraValues[def.propName]?.isBlank() != false)
@@ -550,54 +549,62 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
         _uiState.update { it.copy(isStopping = true, stopError = null) }
 
         viewModelScope.launch {
-            runCatching {
-                val rounding = workspace.roundingMinutes
-                val rawStartMs = parseIso(timer.rawStart)
-                val startMs = if (rounding == 0) rawStartMs else roundToNearest(rawStartMs, rounding)
-                val nowMs = manualEndMs ?: System.currentTimeMillis()
-                val endMs = if (rounding == 0) nowMs
-                else {
-                    val minEnd = startMs + rounding * 60_000L
-                    val rounded = roundToNearest(nowMs, rounding)
-                    if (rounded < minEnd) minEnd else rounded
-                }
-                val startISO = toNotionDateTime(startMs)
-                val endISO = toNotionDateTime(endMs)
-                notionRepo.stopTimeEntry(
-                    pageId = timer.notionPageId,
-                    startISO = startISO,
-                    endISO = endISO,
-                    propertyMap = timer.propertyMap
-                )
-                settingsRepo.clearActiveTimer()
-            }.onSuccess {
-                tickJob?.cancel()
-                val remainingRunning = _uiState.value.runningTimers.filter { it.pageId != timer.notionPageId }
-                if (remainingRunning.isNotEmpty()) {
-                    _uiState.update { it.copy(running = false, activeTimer = null, elapsedSeconds = 0L, runningTimers = remainingRunning, isStopping = false, stopError = null) }
-                    loadRunningTimer(remainingRunning.first())
-                } else {
-                    stopService()
-                    _uiState.update { it.copy(running = false, activeTimer = null, elapsedSeconds = 0L, runningTimers = emptyList(), isStopping = false, stopError = null) }
-                }
-                loadRunningTimers()
-                loadRecentEntries()
-                syncServiceNotifications()
-            }.onFailure { err ->
-                val msg = err.message ?: ""
-                if (isPageDeletedError(msg)) {
-                    tickJob?.cancel()
-                    val remainingRunning = _uiState.value.runningTimers.filter { it.pageId != timer.notionPageId }
-                    settingsRepo.clearActiveTimer()
+            val stoppedPageId = timer.notionPageId
+            val stoppedTitle = state.description
+            when (val result = stopActivePage(manualEndMs)) {
+                is StopResult.Success -> {
+                    val remainingRunning = _uiState.value.runningTimers.filter { it.pageId != stoppedPageId }
+                    _uiState.update { it.copy(isStopping = false, runningTimers = remainingRunning, stopError = null) }
                     if (remainingRunning.isNotEmpty()) {
-                        _uiState.update { it.copy(isStopping = false, running = false, activeTimer = null, elapsedSeconds = 0L, runningTimers = remainingRunning, deletedPageDialogVisible = true, deletedPageDialogTitle = state.description.ifBlank { null }) }
                         loadRunningTimer(remainingRunning.first())
                     } else {
                         stopService()
-                        _uiState.update { it.copy(isStopping = false, running = false, activeTimer = null, elapsedSeconds = 0L, runningTimers = emptyList(), deletedPageDialogVisible = true, deletedPageDialogTitle = state.description.ifBlank { null }) }
                     }
-                } else {
-                    _uiState.update { it.copy(isStopping = false, stopError = msg.ifBlank { "Could not stop timer" }) }
+                    loadRunningTimers()
+                    loadRecentEntries()
+                    syncServiceNotifications()
+                }
+                is StopResult.Deleted -> {
+                    val remainingRunning = _uiState.value.runningTimers.filter { it.pageId != stoppedPageId }
+                    _uiState.update { it.copy(isStopping = false, runningTimers = remainingRunning, deletedPageDialogVisible = true, deletedPageDialogTitle = stoppedTitle.ifBlank { null }) }
+                    if (remainingRunning.isNotEmpty()) {
+                        loadRunningTimer(remainingRunning.first())
+                    } else {
+                        stopService()
+                    }
+                }
+                is StopResult.Failed -> {
+                    _uiState.update { it.copy(isStopping = false, stopError = result.message) }
+                }
+            }
+        }
+    }
+
+    /**
+     * Stops the currently active timer, then runs [onStopped]. Used by the
+     * "already running" confirmation flow ("+"/presets/shortcuts): the app
+     * never keeps two timers running side by side, so starting a new one
+     * while one is active always stops the old one first.
+     */
+    private fun stopActiveAndThen(onStopped: suspend () -> Unit) {
+        if (!_uiState.value.running) {
+            viewModelScope.launch { onStopped() }
+            return
+        }
+        viewModelScope.launch {
+            when (val result = stopActivePage()) {
+                is StopResult.Success -> {
+                    stopService()
+                    loadRunningTimers()
+                    loadRecentEntries()
+                    onStopped()
+                }
+                is StopResult.Deleted -> {
+                    stopService()
+                    _uiState.update { it.copy(deletedPageDialogVisible = true, deletedPageDialogTitle = null) }
+                }
+                is StopResult.Failed -> {
+                    _uiState.update { it.copy(error = result.message) }
                 }
             }
         }
@@ -616,25 +623,20 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
         val state = _uiState.value
         tickJob?.cancel()
 
-        var nextSuspended = state.suspendedTimer
-        if (stoppedPageId != null && state.suspendedTimer?.pageId == stoppedPageId) {
-            nextSuspended = null
-        }
-
         val pageToFilter = stoppedPageId ?: state.activeTimer?.notionPageId
         val remainingRunning = if (pageToFilter != null) {
             state.runningTimers.filter { it.pageId != pageToFilter }
         } else {
             state.runningTimers
         }
+        val wasActive = state.activeTimer?.notionPageId == pageToFilter
 
-        if (remainingRunning.isNotEmpty() && (state.activeTimer?.notionPageId == pageToFilter || state.suspendedTimer?.pageId == pageToFilter)) {
+        if (remainingRunning.isNotEmpty() && wasActive) {
             _uiState.update { it.copy(
                 running = false,
                 activeTimer = null,
                 elapsedSeconds = 0L,
                 isStopping = false,
-                suspendedTimer = nextSuspended,
                 runningTimers = remainingRunning
             ) }
             loadRunningTimer(remainingRunning.first())
@@ -647,7 +649,6 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
                 activeTimer = null,
                 elapsedSeconds = 0L,
                 isStopping = false,
-                suspendedTimer = nextSuspended,
                 runningTimers = remainingRunning
             ) }
         }
@@ -699,9 +700,7 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
         syncServiceNotifications()
         val updatedState = _uiState.value
         if (!updatedState.running && updatedState.activeTimer == null && allRunning.isNotEmpty()) {
-            if (updatedState.suspendedTimer == null) {
-                loadRunningTimer(allRunning.first())
-            }
+            loadRunningTimer(allRunning.first())
         }
     }
 
@@ -799,38 +798,6 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun suspendActiveToNewTimer() {
-        val state = _uiState.value
-        if (!state.running || state.activeTimer == null) return
-
-        val aside = RunningTimerInfo(
-            pageId = state.activeTimer.notionPageId,
-            title = state.activeTimer.description,
-            startISO = state.activeTimer.roundedStart,
-            workspaceId = state.activeTimer.workspaceId,
-            workspaceName = state.workspaces.firstOrNull { it.id == state.activeTimer.workspaceId }?.name ?: "",
-            propertyMap = state.activeTimer.propertyMap
-        )
-
-        tickJob?.cancel()
-
-        val alreadyExists = state.runningTimers.any { it.pageId == aside.pageId }
-        val newRunning = if (alreadyExists) state.runningTimers else state.runningTimers + aside
-
-        _uiState.update { it.copy(
-            running = false,
-            activeTimer = null,
-            elapsedSeconds = 0L,
-            description = "",
-            runningTimers = newRunning,
-            suspendedTimer = aside
-        )}
-
-        viewModelScope.launch { settingsRepo.clearActiveTimer() }
-        // No active timer is shown in the running view now, so clear the notification.
-        syncServiceNotifications()
-    }
-
     fun loadRunningTimer(rt: RunningTimerInfo) {
         val state = _uiState.value
         val workspace = state.workspaces.firstOrNull { it.id == rt.workspaceId } ?: return
@@ -881,8 +848,7 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
             elapsedSeconds = 0L,
             runningTimers = others,
             description = rt.title,
-            selectedWorkspaceId = rt.workspaceId,
-            suspendedTimer = null
+            selectedWorkspaceId = rt.workspaceId
         )}
         startTicking(startMs)
         viewModelScope.launch { settingsRepo.saveActiveTimer(timer) }
@@ -911,15 +877,8 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
                     propertyMap = rt.propertyMap
                 )
             }.onSuccess {
-                val isSuspended = _uiState.value.suspendedTimer?.pageId == rt.pageId
                 val remainingRunning = _uiState.value.runningTimers.filter { t -> t.pageId != rt.pageId }
-                _uiState.update { it.copy(
-                    runningTimers = remainingRunning,
-                    suspendedTimer = if (isSuspended) null else it.suspendedTimer
-                ) }
-                if (isSuspended && remainingRunning.isNotEmpty()) {
-                    loadRunningTimer(remainingRunning.first())
-                }
+                _uiState.update { it.copy(runningTimers = remainingRunning) }
             }.onFailure { err ->
                 _uiState.update { it.copy(error = err.message ?: "Could not stop timer") }
             }
@@ -940,24 +899,22 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
         pendingActionAfterWarning = null
     }
 
+    // Only reachable while a timer is running; stops it (via the confirmation
+    // dialog) and drops back to the idle form so a fresh timer can be composed.
     fun onPlusButtonClicked() {
-        val state = _uiState.value
-        if (state.running) {
-            pendingActionAfterWarning = {
-                suspendActiveToNewTimer()
-            }
-            _uiState.update { it.copy(showAlreadyRunningWarning = true) }
-        } else {
-            suspendActiveToNewTimer()
+        if (!_uiState.value.running) return
+        pendingActionAfterWarning = {
+            stopActiveAndThen {}
         }
+        _uiState.update { it.copy(showAlreadyRunningWarning = true) }
     }
 
     fun applyPreset(workspaceId: String, preset: Preset) {
-        val action = {
-            viewModelScope.launch {
-                val state = _uiState.value
-                if (state.selectedWorkspaceId != workspaceId) {
-                    val workspace = state.workspaces.firstOrNull { it.id == workspaceId } ?: return@launch
+        val action: suspend () -> Unit = {
+            val state = _uiState.value
+            if (state.selectedWorkspaceId != workspaceId) {
+                val workspace = state.workspaces.firstOrNull { it.id == workspaceId }
+                if (workspace != null) {
                     _uiState.update { it.copy(
                         selectedWorkspaceId = workspaceId,
                         extraFieldDefs = emptyList(),
@@ -966,25 +923,23 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
                     settingsRepo.saveLastWorkspaceId(workspaceId)
                     loadExtraFieldDefs(workspace)
                 }
-                _uiState.update { it.copy(
-                    description = preset.pageTitle,
-                    extraValues = it.extraValues.toMutableMap().also { map ->
-                        preset.extraValues.forEach { (k, v) -> map[k] = v }
-                    }
-                )}
-                startTimer()
             }
+            _uiState.update { it.copy(
+                description = preset.pageTitle,
+                extraValues = it.extraValues.toMutableMap().also { map ->
+                    preset.extraValues.forEach { (k, v) -> map[k] = v }
+                }
+            )}
+            startTimer()
         }
 
-        val state = _uiState.value
-        if (state.running) {
+        if (_uiState.value.running) {
             pendingActionAfterWarning = {
-                suspendActiveToNewTimer()
-                action()
+                stopActiveAndThen { action() }
             }
             _uiState.update { it.copy(showAlreadyRunningWarning = true) }
         } else {
-            action()
+            viewModelScope.launch { action() }
         }
     }
 
