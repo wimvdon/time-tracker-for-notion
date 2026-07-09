@@ -137,6 +137,8 @@ export default function Timer() {
         onCancelDelete={cancelDelete}
         onDeleteEntry={deleteEntry}
         onOpenUrl={openNotionPage}
+        onApplyPreset={applyPreset}
+        onManagePresetsClick={() => setShowManagePresetsModal(true)}
       />
     );
   } else {
@@ -164,40 +166,12 @@ export default function Timer() {
             </div>
           )}
 
-          {/* Preset chips — shown when any workspace has presets */}
-          {workspaces.some((w) => (w.presets?.length ?? 0) > 0) && (
-            <div className="flex flex-wrap items-center gap-1.5">
-              {workspaces.flatMap((w) =>
-                (w.presets || []).map((preset) => {
-                  const hex = w.color?.trim();
-                  const accent = hex ? getWorkspaceAccentColor(hex, isDarkTheme) : null;
-                  const chipStyle = accent
-                    ? { borderColor: accent + '66', color: accent, backgroundColor: accent + '22' }
-                    : {};
-                  return (
-                    <button
-                      key={`${w.id}:${preset.id}`}
-                      onClick={() => applyPreset(w.id, preset)}
-                      disabled={!apiKey}
-                      title={preset.name && preset.name !== w.name ? `${w.name} – ${preset.name}` : w.name}
-                      style={chipStyle}
-                      className="flex items-center gap-1 px-2.5 py-1 bg-zinc-800 hover:bg-emerald-700 border border-zinc-700 hover:border-emerald-600 rounded-full text-xs text-zinc-300 hover:text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                    >
-                      <Play20Regular className="w-3 h-3" />
-                      <span className="max-w-[140px] truncate">{preset.name && preset.name !== w.name ? `${w.name} – ${preset.name}` : w.name}</span>
-                    </button>
-                  );
-                })
-              )}
-              <button
-                onClick={() => setShowManagePresetsModal(true)}
-                title={t('presetsManageTitle')}
-                className="p-1 text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800 rounded-full transition-colors flex items-center justify-center text-sm"
-              >
-                <Edit20Regular className="w-4 h-4" />
-              </button>
-            </div>
-          )}
+          <PresetChips
+            workspaces={workspaces}
+            apiKey={apiKey}
+            onApplyPreset={applyPreset}
+            onManageClick={() => setShowManagePresetsModal(true)}
+          />
 
           <div>
             <label className="block text-xs text-zinc-400 mb-1">{t('labelWorkspace')}</label>
@@ -469,6 +443,8 @@ function RunningView({
   onCancelDelete,
   onDeleteEntry,
   onOpenUrl,
+  onApplyPreset,
+  onManagePresetsClick,
 }) {
   const timer = useStore((s) => s.timer);
   const isStopping = useStore((s) => s.isStopping);
@@ -483,8 +459,8 @@ function RunningView({
   const getRoundingMinutes = useStore((s) => s.getRoundingMinutes);
   const timeFormat = useStore((s) => s.timeFormat);
   const dateFormat = useStore((s) => s.dateFormat);
-  const isDarkTheme = useIsDarkTheme();
-  const accentColor = workspaceColor ? getWorkspaceAccentColor(workspaceColor, isDarkTheme) : null;
+  const workspaces = useStore((s) => s.workspaces);
+  const apiKey = useStore((s) => s.apiKey);
 
   const [startInput, setStartInput] = useState(() => formatTimeStr(timer.roundedStart, timeFormat));
   const [endInput, setEndInput] = useState('');
@@ -624,6 +600,13 @@ function RunningView({
             t('btnStop')
           )}
         </button>
+
+        <PresetChips
+          workspaces={workspaces}
+          apiKey={apiKey}
+          onApplyPreset={onApplyPreset}
+          onManageClick={onManagePresetsClick}
+        />
 
         <OtherRunningTimers
           timers={runningTimers}
@@ -768,6 +751,45 @@ function RunningTimerItem({ rt, isActive, onLoad, onStop, onDelete, onOpenUrl })
           </button>
         )}
       </div>
+    </div>
+  );
+}
+
+/** Quick-start preset chips — shown when any workspace has presets, in both
+ *  the idle form and the running view. Clicking one while a timer is already
+ *  running goes through `applyPreset`'s "already running" confirmation. */
+function PresetChips({ workspaces, apiKey, onApplyPreset, onManageClick }) {
+  if (!workspaces.some((w) => (w.presets?.length ?? 0) > 0)) return null;
+  return (
+    <div className="flex flex-wrap items-center gap-1.5">
+      {workspaces.flatMap((w) =>
+        (w.presets || []).map((preset) => {
+          const hex = w.color?.trim();
+          const chipStyle = hex
+            ? { borderColor: hex + '66', color: hex, backgroundColor: hex + '22' }
+            : {};
+          return (
+            <button
+              key={`${w.id}:${preset.id}`}
+              onClick={() => onApplyPreset(w.id, preset)}
+              disabled={!apiKey}
+              title={preset.name && preset.name !== w.name ? `${w.name} – ${preset.name}` : w.name}
+              style={chipStyle}
+              className="flex items-center gap-1 px-2.5 py-1 bg-zinc-800 hover:bg-emerald-700 border border-zinc-700 hover:border-emerald-600 rounded-full text-xs text-zinc-300 hover:text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <Play20Regular className="w-3 h-3" />
+              <span className="max-w-[140px] truncate">{preset.name && preset.name !== w.name ? `${w.name} – ${preset.name}` : w.name}</span>
+            </button>
+          );
+        })
+      )}
+      <button
+        onClick={onManageClick}
+        title={t('presetsManageTitle')}
+        className="p-1 text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800 rounded-full transition-colors flex items-center justify-center text-sm"
+      >
+        <Edit20Regular className="w-4 h-4" />
+      </button>
     </div>
   );
 }
