@@ -348,28 +348,48 @@ export default function Settings() {
   );
 }
 
-/** Dialog to create a new top-level Notion page holding the sync payload. */
+/**
+ * Dialog to create a new Notion page holding the sync payload. Notion's API
+ * rejects `parent.workspace` for internal integrations ("aren't owned by a
+ * single user"), so the page must be created as a child of a page the
+ * integration already has access to — the user picks one here.
+ */
 function CreateSyncModal({ onClose }) {
   const createSyncPage = useStore((s) => s.createSyncPage);
   const [title, setTitle] = useState('Time Tracker Sync');
+  const [pages, setPages] = useState({ loading: true, error: null, items: [] });
+  const [parentPageId, setParentPageId] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
 
+  useEffect(() => {
+    (async () => {
+      try {
+        const items = await window.notionAPI.searchPages();
+        setPages({ loading: false, error: null, items });
+      } catch (err) {
+        setPages({ loading: false, error: errorMessage(err), items: [] });
+      }
+    })();
+  }, []);
+
   const handleCreate = async () => {
-    if (!title.trim()) return;
+    if (!title.trim() || !parentPageId) return;
     setSaving(true);
     setError(null);
-    const ok = await createSyncPage(title);
+    const ok = await createSyncPage(parentPageId, title);
     setSaving(false);
     if (ok) onClose();
     else setError(useStore.getState().syncError || t('errorNotASyncPage'));
   };
 
+  const pageOptions = pages.items.map((p) => ({ value: p.id, label: p.name }));
+
   return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-40 p-4">
       <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-4 w-full max-w-sm flex flex-col gap-4">
         <h2 className="text-sm font-semibold">{t('modalTitleCreateSync')}</h2>
-        <Field label={t('placeholderSyncPageTitle')} hint={t('hintCreateSync')}>
+        <Field label={t('placeholderSyncPageTitle')}>
           <input
             type="text"
             value={title}
@@ -378,6 +398,23 @@ function CreateSyncModal({ onClose }) {
             className="w-full bg-zinc-900 border border-zinc-700 rounded-md px-3 py-2 text-sm"
           />
         </Field>
+        <Field label={t('labelParentPage')} hint={t('hintCreateSync')}>
+          {pages.error ? (
+            <div className="text-xs bg-red-950 border border-red-700 text-red-200 rounded-md p-2">
+              {pages.error}
+            </div>
+          ) : (
+            <SearchableSelect
+              value={parentPageId}
+              onChange={setParentPageId}
+              options={pageOptions}
+              placeholder={pages.loading ? t('loadingDatabases') : t('placeholderSelectSyncPage')}
+              disabled={pages.loading}
+              loading={pages.loading}
+              className="w-full"
+            />
+          )}
+        </Field>
         {error && <p className="text-xs text-red-400">{error}</p>}
         <div className="flex justify-end gap-2">
           <button onClick={onClose} className="px-3 py-1.5 rounded-md bg-zinc-700 hover:bg-zinc-600 text-sm">
@@ -385,7 +422,7 @@ function CreateSyncModal({ onClose }) {
           </button>
           <button
             onClick={handleCreate}
-            disabled={saving || !title.trim()}
+            disabled={saving || !title.trim() || !parentPageId}
             className="px-3 py-1.5 rounded-md bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-sm font-semibold"
           >
             {t('btnCreate')}

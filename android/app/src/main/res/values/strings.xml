@@ -214,7 +214,7 @@
     <string name="modal_title_load_sync">Attach to existing page</string>
     <string name="placeholder_sync_page_title">Page title</string>
     <string name="placeholder_select_sync_page">Select a page…</string>
-    <string name="hint_create_sync">Creates a page at the top level of your Notion workspace. You can move or rename it afterwards.</string>
+    <string name="hint_create_sync">Notion doesn\'t allow this integration to create pages at the workspace root, so pick a page it can access — the sync page is created inside it. You can move or rename it afterwards.</string>
     <string name="hint_load_sync">Pick a page that already contains a Time Tracker sync code (created from another device).</string>
     <string name="error_not_a_sync_page">This page doesn\'t contain a Time Tracker sync code.</string>
     <string name="btn_create">Create</string>

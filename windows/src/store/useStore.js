@@ -980,13 +980,13 @@ export const useStore = create((set, get) => ({
 
   // ---- Notion-page sync ----
 
-  createSyncPage: async (title) => {
+  createSyncPage: async (parentPageId, title) => {
     const state = get();
     set({ syncing: true, syncError: null });
     try {
       const now = new Date().toISOString();
       const payload = buildSyncPayload(state, now);
-      const { pageId } = await api.createSyncPage(title.trim(), payload);
+      const { pageId } = await api.createSyncPage(parentPageId, title.trim(), payload);
       await api.saveSettings({
         syncPageId: pageId,
         syncPageTitle: title.trim(),

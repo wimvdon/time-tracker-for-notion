@@ -340,13 +340,16 @@ class NotionClient {
     }
 
     /**
-     * Creates a new top-level Notion page (movable/renamable by the user
-     * afterward) containing the sync payload as a single JSON code block.
+     * Creates a new Notion page as a child of [parentPageId] (movable/renamable
+     * by the user afterward) containing the sync payload as a single JSON code
+     * block. Internal integrations cannot create pages directly at the
+     * workspace root (Notion's API rejects `parent.workspace`), so an existing
+     * accessible page must be chosen as the parent.
      * @return the new page id
      */
-    suspend fun createSyncPage(apiKey: String, title: String, payload: SyncPayload): String {
+    suspend fun createSyncPage(apiKey: String, parentPageId: String, title: String, payload: SyncPayload): String {
         val body = mapOf(
-            "parent" to mapOf("type" to "workspace", "workspace" to true),
+            "parent" to mapOf("page_id" to parentPageId),
             "properties" to mapOf(
                 "title" to mapOf("title" to listOf(mapOf("text" to mapOf("content" to title))))
             ),

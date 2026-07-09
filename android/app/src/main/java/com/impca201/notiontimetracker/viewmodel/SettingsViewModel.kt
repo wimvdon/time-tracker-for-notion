@@ -423,14 +423,14 @@ class SettingsViewModel(private val app: Application) : AndroidViewModel(app) {
 
     suspend fun searchSyncPages(): List<NamedOption> = notionRepo.searchPages()
 
-    fun createSyncPage(title: String) {
-        if (title.isBlank()) return
+    fun createSyncPage(parentPageId: String, title: String) {
+        if (title.isBlank() || parentPageId.isBlank()) return
         _uiState.update { it.copy(syncing = true, syncError = null) }
         viewModelScope.launch {
             try {
                 val now = java.time.Instant.now().toString()
                 val payload = syncer.buildPayload(now)
-                val pageId = notionRepo.createSyncPage(title.trim(), payload)
+                val pageId = notionRepo.createSyncPage(parentPageId, title.trim(), payload)
                 settingsRepo.saveSyncPage(pageId, title.trim())
                 settingsRepo.saveSettingsUpdatedAt(now)
                 settingsRepo.saveLastSyncedUpdatedAt(now)

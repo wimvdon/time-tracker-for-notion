@@ -17,7 +17,8 @@ contextBridge.exposeInMainWorld('notionAPI', {
   deletePage: (pageId) => ipcRenderer.invoke('notion:deletePage', pageId),
   updatePage: (pageId, properties) => ipcRenderer.invoke('notion:updatePage', pageId, properties),
   searchPages: () => ipcRenderer.invoke('notion:searchPages'),
-  createSyncPage: (title, payload) => ipcRenderer.invoke('notion:createSyncPage', title, payload),
+  createSyncPage: (parentPageId, title, payload) =>
+    ipcRenderer.invoke('notion:createSyncPage', parentPageId, title, payload),
   fetchSyncPage: (pageId) => ipcRenderer.invoke('notion:fetchSyncPage', pageId),
   updateSyncBlock: (blockId, payload) => ipcRenderer.invoke('notion:updateSyncBlock', blockId, payload),
   openExternal: (url) => ipcRenderer.invoke('shell:openExternal', url),
