@@ -41,6 +41,27 @@ export default {
   labelShowNotionLink: 'Mostra il link «Apri in Notion» sui timer attivi/recenti',
   labelShowArchiveAction: 'Mostra azione di archiviazione sui timer attivi/recenti',
 
+  // Notion-page sync
+  labelSync: 'Sincronizzazione',
+  syncStatusNotConnected: 'Non connesso. Crea o collega una pagina Notion per sincronizzare spazi, scorciatoie e impostazioni tra dispositivi.',
+  syncStatusConnected: 'Sincronizzato con “{title}”',
+  btnCreateSyncPage: 'Crea nuova',
+  btnLoadExistingSync: 'Carica esistente',
+  btnDisconnectSync: 'Disconnetti',
+  modalTitleCreateSync: 'Crea pagina di sincronizzazione',
+  modalTitleLoadSync: 'Collega a una pagina esistente',
+  placeholderSyncPageTitle: 'Titolo della pagina',
+  placeholderSelectSyncPage: 'Seleziona una pagina…',
+  loadingPages: 'Caricamento pagine…',
+  labelParentPage: 'Crea dentro',
+  hintCreateSync: "Notion non consente a questa integrazione di creare pagine alla radice dello spazio di lavoro: scegli una pagina a cui ha accesso — la pagina di sincronizzazione verrà creata al suo interno. Potrai spostarla o rinominarla in seguito.",
+  hintLoadSync: 'Scegli una pagina che contenga già un codice di sincronizzazione Time Tracker (creato da un altro dispositivo).',
+  errorNotASyncPage: 'Questa pagina non contiene un codice di sincronizzazione Time Tracker.',
+  toastSyncCreated: 'Pagina di sincronizzazione creata',
+  toastSyncConnected: 'Connesso alla pagina di sincronizzazione',
+  btnCreate: 'Crea',
+  btnAttach: 'Collega',
+
   // Add/Edit workspace modal
   modalTitleAddWorkspace: 'Aggiungi spazio',
   modalTitleEditWorkspace: 'Modifica spazio',

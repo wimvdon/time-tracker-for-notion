@@ -41,6 +41,27 @@ export default {
   labelShowNotionLink: 'Toon “Openen in Notion”-link bij actieve/recente timers',
   labelShowArchiveAction: 'Toon archiveeractie bij actieve/recente timers',
 
+  // Notion-page sync
+  labelSync: 'Synchronisatie',
+  syncStatusNotConnected: 'Niet verbonden. Maak of koppel een Notion-pagina om werkruimtes, snelstarters en instellingen te synchroniseren tussen apparaten.',
+  syncStatusConnected: 'Gesynchroniseerd met “{title}”',
+  btnCreateSyncPage: 'Nieuwe aanmaken',
+  btnLoadExistingSync: 'Bestaande laden',
+  btnDisconnectSync: 'Ontkoppelen',
+  modalTitleCreateSync: 'Synchronisatiepagina aanmaken',
+  modalTitleLoadSync: 'Koppelen aan bestaande pagina',
+  placeholderSyncPageTitle: 'Paginatitel',
+  placeholderSelectSyncPage: 'Selecteer een pagina…',
+  loadingPages: 'Pagina\'s laden…',
+  labelParentPage: 'Aanmaken in',
+  hintCreateSync: 'Notion staat deze integratie niet toe om pagina\'s op het hoogste niveau van de werkruimte aan te maken, kies dus een pagina waartoe ze toegang heeft — de synchronisatiepagina wordt daarin aangemaakt. Je kunt ze nadien verplaatsen of hernoemen.',
+  hintLoadSync: 'Kies een pagina die al een Time Tracker-synchronisatiecode bevat (aangemaakt vanaf een ander apparaat).',
+  errorNotASyncPage: 'Deze pagina bevat geen Time Tracker-synchronisatiecode.',
+  toastSyncCreated: 'Synchronisatiepagina aangemaakt',
+  toastSyncConnected: 'Verbonden met synchronisatiepagina',
+  btnCreate: 'Aanmaken',
+  btnAttach: 'Koppelen',
+
   // Add/Edit workspace modal
   modalTitleAddWorkspace: 'Werkruimte toevoegen',
   modalTitleEditWorkspace: 'Werkruimte bewerken',

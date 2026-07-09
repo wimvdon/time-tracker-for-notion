@@ -407,7 +407,7 @@ function CreateSyncModal({ onClose }) {
               value={parentPageId}
               onChange={setParentPageId}
               options={pageOptions}
-              placeholder={pages.loading ? t('loadingDatabases') : t('placeholderSelectSyncPage')}
+              placeholder={pages.loading ? t('loadingPages') : t('placeholderSelectSyncPage')}
               disabled={pages.loading}
               loading={pages.loading}
               className="w-full"
@@ -478,7 +478,7 @@ function LoadSyncModal({ onClose }) {
               value={pageId}
               onChange={setPageId}
               options={pageOptions}
-              placeholder={pages.loading ? t('loadingDatabases') : t('placeholderSelectSyncPage')}
+              placeholder={pages.loading ? t('loadingPages') : t('placeholderSelectSyncPage')}
               disabled={pages.loading}
               loading={pages.loading}
               className="w-full"

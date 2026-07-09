@@ -202,6 +202,24 @@
     <string name="label_notion_actions">Notion-Aktionen</string>
     <string name="label_show_notion_link">„In Notion öffnen“-Link bei aktiven/letzten Timern anzeigen</string>
     <string name="label_show_archive_action">Archivieren-Aktion bei aktiven/letzten Timern anzeigen</string>
+
+    <!-- Notion-page sync -->
+    <string name="label_sync">Synchronisierung</string>
+    <string name="sync_status_not_connected">Nicht verbunden. Erstelle oder verknüpfe eine Notion-Seite, um Workspaces, Vorlagen und Einstellungen geräteübergreifend zu synchronisieren.</string>
+    <string name="sync_status_connected">Synchronisiert mit „%1$s“</string>
+    <string name="btn_create_sync_page">Neu erstellen</string>
+    <string name="btn_load_existing_sync">Bestehende laden</string>
+    <string name="btn_disconnect_sync">Trennen</string>
+    <string name="modal_title_create_sync">Synchronisierungsseite erstellen</string>
+    <string name="modal_title_load_sync">Mit bestehender Seite verknüpfen</string>
+    <string name="placeholder_sync_page_title">Seitentitel</string>
+    <string name="placeholder_select_sync_page">Seite auswählen…</string>
+    <string name="hint_create_sync">Notion erlaubt dieser Integration nicht, Seiten auf oberster Ebene des Workspace zu erstellen. Wähle daher eine Seite, auf die sie Zugriff hat — die Synchronisierungsseite wird darin erstellt. Du kannst sie danach verschieben oder umbenennen.</string>
+    <string name="hint_load_sync">Wähle eine Seite, die bereits einen Time-Tracker-Synchronisierungscode enthält (auf einem anderen Gerät erstellt).</string>
+    <string name="error_not_a_sync_page">Diese Seite enthält keinen Time-Tracker-Synchronisierungscode.</string>
+    <string name="btn_create">Erstellen</string>
+    <string name="btn_attach">Verknüpfen</string>
+
     <string name="language_system">System</string>
     <string name="language_en">English</string>
     <string name="language_nl">Nederlands</string>
