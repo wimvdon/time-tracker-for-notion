@@ -64,8 +64,8 @@ class NotionRepository(
 
     suspend fun searchPages(): List<NamedOption> = client.searchPages(apiKey())
 
-    suspend fun createSyncPage(title: String, payload: SyncPayload): String =
-        client.createSyncPage(apiKey(), title, payload)
+    suspend fun createSyncPage(parentPageId: String, title: String, payload: SyncPayload): String =
+        client.createSyncPage(apiKey(), parentPageId, title, payload)
 
     suspend fun fetchSyncPageContent(pageId: String): SyncFetchResult? =
         client.fetchSyncPageContent(apiKey(), pageId)

@@ -72,7 +72,7 @@ fun SettingsScreen(
     onTimeFormatChange: (String) -> Unit = {},
     onShowNotionLinkChange: (Boolean) -> Unit = {},
     onShowArchiveActionChange: (Boolean) -> Unit = {},
-    onCreateSyncPage: (String) -> Unit = {},
+    onCreateSyncPage: (String, String) -> Unit = { _, _ -> },
     onLoadExistingSyncPage: (String, String) -> Unit = { _, _ -> },
     onDisconnectSync: () -> Unit = {},
     onSearchSyncPages: suspend () -> List<NamedOption> = { emptyList() }
@@ -299,6 +299,7 @@ fun SettingsScreen(
                     syncing = uiState.syncing,
                     error = uiState.syncError,
                     onDismiss = { showCreateSync = false },
+                    onSearch = onSearchSyncPages,
                     onCreate = onCreateSyncPage
                 )
             }
@@ -519,13 +520,34 @@ private fun WorkspaceListItem(
 
 /** Dialog to create a new top-level Notion page holding the sync payload. */
 @Composable
+/**
+ * Notion's API rejects `parent.workspace` for internal integrations ("aren't
+ * owned by a single user"), so the new page must be created as a child of a
+ * page the integration already has access to — picked here via the same
+ * search-and-select pattern as [LoadSyncDialog].
+ */
 private fun CreateSyncDialog(
     syncing: Boolean,
     error: String?,
     onDismiss: () -> Unit,
-    onCreate: (String) -> Unit
+    onSearch: suspend () -> List<NamedOption>,
+    onCreate: (String, String) -> Unit
 ) {
     var title by remember { mutableStateOf("Time Tracker Sync") }
+    var pages by remember { mutableStateOf<List<NamedOption>>(emptyList()) }
+    var loadingPages by remember { mutableStateOf(true) }
+    var parentPage by remember { mutableStateOf<NamedOption?>(null) }
+    var searchError by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(Unit) {
+        loadingPages = true
+        pages = runCatching { onSearch() }.getOrElse {
+            searchError = it.message
+            emptyList()
+        }
+        loadingPages = false
+    }
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.modal_title_create_sync)) },
@@ -540,6 +562,20 @@ private fun CreateSyncDialog(
                     modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(Modifier.height(8.dp))
+                if (searchError != null) {
+                    Text(searchError!!, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                } else {
+                    SearchableDropdown(
+                        options = pages,
+                        selected = parentPage,
+                        placeholder = stringResource(R.string.placeholder_select_sync_page),
+                        onSelect = { parentPage = it },
+                        loading = loadingPages,
+                        enabled = !syncing,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+                Spacer(Modifier.height(8.dp))
                 Text(
                     stringResource(R.string.hint_create_sync),
                     style = MaterialTheme.typography.bodySmall,
@@ -552,7 +588,10 @@ private fun CreateSyncDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = { onCreate(title) }, enabled = !syncing && title.isNotBlank()) {
+            TextButton(
+                onClick = { parentPage?.let { onCreate(it.id, title) } },
+                enabled = !syncing && title.isNotBlank() && parentPage != null
+            ) {
                 Text(stringResource(R.string.btn_create))
             }
         },

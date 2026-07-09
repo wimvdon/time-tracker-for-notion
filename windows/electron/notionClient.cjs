@@ -287,13 +287,16 @@ async function searchPages(apiKey) {
 }
 
 /**
- * Creates a new top-level Notion page (movable/renamable by the user afterward)
- * containing the sync payload as a single JSON code block.
+ * Creates a new Notion page as a child of `parentPageId` (movable/renamable by
+ * the user afterward) containing the sync payload as a single JSON code block.
+ * Internal integrations cannot create pages directly at the workspace root
+ * (Notion's API rejects `parent.workspace`), so an existing accessible page
+ * must be chosen as the parent.
  * @returns { pageId }
  */
-async function createSyncPage(apiKey, title, payload) {
+async function createSyncPage(apiKey, parentPageId, title, payload) {
   const data = await notionFetch(apiKey, 'POST', '/pages', {
-    parent: { type: 'workspace', workspace: true },
+    parent: { page_id: parentPageId },
     properties: {
       title: { title: [{ text: { content: title } }] },
     },

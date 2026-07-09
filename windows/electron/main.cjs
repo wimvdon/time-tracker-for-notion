@@ -299,8 +299,8 @@ ipcMain.handle('notion:updatePage', (_event, pageId, properties) =>
 
 ipcMain.handle('notion:searchPages', () => notion.searchPages(store.get('apiKey')));
 
-ipcMain.handle('notion:createSyncPage', (_event, title, payload) =>
-  notion.createSyncPage(store.get('apiKey'), title, payload)
+ipcMain.handle('notion:createSyncPage', (_event, parentPageId, title, payload) =>
+  notion.createSyncPage(store.get('apiKey'), parentPageId, title, payload)
 );
 
 ipcMain.handle('notion:fetchSyncPage', (_event, pageId) =>
