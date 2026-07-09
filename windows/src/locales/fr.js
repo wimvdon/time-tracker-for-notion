@@ -85,6 +85,7 @@ export default {
   workspaceRoundingHint: 'Arrondit les heures de début et de fin (y compris manuelles) à l\'intervalle le plus proche.',
   labelWorkspaceColor: 'Couleur de l\'espace',
   btnApplyColor: 'Appliquer',
+  hintColorLightDarkPreview: 'Thème clair · Thème sombre',
   saveIncompleteHint: 'Remplissez tous les champs avant d\'enregistrer.',
   btnCancel: 'Annuler',
   btnSave: 'Enregistrer',

@@ -105,6 +105,7 @@ export default {
   workspaceRoundingHint: 'Rounds start and stop times (including manual edits) to the nearest interval.',
   labelWorkspaceColor: 'Workspace colour',
   btnApplyColor: 'Apply',
+  hintColorLightDarkPreview: 'Light theme · Dark theme',
   saveIncompleteHint: 'Fill in all fields before saving.',
   btnCancel: 'Cancel',
   btnSave: 'Save',
