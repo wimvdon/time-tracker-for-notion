@@ -483,6 +483,12 @@ function RunningView({
     setLocalExtras({ ...extraValues });
   }, [timer.notionPageId]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Extra field values (e.g. connected project) can arrive asynchronously
+  // shortly after a running timer is loaded — re-sync the draft once they do.
+  useEffect(() => {
+    setLocalExtras({ ...extraValues });
+  }, [extraValues]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const commitStart = () => {
     if (!startInput) {
       setStartInput(formatTimeStr(timer.roundedStart, timeFormat));
