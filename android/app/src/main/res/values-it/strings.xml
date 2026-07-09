@@ -214,7 +214,7 @@
     <string name="modal_title_load_sync">Collega a una pagina esistente</string>
     <string name="placeholder_sync_page_title">Titolo della pagina</string>
     <string name="placeholder_select_sync_page">Seleziona una pagina…</string>
-    <string name="hint_create_sync">Notion non consente a questa integrazione di creare pagine alla radice dello spazio di lavoro: scegli una pagina a cui ha accesso — la pagina di sincronizzazione verrà creata al suo interno. Potrai spostarla o rinominarla in seguito.</string>
+    <string name="hint_create_sync">Inserisci un titolo della pagina e scegli una pagina principale. Assicurati che la pagina principale sia condivisa con la tua integrazione Notion.</string>
     <string name="hint_load_sync">Scegli una pagina che contenga già un codice di sincronizzazione Time Tracker (creato da un altro dispositivo).</string>
     <string name="error_not_a_sync_page">Questa pagina non contiene un codice di sincronizzazione Time Tracker.</string>
     <string name="btn_create">Crea</string>

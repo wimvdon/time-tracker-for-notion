@@ -529,6 +529,13 @@ function RunningView({
       style={accentColor ? { backgroundColor: accentColor + '33' } : undefined}
     >
       <div className="flex-1 flex flex-col items-center px-6 pt-6 gap-1 overflow-y-auto">
+        <PresetChips
+          workspaces={workspaces}
+          apiKey={apiKey}
+          onApplyPreset={onApplyPreset}
+          onManageClick={onManagePresetsClick}
+        />
+
         <div className="text-sm font-semibold text-zinc-100 truncate max-w-full">
           {workspaceName}
         </div>
@@ -602,13 +609,6 @@ function RunningView({
             t('btnStop')
           )}
         </button>
-
-        <PresetChips
-          workspaces={workspaces}
-          apiKey={apiKey}
-          onApplyPreset={onApplyPreset}
-          onManageClick={onManagePresetsClick}
-        />
 
         <OtherRunningTimers
           timers={runningTimers}

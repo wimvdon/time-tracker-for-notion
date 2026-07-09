@@ -54,7 +54,7 @@ export default {
   placeholderSelectSyncPage: 'Selecciona una página…',
   loadingPages: 'Cargando páginas…',
   labelParentPage: 'Crear dentro de',
-  hintCreateSync: 'Notion no permite que esta integración cree páginas en la raíz del espacio de trabajo, así que elige una página a la que tenga acceso — la página de sincronización se creará dentro de ella. Podrás moverla o renombrarla después.',
+  hintCreateSync: 'Introduce un título de página y elige una página principal. Asegúrate de que la página principal esté compartida con tu integración de Notion.',
   hintLoadSync: 'Elige una página que ya contenga un código de sincronización de Time Tracker (creado desde otro dispositivo).',
   errorNotASyncPage: 'Esta página no contiene un código de sincronización de Time Tracker.',
   toastSyncCreated: 'Página de sincronización creada',

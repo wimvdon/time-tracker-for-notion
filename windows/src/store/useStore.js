@@ -974,6 +974,10 @@ export const useStore = create((set, get) => ({
   // ---- Refresh ----
 
   refreshAll: () => {
+    const s = get();
+    if (s.apiKey && s.syncPageId) {
+      get().syncNow();
+    }
     get().loadRunningTimers();
     get().loadRecentEntries();
   },

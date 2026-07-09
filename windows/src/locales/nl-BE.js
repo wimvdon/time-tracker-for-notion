@@ -54,7 +54,7 @@ export default {
   placeholderSelectSyncPage: 'Selecteer een pagina…',
   loadingPages: 'Pagina\'s laden…',
   labelParentPage: 'Aanmaken in',
-  hintCreateSync: 'Notion staat deze integratie niet toe om pagina\'s op het hoogste niveau van de werkruimte aan te maken, kies dus een pagina waartoe ze toegang heeft — de synchronisatiepagina wordt daarin aangemaakt. Je kunt ze nadien verplaatsen of hernoemen.',
+  hintCreateSync: 'Vul een paginatitel in en kies een bovenliggende pagina. Zorg dat de bovenliggende pagina gedeeld is met je Notion-integratie.',
   hintLoadSync: 'Kies een pagina die al een Time Tracker-synchronisatiecode bevat (aangemaakt vanaf een ander apparaat).',
   errorNotASyncPage: 'Deze pagina bevat geen Time Tracker-synchronisatiecode.',
   toastSyncCreated: 'Synchronisatiepagina aangemaakt',
