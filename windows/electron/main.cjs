@@ -180,26 +180,27 @@ function rebuildTrayMenu() {
         mainWindow.webContents.send('tray:stop-timer');
       },
     });
-  } else {
-    // Preset quick-start items
-    const presetItems = [];
-    for (const ws of cachedWorkspaces) {
-      for (const preset of (ws.presets || [])) {
-        presetItems.push({ workspace: ws, preset });
-      }
+  }
+  // Preset quick-start items — always available, even while a timer is
+  // running. If one is, the renderer shows the "stop & start new" dialog
+  // instead of silently starting a second timer.
+  const presetItems = [];
+  for (const ws of cachedWorkspaces) {
+    for (const preset of (ws.presets || [])) {
+      presetItems.push({ workspace: ws, preset });
     }
-    if (presetItems.length > 0) {
-      items.push({ type: 'separator' });
-      for (const { workspace, preset } of presetItems.slice(0, 10)) {
-        const label = preset.name ? `${workspace.name} – ${preset.name}` : workspace.name;
-        items.push({
-          label: `▶ ${label}`,
-          click: () => {
-            showWindow();
-            mainWindow.webContents.send('tray:apply-preset', { workspaceId: workspace.id, preset });
-          },
-        });
-      }
+  }
+  if (presetItems.length > 0) {
+    items.push({ type: 'separator' });
+    for (const { workspace, preset } of presetItems.slice(0, 10)) {
+      const label = preset.name ? `${workspace.name} – ${preset.name}` : workspace.name;
+      items.push({
+        label: `▶ ${label}`,
+        click: () => {
+          showWindow();
+          mainWindow.webContents.send('tray:apply-preset', { workspaceId: workspace.id, preset });
+        },
+      });
     }
   }
   items.push({ type: 'separator' });
