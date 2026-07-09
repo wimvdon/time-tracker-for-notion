@@ -629,7 +629,23 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
         val updated = timer.copy(roundedStart = newStartISO, rawStart = newStartISO)
         tickStartMs = parsedMs
         _uiState.update { it.copy(activeTimer = updated) }
-        viewModelScope.launch { settingsRepo.saveActiveTimer(updated) }
+        viewModelScope.launch {
+            settingsRepo.saveActiveTimer(updated)
+            if (timer.propertyMap.timeEntryDateProp.isBlank()) return@launch
+            runCatching {
+                notionRepo.updatePageProperties(
+                    timer.notionPageId,
+                    mapOf(timer.propertyMap.timeEntryDateProp to mapOf("date" to mapOf("start" to newStartISO, "end" to null)))
+                )
+            }.onFailure { err ->
+                val msg = err.message ?: ""
+                if (isPageDeletedError(msg)) {
+                    _uiState.update { it.copy(deletedPageDialogVisible = true, deletedPageDialogTitle = timer.description.ifBlank { null }) }
+                } else {
+                    _uiState.update { it.copy(error = msg) }
+                }
+            }
+        }
     }
 
     fun handleTimerStoppedFromService(stoppedPageId: String? = null) {
@@ -884,8 +900,15 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
                     .firstOrNull { it.id == projectId }?.name ?: ""
             } else ""
 
+            // workspace.extraProps[].type is not a reliable source of the real Notion
+            // property type (it's never populated on save) — fetch the live schema,
+            // same as loadExtraFieldDefs does, to know how to parse each value.
+            val schema = if (workspace.extraProps.isNotEmpty() && workspace.timeEntriesDbId.isNotBlank()) {
+                runCatching { notionRepo.getDatabaseSchema(workspace.timeEntriesDbId) }.getOrDefault(emptyMap())
+            } else emptyMap()
             val extraValues = workspace.extraProps.associate { prop ->
-                prop.propName to parsePropertyValue(props.getAsJsonObject(prop.propName), prop.type)
+                val type = schema[prop.propName]?.type ?: prop.type
+                prop.propName to parsePropertyValue(props.getAsJsonObject(prop.propName), type)
             }
 
             val updatedTimer = _uiState.value.activeTimer?.takeIf { it.notionPageId == rt.pageId }
