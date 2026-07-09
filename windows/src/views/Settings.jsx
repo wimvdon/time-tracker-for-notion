@@ -361,7 +361,7 @@ function CreateSyncModal({ onClose }) {
     const ok = await createSyncPage(title);
     setSaving(false);
     if (ok) onClose();
-    else setError(t('errorNotASyncPage'));
+    else setError(useStore.getState().syncError || t('errorNotASyncPage'));
   };
 
   return (
@@ -422,7 +422,7 @@ function LoadSyncModal({ onClose }) {
     const ok = await loadExistingSyncPage(pageId, selected?.name || '');
     setAttaching(false);
     if (ok) onClose();
-    else setError(t('errorNotASyncPage'));
+    else setError(useStore.getState().syncError || t('errorNotASyncPage'));
   };
 
   const pageOptions = pages.items.map((p) => ({ value: p.id, label: p.name }));
