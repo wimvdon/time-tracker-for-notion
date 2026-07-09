@@ -1054,7 +1054,7 @@ private fun RecentEntriesSection(
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
+@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
 private fun PresetChips(
     workspaces: List<com.impca201.notiontimetracker.data.models.Workspace>,
