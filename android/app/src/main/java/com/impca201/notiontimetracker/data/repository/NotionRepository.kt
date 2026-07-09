@@ -60,6 +60,9 @@ class NotionRepository(
     suspend fun updatePageProperties(pageId: String, properties: Map<String, Any?>) =
         client.updatePageProperties(apiKey(), pageId, properties)
 
+    suspend fun fetchPageProperties(pageId: String) =
+        client.fetchPageProperties(apiKey(), pageId)
+
     suspend fun deletePage(pageId: String) = client.deletePage(apiKey(), pageId)
 
     suspend fun searchPages(): List<NamedOption> = client.searchPages(apiKey())

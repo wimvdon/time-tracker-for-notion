@@ -867,6 +867,37 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
         viewModelScope.launch { settingsRepo.saveActiveTimer(timer) }
         selectWorkspace(rt.workspaceId)
         syncServiceNotifications()
+
+        // The running-timers list only carries title/start/url, so fetch the page's
+        // full properties to restore its connected project and extra field values
+        // (relation, select, etc.) instead of leaving them blank.
+        viewModelScope.launch {
+            val props = runCatching { notionRepo.fetchPageProperties(rt.pageId) }.getOrNull() ?: return@launch
+            if (_uiState.value.activeTimer?.notionPageId != rt.pageId) return@launch
+
+            val relProp = rt.propertyMap.timeEntryRelationProp
+            val projectId = relProp.takeIf { it.isNotBlank() }
+                ?.let { parsePropertyValue(props.getAsJsonObject(it), "relation") }
+                ?.split(",")?.firstOrNull { it.isNotBlank() }
+            val projectName = if (projectId != null && workspace.projectsDbId.isNotBlank()) {
+                runCatching { notionRepo.fetchDatabasePages(workspace.projectsDbId) }.getOrDefault(emptyList())
+                    .firstOrNull { it.id == projectId }?.name ?: ""
+            } else ""
+
+            val extraValues = workspace.extraProps.associate { prop ->
+                prop.propName to parsePropertyValue(props.getAsJsonObject(prop.propName), prop.type)
+            }
+
+            val updatedTimer = _uiState.value.activeTimer?.takeIf { it.notionPageId == rt.pageId }
+                ?.copy(projectId = projectId, projectName = projectName, extraValues = extraValues) ?: return@launch
+
+            _uiState.update { it.copy(
+                activeTimer = updatedTimer,
+                selectedProjectId = projectId,
+                extraValues = extraValues
+            )}
+            settingsRepo.saveActiveTimer(updatedTimer)
+        }
     }
 
     fun stopOtherRunningTimer(rt: RunningTimerInfo) {
@@ -1154,6 +1185,33 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
                 "files" -> if (value.isBlank()) null
                 else mapOf("files" to listOf(mapOf("name" to "file", "external" to mapOf("url" to value.trim()))))
                 else -> null
+            }
+        }
+
+        /** Reverse of [buildPropertyValue]: reads a Notion page property's raw JSON
+         *  value back into the string format used by extraValues/ExtraFieldInput. */
+        fun parsePropertyValue(prop: com.google.gson.JsonObject?, type: String): String {
+            prop ?: return ""
+            return when (type) {
+                "rich_text" -> prop.getAsJsonArray("rich_text")
+                    ?.joinToString("") { it.asJsonObject.get("plain_text")?.asString ?: "" } ?: ""
+                "number" -> prop.get("number")?.takeIf { !it.isJsonNull }?.asString ?: ""
+                "checkbox" -> if (prop.get("checkbox")?.takeIf { !it.isJsonNull }?.asBoolean == true) "true" else "false"
+                "select" -> prop.getAsJsonObject("select")?.get("name")?.asString ?: ""
+                "status" -> prop.getAsJsonObject("status")?.get("name")?.asString ?: ""
+                "multi_select" -> prop.getAsJsonArray("multi_select")
+                    ?.joinToString(",") { it.asJsonObject.get("name")?.asString ?: "" } ?: ""
+                "date" -> prop.getAsJsonObject("date")?.get("start")?.asString ?: ""
+                "url" -> prop.get("url")?.takeIf { !it.isJsonNull }?.asString ?: ""
+                "email" -> prop.get("email")?.takeIf { !it.isJsonNull }?.asString ?: ""
+                "phone_number" -> prop.get("phone_number")?.takeIf { !it.isJsonNull }?.asString ?: ""
+                "people" -> prop.getAsJsonArray("people")
+                    ?.joinToString(",") { it.asJsonObject.get("id")?.asString ?: "" } ?: ""
+                "relation" -> prop.getAsJsonArray("relation")
+                    ?.joinToString(",") { it.asJsonObject.get("id")?.asString ?: "" } ?: ""
+                "files" -> prop.getAsJsonArray("files")?.firstOrNull()?.asJsonObject
+                    ?.getAsJsonObject("external")?.get("url")?.asString ?: ""
+                else -> ""
             }
         }
     }

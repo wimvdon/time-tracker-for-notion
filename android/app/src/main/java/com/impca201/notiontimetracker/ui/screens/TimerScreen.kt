@@ -666,7 +666,7 @@ private fun RunningView(
             var localProjectId by remember(timer.notionPageId) { mutableStateOf(uiState.selectedProjectId) }
             var localExtras by remember(timer.notionPageId) { mutableStateOf(uiState.extraValues) }
             var pendingSave by remember(timer.notionPageId) { mutableStateOf(false) }
-            LaunchedEffect(uiState.extraFieldDefs, timer.notionPageId) {
+            LaunchedEffect(uiState.extraFieldDefs, uiState.selectedProjectId, uiState.extraValues, timer.notionPageId) {
                 localProjectId = uiState.selectedProjectId
                 localExtras = uiState.extraValues
             }
