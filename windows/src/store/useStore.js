@@ -64,6 +64,15 @@ export const useStore = create((set, get) => ({
   showNotionLink: true,
   showArchiveAction: true,
 
+  // Notion-page sync
+  syncPageId: null,
+  syncPageTitle: '',
+  syncPageUrl: '',
+  settingsUpdatedAt: null,
+  lastSyncedUpdatedAt: null,
+  syncing: false,
+  syncError: null,
+
   // UI
   view: 'timer',
   toasts: [],
@@ -187,6 +196,11 @@ export const useStore = create((set, get) => ({
       locale: activeLocale,
       dateFormat: settings.dateFormat || 'DD/MM/YYYY',
       timeFormat: settings.timeFormat || '24h',
+      syncPageId: settings.syncPageId || null,
+      syncPageTitle: settings.syncPageTitle || '',
+      syncPageUrl: settings.syncPageUrl || '',
+      settingsUpdatedAt: settings.settingsUpdatedAt || null,
+      lastSyncedUpdatedAt: settings.lastSyncedUpdatedAt || null,
     });
 
     if (!settings.apiKey || !workspaces.length) {
@@ -216,6 +230,10 @@ export const useStore = create((set, get) => ({
       get().loadRecentEntries();
     }
 
+    if (settings.apiKey && settings.syncPageId) {
+      get().syncNow();
+    }
+
     get().applyTheme();
 
     // Tray preset shortcuts
@@ -232,6 +250,9 @@ export const useStore = create((set, get) => ({
         get().loadRunningTimers();
         get().loadRecentEntries();
       }
+      if (s.apiKey && s.syncPageId) {
+        get().syncNow();
+      }
     }, 60_000);
   },
 
@@ -240,11 +261,21 @@ export const useStore = create((set, get) => ({
     set({ apiKey });
   },
 
+  // Bumped whenever a synced field (workspaces/presets, theme, locale, formats,
+  // Notion-action toggles) changes, so syncNow() knows this device has local
+  // edits that need pushing.
+  touchSettingsUpdatedAt: () => {
+    const ts = new Date().toISOString();
+    set({ settingsUpdatedAt: ts });
+    api.saveSettings({ settingsUpdatedAt: ts });
+  },
+
   addWorkspace: async (workspace) => {
     const workspaces = [...get().workspaces, workspace];
     await api.saveSettings({ workspaces });
     set({ workspaces });
     api.notifySettingsChanged?.();
+    get().touchSettingsUpdatedAt();
   },
 
   updateWorkspace: async (updatedWorkspace) => {
@@ -254,6 +285,7 @@ export const useStore = create((set, get) => ({
     await api.saveSettings({ workspaces });
     set({ workspaces });
     api.notifySettingsChanged?.();
+    get().touchSettingsUpdatedAt();
     if (get().selectedWorkspaceId === updatedWorkspace.id) {
       get().selectWorkspace(updatedWorkspace.id);
     }
@@ -267,6 +299,7 @@ export const useStore = create((set, get) => ({
     [workspaces[idx], workspaces[swapIdx]] = [workspaces[swapIdx], workspaces[idx]];
     await api.saveSettings({ workspaces });
     set({ workspaces });
+    get().touchSettingsUpdatedAt();
   },
 
   deleteWorkspace: async (workspaceId) => {
@@ -282,6 +315,7 @@ export const useStore = create((set, get) => ({
     }
     set(patch);
     api.notifySettingsChanged?.();
+    get().touchSettingsUpdatedAt();
   },
 
   saveCurrentAsPreset: async (name) => {
@@ -308,6 +342,7 @@ export const useStore = create((set, get) => ({
     await api.saveSettings({ workspaces });
     set({ workspaces });
     api.notifySettingsChanged?.();
+    get().touchSettingsUpdatedAt();
   },
 
   deletePreset: async (workspaceId, presetId) => {
@@ -324,6 +359,7 @@ export const useStore = create((set, get) => ({
     await api.saveSettings({ workspaces });
     set({ workspaces });
     api.notifySettingsChanged?.();
+    get().touchSettingsUpdatedAt();
   },
 
   movePresetUp: async (workspaceId, presetId) => {
@@ -343,6 +379,7 @@ export const useStore = create((set, get) => ({
     set({ workspaces });
     api.notifySettingsChanged?.();
     await api.saveSettings({ workspaces });
+    get().touchSettingsUpdatedAt();
   },
 
   movePresetDown: async (workspaceId, presetId) => {
@@ -362,6 +399,7 @@ export const useStore = create((set, get) => ({
     set({ workspaces });
     api.notifySettingsChanged?.();
     await api.saveSettings({ workspaces });
+    get().touchSettingsUpdatedAt();
   },
 
   toggleAlwaysOnTop: async (value) => {
@@ -377,27 +415,32 @@ export const useStore = create((set, get) => ({
   setShowNotionLink: async (value) => {
     await api.saveSettings({ showNotionLink: value });
     set({ showNotionLink: value });
+    get().touchSettingsUpdatedAt();
   },
 
   setShowArchiveAction: async (value) => {
     await api.saveSettings({ showArchiveAction: value });
     set({ showArchiveAction: value });
+    get().touchSettingsUpdatedAt();
   },
 
   setLocale: async (locale) => {
     await api.saveSettings({ locale });
     setLocale(locale);
     set({ locale });
+    get().touchSettingsUpdatedAt();
   },
 
   setDateFormat: async (dateFormat) => {
     await api.saveSettings({ dateFormat });
     set({ dateFormat });
+    get().touchSettingsUpdatedAt();
   },
 
   setTimeFormat: async (timeFormat) => {
     await api.saveSettings({ timeFormat });
     set({ timeFormat });
+    get().touchSettingsUpdatedAt();
   },
 
   // ---- Workspace / project selection ----
@@ -911,6 +954,7 @@ export const useStore = create((set, get) => ({
     await api.saveSettings({ theme });
     set({ theme });
     get().applyTheme();
+    get().touchSettingsUpdatedAt();
   },
 
   applyTheme: () => {
@@ -932,6 +976,110 @@ export const useStore = create((set, get) => ({
   refreshAll: () => {
     get().loadRunningTimers();
     get().loadRecentEntries();
+  },
+
+  // ---- Notion-page sync ----
+
+  createSyncPage: async (title) => {
+    const state = get();
+    set({ syncing: true, syncError: null });
+    try {
+      const now = new Date().toISOString();
+      const payload = buildSyncPayload(state, now);
+      const { pageId } = await api.createSyncPage(title.trim(), payload);
+      await api.saveSettings({
+        syncPageId: pageId,
+        syncPageTitle: title.trim(),
+        syncPageUrl: '',
+        settingsUpdatedAt: now,
+        lastSyncedUpdatedAt: now,
+      });
+      set({
+        syncPageId: pageId,
+        syncPageTitle: title.trim(),
+        syncPageUrl: '',
+        settingsUpdatedAt: now,
+        lastSyncedUpdatedAt: now,
+        syncing: false,
+      });
+      get().addToast({ type: 'success', message: t('toastSyncCreated') });
+      return true;
+    } catch (err) {
+      set({ syncing: false, syncError: errorMessage(err) });
+      return false;
+    }
+  },
+
+  /** Attaches to an existing page; fails (returns false) if it has no sync data. */
+  loadExistingSyncPage: async (pageId, title) => {
+    set({ syncing: true, syncError: null });
+    try {
+      const result = await api.fetchSyncPage(pageId);
+      if (!result) {
+        set({ syncing: false, syncError: t('errorNotASyncPage') });
+        return false;
+      }
+      applySyncPayload(set, get, result.payload);
+      await api.saveSettings({
+        syncPageId: pageId,
+        syncPageTitle: title || '',
+        settingsUpdatedAt: result.payload.updatedAt,
+        lastSyncedUpdatedAt: result.payload.updatedAt,
+      });
+      set({
+        syncPageId: pageId,
+        syncPageTitle: title || '',
+        settingsUpdatedAt: result.payload.updatedAt,
+        lastSyncedUpdatedAt: result.payload.updatedAt,
+        syncing: false,
+      });
+      get().addToast({ type: 'success', message: t('toastSyncConnected') });
+      return true;
+    } catch (err) {
+      set({ syncing: false, syncError: errorMessage(err) });
+      return false;
+    }
+  },
+
+  disconnectSync: async () => {
+    await api.saveSettings({
+      syncPageId: undefined,
+      syncPageTitle: undefined,
+      syncPageUrl: undefined,
+      lastSyncedUpdatedAt: undefined,
+    });
+    set({ syncPageId: null, syncPageTitle: '', syncPageUrl: '', lastSyncedUpdatedAt: null });
+  },
+
+  /** Pull-or-push against the configured sync page, whichever side is newer. */
+  syncNow: async () => {
+    const state = get();
+    if (!state.apiKey || !state.syncPageId || state.syncing) return;
+    set({ syncing: true, syncError: null });
+    try {
+      const result = await api.fetchSyncPage(state.syncPageId);
+      if (!result) {
+        set({ syncing: false, syncError: t('errorNotASyncPage') });
+        return;
+      }
+      const { blockId, payload: remote } = result;
+      const local = get();
+      if (remote.updatedAt > (local.settingsUpdatedAt || '')) {
+        // Remote is newer — pull it in.
+        applySyncPayload(set, get, remote);
+        await api.saveSettings({ settingsUpdatedAt: remote.updatedAt, lastSyncedUpdatedAt: remote.updatedAt });
+        set({ settingsUpdatedAt: remote.updatedAt, lastSyncedUpdatedAt: remote.updatedAt });
+      } else if (local.settingsUpdatedAt && local.settingsUpdatedAt !== local.lastSyncedUpdatedAt) {
+        // Local has unsynced edits — push them.
+        const snapshot = buildSyncPayload(local, local.settingsUpdatedAt);
+        await api.updateSyncBlock(blockId, snapshot);
+        await api.saveSettings({ lastSyncedUpdatedAt: local.settingsUpdatedAt });
+        set({ lastSyncedUpdatedAt: local.settingsUpdatedAt });
+      }
+      set({ syncing: false });
+    } catch (err) {
+      set({ syncing: false, syncError: errorMessage(err) });
+    }
   },
 
   // ---- Edit running timer ----
@@ -1029,6 +1177,35 @@ export const useStore = create((set, get) => ({
 }));
 
 // ---- Helpers ----
+
+/** Builds the payload written to the sync page's code block. Excludes the
+ * Notion API key and device-local toggles (alwaysOnTop, startWithWindows). */
+function buildSyncPayload(state, updatedAt) {
+  return {
+    updatedAt,
+    workspaces: state.workspaces,
+    theme: state.theme,
+    locale: state.locale,
+    dateFormat: state.dateFormat,
+    timeFormat: state.timeFormat,
+    showNotionLink: state.showNotionLink,
+    showArchiveAction: state.showArchiveAction,
+  };
+}
+
+/** Applies a fetched sync payload to local state and persists it. */
+function applySyncPayload(set, get, payload) {
+  const patch = { workspaces: payload.workspaces };
+  if (payload.theme !== undefined) patch.theme = payload.theme;
+  if (payload.locale !== undefined) { setLocale(payload.locale); patch.locale = payload.locale; }
+  if (payload.dateFormat !== undefined) patch.dateFormat = payload.dateFormat;
+  if (payload.timeFormat !== undefined) patch.timeFormat = payload.timeFormat;
+  if (payload.showNotionLink !== undefined) patch.showNotionLink = payload.showNotionLink;
+  if (payload.showArchiveAction !== undefined) patch.showArchiveAction = payload.showArchiveAction;
+  api.saveSettings(patch);
+  set(patch);
+  get().applyTheme();
+}
 
 /**
  * Merges `incoming` into `current` keyed by pageId: existing entries keep their

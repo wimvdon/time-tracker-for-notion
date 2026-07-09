@@ -41,6 +41,26 @@ export default {
   labelShowNotionLink: 'Show “Open in Notion” link on active/recent timers',
   labelShowArchiveAction: 'Show archive action on active/recent timers',
 
+  // Notion-page sync
+  labelSync: 'Sync',
+  syncStatusNotConnected: 'Not connected. Create or attach a Notion page to sync workspaces, chips and settings across devices.',
+  syncStatusConnected: 'Synced with “{title}”',
+  btnCreateSyncPage: 'Create new',
+  btnLoadExistingSync: 'Load existing',
+  btnDisconnectSync: 'Disconnect',
+  btnOpenSyncPage: 'Open in Notion',
+  modalTitleCreateSync: 'Create sync page',
+  modalTitleLoadSync: 'Attach to existing page',
+  placeholderSyncPageTitle: 'Page title',
+  placeholderSelectSyncPage: 'Select a page…',
+  hintCreateSync: 'Creates a page at the top level of your Notion workspace. You can move or rename it afterwards — the app keeps track of it either way.',
+  hintLoadSync: 'Pick a page that already contains a Time Tracker sync code (created from another device).',
+  errorNotASyncPage: "This page doesn't contain a Time Tracker sync code.",
+  toastSyncCreated: 'Sync page created',
+  toastSyncConnected: 'Connected to sync page',
+  btnCreate: 'Create',
+  btnAttach: 'Attach',
+
   // Add/Edit workspace modal
   modalTitleAddWorkspace: 'Add Workspace',
   modalTitleEditWorkspace: 'Edit Workspace',
@@ -134,7 +154,6 @@ export default {
   qrWorkspaceNote: 'Scan to import this workspace on another device. API key not included.',
   btnShowQr: 'QR code',
   btnClose: 'Close',
-  qrAutoDismiss: 'Auto-hides after 30 seconds.',
 
   // Presets
   sectionPresets: 'Presets (optional)',
@@ -165,13 +184,10 @@ export default {
   dialogSavePresetPlaceholder: 'Preset name (e.g. Daily Standup)',
   presetsManageTitle: 'Manage Presets',
   tooltipPresetsShortcuts: 'All presets are added to tray shortcuts.',
-  btnGlobalQr: 'Export settings via QR',
-  qrGlobalNote: 'Scan to import settings (includes API key, workspaces, and presets).',
   dialogTimeErrorTitle: 'End time is before start time',
   dialogTimeErrorBody: 'The end time occurs before the start time. Did you mean to stop the timer on the next day?',
   btnEdit: 'Edit',
   btnNextDay: 'Next day',
-  btnDismiss: 'Dismiss',
   labelLanguage: 'Language',
   optSystem: 'System',
   labelDateFormat: 'Date format',

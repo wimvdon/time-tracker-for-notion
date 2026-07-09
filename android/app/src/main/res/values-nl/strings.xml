@@ -137,12 +137,6 @@
     <!-- QR code import -->
     <string name="btn_scan_qr">QR-code scannen om instellingen te importeren</string>
     <string name="btn_add_workspace_qr">Werkruimte toevoegen met QR-code</string>
-    <string name="btn_import_settings_qr">Scan QR-code (instellingen / werkruimte)</string>
-    <string name="qr_scan_title">QR-code scannen</string>
-    <string name="qr_scan_hint">Richt de camera op een instellingen- of werkruimte-QR-code vanuit de Windows-app.</string>
-    <string name="qr_import_success">Instellingen succesvol geïmporteerd.</string>
-    <string name="qr_import_error">Kon de QR-code-instellingen niet lezen.</string>
-    <string name="qr_permission_denied">Cameramachtiging is vereist om QR-codes te scannen.</string>
 
     <!-- Refresh -->
     <string name="btn_refresh_all">Vernieuwen</string>
@@ -181,8 +175,6 @@
 
     <!-- Per-workspace QR -->
     <string name="btn_workspace_qr">Werkruimte exporteren via QR</string>
-    <string name="qr_workspace_note">Scan om deze werkruimte te importeren op een ander apparaat. API-sleutel niet inbegrepen.</string>
-    <string name="qr_scan_hint_workspace">Richt de camera op een werkruimte-QR-code vanuit de Windows-app.</string>
 
     <!-- Additional New Strings -->
     <string name="warn_already_running_title">Timer is al actief</string>

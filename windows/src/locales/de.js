@@ -134,7 +134,6 @@ export default {
   qrWorkspaceNote: 'Scannen, um diesen Workspace auf einem anderen Gerät zu importieren. API-Schlüssel nicht enthalten.',
   btnShowQr: 'QR-Code',
   btnClose: 'Schließen',
-  qrAutoDismiss: 'Blendet sich nach 30 Sekunden automatisch aus.',
 
   // Presets
   sectionPresets: 'Vorlagen (optional)',
@@ -165,13 +164,10 @@ export default {
   dialogSavePresetPlaceholder: 'Vorlagenname (z.B. Tägliches Standup)',
   presetsManageTitle: 'Vorlagen verwalten',
   tooltipPresetsShortcuts: 'Alle Vorlagen werden zu Tray-Verknüpfungen hinzugefügt.',
-  btnGlobalQr: 'Einstellungen via QR exportieren',
-  qrGlobalNote: 'Scannen, um die Einstellungen zu importieren (inklusive API-Schlüssel, Workspaces und Vorlagen).',
   dialogTimeErrorTitle: 'Endzeit liegt vor der Startzeit',
   dialogTimeErrorBody: 'Die Endzeit liegt vor der Startzeit. Wollten Sie den Timer am nächsten Tag stoppen?',
   btnEdit: 'Bearbeiten',
   btnNextDay: 'Nächster Tag',
-  btnDismiss: 'Schließen',
   labelLanguage: 'Sprache',
   optSystem: 'System',
   labelDateFormat: 'Datumsformat',

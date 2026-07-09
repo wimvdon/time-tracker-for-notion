@@ -237,6 +237,103 @@ async function updatePageProperties(apiKey, pageId, properties) {
   return { ok: true };
 }
 
+// ---- Settings sync (stores a JSON blob in a code block on a Notion page) ----
+
+// Notion rich_text segments are capped at 2000 chars each.
+const RICH_TEXT_CHUNK_SIZE = 2000;
+
+function encodeSyncPayload(payload) {
+  const json = JSON.stringify(payload);
+  const chunks = [];
+  for (let i = 0; i < json.length; i += RICH_TEXT_CHUNK_SIZE) {
+    chunks.push(json.slice(i, i + RICH_TEXT_CHUNK_SIZE));
+  }
+  if (chunks.length === 0) chunks.push('');
+  return chunks.map((c) => ({ type: 'text', text: { content: c } }));
+}
+
+function decodeSyncPayload(richText) {
+  const json = (richText || []).map((t) => t.plain_text ?? t.text?.content ?? '').join('');
+  const data = JSON.parse(json);
+  if (!data || !Array.isArray(data.workspaces) || typeof data.updatedAt !== 'string') {
+    throw new Error('Not a valid sync page');
+  }
+  return data;
+}
+
+/**
+ * Returns all Notion pages the integration can access (for the "load existing
+ * sync page" picker).
+ * @returns [{ id, name, url }]
+ */
+async function searchPages(apiKey) {
+  const results = [];
+  let cursor;
+  do {
+    const data = await notionFetch(apiKey, 'POST', '/search', {
+      filter: { value: 'page', property: 'object' },
+      sort: { direction: 'descending', timestamp: 'last_edited_time' },
+      page_size: 100,
+      ...(cursor ? { start_cursor: cursor } : {}),
+    });
+    for (const page of data.results) {
+      const titleProp = Object.values(page.properties || {}).find((p) => p.type === 'title');
+      const name = (titleProp?.title || []).map((t) => t.plain_text).join('').trim() || '(Untitled)';
+      results.push({ id: page.id, name, url: page.url || '' });
+    }
+    cursor = data.has_more ? data.next_cursor : undefined;
+  } while (cursor);
+  return results;
+}
+
+/**
+ * Creates a new top-level Notion page (movable/renamable by the user afterward)
+ * containing the sync payload as a single JSON code block.
+ * @returns { pageId }
+ */
+async function createSyncPage(apiKey, title, payload) {
+  const data = await notionFetch(apiKey, 'POST', '/pages', {
+    parent: { type: 'workspace', workspace: true },
+    properties: {
+      title: { title: [{ text: { content: title } }] },
+    },
+    children: [
+      {
+        object: 'block',
+        type: 'code',
+        code: { language: 'json', rich_text: encodeSyncPayload(payload) },
+      },
+    ],
+  });
+  return { pageId: data.id };
+}
+
+/**
+ * Reads a page's children looking for the sync JSON code block.
+ * @returns { blockId, payload } or null if the page has no valid sync data
+ */
+async function fetchSyncPageContent(apiKey, pageId) {
+  const data = await notionFetch(apiKey, 'GET', `/blocks/${pageId}/children?page_size=100`);
+  for (const block of data.results) {
+    if (block.type !== 'code') continue;
+    try {
+      const payload = decodeSyncPayload(block.code.rich_text);
+      return { blockId: block.id, payload };
+    } catch {
+      // Not our sync block — keep looking
+    }
+  }
+  return null;
+}
+
+/** Overwrites the sync code block in place with a fresh payload. */
+async function updateSyncBlock(apiKey, blockId, payload) {
+  await notionFetch(apiKey, 'PATCH', `/blocks/${blockId}`, {
+    code: { language: 'json', rich_text: encodeSyncPayload(payload) },
+  });
+  return { ok: true };
+}
+
 module.exports = {
   testConnection,
   searchDatabases,
@@ -249,4 +346,8 @@ module.exports = {
   fetchRecentEntries,
   deletePage,
   updatePageProperties,
+  searchPages,
+  createSyncPage,
+  fetchSyncPageContent,
+  updateSyncBlock,
 };

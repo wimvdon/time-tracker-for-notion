@@ -134,7 +134,6 @@ export default {
   qrWorkspaceNote: 'Scansiona per importare questo spazio su un altro dispositivo. Chiave API non inclusa.',
   btnShowQr: 'Codice QR',
   btnClose: 'Chiudi',
-  qrAutoDismiss: 'Si nasconde automaticamente dopo 30 secondi.',
 
   // Presets
   sectionPresets: 'Preimpostazioni (opzionale)',
@@ -165,13 +164,10 @@ export default {
   dialogSavePresetPlaceholder: 'Nome preimpostazione (es. Standup giornaliero)',
   presetsManageTitle: 'Gestisci preimpostazioni',
   tooltipPresetsShortcuts: 'Tutte le preimpostazioni vengono aggiunte alle scorciatoie della barra delle applicazioni.',
-  btnGlobalQr: 'Esporta impostazioni via QR',
-  qrGlobalNote: 'Scansiona per importare tutte le impostazioni (include chiave API, spazi e preimpostazioni).',
   dialogTimeErrorTitle: 'L\'ora di fine è antecedente a quella di inizio',
   dialogTimeErrorBody: 'L\'ora di fine si colloca prima dell\'ora di inizio. Volevi fermare il timer il giorno successivo?',
   btnEdit: 'Modifica',
   btnNextDay: 'Giorno successivo',
-  btnDismiss: 'Chiudi',
   labelLanguage: 'Lingua',
   optSystem: 'Sistema',
   labelDateFormat: 'Formato data',

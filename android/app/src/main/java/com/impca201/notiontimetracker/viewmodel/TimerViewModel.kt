@@ -64,6 +64,7 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
 
     private val settingsRepo get() = (app as NotionTimeTrackerApp).settingsRepository
     private val notionRepo get() = (app as NotionTimeTrackerApp).notionRepository
+    private val syncer get() = (app as NotionTimeTrackerApp).settingsSyncer
 
     private var tickJob: Job? = null
     private var tickStartMs: Long = 0L
@@ -90,6 +91,9 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
                         loadRunningTimers()
                         loadRecentEntries()
                     }
+                }
+                if (state.apiKey.isNotBlank() && settingsRepo.getSyncPageId() != null) {
+                    runCatching { syncer.syncNow() }.onSuccess { refreshSettings() }
                 }
             }
         }
@@ -161,6 +165,10 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
             if (pending != null) {
                 pendingPreset = null
                 applyPresetById(pending.first, pending.second)
+            }
+
+            if (apiKey.isNotBlank() && settingsRepo.getSyncPageId() != null) {
+                runCatching { syncer.syncNow() }.onSuccess { refreshSettings() }
             }
         } catch (e: Exception) {
             android.util.Log.e("TimerViewModel", "Failed to load initial state", e)

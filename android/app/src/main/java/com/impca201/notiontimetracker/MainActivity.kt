@@ -22,7 +22,6 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.impca201.notiontimetracker.data.models.ThemeMode
 import com.impca201.notiontimetracker.service.TimerForegroundService
-import com.impca201.notiontimetracker.ui.screens.QrScannerScreen
 import com.impca201.notiontimetracker.ui.screens.SettingsScreen
 import com.impca201.notiontimetracker.ui.screens.TimerScreen
 import com.impca201.notiontimetracker.ui.theme.NotionTimeTrackerTheme
@@ -215,7 +214,6 @@ private fun AppNavigation(
                 onUpdatePreset = settingsViewModel::updatePreset,
                 onThemeModeChange = settingsViewModel::setThemeMode,
                 onDynamicColorChange = settingsViewModel::setDynamicColor,
-                onScanQr = { navController.navigate("qr_scan") },
                 onSnackbarDismiss = settingsViewModel::clearSnackbar,
                 onLocaleChange = { locale ->
                     settingsViewModel.setLocale(locale) {
@@ -225,25 +223,11 @@ private fun AppNavigation(
                 onDateFormatChange = settingsViewModel::setDateFormat,
                 onTimeFormatChange = settingsViewModel::setTimeFormat,
                 onShowNotionLinkChange = settingsViewModel::setShowNotionLink,
-                onShowArchiveActionChange = settingsViewModel::setShowArchiveAction
-            )
-        }
-
-        composable("qr_scan") {
-            QrScannerScreen(
-                onBack = { navController.popBackStack() },
-                onImport = { apiKey, workspaces, theme, showNotionLink, showArchiveAction ->
-                    if (apiKey != null) settingsViewModel.importApiKey(apiKey)
-                    if (workspaces != null) settingsViewModel.importWorkspaces(workspaces)
-                    if (theme != null) settingsViewModel.setThemeMode(theme)
-                    if (showNotionLink != null) settingsViewModel.setShowNotionLink(showNotionLink)
-                    if (showArchiveAction != null) settingsViewModel.setShowArchiveAction(showArchiveAction)
-                    navController.popBackStack()
-                },
-                onImportWorkspace = { workspace ->
-                    settingsViewModel.importWorkspace(workspace)
-                    navController.popBackStack()
-                }
+                onShowArchiveActionChange = settingsViewModel::setShowArchiveAction,
+                onCreateSyncPage = settingsViewModel::createSyncPage,
+                onLoadExistingSyncPage = settingsViewModel::loadExistingSyncPage,
+                onDisconnectSync = settingsViewModel::disconnectSync,
+                onSearchSyncPages = settingsViewModel::searchSyncPages
             )
         }
     }

@@ -299,6 +299,101 @@ class NotionClient {
             )
         ))
     }
+
+    // ---- Settings sync (stores a JSON blob in a code block on a Notion page) ----
+
+    private fun encodeSyncPayload(payload: SyncPayload): List<Map<String, Any>> {
+        val json = gson.toJson(payload)
+        val chunks = json.chunked(2000).ifEmpty { listOf("") }
+        return chunks.map { mapOf("type" to "text", "text" to mapOf("content" to it)) }
+    }
+
+    /**
+     * Returns all Notion pages the integration can access (for the "load
+     * existing sync page" picker).
+     */
+    suspend fun searchPages(apiKey: String): List<NamedOption> {
+        val results = mutableListOf<NamedOption>()
+        var cursor: String? = null
+        do {
+            val body = buildMap<String, Any> {
+                put("filter", mapOf("value" to "page", "property" to "object"))
+                put("sort", mapOf("direction" to "descending", "timestamp" to "last_edited_time"))
+                put("page_size", 100)
+                if (cursor != null) put("start_cursor", cursor!!)
+            }
+            val data = fetch(apiKey, "POST", "/search", body)
+            data.getAsJsonArray("results")?.forEach { el ->
+                val page = el.asJsonObject
+                val propsObj = page.getAsJsonObject("properties")
+                val titleProp = propsObj?.entrySet()?.map { it.value.asJsonObject }
+                    ?.firstOrNull { it.get("type")?.asString == "title" }
+                val name = titleProp?.getAsJsonArray("title")
+                    ?.joinToString("") { it.asJsonObject.get("plain_text")?.asString ?: "" }
+                    ?.trim()?.ifBlank { "(Untitled)" } ?: "(Untitled)"
+                results.add(NamedOption(page.get("id").asString, name))
+            }
+            cursor = if (data.get("has_more")?.asBoolean == true)
+                data.get("next_cursor")?.asString else null
+        } while (cursor != null)
+        return results
+    }
+
+    /**
+     * Creates a new top-level Notion page (movable/renamable by the user
+     * afterward) containing the sync payload as a single JSON code block.
+     * @return the new page id
+     */
+    suspend fun createSyncPage(apiKey: String, title: String, payload: SyncPayload): String {
+        val body = mapOf(
+            "parent" to mapOf("type" to "workspace", "workspace" to true),
+            "properties" to mapOf(
+                "title" to mapOf("title" to listOf(mapOf("text" to mapOf("content" to title))))
+            ),
+            "children" to listOf(
+                mapOf(
+                    "object" to "block",
+                    "type" to "code",
+                    "code" to mapOf("language" to "json", "rich_text" to encodeSyncPayload(payload))
+                )
+            )
+        )
+        val data = fetch(apiKey, "POST", "/pages", body)
+        return data.get("id").asString
+    }
+
+    /**
+     * Reads a page's children looking for the sync JSON code block.
+     * @return the block id and decoded payload, or null if the page has no
+     * valid sync data.
+     */
+    suspend fun fetchSyncPageContent(apiKey: String, pageId: String): SyncFetchResult? {
+        val data = fetch(apiKey, "GET", "/blocks/$pageId/children?page_size=100")
+        val results = data.getAsJsonArray("results") ?: return null
+        for (el in results) {
+            val block = el.asJsonObject
+            if (block.get("type")?.asString != "code") continue
+            val richText = block.getAsJsonObject("code")?.getAsJsonArray("rich_text") ?: continue
+            val json = richText.joinToString("") { rt ->
+                val rtObj = rt.asJsonObject
+                rtObj.get("plain_text")?.asString
+                    ?: rtObj.getAsJsonObject("text")?.get("content")?.asString
+                    ?: ""
+            }
+            val payload = runCatching { gson.fromJson(json, SyncPayload::class.java) }.getOrNull()
+            if (payload != null && payload.workspaces != null && !payload.updatedAt.isNullOrBlank()) {
+                return SyncFetchResult(block.get("id").asString, payload)
+            }
+        }
+        return null
+    }
+
+    /** Overwrites the sync code block in place with a fresh payload. */
+    suspend fun updateSyncBlock(apiKey: String, blockId: String, payload: SyncPayload) {
+        fetch(apiKey, "PATCH", "/blocks/$blockId", mapOf(
+            "code" to mapOf("language" to "json", "rich_text" to encodeSyncPayload(payload))
+        ))
+    }
 }
 
 private suspend fun Call.await(): Response = suspendCoroutine { cont ->

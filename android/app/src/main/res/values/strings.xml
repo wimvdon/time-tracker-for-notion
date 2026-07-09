@@ -137,12 +137,6 @@
     <!-- QR code import -->
     <string name="btn_scan_qr">Scan QR code to import settings</string>
     <string name="btn_add_workspace_qr">Add workspace via QR code</string>
-    <string name="btn_import_settings_qr">Scan QR code (settings / workspace)</string>
-    <string name="qr_scan_title">Scan QR code</string>
-    <string name="qr_scan_hint">Point the camera at a settings or workspace QR code from the Windows app.</string>
-    <string name="qr_import_success">Settings imported successfully.</string>
-    <string name="qr_import_error">Could not read QR code settings.</string>
-    <string name="qr_permission_denied">Camera permission is required to scan QR codes.</string>
 
     <!-- Refresh -->
     <string name="btn_refresh_all">Refresh</string>
@@ -181,8 +175,6 @@
 
     <!-- Per-workspace QR -->
     <string name="btn_workspace_qr">Export workspace QR</string>
-    <string name="qr_workspace_note">Scan to import this workspace on another device. API key not included.</string>
-    <string name="qr_scan_hint_workspace">Point the camera at a workspace QR code from the Windows app.</string>
 
     <!-- Additional New Strings -->
     <string name="warn_already_running_title">Timer already running</string>
@@ -210,6 +202,24 @@
     <string name="label_notion_actions">Notion entry actions</string>
     <string name="label_show_notion_link">Show “Open in Notion” link on active/recent timers</string>
     <string name="label_show_archive_action">Show archive action on active/recent timers</string>
+
+    <!-- Notion-page sync -->
+    <string name="label_sync">Sync</string>
+    <string name="sync_status_not_connected">Not connected. Create or attach a Notion page to sync workspaces, chips and settings across devices.</string>
+    <string name="sync_status_connected">Synced with “%1$s”</string>
+    <string name="btn_create_sync_page">Create new</string>
+    <string name="btn_load_existing_sync">Load existing</string>
+    <string name="btn_disconnect_sync">Disconnect</string>
+    <string name="modal_title_create_sync">Create sync page</string>
+    <string name="modal_title_load_sync">Attach to existing page</string>
+    <string name="placeholder_sync_page_title">Page title</string>
+    <string name="placeholder_select_sync_page">Select a page…</string>
+    <string name="hint_create_sync">Creates a page at the top level of your Notion workspace. You can move or rename it afterwards.</string>
+    <string name="hint_load_sync">Pick a page that already contains a Time Tracker sync code (created from another device).</string>
+    <string name="error_not_a_sync_page">This page doesn\'t contain a Time Tracker sync code.</string>
+    <string name="btn_create">Create</string>
+    <string name="btn_attach">Attach</string>
+
     <string name="language_system">System</string>
     <string name="language_en">English</string>
     <string name="language_nl">Nederlands</string>

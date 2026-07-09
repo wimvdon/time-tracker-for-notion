@@ -105,6 +105,9 @@ const store = new Store({
     lastUsedWorkspaceId: null,
     activeTimer: null,
     theme: 'auto',
+    syncPageId: null,
+    settingsUpdatedAt: null,
+    lastSyncedUpdatedAt: null,
   },
 });
 
@@ -292,6 +295,20 @@ ipcMain.handle('notion:deletePage', (_event, pageId) =>
 
 ipcMain.handle('notion:updatePage', (_event, pageId, properties) =>
   notion.updatePageProperties(store.get('apiKey'), pageId, properties)
+);
+
+ipcMain.handle('notion:searchPages', () => notion.searchPages(store.get('apiKey')));
+
+ipcMain.handle('notion:createSyncPage', (_event, title, payload) =>
+  notion.createSyncPage(store.get('apiKey'), title, payload)
+);
+
+ipcMain.handle('notion:fetchSyncPage', (_event, pageId) =>
+  notion.fetchSyncPageContent(store.get('apiKey'), pageId)
+);
+
+ipcMain.handle('notion:updateSyncBlock', (_event, blockId, payload) =>
+  notion.updateSyncBlock(store.get('apiKey'), blockId, payload)
 );
 
 ipcMain.handle('shell:openExternal', (_event, url) => shell.openExternal(url));

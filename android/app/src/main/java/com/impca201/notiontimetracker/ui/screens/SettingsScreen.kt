@@ -66,13 +66,16 @@ fun SettingsScreen(
     onUpdatePreset: (Int, com.impca201.notiontimetracker.data.models.Preset) -> Unit = { _, _ -> },
     onThemeModeChange: (ThemeMode) -> Unit,
     onDynamicColorChange: (Boolean) -> Unit,
-    onScanQr: () -> Unit,
     onSnackbarDismiss: () -> Unit,
     onLocaleChange: (String) -> Unit = {},
     onDateFormatChange: (String) -> Unit = {},
     onTimeFormatChange: (String) -> Unit = {},
     onShowNotionLinkChange: (Boolean) -> Unit = {},
-    onShowArchiveActionChange: (Boolean) -> Unit = {}
+    onShowArchiveActionChange: (Boolean) -> Unit = {},
+    onCreateSyncPage: (String) -> Unit = {},
+    onLoadExistingSyncPage: (String, String) -> Unit = { _, _ -> },
+    onDisconnectSync: () -> Unit = {},
+    onSearchSyncPages: suspend () -> List<NamedOption> = { emptyList() }
 ) {
     BackHandler(onBack = onBack)
     val snackbarHostState = remember { SnackbarHostState() }
@@ -203,15 +206,6 @@ fun SettingsScreen(
                 }
             }
 
-            OutlinedButton(
-                onClick = onScanQr,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Icon(Icons.Default.QrCodeScanner, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.width(8.dp))
-                Text(stringResource(R.string.btn_import_settings_qr))
-            }
-
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
             // --- Workspaces section ---
@@ -249,6 +243,73 @@ fun SettingsScreen(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(stringResource(R.string.btn_add_workspace))
+            }
+
+            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+
+            // --- Notion-page sync section ---
+            var showCreateSync by remember { mutableStateOf(false) }
+            var showLoadSync by remember { mutableStateOf(false) }
+
+            Text(stringResource(R.string.label_sync), style = MaterialTheme.typography.titleSmall)
+            if (uiState.syncPageId != null) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        stringResource(
+                            R.string.sync_status_connected,
+                            uiState.syncPageTitle.ifBlank { uiState.syncPageId!! }
+                        ),
+                        modifier = Modifier.weight(1f),
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    TextButton(onClick = onDisconnectSync) {
+                        Text(stringResource(R.string.btn_disconnect_sync))
+                    }
+                }
+            } else {
+                Text(
+                    stringResource(R.string.sync_status_not_connected),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodySmall
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedButton(onClick = { showCreateSync = true }, enabled = uiState.apiKey.isNotBlank()) {
+                        Text(stringResource(R.string.btn_create_sync_page))
+                    }
+                    OutlinedButton(onClick = { showLoadSync = true }, enabled = uiState.apiKey.isNotBlank()) {
+                        Text(stringResource(R.string.btn_load_existing_sync))
+                    }
+                }
+            }
+
+            // Both dialogs close themselves once the sync page id changes (success);
+            // on failure uiState.syncError is shown and the dialog stays open.
+            LaunchedEffect(uiState.syncPageId) {
+                if (uiState.syncPageId != null) {
+                    showCreateSync = false
+                    showLoadSync = false
+                }
+            }
+            if (showCreateSync) {
+                CreateSyncDialog(
+                    syncing = uiState.syncing,
+                    error = uiState.syncError,
+                    onDismiss = { showCreateSync = false },
+                    onCreate = onCreateSyncPage
+                )
+            }
+            if (showLoadSync) {
+                LoadSyncDialog(
+                    syncing = uiState.syncing,
+                    error = uiState.syncError,
+                    onDismiss = { showLoadSync = false },
+                    onSearch = onSearchSyncPages,
+                    onAttach = onLoadExistingSyncPage
+                )
             }
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
@@ -454,4 +515,120 @@ private fun WorkspaceListItem(
             }
         }
     }
+}
+
+/** Dialog to create a new top-level Notion page holding the sync payload. */
+@Composable
+private fun CreateSyncDialog(
+    syncing: Boolean,
+    error: String?,
+    onDismiss: () -> Unit,
+    onCreate: (String) -> Unit
+) {
+    var title by remember { mutableStateOf("Time Tracker Sync") }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.modal_title_create_sync)) },
+        text = {
+            Column {
+                OutlinedTextField(
+                    value = title,
+                    onValueChange = { title = it },
+                    placeholder = { Text(stringResource(R.string.placeholder_sync_page_title)) },
+                    singleLine = true,
+                    enabled = !syncing,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    stringResource(R.string.hint_create_sync),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                error?.let {
+                    Spacer(Modifier.height(8.dp))
+                    Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onCreate(title) }, enabled = !syncing && title.isNotBlank()) {
+                Text(stringResource(R.string.btn_create))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.btn_cancel)) }
+        }
+    )
+}
+
+/** Dialog to attach to an existing Notion page containing a sync code block. */
+@Composable
+private fun LoadSyncDialog(
+    syncing: Boolean,
+    error: String?,
+    onDismiss: () -> Unit,
+    onSearch: suspend () -> List<NamedOption>,
+    onAttach: (String, String) -> Unit
+) {
+    var pages by remember { mutableStateOf<List<NamedOption>>(emptyList()) }
+    var loadingPages by remember { mutableStateOf(true) }
+    var selected by remember { mutableStateOf<NamedOption?>(null) }
+    var searchError by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(Unit) {
+        loadingPages = true
+        pages = runCatching { onSearch() }.getOrElse {
+            searchError = it.message
+            emptyList()
+        }
+        loadingPages = false
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.modal_title_load_sync)) },
+        text = {
+            Column {
+                if (searchError != null) {
+                    Text(searchError!!, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                } else {
+                    SearchableDropdown(
+                        options = pages,
+                        selected = selected,
+                        placeholder = stringResource(R.string.placeholder_select_sync_page),
+                        onSelect = { selected = it },
+                        loading = loadingPages,
+                        enabled = !syncing,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    stringResource(R.string.hint_load_sync),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                error?.let {
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        if (it == "not_a_sync_page") stringResource(R.string.error_not_a_sync_page) else it,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { selected?.let { onAttach(it.id, it.name) } },
+                enabled = !syncing && selected != null
+            ) {
+                Text(stringResource(R.string.btn_attach))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.btn_cancel)) }
+        }
+    )
 }
