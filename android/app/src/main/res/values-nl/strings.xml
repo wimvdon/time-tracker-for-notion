@@ -202,6 +202,24 @@
     <string name="label_notion_actions">Notion-acties</string>
     <string name="label_show_notion_link">Toon “Openen in Notion”-link bij actieve/recente timers</string>
     <string name="label_show_archive_action">Toon archiveeractie bij actieve/recente timers</string>
+
+    <!-- Notion-page sync -->
+    <string name="label_sync">Synchronisatie</string>
+    <string name="sync_status_not_connected">Niet verbonden. Maak of koppel een Notion-pagina om werkruimtes, snelstarters en instellingen te synchroniseren tussen apparaten.</string>
+    <string name="sync_status_connected">Gesynchroniseerd met “%1$s”</string>
+    <string name="btn_create_sync_page">Nieuwe aanmaken</string>
+    <string name="btn_load_existing_sync">Bestaande laden</string>
+    <string name="btn_disconnect_sync">Ontkoppelen</string>
+    <string name="modal_title_create_sync">Synchronisatiepagina aanmaken</string>
+    <string name="modal_title_load_sync">Koppelen aan bestaande pagina</string>
+    <string name="placeholder_sync_page_title">Paginatitel</string>
+    <string name="placeholder_select_sync_page">Selecteer een pagina…</string>
+    <string name="hint_create_sync">Notion staat deze integratie niet toe om pagina\'s op het hoogste niveau van de werkruimte aan te maken, kies dus een pagina waartoe ze toegang heeft — de synchronisatiepagina wordt daarin aangemaakt. Je kunt ze nadien verplaatsen of hernoemen.</string>
+    <string name="hint_load_sync">Kies een pagina die al een Time Tracker-synchronisatiecode bevat (aangemaakt vanaf een ander apparaat).</string>
+    <string name="error_not_a_sync_page">Deze pagina bevat geen Time Tracker-synchronisatiecode.</string>
+    <string name="btn_create">Aanmaken</string>
+    <string name="btn_attach">Koppelen</string>
+
     <string name="language_system">Systeem</string>
     <string name="language_en">English</string>
     <string name="language_nl">Nederlands</string>

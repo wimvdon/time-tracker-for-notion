@@ -202,6 +202,24 @@
     <string name="label_notion_actions">Acciones de Notion</string>
     <string name="label_show_notion_link">Mostrar enlace «Abrir en Notion» en temporizadores activos/recientes</string>
     <string name="label_show_archive_action">Mostrar acción de archivar en temporizadores activos/recientes</string>
+
+    <!-- Notion-page sync -->
+    <string name="label_sync">Sincronización</string>
+    <string name="sync_status_not_connected">Sin conectar. Crea o vincula una página de Notion para sincronizar espacios, accesos directos y ajustes entre dispositivos.</string>
+    <string name="sync_status_connected">Sincronizado con «%1$s»</string>
+    <string name="btn_create_sync_page">Crear nueva</string>
+    <string name="btn_load_existing_sync">Cargar existente</string>
+    <string name="btn_disconnect_sync">Desconectar</string>
+    <string name="modal_title_create_sync">Crear página de sincronización</string>
+    <string name="modal_title_load_sync">Vincular a una página existente</string>
+    <string name="placeholder_sync_page_title">Título de la página</string>
+    <string name="placeholder_select_sync_page">Selecciona una página…</string>
+    <string name="hint_create_sync">Notion no permite que esta integración cree páginas en la raíz del espacio de trabajo, así que elige una página a la que tenga acceso — la página de sincronización se creará dentro de ella. Podrás moverla o renombrarla después.</string>
+    <string name="hint_load_sync">Elige una página que ya contenga un código de sincronización de Time Tracker (creado desde otro dispositivo).</string>
+    <string name="error_not_a_sync_page">Esta página no contiene un código de sincronización de Time Tracker.</string>
+    <string name="btn_create">Crear</string>
+    <string name="btn_attach">Vincular</string>
+
     <string name="language_system">Sistema</string>
     <string name="language_en">English</string>
     <string name="language_nl">Nederlands</string>

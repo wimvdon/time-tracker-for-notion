@@ -41,6 +41,27 @@ export default {
   labelShowNotionLink: '„In Notion öffnen“-Link bei aktiven/letzten Timern anzeigen',
   labelShowArchiveAction: 'Archivieren-Aktion bei aktiven/letzten Timern anzeigen',
 
+  // Notion-page sync
+  labelSync: 'Synchronisierung',
+  syncStatusNotConnected: 'Nicht verbunden. Erstelle oder verknüpfe eine Notion-Seite, um Workspaces, Vorlagen und Einstellungen geräteübergreifend zu synchronisieren.',
+  syncStatusConnected: 'Synchronisiert mit „{title}“',
+  btnCreateSyncPage: 'Neu erstellen',
+  btnLoadExistingSync: 'Bestehende laden',
+  btnDisconnectSync: 'Trennen',
+  modalTitleCreateSync: 'Synchronisierungsseite erstellen',
+  modalTitleLoadSync: 'Mit bestehender Seite verknüpfen',
+  placeholderSyncPageTitle: 'Seitentitel',
+  placeholderSelectSyncPage: 'Seite auswählen…',
+  loadingPages: 'Seiten werden geladen…',
+  labelParentPage: 'Erstellen in',
+  hintCreateSync: 'Notion erlaubt dieser Integration nicht, Seiten auf oberster Ebene des Workspace zu erstellen. Wähle daher eine Seite, auf die sie Zugriff hat — die Synchronisierungsseite wird darin erstellt. Du kannst sie danach verschieben oder umbenennen.',
+  hintLoadSync: 'Wähle eine Seite, die bereits einen Time-Tracker-Synchronisierungscode enthält (auf einem anderen Gerät erstellt).',
+  errorNotASyncPage: 'Diese Seite enthält keinen Time-Tracker-Synchronisierungscode.',
+  toastSyncCreated: 'Synchronisierungsseite erstellt',
+  toastSyncConnected: 'Mit Synchronisierungsseite verbunden',
+  btnCreate: 'Erstellen',
+  btnAttach: 'Verknüpfen',
+
   // Add/Edit workspace modal
   modalTitleAddWorkspace: 'Workspace hinzufügen',
   modalTitleEditWorkspace: 'Workspace bearbeiten',

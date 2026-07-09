@@ -41,6 +41,27 @@ export default {
   labelShowNotionLink: 'Mostrar enlace «Abrir en Notion» en temporizadores activos/recientes',
   labelShowArchiveAction: 'Mostrar acción de archivar en temporizadores activos/recientes',
 
+  // Notion-page sync
+  labelSync: 'Sincronización',
+  syncStatusNotConnected: 'Sin conectar. Crea o vincula una página de Notion para sincronizar espacios, accesos directos y ajustes entre dispositivos.',
+  syncStatusConnected: 'Sincronizado con «{title}»',
+  btnCreateSyncPage: 'Crear nueva',
+  btnLoadExistingSync: 'Cargar existente',
+  btnDisconnectSync: 'Desconectar',
+  modalTitleCreateSync: 'Crear página de sincronización',
+  modalTitleLoadSync: 'Vincular a una página existente',
+  placeholderSyncPageTitle: 'Título de la página',
+  placeholderSelectSyncPage: 'Selecciona una página…',
+  loadingPages: 'Cargando páginas…',
+  labelParentPage: 'Crear dentro de',
+  hintCreateSync: 'Notion no permite que esta integración cree páginas en la raíz del espacio de trabajo, así que elige una página a la que tenga acceso — la página de sincronización se creará dentro de ella. Podrás moverla o renombrarla después.',
+  hintLoadSync: 'Elige una página que ya contenga un código de sincronización de Time Tracker (creado desde otro dispositivo).',
+  errorNotASyncPage: 'Esta página no contiene un código de sincronización de Time Tracker.',
+  toastSyncCreated: 'Página de sincronización creada',
+  toastSyncConnected: 'Conectado a la página de sincronización',
+  btnCreate: 'Crear',
+  btnAttach: 'Vincular',
+
   // Add/Edit workspace modal
   modalTitleAddWorkspace: 'Añadir espacio',
   modalTitleEditWorkspace: 'Editar espacio',
