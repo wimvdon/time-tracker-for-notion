@@ -241,7 +241,8 @@ fun TimerScreen(
             onUpdateTimerDetails = onUpdateTimerDetails,
             onConfirmDelete = onConfirmDelete,
             onOpenUrl = onOpenUrl,
-            onApplyPreset = onApplyPreset
+            onApplyPreset = onApplyPreset,
+            onManagePresetsClick = { showManagePresetsDialog = true }
         )
     } else {
         IdleView(
@@ -500,7 +501,8 @@ private fun RunningView(
     onUpdateTimerDetails: (String?, String, Map<String, String>) -> Unit,
     onConfirmDelete: (String, String, Boolean) -> Unit,
     onOpenUrl: (String) -> Unit,
-    onApplyPreset: (String, Preset) -> Unit = { _, _ -> }
+    onApplyPreset: (String, Preset) -> Unit = { _, _ -> },
+    onManagePresetsClick: () -> Unit = {}
 ) {
     val timer = uiState.activeTimer ?: return
     val workspace = uiState.workspaces.firstOrNull { it.id == timer.workspaceId }
@@ -814,6 +816,13 @@ private fun RunningView(
                     Text(stringResource(R.string.btn_stop), fontSize = 18.sp, color = MaterialTheme.colorScheme.onError)
                 }
             }
+
+            PresetChips(
+                workspaces = uiState.workspaces,
+                apiKey = uiState.apiKey,
+                onApplyPreset = onApplyPreset,
+                onManageClick = onManagePresetsClick
+            )
 
             OtherRunningTimers(
                 timers = uiState.runningTimers,
