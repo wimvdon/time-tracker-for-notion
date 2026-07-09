@@ -94,13 +94,6 @@
     <string name="btn_cancel">Annuler</string>
     <string name="btn_save">Enregistrer</string>
 
-    <!-- Recovery dialog -->
-    <string name="recovery_title">Minuteur en cours</string>
-    <string name="recovery_body">Un minuteur était en cours lors de la dernière fermeture de l\'application.</string>
-    <string name="recovery_stop">Arrêter maintenant</string>
-    <string name="recovery_resume">Reprendre</string>
-    <string name="recovery_discard">Abandonner</string>
-
     <!-- Toasts / errors -->
     <string name="toast_api_key_saved">La clé API fonctionne et a été enregistrée.</string>
     <string name="toast_api_key_removed">Clé API supprimée.</string>
@@ -111,7 +104,6 @@
     <string name="toast_start_error">Impossible de démarrer le minuteur</string>
     <string name="toast_stop_error">Impossible d\'arrêter le minuteur</string>
     <string name="toast_stop_retry">Réessayer</string>
-    <string name="toast_recovery_stop_error">Impossible d\'arrêter le minuteur récupéré</string>
     <string name="title_dismiss">Fermer</string>
     <string name="btn_back">Retour</string>
     <string name="title_settings">Paramètres</string>
@@ -185,7 +177,6 @@
     <string name="deleted_page_body">La saisie n\'a pas pu être enregistrée car la page a été supprimée ou n\'est plus accessible.</string>
     <string name="deleted_page_hint">Si nécessaire, restaurez la page depuis la corbeille Notion ou recréez-la manuellement.</string>
     <string name="deleted_page_confirm">Fermer</string>
-    <string name="toast_deleted_page_discarded">Page non trouvée – saisie abandonnée.</string>
     <string name="toast_update_error">Impossible de mettre à jour le minuteur</string>
 
     <!-- Per-workspace QR -->
@@ -195,8 +186,8 @@
 
     <!-- Additional New Strings -->
     <string name="warn_already_running_title">Minuteur déjà en cours</string>
-    <string name="warn_already_running_body">Un minuteur est déjà en cours. Voulez-vous démarrer un nouveau minuteur simultanément ?</string>
-    <string name="btn_add_new_timer">Démarrer nouveau</string>
+    <string name="warn_already_running_body">Un minuteur est déjà en cours. Voulez-vous l\'arrêter et démarrer le nouveau, ou annuler ?</string>
+    <string name="btn_stop_and_start_new">Arrêter &amp; démarrer nouveau</string>
     <string name="dialog_save_preset_title">Enregistrer le préréglage</string>
     <string name="dialog_save_preset_body">Enregistrer la description et les champs actuels en tant que préréglage.</string>
     <string name="dialog_save_preset_placeholder">Nom du préréglage (ex. Standup quotidien)</string>

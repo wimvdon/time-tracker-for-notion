@@ -89,13 +89,6 @@ export default {
   btnCancel: 'Annulla',
   btnSave: 'Salva',
 
-  // Recovery modal
-  recoveryTitle: 'Timer ancora attivo',
-  recoveryBody: 'Un timer era attivo all\'ultima chiusura dell\'app.',
-  recoveryStop: 'Ferma ora',
-  recoveryResume: 'Riprendi',
-  recoveryDiscard: 'Scarta',
-
   // Toasts
   toastApiKeySaved: 'La chiave API funziona ed è stata salvata.',
   toastConnectionFailed: 'Connessione fallita',
@@ -104,7 +97,6 @@ export default {
   toastStartError: 'Impossibile avviare il timer',
   toastStopError: 'Impossibile arrestare il timer',
   toastStopRetry: 'Riprova',
-  toastRecoveryStopError: 'Impossibile arrestare il timer recuperato',
   runningTimersHeading: 'Timer attivi',
   titleStopRunningTimer: 'Arresta timer',
   titleRefreshTimers: 'Aggiorna timer attivi',
@@ -160,14 +152,13 @@ export default {
   toastUpdateError: 'Impossibile aggiornare il timer',
 
   // Deleted page
-  toastDeletedPageDiscarded: 'Pagina non trovata – registrazione scartata.',
   deletedPageTitle: 'Pagina non trovata in Notion',
   deletedPageBody: 'Impossibile salvare la registrazione perché la pagina corrispondente è stata eliminata.',
   deletedPageHint: 'Se necessario, ripristina la pagina dal cestino di Notion o ricreala manualmente.',
   deletedPageConfirm: 'Chiudi',
   warnAlreadyRunningTitle: 'Timer già attivo',
-  warnAlreadyRunningBody: 'Un timer è già attivo. Avviando uno nuovo si eseguiranno più timer contemporaneamente. Vuoi avviare o annullare?',
-  btnAddOption: 'Avvia nuovo',
+  warnAlreadyRunningBody: 'Un timer è già attivo. Vuoi fermarlo e avviare quello nuovo, oppure annullare?',
+  btnStopAndStartNew: 'Ferma e avvia nuovo',
   dialogSavePresetTitle: 'Salva preimpostazione',
   dialogSavePresetBody: 'Salva la descrizione e i campi correnti come preimpostazione.',
   dialogSavePresetOptional: 'Il nome della preimpostazione è facoltativo.',

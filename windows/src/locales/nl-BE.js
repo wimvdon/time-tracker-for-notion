@@ -89,13 +89,6 @@ export default {
   btnCancel: 'Annuleer',
   btnSave: 'Opslaan',
 
-  // Recovery modal
-  recoveryTitle: 'Timer nog actief',
-  recoveryBody: 'Een timer was nog actief toen de app sloot.',
-  recoveryStop: 'Nu stoppen',
-  recoveryResume: 'Hervatten',
-  recoveryDiscard: 'Negeren',
-
   // Toasts
   toastApiKeySaved: 'API-sleutel werkt en is opgeslagen.',
   toastConnectionFailed: 'Verbinding mislukt',
@@ -104,7 +97,6 @@ export default {
   toastStartError: 'Kon timer niet starten',
   toastStopError: 'Kon timer niet stoppen',
   toastStopRetry: 'Opnieuw proberen',
-  toastRecoveryStopError: 'Kon de herstelde timer niet stoppen',
   runningTimersHeading: 'Actieve timers',
   titleStopRunningTimer: 'Timer stoppen',
   titleRefreshTimers: 'Lopende timers vernieuwen',
@@ -156,14 +148,13 @@ export default {
   toastUpdateError: 'Kon timer niet bijwerken',
 
   // Verwijderde pagina
-  toastDeletedPageDiscarded: 'Pagina niet gevonden – registratie verwijderd.',
   deletedPageTitle: 'Pagina niet gevonden in Notion',
   deletedPageBody: 'De tijdsregistratie kon niet worden opgeslagen omdat de pagina is verwijderd of niet meer toegankelijk is.',
   deletedPageHint: 'Zet de pagina terug vanuit de Notion-prullenbak of maak hem opnieuw aan als de registratie nodig is.',
   deletedPageConfirm: 'Sluiten',
   warnAlreadyRunningTitle: 'Timer is al actief',
-  warnAlreadyRunningBody: 'Er is al een timer actief. Wil je een nieuwe starten die tegelijkertijd loopt?',
-  btnAddOption: 'Nieuwe starten',
+  warnAlreadyRunningBody: 'Er is al een timer actief. Wil je die stoppen en de nieuwe starten, of annuleren?',
+  btnStopAndStartNew: 'Stoppen & nieuwe starten',
   dialogSavePresetTitle: 'Snelstarter opslaan',
   dialogSavePresetBody: 'Sla de huidige omschrijving en geselecteerde werkruimte/velden op als een snelstarter.',
   dialogSavePresetOptional: 'De naam van de snelstarter is optioneel.',

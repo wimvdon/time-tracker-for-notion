@@ -49,7 +49,6 @@ export default function Timer() {
   const loadRunningTimers = useStore((s) => s.loadRunningTimers);
   const loadRunningTimer = useStore((s) => s.loadRunningTimer);
   const stopOtherRunningTimer = useStore((s) => s.stopOtherRunningTimer);
-  const suspendActiveToNewTimer = useStore((s) => s.suspendActiveToNewTimer);
   const recentEntries = useStore((s) => s.recentEntries);
   const recentEntriesLoading = useStore((s) => s.recentEntriesLoading);
   const loadRecentEntries = useStore((s) => s.loadRecentEntries);
@@ -317,7 +316,7 @@ export default function Timer() {
                 onClick={onConfirmAlreadyRunning}
                 className="w-full py-2 rounded-md bg-emerald-600 hover:bg-emerald-500 text-sm font-semibold text-white"
               >
-                {t('btnAddOption')}
+                {t('btnStopAndStartNew')}
               </button>
               <button
                 type="button"
@@ -491,35 +490,6 @@ function RunningView({
   const [showTimeErrorModal, setShowTimeErrorModal] = useState(false);
   const [pendingEndTime, setPendingEndTime] = useState(null);
 
-  const activeTimerInfo = timer.running ? {
-    pageId: timer.notionPageId,
-    title: description,
-    startISO: timer.startISO,
-    workspaceId: selectedWorkspaceId,
-    workspaceName: workspaceName,
-    propertyMap: timer.propertyMap,
-  } : null;
-
-  const allRunning = [...runningTimers];
-  let currentIndex = allRunning.findIndex((rt) => rt.pageId === timer.notionPageId);
-
-  if (timer.running) {
-    const activeTimerInfo = {
-      pageId: timer.notionPageId,
-      title: description,
-      startISO: timer.startISO,
-      workspaceId: selectedWorkspaceId,
-      workspaceName: workspaceName,
-      propertyMap: timer.propertyMap,
-    };
-    if (currentIndex !== -1) {
-      allRunning[currentIndex] = activeTimerInfo;
-    } else {
-      allRunning.unshift(activeTimerInfo);
-      currentIndex = 0;
-    }
-  }
-
   useEffect(() => {
     setStartInput(formatTimeStr(timer.roundedStart, timeFormat));
   }, [timer.startISO, timeFormat]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -575,52 +545,9 @@ function RunningView({
       style={workspaceColor ? { backgroundColor: workspaceColor + '33' } : undefined}
     >
       <div className="flex-1 flex flex-col items-center px-6 pt-6 gap-1 overflow-y-auto">
-        {allRunning.length > 1 ? (
-          <div className="flex flex-col items-center gap-1.5 w-full">
-            <div className="flex items-center justify-between w-full max-w-[200px]">
-              <button
-                type="button"
-                onClick={() => {
-                  const prevIndex = (currentIndex - 1 + allRunning.length) % allRunning.length;
-                  onLoadRunningTimer(allRunning[prevIndex]);
-                }}
-                className="p-1 text-zinc-400 hover:text-zinc-200 select-none text-xs leading-none"
-              >
-                ◀
-              </button>
-              <span className="text-sm font-semibold text-zinc-100 truncate px-2 text-center flex-1">
-                {workspaceName}
-              </span>
-              <button
-                type="button"
-                onClick={() => {
-                  const nextIndex = (currentIndex + 1) % allRunning.length;
-                  onLoadRunningTimer(allRunning[nextIndex]);
-                }}
-                className="p-1 text-zinc-400 hover:text-zinc-200 select-none text-xs leading-none"
-              >
-                ▶
-              </button>
-            </div>
-            <div className="flex gap-1.5 justify-center">
-              {allRunning.map((rt, idx) => (
-                <button
-                  type="button"
-                  key={rt.pageId}
-                  onClick={() => onLoadRunningTimer(rt)}
-                  className={`w-1.5 h-1.5 rounded-full transition-colors ${
-                    idx === currentIndex ? 'bg-red-400' : 'bg-zinc-600 hover:bg-zinc-500'
-                  }`}
-                  title={rt.title || rt.workspaceName}
-                />
-              ))}
-            </div>
-          </div>
-        ) : (
-          <div className="text-sm font-semibold text-zinc-100 truncate max-w-full">
-            {workspaceName}
-          </div>
-        )}
+        <div className="text-sm font-semibold text-zinc-100 truncate max-w-full">
+          {workspaceName}
+        </div>
         <input
           type="text"
           value={localDesc}

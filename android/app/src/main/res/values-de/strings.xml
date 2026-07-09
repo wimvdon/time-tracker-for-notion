@@ -94,13 +94,6 @@
     <string name="btn_cancel">Abbrechen</string>
     <string name="btn_save">Speichern</string>
 
-    <!-- Recovery dialog -->
-    <string name="recovery_title">Timer läuft noch</string>
-    <string name="recovery_body">Ein Timer lief noch, als die App zuletzt geschlossen wurde.</string>
-    <string name="recovery_stop">Jetzt stoppen</string>
-    <string name="recovery_resume">Fortsetzen</string>
-    <string name="recovery_discard">Verwerfen</string>
-
     <!-- Toasts / errors -->
     <string name="toast_api_key_saved">API-Schlüssel funktioniert und wurde gespeichert.</string>
     <string name="toast_api_key_removed">API-Schlüssel entfernt.</string>
@@ -111,7 +104,6 @@
     <string name="toast_start_error">Timer konnte nicht gestartet werden</string>
     <string name="toast_stop_error">Timer konnte nicht gestoppt werden</string>
     <string name="toast_stop_retry">Wiederholen</string>
-    <string name="toast_recovery_stop_error">Wiederhergestellter Timer konnte nicht gestoppt werden</string>
     <string name="title_dismiss">Schließen</string>
     <string name="btn_back">Zurück</string>
     <string name="title_settings">Einstellungen</string>
@@ -185,7 +177,6 @@
     <string name="deleted_page_body">Der Eintrag konnte nicht gespeichert werden, da die Seite gelöscht wurde oder nicht mehr zugänglich ist.</string>
     <string name="deleted_page_hint">Falls nötig, stellen Sie die Seite aus dem Notion-Papierkorb wieder her oder erstellen Sie sie manuell neu.</string>
     <string name="deleted_page_confirm">Schließen</string>
-    <string name="toast_deleted_page_discarded">Seite nicht gefunden – Eintrag verworfen.</string>
     <string name="toast_update_error">Timer konnte nicht aktualisiert werden</string>
 
     <!-- Per-workspace QR -->
@@ -195,8 +186,8 @@
 
     <!-- Additional New Strings -->
     <string name="warn_already_running_title">Timer läuft bereits</string>
-    <string name="warn_already_running_body">Ein Timer läuft bereits. Möchten Sie einen neuen Timer gleichzeitig starten?</string>
-    <string name="btn_add_new_timer">Neu starten</string>
+    <string name="warn_already_running_body">Ein Timer läuft bereits. Möchten Sie ihn stoppen und den neuen starten, oder abbrechen?</string>
+    <string name="btn_stop_and_start_new">Stoppen &amp; neu starten</string>
     <string name="dialog_save_preset_title">Vorlage speichern</string>
     <string name="dialog_save_preset_body">Aktuelle Beschreibung und ausgewählte Workspace/Felder als Vorlage speichern.</string>
     <string name="dialog_save_preset_placeholder">Vorlagenname (z.B. Tägliches Standup)</string>

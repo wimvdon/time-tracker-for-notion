@@ -67,12 +67,9 @@ export const useStore = create((set, get) => ({
   // UI
   view: 'timer',
   toasts: [],
-  recoveredTimer: null,
-  recoveryBusy: false,
   isStarting: false,
   isStopping: false,
   theme: 'auto',
-  suspendedTimer: null,
   showAlreadyRunningWarning: false,
   pendingStartAction: null,
 
@@ -231,7 +228,7 @@ export const useStore = create((set, get) => ({
     // 60s auto-refresh
     setInterval(() => {
       const s = get();
-      if (s.apiKey && s.workspaces.length && !s.recoveredTimer) {
+      if (s.apiKey && s.workspaces.length) {
         get().loadRunningTimers();
         get().loadRecentEntries();
       }
@@ -472,10 +469,6 @@ export const useStore = create((set, get) => ({
     if (state.timer.running || state.isStarting) return;
     set({ isStarting: true });
 
-    if (state.suspendedTimer) {
-      set({ suspendedTimer: null });
-    }
-
     const workspace = state.workspaces.find((w) => w.id === state.selectedWorkspaceId);
     if (!workspace) {
       set({ isStarting: false });
@@ -553,9 +546,10 @@ export const useStore = create((set, get) => ({
     if (get().timer.running) {
       set({
         showAlreadyRunningWarning: true,
-        pendingStartAction: () => {
-          get().suspendActiveToNewTimer();
-          action();
+        pendingStartAction: async () => {
+          const stopped = await get()._stopActivePage();
+          if (!stopped) return;
+          await action();
         }
       });
     } else {
@@ -574,17 +568,19 @@ export const useStore = create((set, get) => ({
     set({ showAlreadyRunningWarning: false, pendingStartAction: null });
   },
 
+  // Only reachable while a timer is running; stops it (via the confirmation
+  // dialog) and drops back to the idle form so a fresh timer can be composed.
   onPlusButtonClicked: () => {
-    if (get().timer.running) {
-      set({
-        showAlreadyRunningWarning: true,
-        pendingStartAction: () => {
-          get().suspendActiveToNewTimer();
-        }
-      });
-    } else {
-      get().suspendActiveToNewTimer();
-    }
+    if (!get().timer.running) return;
+    set({
+      showAlreadyRunningWarning: true,
+      pendingStartAction: async () => {
+        const stopped = await get()._stopActivePage();
+        if (!stopped) return;
+        get().loadRunningTimers();
+        get().loadRecentEntries();
+      }
+    });
   },
 
   beginTicking: ({ pageId, roundedStart, startISO, rawStart, propertyMap }) => {
@@ -640,70 +636,29 @@ export const useStore = create((set, get) => ({
     });
   },
 
-  stopTimer: async (manualEnd = null) => {
-    const { timer, suspendedTimer, addToast, isStopping } = get();
-    if (isStopping) return;
-
-    if (!timer.running && suspendedTimer) {
-      set({ isStopping: true });
-      const ws = get().workspaces.find((w) => w.id === suspendedTimer.workspaceId);
-      const rm = ws?.roundingMinutes ?? 15;
-      const rounding = rm > 0;
-      const rawStart = new Date(suspendedTimer.startISO);
-      const roundedStart = rounding ? computeStartTime(rawStart, rm) : rawStart;
-      const endTime = rounding
-        ? computeEndTime(roundedStart, manualEnd ?? new Date(), rm)
-        : manualEnd ?? new Date();
-      try {
-        await api.stopTimeEntry({
-          pageId: suspendedTimer.pageId,
-          startISO: toNotionDateTime(roundedStart),
-          endISO: toNotionDateTime(endTime),
-          props: suspendedTimer.propertyMap,
-        });
-      } catch (err) {
-        const msg = errorMessage(err);
-        set({ isStopping: false });
-        addToast({
-          type: 'error',
-          sticky: true,
-          message: `${t('toastStopError')}: ${msg}`,
-          action: { label: t('toastStopRetry'), run: () => get().stopTimer(manualEnd) },
-        });
-        return;
-      }
-      get()._markStopped(suspendedTimer.pageId);
-      const remainingRunning = get().runningTimers.filter((x) => x.pageId !== suspendedTimer.pageId);
-      api.saveSettings({ activeTimer: null });
-      if (remainingRunning.length > 0) {
-        set({ timer: { ...idleTimer }, description: '', suspendedTimer: null, runningTimers: remainingRunning, isStopping: false });
-        get().loadRunningTimer(remainingRunning[0]);
-      } else {
-        api.setTimerRunning(false);
-        set({ timer: { ...idleTimer }, description: '', suspendedTimer: null, runningTimers: [], isStopping: false });
-      }
-      get().loadRunningTimers();
-      get().loadRecentEntries();
-      return;
-    }
-
-    if (!timer.running) return;
-    set({ isStopping: true });
+  /**
+   * Stops the currently active timer's Notion page and clears the local
+   * "active" slot (tray reset to idle). Does not touch `runningTimers` or
+   * decide what happens next — callers do that (promote another running
+   * timer, leave idle, or immediately start a new one). Returns true on
+   * success, false if the write failed (a toast/dialog is shown either way).
+   */
+  _stopActivePage: async (manualEnd = null) => {
+    const { timer, addToast } = get();
+    if (!timer.running) return true;
 
     const rm = get().getRoundingMinutes();
     const rounding = rm > 0;
     const rawStart = new Date(timer.rawStart);
-    if (manualEnd) {
-      if (manualEnd.getTime() < rawStart.getTime()) {
-        set({ isStopping: false });
-        addToast({ type: 'error', message: t('toastEndBeforeStart') });
-        return;
-      }
+    if (manualEnd && manualEnd.getTime() < rawStart.getTime()) {
+      addToast({ type: 'error', message: t('toastEndBeforeStart') });
+      return false;
     }
     const roundedStart = rounding ? computeStartTime(rawStart, rm) : rawStart;
     const endTime = rounding
       ? computeEndTime(roundedStart, manualEnd ?? new Date(), rm)
       : manualEnd ?? new Date();
+
     try {
       await api.stopTimeEntry({
         pageId: timer.notionPageId,
@@ -713,37 +668,46 @@ export const useStore = create((set, get) => ({
       });
     } catch (err) {
       const msg = errorMessage(err);
-      // Check if the page was deleted (404)
       if (isPageDeletedError(msg)) {
         get()._showDeletedPageDialog(timer);
-        return;
+        return false;
       }
-      set({ isStopping: false });
       addToast({
         type: 'error',
         sticky: true,
         message: `${t('toastStopError')}: ${msg}`,
-        action: { label: t('toastStopRetry'), run: () => get().stopTimer() },
+        action: { label: t('toastStopRetry'), run: () => get().stopTimer(manualEnd) },
       });
-      return;
+      return false;
     }
 
     clearInterval(timer.tickInterval);
     get()._markStopped(timer.notionPageId);
-    const remainingRunning = get().runningTimers.filter((x) => x.pageId !== timer.notionPageId);
     api.saveSettings({ activeTimer: null });
+    api.setTimerRunning(false);
 
     const extraValues = {};
     for (const def of get().extraFieldDefs) {
       extraValues[def.name] = emptyValueFor(def.type);
     }
+    set({ timer: { ...idleTimer }, description: '', extraValues });
+    return true;
+  },
 
+  stopTimer: async (manualEnd = null) => {
+    const { timer, isStopping } = get();
+    if (isStopping || !timer.running) return;
+    set({ isStopping: true });
+
+    const stoppedPageId = timer.notionPageId;
+    const ok = await get()._stopActivePage(manualEnd);
+    set({ isStopping: false });
+    if (!ok) return;
+
+    const remainingRunning = get().runningTimers.filter((x) => x.pageId !== stoppedPageId);
+    set({ runningTimers: remainingRunning });
     if (remainingRunning.length > 0) {
-      set({ timer: { ...idleTimer }, description: '', extraValues, runningTimers: remainingRunning, isStopping: false });
       get().loadRunningTimer(remainingRunning[0]);
-    } else {
-      api.setTimerRunning(false);
-      set({ timer: { ...idleTimer }, description: '', extraValues, runningTimers: [], isStopping: false });
     }
     get().loadRunningTimers();
     get().loadRecentEntries();
@@ -752,8 +716,8 @@ export const useStore = create((set, get) => ({
   // ---- Running timers loaded from Notion ----
 
   loadRunningTimers: async () => {
-    const { workspaces, apiKey, recoveredTimer, runningTimersLoading } = get();
-    if (!apiKey || !workspaces.length || recoveredTimer || runningTimersLoading) return;
+    const { workspaces, apiKey, runningTimersLoading } = get();
+    if (!apiKey || !workspaces.length || runningTimersLoading) return;
 
     set({ runningTimersLoading: true });
     const allRunning = [];
@@ -803,7 +767,7 @@ export const useStore = create((set, get) => ({
         set({ timer: { ...idleTimer } });
         get().addToast({ type: 'info', message: t('timerStoppedElsewhere') });
       }
-    } else if (!activeTimer.running && visibleRunning.length > 0 && !get().suspendedTimer) {
+    } else if (!activeTimer.running && visibleRunning.length > 0) {
       get().loadRunningTimer(visibleRunning[0]);
     }
   },
@@ -814,8 +778,8 @@ export const useStore = create((set, get) => ({
   },
 
   loadRecentEntries: async () => {
-    const { workspaces, apiKey, recoveredTimer, recentEntriesLoading } = get();
-    if (!apiKey || !workspaces.length || recoveredTimer || recentEntriesLoading) return;
+    const { workspaces, apiKey, recentEntriesLoading } = get();
+    if (!apiKey || !workspaces.length || recentEntriesLoading) return;
 
     set({ recentEntriesLoading: true });
     const allRecent = [];
@@ -880,35 +844,6 @@ export const useStore = create((set, get) => ({
 
   openNotionPage: (url) => { api.openExternal(url); },
 
-  suspendActiveToNewTimer: () => {
-    const state = get();
-    if (!state.timer.running) return;
-
-    const aside = {
-      pageId: state.timer.notionPageId,
-      title: state.description || '',
-      startISO: state.timer.startISO,
-      workspaceId: state.selectedWorkspaceId || '',
-      workspaceName: state.workspaces.find((w) => w.id === state.selectedWorkspaceId)?.name || '',
-      propertyMap: state.timer.propertyMap,
-    };
-
-    clearInterval(state.timer.tickInterval);
-    api.saveSettings({ activeTimer: null });
-    // No timer is shown in the running view now, so reset the tray icon to idle.
-    api.setTimerRunning(false);
-
-    const alreadyExists = state.runningTimers.some((t) => t.pageId === aside.pageId);
-    const newRunning = alreadyExists ? state.runningTimers : [...state.runningTimers, aside];
-
-    set({
-      timer: { ...idleTimer },
-      description: '',
-      runningTimers: newRunning,
-      suspendedTimer: aside,
-    });
-  },
-
   loadRunningTimer: async (rt) => {
     const state = get();
 
@@ -936,7 +871,7 @@ export const useStore = create((set, get) => ({
 
     // Only update description; leave runningTimers untouched so the list stays stable.
     // The active/inactive styling is derived from timer.notionPageId, not the list order.
-    set({ description: rt.title, suspendedTimer: null });
+    set({ description: rt.title });
 
     get().beginTicking({
       pageId: rt.pageId,
@@ -962,87 +897,12 @@ export const useStore = create((set, get) => ({
         props: rt.propertyMap,
       });
       get()._markStopped(rt.pageId);
-      const isSuspended = get().suspendedTimer?.pageId === rt.pageId;
-      const remainingRunning = get().runningTimers.filter((x) => x.pageId !== rt.pageId);
-      set((s) => ({
-        runningTimers: remainingRunning,
-        suspendedTimer: isSuspended ? null : s.suspendedTimer
-      }));
-      if (isSuspended && remainingRunning.length > 0) {
-        get().loadRunningTimer(remainingRunning[0]);
-      }
+      set((s) => ({ runningTimers: s.runningTimers.filter((x) => x.pageId !== rt.pageId) }));
       get().loadRunningTimers();
       get().loadRecentEntries();
     } catch (err) {
       get().addToast({ type: 'error', message: `${t('toastStopError')}: ${errorMessage(err)}` });
     }
-  },
-
-  // ---- Crash recovery ----
-
-  resumeRecoveredTimer: async () => {
-    const recovered = get().recoveredTimer;
-    if (!recovered) return;
-    set({ recoveredTimer: null, description: recovered.description || '', view: 'timer' });
-    if (recovered.workspaceId) {
-      await get().selectWorkspace(recovered.workspaceId);
-      set({ selectedProjectId: recovered.projectId || null });
-    }
-    get().beginTicking({
-      pageId: recovered.notionPageId,
-      roundedStart: new Date(recovered.roundedStart),
-      startISO: recovered.roundedStart,
-      rawStart: new Date(recovered.rawStart || recovered.roundedStart),
-      propertyMap: recovered.propertyMap,
-    });
-  },
-
-  stopRecoveredTimer: async () => {
-    const recovered = get().recoveredTimer;
-    if (!recovered) return;
-    set({ recoveryBusy: true });
-    const workspace = get().workspaces.find((w) => w.id === recovered.workspaceId);
-    const rounding = workspace?.roundingMinutes ?? 15;
-    const rawStart = new Date(recovered.rawStart || recovered.roundedStart);
-    const roundedStart = rounding > 0 ? computeStartTime(rawStart, rounding) : rawStart;
-    const endTime =
-      rounding > 0
-        ? computeEndTime(roundedStart, new Date(), rounding)
-        : new Date();
-    try {
-      await api.stopTimeEntry({
-        pageId: recovered.notionPageId,
-        startISO: toNotionDateTime(roundedStart),
-        endISO: toNotionDateTime(endTime),
-        props: recovered.propertyMap,
-      });
-    } catch (err) {
-      const msg = errorMessage(err);
-      set({ recoveryBusy: false });
-      if (isPageDeletedError(msg)) {
-        // Page was deleted — just discard locally
-        api.saveSettings({ activeTimer: null });
-        set({ recoveredTimer: null, recoveryBusy: false });
-        get().addToast({ type: 'info', message: t('toastDeletedPageDiscarded') });
-        get().loadRunningTimers();
-        get().loadRecentEntries();
-        return;
-      }
-      get().addToast({ type: 'error', message: `${t('toastRecoveryStopError')}: ${msg}` });
-      return;
-    }
-    api.saveSettings({ activeTimer: null });
-    set({ recoveredTimer: null, recoveryBusy: false });
-    get().loadRunningTimers();
-    get().loadRecentEntries();
-    get().loadRecentEntries();
-  },
-
-  discardRecoveredTimer: () => {
-    api.saveSettings({ activeTimer: null });
-    set({ recoveredTimer: null });
-    get().loadRunningTimers();
-    get().loadRecentEntries();
   },
 
   // ---- Theme ----

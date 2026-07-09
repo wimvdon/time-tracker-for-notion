@@ -89,13 +89,6 @@ export default {
   btnCancel: 'Abbrechen',
   btnSave: 'Speichern',
 
-  // Recovery modal
-  recoveryTitle: 'Timer läuft noch',
-  recoveryBody: 'Ein Timer lief noch, als die App zuletzt geschlossen wurde.',
-  recoveryStop: 'Jetzt stoppen',
-  recoveryResume: 'Fortsetzen',
-  recoveryDiscard: 'Verwerfen',
-
   // Toasts
   toastApiKeySaved: 'API-Schlüssel funktioniert und wurde gespeichert.',
   toastConnectionFailed: 'Verbindung fehlgeschlagen',
@@ -104,7 +97,6 @@ export default {
   toastStartError: 'Timer konnte nicht gestartet werden',
   toastStopError: 'Timer konnte nicht gestoppt werden',
   toastStopRetry: 'Wiederholen',
-  toastRecoveryStopError: 'Wiederhergestellter Timer konnte nicht gestoppt werden',
   runningTimersHeading: 'Aktive Timer',
   titleStopRunningTimer: 'Timer stoppen',
   titleRefreshTimers: 'Laufende Timer aktualisieren',
@@ -160,14 +152,13 @@ export default {
   toastUpdateError: 'Timer konnte nicht aktualisiert werden',
 
   // Deleted page
-  toastDeletedPageDiscarded: 'Seite nicht gefunden – Eintrag verworfen.',
   deletedPageTitle: 'Seite nicht in Notion gefunden',
   deletedPageBody: 'Der Eintrag konnte nicht gespeichert werden, da die Seite gelöscht wurde oder nicht mehr zugänglich ist.',
   deletedPageHint: 'Falls nötig, stellen Sie die Seite aus dem Notion-Papierkorb wieder her oder erstellen Sie sie manuell neu.',
   deletedPageConfirm: 'Schließen',
   warnAlreadyRunningTitle: 'Timer läuft bereits',
-  warnAlreadyRunningBody: 'Ein Timer läuft bereits. Wenn Sie einen neuen starten, laufen mehrere Timer gleichzeitig. Möchten Sie den neuen Timer starten oder abbrechen?',
-  btnAddOption: 'Neu starten',
+  warnAlreadyRunningBody: 'Ein Timer läuft bereits. Möchten Sie ihn stoppen und den neuen starten, oder abbrechen?',
+  btnStopAndStartNew: 'Stoppen & neu starten',
   dialogSavePresetTitle: 'Vorlage speichern',
   dialogSavePresetBody: 'Aktuelle Beschreibung und ausgewählte Workspace/Felder als Vorlage speichern.',
   dialogSavePresetOptional: 'Der Vorlagenname ist optional.',
