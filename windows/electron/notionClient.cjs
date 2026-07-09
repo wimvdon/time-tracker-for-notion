@@ -237,6 +237,15 @@ async function updatePageProperties(apiKey, pageId, properties) {
   return { ok: true };
 }
 
+/**
+ * Fetches a page's raw `properties` map, used to restore extra-field values
+ * (e.g. connected project) when loading an already-running timer.
+ */
+async function getPageProperties(apiKey, pageId) {
+  const data = await notionFetch(apiKey, 'GET', `/pages/${pageId}`);
+  return data.properties || {};
+}
+
 // ---- Settings sync (stores a JSON blob in a code block on a Notion page) ----
 
 // Notion rich_text segments are capped at 2000 chars each.
@@ -349,6 +358,7 @@ module.exports = {
   fetchRecentEntries,
   deletePage,
   updatePageProperties,
+  getPageProperties,
   searchPages,
   createSyncPage,
   fetchSyncPageContent,

@@ -3,7 +3,7 @@ import { computeStartTime, computeEndTime } from '../lib/rounding.js';
 import { toNotionDateTime, formatDateStr } from '../lib/format.js';
 import { t, setLocale } from '../lib/i18n.js';
 import { errorMessage } from '../lib/errors.js';
-import { WRITABLE_EXTRA_TYPES, emptyValueFor, buildPropertyValue } from '../lib/notionValues.js';
+import { WRITABLE_EXTRA_TYPES, emptyValueFor, buildPropertyValue, parsePropertyValue } from '../lib/notionValues.js';
 
 const api = window.notionAPI;
 
@@ -923,6 +923,47 @@ export const useStore = create((set, get) => ({
       rawStart: new Date(rt.startISO),
       propertyMap: rt.propertyMap,
     });
+
+    // The running-timers list only carries title/start/url, so fetch the page's
+    // full properties to restore its connected project and extra field values
+    // (relation, select, etc.) instead of leaving them blank.
+    const workspace = get().workspaces.find((w) => w.id === rt.workspaceId);
+    if (!workspace) return;
+    try {
+      const props = await api.getPageProperties(rt.pageId);
+      if (get().timer.notionPageId !== rt.pageId) return;
+
+      const relProp = rt.propertyMap?.timeEntryRelationProp;
+      const projectId = relProp ? parsePropertyValue('relation', props[relProp]) || null : null;
+      let projectName = '';
+      if (projectId && workspace.projectsDbId) {
+        const pages = await api.fetchDatabasePages(workspace.projectsDbId).catch(() => []);
+        projectName = pages.find((p) => p.id === projectId)?.name ?? '';
+      }
+
+      const extraValues = {};
+      for (const def of get().extraFieldDefs) {
+        extraValues[def.name] = parsePropertyValue(def.type, props[def.name]);
+      }
+
+      if (get().timer.notionPageId !== rt.pageId) return;
+      set({ selectedProjectId: projectId, extraValues });
+      api.saveSettings({
+        activeTimer: {
+          notionPageId: rt.pageId,
+          roundedStart: rt.startISO,
+          rawStart: rt.startISO,
+          workspaceId: rt.workspaceId,
+          projectId,
+          projectName,
+          description: rt.title,
+          propertyMap: rt.propertyMap,
+        },
+      });
+    } catch {
+      // Keep the blank project/extra values on failure — the timer itself is
+      // already loaded and usable.
+    }
   },
 
   stopOtherRunningTimer: async (rt) => {

@@ -28,6 +28,10 @@ fun EditTimerModal(
     var description by remember(timer.notionPageId) { mutableStateOf(timer.description) }
     var selectedProjectId by remember(timer.notionPageId) { mutableStateOf(timer.projectId) }
     var extraValues by remember(timer.notionPageId) { mutableStateOf(uiState.extraValues) }
+    LaunchedEffect(uiState.extraFieldDefs, timer.projectId, uiState.extraValues, timer.notionPageId) {
+        selectedProjectId = timer.projectId
+        extraValues = uiState.extraValues
+    }
 
     val scrollState = rememberScrollState()
 

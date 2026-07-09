@@ -91,3 +91,54 @@ export function buildPropertyValue(type, value) {
       return null;
   }
 }
+
+/** "2026-06-11T09:30:00.000+02:00" -> "2026-06-11T09:30" (local), for <input type="datetime-local">. */
+function isoToDateTimeLocal(iso) {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+/**
+ * Reverse of buildPropertyValue: reads a page's raw Notion property value
+ * back into the input value shape used by extraValues/ExtraFieldInput.
+ *
+ * @param {string} type   Notion property type (one of WRITABLE_EXTRA_TYPES)
+ * @param {object} prop   The raw property object from the Notion API, e.g. `page.properties[name]`
+ */
+export function parsePropertyValue(type, prop) {
+  if (!prop) return emptyValueFor(type);
+  switch (type) {
+    case 'rich_text':
+      return (prop.rich_text || []).map((t) => t.plain_text ?? '').join('');
+    case 'number':
+      return typeof prop.number === 'number' ? String(prop.number) : '';
+    case 'select':
+      return prop.select?.name ?? '';
+    case 'status':
+      return prop.status?.name ?? '';
+    case 'multi_select':
+      return (prop.multi_select || []).map((o) => o.name);
+    case 'date':
+      return prop.date?.start ? isoToDateTimeLocal(prop.date.start) : '';
+    case 'checkbox':
+      return !!prop.checkbox;
+    case 'url':
+      return prop.url ?? '';
+    case 'email':
+      return prop.email ?? '';
+    case 'phone_number':
+      return prop.phone_number ?? '';
+    case 'people':
+      return prop.people?.[0]?.id ?? '';
+    case 'relation':
+      return prop.relation?.[0]?.id ?? '';
+    case 'files': {
+      const file = prop.files?.[0];
+      return file?.external?.url ?? file?.file?.url ?? '';
+    }
+    default:
+      return emptyValueFor(type);
+  }
+}

@@ -277,6 +277,13 @@ class NotionClient {
         fetch(apiKey, "PATCH", "/pages/$pageId", mapOf("properties" to properties.filterValues { it != null }))
     }
 
+    /** Fetches a page's raw `properties` object, used to restore extra-field
+     *  values (e.g. connected project) when loading an already-running timer. */
+    suspend fun fetchPageProperties(apiKey: String, pageId: String): JsonObject {
+        val data = fetch(apiKey, "GET", "/pages/$pageId")
+        return data.getAsJsonObject("properties") ?: JsonObject()
+    }
+
     suspend fun deletePage(apiKey: String, pageId: String) {
         fetch(apiKey, "PATCH", "/pages/$pageId", mapOf("archived" to true))
     }
