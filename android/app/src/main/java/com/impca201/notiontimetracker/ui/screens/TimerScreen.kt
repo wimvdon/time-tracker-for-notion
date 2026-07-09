@@ -26,6 +26,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import com.impca201.notiontimetracker.ui.components.parseWorkspaceColor
+import com.impca201.notiontimetracker.ui.theme.workspaceAccentColor
+import com.impca201.notiontimetracker.ui.theme.workspaceSolidFillColor
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
@@ -416,7 +418,7 @@ private fun IdleView(
                     !uiState.isStarting
 
             val selectedWorkspace = uiState.workspaces.firstOrNull { it.id == uiState.selectedWorkspaceId }
-            val startWorkspaceColor = selectedWorkspace?.color?.ifBlank { null }?.let { parseWorkspaceColor(it) }
+            val startWorkspaceColor = workspaceSolidFillColor(selectedWorkspace?.color)
             val buttonColor = startWorkspaceColor ?: MaterialTheme.colorScheme.tertiary
             val onButtonColor = if (startWorkspaceColor != null) Color.White else MaterialTheme.colorScheme.onTertiary
 
@@ -588,6 +590,7 @@ private fun RunningView(
     }
 
     val workspaceColor = workspace?.color?.ifBlank { null }?.let { parseWorkspaceColor(it) }
+    val workspaceAccent = workspaceAccentColor(workspace?.color)
     val scaffoldBg = if (workspaceColor != null) {
         val bg = MaterialTheme.colorScheme.background
         val alpha = 0.20f
@@ -680,7 +683,7 @@ private fun RunningView(
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedTextColor = MaterialTheme.colorScheme.onBackground,
                         unfocusedTextColor = MaterialTheme.colorScheme.onBackground,
-                        focusedBorderColor = workspaceColor ?: MaterialTheme.colorScheme.primary,
+                        focusedBorderColor = workspaceAccent ?: MaterialTheme.colorScheme.primary,
                         unfocusedBorderColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.3f)
                     )
                 )
@@ -1049,7 +1052,7 @@ private fun PresetChips(
         verticalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterVertically)
     ) {
         allPresets.forEach { (ws, preset) ->
-            val wsColor = parseWorkspaceColor(ws.color)
+            val wsColor = workspaceAccentColor(ws.color)
             val chipLabel = if (preset.name.isBlank() || preset.name == ws.name) "▶ ${ws.name}" else "▶ ${ws.name} – ${preset.name}"
             SuggestionChip(
                 onClick = { onApplyPreset(ws.id, preset) },
