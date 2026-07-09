@@ -385,11 +385,53 @@ class NotionClient {
             }
             val payload = runCatching { gson.fromJson(json, SyncPayload::class.java) }.getOrNull()
             if (payload != null && payload.workspaces != null && !payload.updatedAt.isNullOrBlank()) {
-                return SyncFetchResult(block.get("id").asString, payload)
+                return SyncFetchResult(block.get("id").asString, sanitizeSyncPayload(payload))
             }
         }
         return null
     }
+
+    /**
+     * Gson decodes via reflection and bypasses Kotlin's null-safety: any field
+     * missing from the incoming JSON — e.g. `extraProps[].type`, which the
+     * Windows app never writes since it derives that from the live Notion
+     * schema instead of storing it — becomes `null` at runtime despite the
+     * non-nullable Kotlin type. Left alone, that null crashes later when
+     * kotlinx.serialization re-persists it locally (it enforces non-null for
+     * real). Normalize everything to safe defaults right after decoding so
+     * cross-platform/older payloads can never carry that null further.
+     */
+    private fun sanitizeSyncPayload(payload: SyncPayload): SyncPayload =
+        payload.copy(workspaces = payload.workspaces.map { ws ->
+            ws.copy(
+                id = ws.id ?: java.util.UUID.randomUUID().toString(),
+                name = ws.name ?: "",
+                timeEntriesDbId = ws.timeEntriesDbId ?: "",
+                projectsDbId = ws.projectsDbId ?: "",
+                color = ws.color ?: "",
+                propertyMap = (ws.propertyMap ?: PropertyMap()).let { pm ->
+                    pm.copy(
+                        timeEntryTitleProp = pm.timeEntryTitleProp ?: "",
+                        timeEntryDateProp = pm.timeEntryDateProp ?: "",
+                        timeEntryStatusProp = pm.timeEntryStatusProp ?: "",
+                        timeEntryStatusRunning = pm.timeEntryStatusRunning ?: "",
+                        timeEntryRelationProp = pm.timeEntryRelationProp ?: "",
+                        timeEntryStatusDone = pm.timeEntryStatusDone ?: ""
+                    )
+                },
+                extraProps = (ws.extraProps ?: emptyList()).map { ep ->
+                    ep.copy(propName = ep.propName ?: "", type = ep.type ?: "rich_text")
+                },
+                presets = (ws.presets ?: emptyList()).map { p ->
+                    p.copy(
+                        id = p.id ?: java.util.UUID.randomUUID().toString(),
+                        name = p.name ?: "",
+                        pageTitle = p.pageTitle ?: "",
+                        extraValues = (p.extraValues ?: emptyMap()).mapValues { it.value ?: "" }
+                    )
+                }
+            )
+        })
 
     /** Overwrites the sync code block in place with a fresh payload. */
     suspend fun updateSyncBlock(apiKey: String, blockId: String, payload: SyncPayload) {
