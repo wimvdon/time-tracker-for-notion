@@ -535,13 +535,13 @@ function RunningView({
       className="flex flex-col h-full"
       style={accentColor ? { backgroundColor: accentColor + '33' } : undefined}
     >
-      <div className="flex-1 flex flex-col items-center px-6 pt-6 gap-1 overflow-y-auto">
+      <div className="flex-1 flex flex-col items-center px-6 pt-6 overflow-y-auto">
         <PresetChips
           workspaces={workspaces}
           apiKey={apiKey}
           onApplyPreset={onApplyPreset}
           onManageClick={onManagePresetsClick}
-          className="mb-2"
+          className="mb-3"
         />
 
         <div className="text-sm font-semibold text-zinc-100 truncate max-w-full">
@@ -554,7 +554,7 @@ function RunningView({
           onBlur={() => updateTimerDetails(selectedProjectId, localDesc, localExtras)}
           onKeyDown={blurOnEnter}
           placeholder={t('placeholderDescription')}
-          className="w-full bg-transparent border border-transparent hover:border-zinc-700 focus:border-zinc-600 rounded-md px-2 py-0.5 text-sm text-zinc-200 text-center placeholder-zinc-600 outline-none transition-colors"
+          className="mt-1 w-full bg-transparent border border-transparent hover:border-zinc-700 focus:border-zinc-600 rounded-md px-2 py-0.5 text-sm text-zinc-200 text-center placeholder-zinc-600 outline-none transition-colors"
         />
 
         <div className="mt-6 text-5xl font-mono font-bold tabular-nums text-red-400">
@@ -589,7 +589,7 @@ function RunningView({
         <p className="mt-1 text-xs text-zinc-600 w-full">{t('hintManualEnd')}</p>
 
         {extraFieldDefs.length > 0 && (
-          <div className="mt-3 w-full flex flex-col gap-3">
+          <div className="mt-4 w-full flex flex-col gap-3">
             {extraFieldDefs.map((def) => (
               <ExtraFieldInput
                 key={def.name}
@@ -609,7 +609,7 @@ function RunningView({
         <button
           onClick={() => handleStop()}
           disabled={isStopping}
-          className="mt-4 w-full py-3 rounded-lg bg-red-600 hover:bg-red-500 active:bg-red-700 font-semibold text-lg transition-colors flex items-center justify-center disabled:opacity-50"
+          className="mt-5 w-full py-3 rounded-lg bg-red-600 hover:bg-red-500 active:bg-red-700 font-semibold text-lg transition-colors flex items-center justify-center disabled:opacity-50"
         >
           {isStopping ? (
             <span className="animate-spin inline-block w-5 h-5 border-2 border-current border-t-transparent rounded-full" />
@@ -809,7 +809,7 @@ function PresetChips({ workspaces, apiKey, onApplyPreset, onManageClick, classNa
 function OtherRunningTimers({ timers, loading, activePageId, onLoad, onStop, onDelete, onOpenUrl }) {
   if (!timers.length) return null;
   return (
-    <div className="w-full mt-4 pt-3 border-t border-zinc-700">
+    <div className="w-full mt-6 pt-3 border-t border-zinc-700">
       <div className="mb-2">
         <span className="text-xs text-zinc-500">{t('runningTimersHeading')}</span>
       </div>
@@ -855,7 +855,7 @@ function RecentEntries({ entries, loading, onDelete, onOpenUrl }) {
   const showArchiveAction = useStore((s) => s.showArchiveAction);
   if (!entries.length) return null;
   return (
-    <div className="w-full mt-4 pt-3 border-t border-zinc-700">
+    <div className="w-full mt-6 pt-3 border-t border-zinc-700">
       <div className="flex items-center justify-between mb-2">
         <span className="text-xs text-zinc-500">{t('recentEntriesHeading')}</span>
       </div>

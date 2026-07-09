@@ -884,8 +884,15 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
                     .firstOrNull { it.id == projectId }?.name ?: ""
             } else ""
 
+            // workspace.extraProps[].type is not a reliable source of the real Notion
+            // property type (it's never populated on save) — fetch the live schema,
+            // same as loadExtraFieldDefs does, to know how to parse each value.
+            val schema = if (workspace.extraProps.isNotEmpty() && workspace.timeEntriesDbId.isNotBlank()) {
+                runCatching { notionRepo.getDatabaseSchema(workspace.timeEntriesDbId) }.getOrDefault(emptyMap())
+            } else emptyMap()
             val extraValues = workspace.extraProps.associate { prop ->
-                prop.propName to parsePropertyValue(props.getAsJsonObject(prop.propName), prop.type)
+                val type = schema[prop.propName]?.type ?: prop.type
+                prop.propName to parsePropertyValue(props.getAsJsonObject(prop.propName), type)
             }
 
             val updatedTimer = _uiState.value.activeTimer?.takeIf { it.notionPageId == rt.pageId }

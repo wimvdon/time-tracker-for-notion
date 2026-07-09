@@ -941,9 +941,18 @@ export const useStore = create((set, get) => ({
         projectName = pages.find((p) => p.id === projectId)?.name ?? '';
       }
 
+      // Don't rely on the store's extraFieldDefs — it may still belong to a
+      // different workspace or not have finished loading yet. Fetch the live
+      // schema directly, same as loadExtraFields does, to get the real type
+      // for each configured extra field.
       const extraValues = {};
-      for (const def of get().extraFieldDefs) {
-        extraValues[def.name] = parsePropertyValue(def.type, props[def.name]);
+      if (workspace.extraProps?.length && workspace.timeEntriesDbId) {
+        const schema = await api.getDatabaseSchema(workspace.timeEntriesDbId).catch(() => ({}));
+        for (const { propName: name } of workspace.extraProps) {
+          const type = schema?.[name]?.type;
+          if (!type || !WRITABLE_EXTRA_TYPES.includes(type)) continue;
+          extraValues[name] = parsePropertyValue(type, props[name]);
+        }
       }
 
       if (get().timer.notionPageId !== rt.pageId) return;
