@@ -4,6 +4,8 @@ import { computeEndTime } from '../lib/rounding.js';
 import { formatHHMM, formatElapsed, formatDateStr, formatTimeStr, parseTimeStr } from '../lib/format.js';
 import { t } from '../lib/i18n.js';
 import { buildPropertyValue } from '../lib/notionValues.js';
+import { getWorkspaceAccentColor, getWorkspaceSolidFillColor } from '../lib/color.js';
+import { useIsDarkTheme } from '../hooks/useIsDarkTheme.js';
 import ExtraFieldInput from '../components/ExtraFieldInput.jsx';
 import SearchableSelect from '../components/SearchableSelect.jsx';
 import {
@@ -77,6 +79,7 @@ export default function Timer() {
   const [presetNameInput, setPresetNameInput] = useState('');
 
   const selectedWorkspace = workspaces.find((w) => w.id === selectedWorkspaceId);
+  const isDarkTheme = useIsDarkTheme();
 
   // Reload running timers and recent entries on every state transition
   const timerRunning = timer.running;
@@ -219,7 +222,7 @@ export default function Timer() {
               }`}
               style={
                 selectedWorkspace?.color && canStart && !isStarting
-                  ? { backgroundColor: selectedWorkspace.color }
+                  ? { backgroundColor: getWorkspaceSolidFillColor(selectedWorkspace.color) }
                   : undefined
               }
             >
@@ -372,7 +375,7 @@ export default function Timer() {
                       <span className="font-semibold text-zinc-100 truncate">{p.name || ws.name}</span>
                       <div className="flex items-center gap-1.5 mt-0.5">
                         {ws.color?.trim() && (
-                          <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: ws.color.trim() }} />
+                          <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: getWorkspaceAccentColor(ws.color.trim(), isDarkTheme) }} />
                         )}
                         <span className="text-[10px] text-zinc-400 truncate">{ws.name}</span>
                       </div>
@@ -521,7 +524,7 @@ function RunningView({
   return (
     <div
       className="flex flex-col h-full"
-      style={workspaceColor ? { backgroundColor: workspaceColor + '33' } : undefined}
+      style={accentColor ? { backgroundColor: accentColor + '33' } : undefined}
     >
       <div className="flex-1 flex flex-col items-center px-6 pt-6 gap-1 overflow-y-auto">
         <div className="text-sm font-semibold text-zinc-100 truncate max-w-full">
