@@ -461,6 +461,8 @@ function RunningView({
   const dateFormat = useStore((s) => s.dateFormat);
   const workspaces = useStore((s) => s.workspaces);
   const apiKey = useStore((s) => s.apiKey);
+  const isDarkTheme = useIsDarkTheme();
+  const accentColor = workspaceColor ? getWorkspaceAccentColor(workspaceColor, isDarkTheme) : null;
 
   const [startInput, setStartInput] = useState(() => formatTimeStr(timer.roundedStart, timeFormat));
   const [endInput, setEndInput] = useState('');
@@ -759,14 +761,16 @@ function RunningTimerItem({ rt, isActive, onLoad, onStop, onDelete, onOpenUrl })
  *  the idle form and the running view. Clicking one while a timer is already
  *  running goes through `applyPreset`'s "already running" confirmation. */
 function PresetChips({ workspaces, apiKey, onApplyPreset, onManageClick }) {
+  const isDarkTheme = useIsDarkTheme();
   if (!workspaces.some((w) => (w.presets?.length ?? 0) > 0)) return null;
   return (
     <div className="flex flex-wrap items-center gap-1.5">
       {workspaces.flatMap((w) =>
         (w.presets || []).map((preset) => {
           const hex = w.color?.trim();
-          const chipStyle = hex
-            ? { borderColor: hex + '66', color: hex, backgroundColor: hex + '22' }
+          const accent = hex ? getWorkspaceAccentColor(hex, isDarkTheme) : null;
+          const chipStyle = accent
+            ? { borderColor: accent + '66', color: accent, backgroundColor: accent + '22' }
             : {};
           return (
             <button
