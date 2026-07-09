@@ -368,6 +368,8 @@ private fun IdleView(
                 onManageClick = onManagePresetsClick
             )
 
+            Spacer(Modifier.height(4.dp))
+
             FieldLabel(stringResource(R.string.label_workspace))
             val workspaceOptions = uiState.workspaces.map { NamedOption(it.id, it.name) }
             SearchableDropdown(
@@ -459,6 +461,8 @@ private fun IdleView(
                     )
                 }
             }
+
+            Spacer(Modifier.height(8.dp))
 
             OtherRunningTimers(
                 timers = uiState.runningTimers,
@@ -645,7 +649,7 @@ private fun RunningView(
                 .padding(horizontal = 16.dp)
                 .verticalScroll(scrollState),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
 
             PresetChips(
@@ -654,6 +658,8 @@ private fun RunningView(
                 onApplyPreset = onApplyPreset,
                 onManageClick = onManagePresetsClick
             )
+
+            Spacer(Modifier.height(4.dp))
 
             Text(
                 workspace?.name ?: "",
@@ -826,6 +832,8 @@ private fun RunningView(
                     Text(stringResource(R.string.btn_stop), fontSize = 18.sp, color = MaterialTheme.colorScheme.onError)
                 }
             }
+
+            Spacer(Modifier.height(8.dp))
 
             OtherRunningTimers(
                 timers = uiState.runningTimers,
@@ -1057,6 +1065,7 @@ private fun PresetChips(
     val allPresets = workspaces.flatMap { ws -> ws.presets.map { ws to it } }
     if (allPresets.isEmpty() || apiKey.isBlank()) return
     FlowRow(
+        modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterVertically)
     ) {

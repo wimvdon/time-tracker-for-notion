@@ -171,6 +171,7 @@ export default function Timer() {
             apiKey={apiKey}
             onApplyPreset={applyPreset}
             onManageClick={() => setShowManagePresetsModal(true)}
+            className="mb-2"
           />
 
           <div>
@@ -540,6 +541,7 @@ function RunningView({
           apiKey={apiKey}
           onApplyPreset={onApplyPreset}
           onManageClick={onManagePresetsClick}
+          className="mb-2"
         />
 
         <div className="text-sm font-semibold text-zinc-100 truncate max-w-full">
@@ -766,11 +768,11 @@ function RunningTimerItem({ rt, isActive, onLoad, onStop, onDelete, onOpenUrl })
 /** Quick-start preset chips — shown when any workspace has presets, in both
  *  the idle form and the running view. Clicking one while a timer is already
  *  running goes through `applyPreset`'s "already running" confirmation. */
-function PresetChips({ workspaces, apiKey, onApplyPreset, onManageClick }) {
+function PresetChips({ workspaces, apiKey, onApplyPreset, onManageClick, className = '' }) {
   const isDarkTheme = useIsDarkTheme();
   if (!workspaces.some((w) => (w.presets?.length ?? 0) > 0)) return null;
   return (
-    <div className="flex flex-wrap items-center gap-1.5">
+    <div className={`w-full flex flex-wrap items-center gap-1.5 ${className}`}>
       {workspaces.flatMap((w) =>
         (w.presets || []).map((preset) => {
           const hex = w.color?.trim();
@@ -807,7 +809,7 @@ function PresetChips({ workspaces, apiKey, onApplyPreset, onManageClick }) {
 function OtherRunningTimers({ timers, loading, activePageId, onLoad, onStop, onDelete, onOpenUrl }) {
   if (!timers.length) return null;
   return (
-    <div className="w-full mt-2 pt-3 border-t border-zinc-700">
+    <div className="w-full mt-4 pt-3 border-t border-zinc-700">
       <div className="mb-2">
         <span className="text-xs text-zinc-500">{t('runningTimersHeading')}</span>
       </div>
@@ -853,7 +855,7 @@ function RecentEntries({ entries, loading, onDelete, onOpenUrl }) {
   const showArchiveAction = useStore((s) => s.showArchiveAction);
   if (!entries.length) return null;
   return (
-    <div className="w-full mt-2 pt-3 border-t border-zinc-700">
+    <div className="w-full mt-4 pt-3 border-t border-zinc-700">
       <div className="flex items-center justify-between mb-2">
         <span className="text-xs text-zinc-500">{t('recentEntriesHeading')}</span>
       </div>
