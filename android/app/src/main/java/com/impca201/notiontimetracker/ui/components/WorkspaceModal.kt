@@ -45,6 +45,7 @@ fun WorkspaceModal(
     onStatusRunningChange: (String) -> Unit,
     onStatusDoneChange: (String) -> Unit,
     onRoundingChange: (Int) -> Unit,
+    onDescriptionRequiredChange: (Boolean) -> Unit = {},
     onColorChange: (String) -> Unit = {},
     onAddExtraProp: () -> Unit,
     onRemoveExtraProp: (Int) -> Unit,
@@ -64,6 +65,7 @@ fun WorkspaceModal(
             state.timeEntriesDbId.isNotBlank() ||
             state.color.isNotBlank() ||
             state.extraProps.isNotEmpty() ||
+            state.descriptionRequired ||
             state.roundingMinutes != 15
         } else {
             val original = allWorkspaces.find { it.id == state.workspaceId }
@@ -76,6 +78,7 @@ fun WorkspaceModal(
             state.timeEntryStatusRunning != original.propertyMap.timeEntryStatusRunning ||
             state.timeEntryStatusDone != original.propertyMap.timeEntryStatusDone ||
             state.extraProps != original.extraProps ||
+            state.descriptionRequired != original.descriptionRequired ||
             state.roundingMinutes != original.roundingMinutes
         }
     }
@@ -263,6 +266,19 @@ fun WorkspaceModal(
             }
 
 
+
+            // Description
+            Spacer(Modifier.height(16.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Checkbox(checked = state.descriptionRequired, onCheckedChange = onDescriptionRequiredChange)
+                Text(stringResource(R.string.label_description_required), style = MaterialTheme.typography.bodyMedium)
+            }
+            Text(
+                if (state.descriptionRequired) stringResource(R.string.hint_description_required)
+                else stringResource(R.string.hint_description_optional),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
 
             // Rounding
             Spacer(Modifier.height(16.dp))

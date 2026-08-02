@@ -144,6 +144,10 @@ export default function Timer() {
   } else {
     // ---- Idle state ----
     const canStart = !!apiKey && !!selectedWorkspaceId && !extrasLoading && !isStarting;
+    // Like required extra fields, a required description is enforced when the
+    // timer is stopped — starting stays a single click.
+    const descriptionRequired = !!selectedWorkspace?.descriptionRequired;
+    const descriptionMissing = descriptionRequired && !description.trim();
 
     content = (
       <div className="flex flex-col h-full">
@@ -188,13 +192,18 @@ export default function Timer() {
           </div>
 
           <div>
-            <label className="block text-xs text-zinc-400 mb-1">{t('labelDescription')}</label>
+            <label className={`block text-xs mb-1 ${descriptionMissing ? 'text-red-400' : 'text-zinc-400'}`}>
+              {t('labelDescription')}
+              {descriptionRequired && ' *'}
+            </label>
             <input
               type="text"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder={t('placeholderDescription')}
-              className="w-full bg-zinc-800 border border-zinc-700 rounded-md px-3 py-2 text-sm placeholder-zinc-600"
+              className={`w-full bg-zinc-800 border rounded-md px-3 py-2 text-sm placeholder-zinc-600 ${
+                descriptionMissing ? 'border-red-500' : 'border-zinc-700'
+              }`}
             />
           </div>
 
@@ -475,6 +484,9 @@ function RunningView({
   const [showTimeErrorModal, setShowTimeErrorModal] = useState(false);
   const [pendingEndTime, setPendingEndTime] = useState(null);
 
+  const activeWorkspace = workspaces.find((w) => w.id === selectedWorkspaceId);
+  const descriptionMissing = !!activeWorkspace?.descriptionRequired && !localDesc.trim();
+
   useEffect(() => {
     setStartInput(formatTimeStr(timer.roundedStart, timeFormat));
   }, [timer.startISO, timeFormat]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -499,6 +511,10 @@ function RunningView({
   };
 
   const handleStop = (manualEnd = null) => {
+    if (descriptionMissing) {
+      addToast({ type: 'error', message: t('toastDescriptionBeforeStopping') });
+      return;
+    }
     const missingRequired = extraFieldDefs.some(
       (def) => def.required && buildPropertyValue(def.type, localExtras[def.name]) === null
     );
@@ -554,7 +570,11 @@ function RunningView({
           onBlur={() => updateTimerDetails(selectedProjectId, localDesc, localExtras)}
           onKeyDown={blurOnEnter}
           placeholder={t('placeholderDescription')}
-          className="mt-1 w-full bg-transparent border border-transparent hover:border-zinc-700 focus:border-zinc-600 rounded-md px-2 py-0.5 text-sm text-zinc-200 text-center placeholder-zinc-600 outline-none transition-colors"
+          className={`mt-1 w-full bg-transparent border rounded-md px-2 py-0.5 text-sm text-zinc-200 text-center placeholder-zinc-600 outline-none transition-colors ${
+            descriptionMissing
+              ? 'border-red-500'
+              : 'border-transparent hover:border-zinc-700 focus:border-zinc-600'
+          }`}
         />
 
         <div className="mt-6 text-5xl font-mono font-bold tabular-nums text-red-400">

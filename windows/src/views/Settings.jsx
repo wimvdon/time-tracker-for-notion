@@ -531,6 +531,7 @@ function WorkspaceModal({ workspace, onClose }) {
     )
   );
   const [color, setColor] = useState(workspace?.color || '');
+  const [descriptionRequired, setDescriptionRequired] = useState(!!workspace?.descriptionRequired);
 
   // Database list — fetched once per modal lifetime (Retry/Refresh re-fetches)
   const [dbs, setDbs] = useState({ loading: true, error: null, items: [] });
@@ -631,6 +632,7 @@ function WorkspaceModal({ workspace, onClose }) {
       timeEntriesDbId,
       projectsDbId,
       roundingMinutes,
+      descriptionRequired,
       propertyMap: {
         timeEntryTitleProp: titlePropName,
         timeEntryDateProp: sel.timeEntryDateProp,
@@ -839,6 +841,22 @@ function WorkspaceModal({ workspace, onClose }) {
         )}
 
 
+
+        {/* Section E — Description */}
+        <div className="border-t border-zinc-700 pt-3">
+          <label className="flex items-center gap-2 text-xs text-zinc-300 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={descriptionRequired}
+              onChange={(e) => setDescriptionRequired(e.target.checked)}
+              className="accent-emerald-500"
+            />
+            {t('labelDescriptionRequired')}
+          </label>
+          <p className="text-xs text-zinc-500 mt-1">
+            {descriptionRequired ? t('hintDescriptionRequired') : t('hintDescriptionOptional')}
+          </p>
+        </div>
 
         {/* Section F — Rounding */}
         <div className="border-t border-zinc-700 pt-3">

@@ -78,6 +78,10 @@
     <string name="label_required_field">Richiesto</string>
     <string name="toast_required_fields_missing">Compila tutti i campi richiesti prima di avviare il timer.</string>
     <string name="toast_required_before_stopping">Compila i campi richiesti prima di fermare il timer.</string>
+    <string name="label_description_required">Descrizione obbligatoria</string>
+    <string name="hint_description_required">Un timer di questo spazio non può essere fermato senza descrizione.</string>
+    <string name="hint_description_optional">Se lasciata vuota, la registrazione riceve come titolo la data di inizio.</string>
+    <string name="toast_description_before_stopping">Compila una descrizione prima di fermare il timer.</string>
     <string name="error_loading_extras">Impossibile caricare i campi aggiuntivi</string>
     <string name="no_properties_of_type">Nessun campo compatibile trovato.</string>
     <string name="label_workspace_rounding">Arrotondamento tempo</string>

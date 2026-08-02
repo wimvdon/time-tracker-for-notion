@@ -39,7 +39,8 @@ data class Workspace(
     val propertyMap: PropertyMap = PropertyMap(),
     val extraProps: List<ExtraProp> = emptyList(),
     val presets: List<Preset> = emptyList(),
-    val color: String = ""
+    val color: String = "",
+    val descriptionRequired: Boolean = false
 )
 
 @Serializable

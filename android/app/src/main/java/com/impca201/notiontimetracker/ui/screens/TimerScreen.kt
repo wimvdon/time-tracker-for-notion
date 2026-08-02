@@ -384,12 +384,19 @@ private fun IdleView(
 
 
 
-            FieldLabel(stringResource(R.string.label_description))
+            // Like required extra fields, a required description is enforced when
+            // the timer is stopped — starting stays a single tap.
+            val descriptionRequired = uiState.workspaces
+                .firstOrNull { it.id == uiState.selectedWorkspaceId }?.descriptionRequired == true
+            FieldLabel(
+                stringResource(R.string.label_description) + if (descriptionRequired) " *" else ""
+            )
             OutlinedTextField(
                 value = uiState.description,
                 onValueChange = onDescriptionChange,
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
+                isError = descriptionRequired && uiState.description.isBlank(),
                 placeholder = { Text(stringResource(R.string.placeholder_description)) },
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                 keyboardActions = KeyboardActions(onDone = { })
@@ -691,6 +698,7 @@ private fun RunningView(
                     onValueChange = { titleDraft = it },
                     modifier = Modifier.weight(1f),
                     singleLine = true,
+                    isError = workspace?.descriptionRequired == true && titleDraft.isBlank(),
                     placeholder = { Text(stringResource(R.string.hint_timer_title), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f)) },
                     textStyle = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onBackground),
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
@@ -808,12 +816,13 @@ private fun RunningView(
             uiState.stopError?.let { err ->
                 val errMsg = when (err) {
                     "required_fields_before_stopping" -> stringResource(R.string.toast_required_before_stopping)
+                    "description_before_stopping" -> stringResource(R.string.toast_description_before_stopping)
                     else -> err
                 }
                 Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)) {
                     Row(modifier = Modifier.padding(12.dp)) {
                         Text(errMsg, modifier = Modifier.weight(1f), color = MaterialTheme.colorScheme.onErrorContainer)
-                        if (err != "required_fields_before_stopping") {
+                        if (err != "required_fields_before_stopping" && err != "description_before_stopping") {
                             TextButton(onClick = onRetryStop) { Text(stringResource(R.string.toast_stop_retry)) }
                         }
                     }

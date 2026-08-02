@@ -55,6 +55,7 @@ class SettingsViewModel(private val app: Application) : AndroidViewModel(app) {
         val timeEntryStatusRunning: String = "",
         val timeEntryStatusDone: String = "",
         val extraProps: List<ExtraProp> = emptyList(),
+        val descriptionRequired: Boolean = false,
         val roundingMinutes: Int = 15,
         val presets: List<Preset> = emptyList(),
         val saving: Boolean = false,
@@ -227,6 +228,7 @@ class SettingsViewModel(private val app: Application) : AndroidViewModel(app) {
             timeEntryStatusRunning = workspace.propertyMap.timeEntryStatusRunning,
             timeEntryStatusDone = workspace.propertyMap.timeEntryStatusDone,
             extraProps = workspace.extraProps,
+            descriptionRequired = workspace.descriptionRequired,
             roundingMinutes = workspace.roundingMinutes,
             presets = workspace.presets
         )
@@ -287,6 +289,7 @@ class SettingsViewModel(private val app: Application) : AndroidViewModel(app) {
     fun setStatusRunning(opt: String) = _editState.update { it?.copy(timeEntryStatusRunning = opt) }
     fun setStatusDone(opt: String) = _editState.update { it?.copy(timeEntryStatusDone = opt) }
     fun setRounding(minutes: Int) = _editState.update { it?.copy(roundingMinutes = minutes) }
+    fun setDescriptionRequired(required: Boolean) = _editState.update { it?.copy(descriptionRequired = required) }
     fun setColor(color: String) = _editState.update { it?.copy(color = color) }
 
     fun addExtraProp() {
@@ -369,6 +372,7 @@ class SettingsViewModel(private val app: Application) : AndroidViewModel(app) {
             timeEntriesDbId = edit.timeEntriesDbId,
             projectsDbId = projectsDbId,
             roundingMinutes = edit.roundingMinutes,
+            descriptionRequired = edit.descriptionRequired,
             propertyMap = PropertyMap(
                 timeEntryTitleProp = edit.schema.entries.firstOrNull { it.value.type == "title" }?.key ?: "Name",
                 timeEntryDateProp = edit.timeEntryDateProp,

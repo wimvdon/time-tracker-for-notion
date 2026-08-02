@@ -66,9 +66,11 @@ On first launch the app opens on Settings:
 
 ### How it behaves
 
-- **Start**: creates a time entry with status = running and the description as the title (or `"DD/MM/YYYY"` if left empty). Start time is rounded to the nearest configured interval.
+- **Start**: creates a time entry with status = running and the description as the title. Start time is rounded to the nearest configured interval.
+- **Empty description**: the entry is titled with its start date, formatted as configured in Settings (`DD/MM/YYYY`, `MM/DD/YYYY` or `YYYY-MM-DD`). The description field itself is never pre-filled — the date is only written to the Notion page, so an entry never shows up as "Untitled".
 - **Stop**: fills in the end time and sets status = completed. End time is rounded with a minimum duration equal to one interval.
-- **Edit timer**: while a timer is running, click the edit icon to change the title, project, or extra field values. The title can be left empty.
+- **Edit timer**: while a timer is running, click the edit icon to change the title, project, or extra field values. Clearing the title falls back to the start date, exactly as when starting.
+- **Description required**: workspaces can require a description (Settings → workspace). The field is then marked with `*` and a timer in that workspace cannot be stopped until it is filled in — starting stays a single click, same as for required extra fields.
 - **Closing the window** minimises to the system tray. The tray icon turns red while a timer runs.
 - **Crash recovery**: if force-quit while a timer runs, next launch asks whether to stop, resume, or discard.
 - **Auto-refresh**: running timers and recent entries refresh every 60 seconds. If the active timer was stopped on another device, it is automatically cleared from the view.
@@ -155,8 +157,9 @@ Alternatively, scan a workspace QR code from the Windows app to import a workspa
 
 ### How it behaves
 
-- **Start / Stop**: same logic as Windows — rounding, status transitions, relation fields.
-- **Edit timer**: while a timer is running, tap the edit icon to update the title, project, or extra field values. The title can be left empty.
+- **Start / Stop**: same logic as Windows — rounding, status transitions, relation fields, and the start-date fallback for an empty description.
+- **Edit timer**: while a timer is running, tap the edit icon to update the title, project, or extra field values. Clearing the title falls back to the start date.
+- **Description required**: identical per-workspace option as on Windows; the timer cannot be stopped until a description is filled in.
 - **Auto-refresh**: running timers and recent entries refresh every 60 seconds. If the active timer was stopped on another device, it is automatically cleared and a toast is shown.
 - **Deleted pages**: if Notion reports that a page no longer exists when stopping or editing, the app shows the local details and asks you to confirm before discarding.
 
