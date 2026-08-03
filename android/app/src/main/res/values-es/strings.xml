@@ -78,6 +78,10 @@
     <string name="label_required_field">Requerido</string>
     <string name="toast_required_fields_missing">Por favor, rellene todos los campos requeridos antes de comenzar.</string>
     <string name="toast_required_before_stopping">Rellene los campos requeridos antes de detener.</string>
+    <string name="label_description_required">Descripción obligatoria</string>
+    <string name="hint_description_required">Un temporizador de este espacio no se puede detener sin descripción.</string>
+    <string name="hint_description_optional">Si se deja vacía, el registro recibe su fecha de inicio como título.</string>
+    <string name="toast_description_before_stopping">Rellene una descripción antes de detener.</string>
     <string name="error_loading_extras">No se pudieron cargar los campos adicionales</string>
     <string name="no_properties_of_type">No se encontraron campos compatibles.</string>
     <string name="label_workspace_rounding">Redondeo de tiempo</string>

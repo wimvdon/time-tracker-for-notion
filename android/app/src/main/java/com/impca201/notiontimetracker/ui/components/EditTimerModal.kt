@@ -63,8 +63,10 @@ fun EditTimerModal(
 
 
 
+            val descriptionRequired = uiState.workspaces
+                .firstOrNull { it.id == timer.workspaceId }?.descriptionRequired == true
             Text(
-                stringResource(R.string.label_description),
+                stringResource(R.string.label_description) + if (descriptionRequired) " *" else "",
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -73,6 +75,7 @@ fun EditTimerModal(
                 onValueChange = { description = it },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
+                isError = descriptionRequired && description.isBlank(),
                 placeholder = { Text(stringResource(R.string.placeholder_description)) },
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done)
             )

@@ -78,6 +78,10 @@
     <string name="label_required_field">Erforderlich</string>
     <string name="toast_required_fields_missing">Bitte füllen Sie alle erforderlichen Felder aus, bevor Sie starten.</string>
     <string name="toast_required_before_stopping">Erforderliche Felder ausfüllen, bevor Sie stoppen.</string>
+    <string name="label_description_required">Beschreibung erforderlich</string>
+    <string name="hint_description_required">Ein Timer in diesem Arbeitsbereich kann ohne Beschreibung nicht gestoppt werden.</string>
+    <string name="hint_description_optional">Ohne Eingabe erhält der Zeiteintrag sein Startdatum als Titel.</string>
+    <string name="toast_description_before_stopping">Beschreibung ausfüllen, bevor Sie stoppen.</string>
     <string name="error_loading_extras">Zusatzfelder konnten nicht geladen werden</string>
     <string name="no_properties_of_type">Keine passenden Felder gefunden.</string>
     <string name="label_workspace_rounding">Zeitrungung</string>

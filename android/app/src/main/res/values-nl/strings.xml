@@ -78,6 +78,10 @@
     <string name="label_required_field">Verplicht</string>
     <string name="toast_required_fields_missing">Vul alle verplichte velden in voor je start.</string>
     <string name="toast_required_before_stopping">Vul alle verplichte velden in voor je stopt.</string>
+    <string name="label_description_required">Omschrijving verplicht</string>
+    <string name="hint_description_required">Een timer in deze werkruimte kan niet gestopt worden zonder omschrijving.</string>
+    <string name="hint_description_optional">Als je niets invult, krijgt de tijdsregistratie de startdatum als titel.</string>
+    <string name="toast_description_before_stopping">Vul een omschrijving in voor je stopt.</string>
     <string name="error_loading_extras">Kon extra velden niet laden</string>
     <string name="no_properties_of_type">Geen geschikt veld gevonden in deze database.</string>
     <string name="label_workspace_rounding">Tijden afronden</string>

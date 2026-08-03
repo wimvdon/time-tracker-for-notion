@@ -22,6 +22,9 @@ import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
+/** Every date format offered in Settings. */
+private val DATE_FORMATS = listOf("DD/MM/YYYY", "MM/DD/YYYY", "YYYY-MM-DD")
+
 class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
 
     data class UiState(
@@ -390,8 +393,12 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
             val extraNotionValues = buildExtraNotionValues(state.extraFieldDefs, extraValues)
             val properties = mutableMapOf<String, Any?>()
             val projectName = state.projects.firstOrNull { it.id == projectId }?.name ?: ""
-            // Allow empty title — no fallback to default
-            val newTitle = description.trim()
+            // The description may be cleared; the page itself never gets an empty
+            // title (that reads as "Untitled" in Notion), so it falls back to the
+            // entry's start date — same as when it was started without one.
+            val newDescription = description.trim()
+            val startMs = runCatching { parseIso(timer.rawStart) }.getOrDefault(System.currentTimeMillis())
+            val newTitle = newDescription.ifBlank { fallbackDescription(startMs, state.dateFormat) }
             properties[timer.propertyMap.timeEntryTitleProp] = mapOf(
                 "title" to listOf(mapOf("text" to mapOf("content" to newTitle)))
             )
@@ -403,8 +410,8 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
             extraNotionValues.forEach { (k, v) -> properties[k] = v }
             runCatching { notionRepo.updatePageProperties(timer.notionPageId, properties) }
                 .onSuccess {
-                    val updated = timer.copy(description = newTitle, projectId = projectId, projectName = projectName, extraValues = extraValues)
-                    _uiState.update { it.copy(activeTimer = updated, description = newTitle, selectedProjectId = projectId, extraValues = extraValues, editTimerOpen = false) }
+                    val updated = timer.copy(description = newDescription, projectId = projectId, projectName = projectName, extraValues = extraValues)
+                    _uiState.update { it.copy(activeTimer = updated, description = newDescription, selectedProjectId = projectId, extraValues = extraValues, editTimerOpen = false) }
                     settingsRepo.saveActiveTimer(updated)
                     // Update foreground service notification immediately
                     val ws = state.workspaces.firstOrNull { it.id == updated.workspaceId }
@@ -449,10 +456,10 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
 
                 val project = state.projects.firstOrNull { it.id == state.selectedProjectId }
                 val projectName = project?.name ?: ""
-                val description = state.description.ifBlank {
-                    "${projectName.ifBlank { "" }} – ${formatDateDDMMYYYY(nowMs)}".trim(' ', '–', ' ')
-                }
-                val title = description.ifBlank { "Time entry" }
+                // An empty description becomes the start date on the Notion page;
+                // the description input stays empty so nothing is pre-filled.
+                val description = state.description.trim()
+                val title = description.ifBlank { fallbackDescription(nowMs, state.dateFormat) }
 
                 val extraNotionValues = buildExtraNotionValues(state.extraFieldDefs, state.extraValues)
 
@@ -489,7 +496,7 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
                 timer to nowMs
             }.onSuccess { (timer, startMs) ->
                 tickStartMs = startMs
-                _uiState.update { it.copy(running = true, activeTimer = timer, isStarting = false, elapsedSeconds = 0L) }
+                _uiState.update { it.copy(running = true, activeTimer = timer, description = timer.description, isStarting = false, elapsedSeconds = 0L) }
                 startTicking(startMs)
                 loadRunningTimers()
                 loadRecentEntries()
@@ -555,6 +562,12 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
     fun stopTimer(manualEndMs: Long? = null) {
         val state = _uiState.value
         val timer = state.activeTimer ?: return
+
+        val workspace = state.workspaces.firstOrNull { it.id == timer.workspaceId }
+        if (workspace?.descriptionRequired == true && state.description.isBlank()) {
+            _uiState.update { it.copy(stopError = "description_before_stopping") }
+            return
+        }
 
         if (state.extraFieldDefs.any { def ->
                 def.required && (state.extraValues[def.propName]?.isBlank() != false)
@@ -849,6 +862,11 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
 
         tickJob?.cancel()
 
+        val startMs = runCatching { parseIso(rt.startISO) }.getOrElse { System.currentTimeMillis() }
+        // A title this app generated for an empty description reads back as an
+        // empty description, so the input is never pre-filled with a date.
+        val description = if (isFallbackDescription(rt.title, startMs, state.dateFormat)) "" else rt.title
+
         val timer = ActiveTimer(
             notionPageId = rt.pageId,
             roundedStart = rt.startISO,
@@ -856,7 +874,7 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
             workspaceId = rt.workspaceId,
             projectId = null,
             projectName = "",
-            description = rt.title,
+            description = description,
             propertyMap = rt.propertyMap
         )
 
@@ -869,7 +887,6 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
             android.util.Log.e("TimerViewModel", "Failed to start foreground service on loadRunningTimer", e)
         }
 
-        val startMs = runCatching { parseIso(rt.startISO) }.getOrElse { System.currentTimeMillis() }
         tickStartMs = startMs
 
         val others = state.runningTimers.filter { it.pageId != rt.pageId }.toMutableList()
@@ -880,7 +897,7 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
             activeTimer = timer,
             elapsedSeconds = 0L,
             runningTimers = others,
-            description = rt.title,
+            description = description,
             selectedWorkspaceId = rt.workspaceId
         )}
         startTicking(startMs)
@@ -1112,13 +1129,36 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
     private fun parseIso(iso: String): Long =
         java.time.OffsetDateTime.parse(iso).toInstant().toEpochMilli()
 
-    private fun formatDateDDMMYYYY(ms: Long): String {
+    private fun formatDate(ms: Long, dateFormat: String): String {
         val cal = java.util.Calendar.getInstance().apply { timeInMillis = ms }
-        return "%02d/%02d/%04d".format(
-            cal.get(java.util.Calendar.DAY_OF_MONTH),
-            cal.get(java.util.Calendar.MONTH) + 1,
-            cal.get(java.util.Calendar.YEAR)
-        )
+        val day = cal.get(java.util.Calendar.DAY_OF_MONTH)
+        val month = cal.get(java.util.Calendar.MONTH) + 1
+        val year = cal.get(java.util.Calendar.YEAR)
+        return when (dateFormat) {
+            "MM/DD/YYYY" -> "%02d/%02d/%04d".format(month, day, year)
+            "YYYY-MM-DD" -> "%04d-%02d-%02d".format(year, month, day)
+            else -> "%02d/%02d/%04d".format(day, month, year)
+        }
+    }
+
+    /**
+     * The page title written to Notion when the description is left empty: the
+     * entry's own start date, in the format chosen in Settings. The description
+     * input itself is never pre-filled with it — the fallback only ever exists
+     * on the Notion page.
+     */
+    private fun fallbackDescription(startMs: Long, dateFormat: String): String =
+        formatDate(startMs, dateFormat)
+
+    /**
+     * True when [title] is a title this app generated for an empty description
+     * on [startMs]. Every date format is checked, not just the current one, so a
+     * title written before the setting was changed is still recognised.
+     */
+    private fun isFallbackDescription(title: String, startMs: Long, dateFormat: String): Boolean {
+        val trimmed = title.trim()
+        if (trimmed.isBlank()) return false
+        return (DATE_FORMATS + dateFormat).any { formatDate(startMs, it) == trimmed }
     }
 
     fun saveCurrentAsPreset(name: String) {

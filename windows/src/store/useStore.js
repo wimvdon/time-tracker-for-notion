@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { computeStartTime, computeEndTime } from '../lib/rounding.js';
-import { toNotionDateTime, formatDateStr } from '../lib/format.js';
+import { toNotionDateTime, fallbackDescription, isFallbackDescription } from '../lib/format.js';
 import { t, setLocale } from '../lib/i18n.js';
 import { errorMessage } from '../lib/errors.js';
 import { WRITABLE_EXTRA_TYPES, emptyValueFor, buildPropertyValue, parsePropertyValue } from '../lib/notionValues.js';
@@ -520,7 +520,10 @@ export const useStore = create((set, get) => ({
 
     const rawStart = new Date();
     const startISO = toNotionDateTime(rawStart);
-    const title = state.description.trim() || formatDateStr(rawStart, state.dateFormat);
+    // An empty description becomes the start date on the Notion page; the
+    // description input stays empty so nothing is pre-filled for the user.
+    const description = state.description.trim();
+    const title = description || fallbackDescription(rawStart, state.dateFormat);
 
     const extra = {};
     for (const def of state.extraFieldDefs) {
@@ -552,7 +555,7 @@ export const useStore = create((set, get) => ({
         workspaceId: workspace.id,
         projectId: state.selectedProjectId,
         projectName: '',
-        description: state.description,
+        description,
         propertyMap: workspace.propertyMap,
         extraValues: state.extraValues,
       },
@@ -564,7 +567,7 @@ export const useStore = create((set, get) => ({
       rawStart,
       propertyMap: workspace.propertyMap,
     });
-    set({ isStarting: false });
+    set({ isStarting: false, description });
     get().loadRunningTimers();
     get().loadRecentEntries();
   },
@@ -916,6 +919,12 @@ export const useStore = create((set, get) => ({
       await get().selectWorkspace(rt.workspaceId);
     }
 
+    // A title this app generated for an empty description reads back as an
+    // empty description, so the input is never pre-filled with a date.
+    const description = isFallbackDescription(rt.title, new Date(rt.startISO), get().dateFormat)
+      ? ''
+      : rt.title;
+
     api.saveSettings({
       activeTimer: {
         notionPageId: rt.pageId,
@@ -924,14 +933,14 @@ export const useStore = create((set, get) => ({
         workspaceId: rt.workspaceId,
         projectId: null,
         projectName: '',
-        description: rt.title,
+        description,
         propertyMap: rt.propertyMap,
       },
     });
 
     // Only update description; leave runningTimers untouched so the list stays stable.
     // The active/inactive styling is derived from timer.notionPageId, not the list order.
-    set({ description: rt.title });
+    set({ description });
 
     get().beginTicking({
       pageId: rt.pageId,
@@ -1170,8 +1179,14 @@ export const useStore = create((set, get) => ({
     const state = get();
     if (!state.timer.running) return;
     const pm = state.timer.propertyMap;
-    // Allow empty title — do not fall back to a default
-    const newTitle = description.trim();
+    // The description may be cleared; the page itself never gets an empty title
+    // (that shows up as "Untitled" in Notion), so it falls back to the entry's
+    // start date — same as when the timer was started without a description.
+    const newDescription = description.trim();
+    const startDate = state.timer.rawStart
+      ? new Date(state.timer.rawStart)
+      : new Date(state.timer.startISO || Date.now());
+    const newTitle = newDescription || fallbackDescription(startDate, state.dateFormat);
 
     const properties = {};
     if (pm?.timeEntryTitleProp) {
@@ -1206,7 +1221,7 @@ export const useStore = create((set, get) => ({
     }
 
     set({
-      description: newTitle,
+      description: newDescription,
       selectedProjectId: projectId,
       extraValues,
     });
@@ -1217,7 +1232,7 @@ export const useStore = create((set, get) => ({
       workspaceId: state.selectedWorkspaceId,
       projectId,
       projectName: '',
-      description: newTitle,
+      description: newDescription,
       propertyMap: pm,
       extraValues,
     };

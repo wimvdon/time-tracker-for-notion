@@ -25,6 +25,32 @@ export function formatDateDDMMYYYY(date) {
   return `${pad(date.getDate())}/${pad(date.getMonth() + 1)}/${date.getFullYear()}`;
 }
 
+/** Every date format offered in Settings. */
+export const DATE_FORMATS = ['DD/MM/YYYY', 'MM/DD/YYYY', 'YYYY-MM-DD'];
+
+/**
+ * The page title written to Notion when the description is left empty: the
+ * entry's own start date, in the format chosen in Settings. The description
+ * input itself is never pre-filled with it — the fallback only ever exists on
+ * the Notion page.
+ */
+export function fallbackDescription(date, dateFormat = 'DD/MM/YYYY') {
+  return formatDateStr(date, dateFormat);
+}
+
+/**
+ * True when `title` is a title this app generated for an empty description on
+ * `date`. Every date format is checked, not just the current one, so a title
+ * written before the setting was changed is still recognised. Used to keep the
+ * description input empty when a running timer is adopted from Notion.
+ */
+export function isFallbackDescription(title, date, dateFormat = 'DD/MM/YYYY') {
+  const trimmed = (title || '').trim();
+  if (!trimmed || !date) return false;
+  const formats = [dateFormat, ...DATE_FORMATS];
+  return formats.some((fmt) => formatDateStr(date, fmt) === trimmed);
+}
+
 /** Formats a date object according to the user's preferences. */
 export function formatDateStr(date, dateFormat = 'DD/MM/YYYY') {
   if (!date) return '';

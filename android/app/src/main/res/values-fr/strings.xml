@@ -78,6 +78,10 @@
     <string name="label_required_field">Requis</string>
     <string name="toast_required_fields_missing">Veuillez remplir tous les champs obligatoires avant de démarrer.</string>
     <string name="toast_required_before_stopping">Remplissez les champs requis avant d\'arrêter.</string>
+    <string name="label_description_required">Description obligatoire</string>
+    <string name="hint_description_required">Un minuteur de cet espace ne peut pas être arrêté sans description.</string>
+    <string name="hint_description_optional">Laissée vide, la saisie de temps prend sa date de début comme titre.</string>
+    <string name="toast_description_before_stopping">Remplissez une description avant d\'arrêter.</string>
     <string name="error_loading_extras">Impossible de charger les champs supplémentaires</string>
     <string name="no_properties_of_type">Aucun champ correspondant trouvé.</string>
     <string name="label_workspace_rounding">Arrondi du temps</string>
