@@ -6,7 +6,7 @@
     <string name="label_workspace">Espace de travail</string>
     <string name="label_project">Projet</string>
     <string name="label_description">Travaille sur…</string>
-    <string name="placeholder_description">Description facultative</string>
+    <string name="placeholder_description">Description</string>
     <string name="placeholder_select_workspace">Sélectionner l\'espace…</string>
     <string name="placeholder_select_project">Sélectionner le projet…</string>
     <string name="placeholder_loading">Chargement…</string>
