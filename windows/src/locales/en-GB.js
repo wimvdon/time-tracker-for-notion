@@ -3,7 +3,7 @@ export default {
   labelWorkspace: 'Workspace',
   labelProject: 'Project',
   labelDescription: 'Working on…',
-  placeholderDescription: 'Optional description',
+  placeholderDescription: 'Description',
   placeholderSelectWorkspace: 'Select workspace…',
   placeholderSelectProject: 'Select project…',
   placeholderLoading: 'Loading…',

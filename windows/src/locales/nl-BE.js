@@ -3,7 +3,7 @@ export default {
   labelWorkspace: 'Werkruimte',
   labelProject: 'Project',
   labelDescription: 'Bezig met…',
-  placeholderDescription: 'Optionele omschrijving',
+  placeholderDescription: 'Omschrijving',
   placeholderSelectWorkspace: 'Kies werkruimte…',
   placeholderSelectProject: 'Kies project…',
   placeholderLoading: 'Laden…',

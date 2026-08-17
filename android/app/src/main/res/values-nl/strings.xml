@@ -6,7 +6,7 @@
     <string name="label_workspace">Werkruimte</string>
     <string name="label_project">Project</string>
     <string name="label_description">Bezig met…</string>
-    <string name="placeholder_description">Optionele omschrijving</string>
+    <string name="placeholder_description">Omschrijving</string>
     <string name="placeholder_select_workspace">Kies werkruimte…</string>
     <string name="placeholder_select_project">Kies project…</string>
     <string name="placeholder_loading">Laden…</string>
