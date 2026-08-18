@@ -239,8 +239,8 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
         }
 
         val defs = runCatching {
-            val schema = runCatching { notionRepo.getDatabaseSchema(workspace.timeEntriesDbId) }
-                .getOrDefault(emptyMap())
+            val schema = retryNotionCall { notionRepo.getDatabaseSchema(workspace.timeEntriesDbId) }
+                ?: emptyMap()
 
             workspace.extraProps.mapNotNull { prop ->
                 val schemaProp = schema[prop.propName] ?: return@mapNotNull null
@@ -911,6 +911,23 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
     }
 
     /**
+     * Retries a Notion call up to [attempts] times with a short delay between tries.
+     * Adopting a timer fires several Notion calls at once (running timers, recent
+     * entries, this device's own workspace schema fetch, and this call's page
+     * properties + schema fetch) — a single transient failure or momentary rate
+     * limit among them shouldn't leave extra field values blank until the next
+     * scheduled sync. Returns null once every attempt has failed.
+     */
+    private suspend fun <T> retryNotionCall(attempts: Int = 3, block: suspend () -> T): T? {
+        repeat(attempts) { attempt ->
+            val result = runCatching { block() }
+            if (result.isSuccess) return result.getOrNull()
+            if (attempt < attempts - 1) delay(1000L * (attempt + 1))
+        }
+        return null
+    }
+
+    /**
      * Re-reads the active timer's connected project and extra field values straight
      * from its Notion page, so Notion stays the source of truth instead of whatever
      * was last cached locally (e.g. if the page was edited directly in Notion, or
@@ -919,7 +936,7 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
      * auto-refresh) while it's still the active one.
      */
     private suspend fun refreshActiveTimerFieldsFromNotion(pageId: String, workspace: Workspace, propertyMap: PropertyMap) {
-        val props = runCatching { notionRepo.fetchPageProperties(pageId) }.getOrNull() ?: return
+        val props = retryNotionCall { notionRepo.fetchPageProperties(pageId) } ?: return
         if (_uiState.value.activeTimer?.notionPageId != pageId) return
 
         val relProp = propertyMap.timeEntryRelationProp
@@ -933,13 +950,20 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
 
         // workspace.extraProps[].type is not a reliable source of the real Notion
         // property type (it's never populated on save) — fetch the live schema,
-        // same as loadExtraFieldDefs does, to know how to parse each value.
-        val schema = if (workspace.extraProps.isNotEmpty() && workspace.timeEntriesDbId.isNotBlank()) {
-            runCatching { notionRepo.getDatabaseSchema(workspace.timeEntriesDbId) }.getOrDefault(emptyMap())
-        } else emptyMap()
-        val extraValues = workspace.extraProps.associate { prop ->
-            val type = schema[prop.propName]?.type ?: prop.type
-            prop.propName to parsePropertyValue(props.getAsJsonObject(prop.propName), type)
+        // same as loadExtraFieldDefs does, to know how to parse each value. If the
+        // schema still can't be fetched after retrying, bail out entirely instead
+        // of falling back to an empty schema: every extra value would then parse
+        // as blank (prop.type is never populated either) and overwrite whatever
+        // correct values were already showing — a stale-but-right value beats a
+        // freshly-wrong one.
+        val extraValues = if (workspace.extraProps.isEmpty() || workspace.timeEntriesDbId.isBlank()) {
+            emptyMap()
+        } else {
+            val schema = retryNotionCall { notionRepo.getDatabaseSchema(workspace.timeEntriesDbId) } ?: return
+            workspace.extraProps.associate { prop ->
+                val type = schema[prop.propName]?.type ?: prop.type
+                prop.propName to parsePropertyValue(props.getAsJsonObject(prop.propName), type)
+            }
         }
 
         val updatedTimer = _uiState.value.activeTimer?.takeIf { it.notionPageId == pageId }
@@ -1018,15 +1042,22 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
     fun applyPreset(workspaceId: String, preset: Preset) {
         val action: suspend () -> Unit = {
             val state = _uiState.value
-            if (state.selectedWorkspaceId != workspaceId) {
-                val workspace = state.workspaces.firstOrNull { it.id == workspaceId }
-                if (workspace != null) {
+            val workspace = state.workspaces.firstOrNull { it.id == workspaceId }
+            if (workspace != null) {
+                if (state.selectedWorkspaceId != workspaceId) {
                     _uiState.update { it.copy(
                         selectedWorkspaceId = workspaceId,
                         extraFieldDefs = emptyList(),
                         extrasLoading = workspace.extraProps.isNotEmpty()
                     )}
                     settingsRepo.saveLastWorkspaceId(workspaceId)
+                }
+                // startTimer() only writes a property if it has a loaded def for it, so
+                // this must be awaited before merging the preset's values in — otherwise,
+                // if defs for this workspace are still loading (e.g. a shortcut/preset
+                // fired right after launch, before the workspace's own selectWorkspace()
+                // load finished), the preset's defaults would silently be dropped.
+                if (_uiState.value.extraFieldDefs.isEmpty() && workspace.extraProps.isNotEmpty()) {
                     loadExtraFieldDefs(workspace)
                 }
             }
