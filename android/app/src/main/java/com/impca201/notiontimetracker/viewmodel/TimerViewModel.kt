@@ -1018,15 +1018,22 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
     fun applyPreset(workspaceId: String, preset: Preset) {
         val action: suspend () -> Unit = {
             val state = _uiState.value
-            if (state.selectedWorkspaceId != workspaceId) {
-                val workspace = state.workspaces.firstOrNull { it.id == workspaceId }
-                if (workspace != null) {
+            val workspace = state.workspaces.firstOrNull { it.id == workspaceId }
+            if (workspace != null) {
+                if (state.selectedWorkspaceId != workspaceId) {
                     _uiState.update { it.copy(
                         selectedWorkspaceId = workspaceId,
                         extraFieldDefs = emptyList(),
                         extrasLoading = workspace.extraProps.isNotEmpty()
                     )}
                     settingsRepo.saveLastWorkspaceId(workspaceId)
+                }
+                // startTimer() only writes a property if it has a loaded def for it, so
+                // this must be awaited before merging the preset's values in — otherwise,
+                // if defs for this workspace are still loading (e.g. a shortcut/preset
+                // fired right after launch, before the workspace's own selectWorkspace()
+                // load finished), the preset's defaults would silently be dropped.
+                if (_uiState.value.extraFieldDefs.isEmpty() && workspace.extraProps.isNotEmpty()) {
                     loadExtraFieldDefs(workspace)
                 }
             }
