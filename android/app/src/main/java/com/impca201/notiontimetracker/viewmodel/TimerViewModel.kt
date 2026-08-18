@@ -247,11 +247,11 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
                 val type = schemaProp.type
 
                 val options: List<NamedOption> = when (type) {
-                    "select", "multi_select" -> {
-                        schema[prop.propName]?.let { sp ->
-                            sp.statusOptions.map { NamedOption(it.name, it.name) }
-                        } ?: emptyList()
-                    }
+                    // getDatabaseSchema() only populates selectOptions for select/multi_select
+                    // (statusOptions is status-only) — reading statusOptions here left every
+                    // select/multi_select field with no options at all, so nothing (default,
+                    // preset, or synced) could ever show as selected.
+                    "select", "multi_select" -> schemaProp.selectOptions.map { NamedOption(it.name, it.name) }
                     "status" -> schemaProp.statusOptions.map { NamedOption(it.name, it.name) }
                     "people" -> runCatching { notionRepo.listUsers() }.getOrDefault(emptyList())
                     "relation" -> {
