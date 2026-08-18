@@ -122,6 +122,7 @@
     <string name="recent_entries_heading">Entradas de tiempo recientes</string>
     <string name="title_delete_entry">Eliminar</string>
     <string name="title_open_in_notion">Abrir en Notion</string>
+    <string name="title_start_from_entry">Iniciar un nuevo temporizador con estos datos</string>
     <string name="confirm_delete_title">¿Archivar esta entrada?</string>
     <string name="confirm_delete_message">\"%1$s\" será archivado en Notion.</string>
     <string name="confirm_delete_confirm">Archivar</string>

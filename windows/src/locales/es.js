@@ -136,6 +136,7 @@ export default {
   recentEntriesHeading: 'Entradas de tiempo recientes',
   titleDeleteEntry: 'Eliminar',
   titleOpenInNotion: 'Abrir en Notion',
+  titleStartFromEntry: 'Iniciar un nuevo temporizador con estos datos',
   confirmDeleteTitle: '¿Archivar esta entrada en Notion?',
   confirmDeleteConfirm: 'Archivar',
   toastDeleteError: 'No se pudo eliminar la entrada',

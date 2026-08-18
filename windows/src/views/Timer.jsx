@@ -54,6 +54,7 @@ export default function Timer() {
   const recentEntries = useStore((s) => s.recentEntries);
   const recentEntriesLoading = useStore((s) => s.recentEntriesLoading);
   const loadRecentEntries = useStore((s) => s.loadRecentEntries);
+  const startFromRecentEntry = useStore((s) => s.startFromRecentEntry);
   const deleteConfirm = useStore((s) => s.deleteConfirm);
   const confirmDelete = useStore((s) => s.confirmDelete);
   const cancelDelete = useStore((s) => s.cancelDelete);
@@ -138,6 +139,7 @@ export default function Timer() {
         onDeleteEntry={deleteEntry}
         onOpenUrl={openNotionPage}
         onApplyPreset={applyPreset}
+        onStartFromRecentEntry={startFromRecentEntry}
         onManagePresetsClick={() => setShowManagePresetsModal(true)}
       />
     );
@@ -265,8 +267,10 @@ export default function Timer() {
           <RecentEntries
             entries={recentEntries}
             loading={recentEntriesLoading}
+            workspaces={workspaces}
             onDelete={(entry) => confirmDelete(entry, 'recent')}
             onOpenUrl={openNotionPage}
+            onPlay={startFromRecentEntry}
           />
         </div>
         {settingsButton}
@@ -454,6 +458,7 @@ function RunningView({
   onDeleteEntry,
   onOpenUrl,
   onApplyPreset,
+  onStartFromRecentEntry,
   onManagePresetsClick,
 }) {
   const timer = useStore((s) => s.timer);
@@ -650,8 +655,10 @@ function RunningView({
         <RecentEntries
           entries={recentEntries}
           loading={recentEntriesLoading}
+          workspaces={workspaces}
           onDelete={(entry) => onConfirmDelete(entry, 'recent')}
           onOpenUrl={onOpenUrl}
+          onPlay={onStartFromRecentEntry}
         />
       </div>
       {settingsButton}
@@ -870,49 +877,68 @@ function formatRecentRange(startISO, endISO) {
   return `${dateStr} ${startStr} → …`;
 }
 
-function RecentEntries({ entries, loading, onDelete, onOpenUrl }) {
+function RecentEntries({ entries, loading, workspaces, onDelete, onOpenUrl, onPlay }) {
   const showNotionLink = useStore((s) => s.showNotionLink);
   const showArchiveAction = useStore((s) => s.showArchiveAction);
+  const isDarkTheme = useIsDarkTheme();
   if (!entries.length) return null;
   return (
     <div className="w-full mt-6 pt-3 border-t border-zinc-700">
       <div className="flex items-center justify-between mb-2">
         <span className="text-xs text-zinc-500">{t('recentEntriesHeading')}</span>
       </div>
-      {entries.map((entry) => (
-        <div
-          key={entry.pageId}
-          className="flex items-center gap-2 px-3 py-2 bg-zinc-800 rounded-md mb-1 transition-colors"
-        >
-          <div className="flex-1 min-w-0">
-            <div className="text-sm truncate text-zinc-400">{entry.title}</div>
-            <div className="flex flex-col gap-0.5 text-xs text-zinc-600 mt-0.5">
-              <span className="truncate">{entry.workspaceName}</span>
-              <span className="font-mono text-zinc-500 whitespace-nowrap">{formatRecentRange(entry.startISO, entry.endISO)}</span>
+      {entries.map((entry) => {
+        const wsColor = workspaces?.find((w) => w.id === entry.workspaceId)?.color?.trim();
+        const accent = wsColor ? getWorkspaceAccentColor(wsColor, isDarkTheme) : null;
+        return (
+          <div
+            key={entry.pageId}
+            className="flex items-center gap-2 px-3 py-2 rounded-md mb-1 transition-colors border-l-2"
+            style={
+              accent
+                ? { backgroundColor: accent + '1a', borderColor: accent }
+                : { backgroundColor: 'rgb(39 39 42)', borderColor: 'transparent' } /* bg-zinc-800 */
+            }
+          >
+            <div className="flex-1 min-w-0">
+              <div className="text-sm truncate text-zinc-400">{entry.title}</div>
+              <div className="flex flex-col gap-0.5 text-xs text-zinc-600 mt-0.5">
+                <span className="truncate">{entry.workspaceName}</span>
+                <span className="font-mono text-zinc-500 whitespace-nowrap">{formatRecentRange(entry.startISO, entry.endISO)}</span>
+              </div>
+            </div>
+            <div className="flex items-center gap-1 shrink-0">
+              {onPlay && (
+                <button
+                  onClick={() => onPlay(entry)}
+                  title={t('titleStartFromEntry')}
+                  className="text-zinc-500 hover:text-emerald-400 transition-colors flex items-center justify-center p-1"
+                >
+                  <Play20Regular className="w-4 h-4" />
+                </button>
+              )}
+              {showNotionLink && entry.url && (
+                <button
+                  onClick={() => onOpenUrl(entry.url)}
+                  title={t('titleOpenInNotion')}
+                  className="text-zinc-500 hover:text-zinc-200 transition-colors flex items-center justify-center p-1"
+                >
+                  <Open20Regular className="w-4 h-4" />
+                </button>
+              )}
+              {showArchiveAction && (
+                <button
+                  onClick={() => onDelete(entry)}
+                  title={t('titleDeleteEntry')}
+                  className="text-zinc-500 hover:text-red-400 transition-colors flex items-center justify-center p-1"
+                >
+                  <Delete20Regular className="w-4 h-4" />
+                </button>
+              )}
             </div>
           </div>
-          <div className="flex items-center gap-1 shrink-0">
-            {showNotionLink && entry.url && (
-              <button
-                onClick={() => onOpenUrl(entry.url)}
-                title={t('titleOpenInNotion')}
-                className="text-zinc-500 hover:text-zinc-200 transition-colors flex items-center justify-center p-1"
-              >
-                <Open20Regular className="w-4 h-4" />
-              </button>
-            )}
-            {showArchiveAction && (
-              <button
-                onClick={() => onDelete(entry)}
-                title={t('titleDeleteEntry')}
-                className="text-zinc-500 hover:text-red-400 transition-colors flex items-center justify-center p-1"
-              >
-                <Delete20Regular className="w-4 h-4" />
-              </button>
-            )}
-          </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }

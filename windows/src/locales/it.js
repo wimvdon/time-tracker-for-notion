@@ -136,6 +136,7 @@ export default {
   recentEntriesHeading: 'Registrazioni recenti',
   titleDeleteEntry: 'Elimina',
   titleOpenInNotion: 'Apri in Notion',
+  titleStartFromEntry: 'Avvia un nuovo timer con questi dati',
   confirmDeleteTitle: 'Archiviare questa registrazione in Notion?',
   confirmDeleteConfirm: 'Archivia',
   toastDeleteError: 'Impossibile eliminare la registrazione',

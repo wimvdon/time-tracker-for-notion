@@ -122,6 +122,7 @@
     <string name="recent_entries_heading">Letzte Zeiteinträge</string>
     <string name="title_delete_entry">Löschen</string>
     <string name="title_open_in_notion">In Notion öffnen</string>
+    <string name="title_start_from_entry">Neuen Timer mit diesen Angaben starten</string>
     <string name="confirm_delete_title">Eintrag archivieren?</string>
     <string name="confirm_delete_message">\"%1$s\" wird in Notion archiviert.</string>
     <string name="confirm_delete_confirm">Archivieren</string>

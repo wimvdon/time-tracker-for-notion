@@ -136,6 +136,7 @@ export default {
   recentEntriesHeading: 'Recent time entries',
   titleDeleteEntry: 'Delete',
   titleOpenInNotion: 'Open in Notion',
+  titleStartFromEntry: 'Start a new timer with these details',
   confirmDeleteTitle: 'Archive this entry in Notion?',
   confirmDeleteConfirm: 'Archive',
   toastDeleteError: 'Could not delete entry',
