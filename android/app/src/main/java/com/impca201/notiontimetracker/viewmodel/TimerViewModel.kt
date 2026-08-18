@@ -1066,6 +1066,68 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /**
+     * "Play" on a recent entry: starts a new timer in the same workspace, with
+     * the same description, connected project and extra field values as that
+     * entry — but starting now, with no end. Mirrors applyPreset's flow, except
+     * the project/extra values are read from the source Notion page (its own
+     * schema-backed source of truth) rather than from a saved preset.
+     */
+    fun startFromRecentEntry(entry: RecentEntryInfo) {
+        val action: suspend () -> Unit = {
+            val state = _uiState.value
+            val workspace = state.workspaces.firstOrNull { it.id == entry.workspaceId }
+            if (workspace != null) {
+                if (state.selectedWorkspaceId != entry.workspaceId) {
+                    _uiState.update { it.copy(
+                        selectedWorkspaceId = entry.workspaceId,
+                        extraFieldDefs = emptyList(),
+                        extrasLoading = workspace.extraProps.isNotEmpty()
+                    )}
+                    settingsRepo.saveLastWorkspaceId(entry.workspaceId)
+                    loadExtraFieldDefs(workspace)
+                }
+
+                val startMs = entry.startISO?.let { iso -> runCatching { parseIso(iso) }.getOrNull() }
+                    ?: System.currentTimeMillis()
+                // A title this app generated for an empty description reads back as an
+                // empty description, so the input is never pre-filled with a date.
+                val description = if (isFallbackDescription(entry.title, startMs, state.dateFormat)) "" else entry.title
+                _uiState.update { it.copy(description = description) }
+
+                // Restore the connected project and extra field values straight from the
+                // source page, matching the current database schema (same approach as
+                // refreshActiveTimerFieldsFromNotion for an already-running timer).
+                val props = runCatching { notionRepo.fetchPageProperties(entry.pageId) }.getOrNull()
+                if (props != null) {
+                    val relProp = workspace.propertyMap.timeEntryRelationProp
+                    val projectId = relProp.takeIf { it.isNotBlank() }
+                        ?.let { parsePropertyValue(props.getAsJsonObject(it), "relation") }
+                        ?.split(",")?.firstOrNull { it.isNotBlank() }
+
+                    val schema = if (workspace.extraProps.isNotEmpty() && workspace.timeEntriesDbId.isNotBlank()) {
+                        runCatching { notionRepo.getDatabaseSchema(workspace.timeEntriesDbId) }.getOrDefault(emptyMap())
+                    } else emptyMap()
+                    val extraValues = workspace.extraProps.associate { prop ->
+                        val type = schema[prop.propName]?.type ?: prop.type
+                        prop.propName to parsePropertyValue(props.getAsJsonObject(prop.propName), type)
+                    }
+                    _uiState.update { it.copy(selectedProjectId = projectId, extraValues = extraValues) }
+                }
+                startTimer()
+            }
+        }
+
+        if (_uiState.value.running) {
+            pendingActionAfterWarning = {
+                stopActiveAndThen { action() }
+            }
+            _uiState.update { it.copy(showAlreadyRunningWarning = true) }
+        } else {
+            viewModelScope.launch { action() }
+        }
+    }
+
     private fun startTicking(startMs: Long) {
         tickJob?.cancel()
         tickJob = viewModelScope.launch {

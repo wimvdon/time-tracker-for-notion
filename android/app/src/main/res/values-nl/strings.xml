@@ -122,6 +122,7 @@
     <string name="recent_entries_heading">Recente tijdsregistraties</string>
     <string name="title_delete_entry">Verwijderen</string>
     <string name="title_open_in_notion">Openen in Notion</string>
+    <string name="title_start_from_entry">Nieuwe timer starten met deze gegevens</string>
     <string name="confirm_delete_title">Registratie archiveren?</string>
     <string name="confirm_delete_message">"%1$s" wordt gearchiveerd in Notion.</string>
     <string name="confirm_delete_confirm">Archiveren</string>

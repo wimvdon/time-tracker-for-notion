@@ -136,6 +136,7 @@ export default {
   recentEntriesHeading: 'Recente tijdsregistraties',
   titleDeleteEntry: 'Verwijderen',
   titleOpenInNotion: 'Openen in Notion',
+  titleStartFromEntry: 'Nieuwe timer starten met deze gegevens',
   confirmDeleteTitle: 'Deze tijdsregistratie archiveren in Notion?',
   confirmDeleteConfirm: 'Archiveren',
   toastDeleteError: 'Kon tijdsregistratie niet verwijderen',

@@ -161,6 +161,7 @@ private fun AppNavigation(
                 onDeleteEntry = timerViewModel::deleteEntry,
                 onOpenUrl = { url -> context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) },
                 onApplyPreset = timerViewModel::applyPreset,
+                onStartFromRecentEntry = timerViewModel::startFromRecentEntry,
                 onDismissDeletedPage = timerViewModel::dismissDeletedPage,
                 onClearInfoToast = timerViewModel::clearInfoToast,
                 onConfirmAlreadyRunning = timerViewModel::onConfirmAlreadyRunning,

@@ -603,6 +603,68 @@ export const useStore = create((set, get) => ({
     }
   },
 
+  /**
+   * "Play" on a recent entry: starts a new timer in the same workspace, with
+   * the same description, connected project and extra field values as that
+   * entry — but starting now, with no end. Mirrors applyPreset's flow, except
+   * the project/extra values are read from the source Notion page (its own
+   * schema-backed source of truth) rather than from a saved preset.
+   */
+  startFromRecentEntry: async (entry) => {
+    const action = async () => {
+      const state = get();
+      if (state.selectedWorkspaceId !== entry.workspaceId) {
+        await get().selectWorkspace(entry.workspaceId);
+      }
+
+      const workspace = get().workspaces.find((w) => w.id === entry.workspaceId);
+      // Bail out rather than starting an unrelated timer in whatever workspace
+      // happens to still be selected.
+      if (!workspace) return;
+
+      const description = isFallbackDescription(entry.title, new Date(entry.startISO), get().dateFormat)
+        ? ''
+        : entry.title;
+      set({ description });
+
+      try {
+        const props = await api.getPageProperties(entry.pageId);
+        const pm = workspace.propertyMap;
+        const relProp = pm?.timeEntryRelationProp;
+        const projectId = relProp ? parsePropertyValue('relation', props[relProp]) || null : null;
+
+        const extraValues = {};
+        if (workspace.extraProps?.length && workspace.timeEntriesDbId) {
+          const schema = await api.getDatabaseSchema(workspace.timeEntriesDbId).catch(() => ({}));
+          for (const { propName: name } of workspace.extraProps) {
+            const type = schema?.[name]?.type;
+            if (!type || !WRITABLE_EXTRA_TYPES.includes(type)) continue;
+            extraValues[name] = parsePropertyValue(type, props[name]);
+          }
+        }
+        set({ selectedProjectId: projectId, extraValues });
+      } catch {
+        // Fall back to whatever selectWorkspace() already set (empty/active values) —
+        // the timer can still be started, just without the restored project/extras.
+      }
+
+      await get().startTimer();
+    };
+
+    if (get().timer.running) {
+      set({
+        showAlreadyRunningWarning: true,
+        pendingStartAction: async () => {
+          const stopped = await get()._stopActivePage();
+          if (!stopped) return;
+          await action();
+        }
+      });
+    } else {
+      await action();
+    }
+  },
+
   onConfirmAlreadyRunning: () => {
     set({ showAlreadyRunningWarning: false });
     const action = get().pendingStartAction;

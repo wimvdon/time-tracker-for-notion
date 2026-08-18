@@ -4,6 +4,7 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -80,6 +81,7 @@ fun TimerScreen(
     onDeleteEntry: () -> Unit,
     onOpenUrl: (String) -> Unit,
     onApplyPreset: (String, Preset) -> Unit = { _, _ -> },
+    onStartFromRecentEntry: (RecentEntryInfo) -> Unit = {},
     onDismissDeletedPage: () -> Unit = {},
     onClearInfoToast: () -> Unit = {},
     onConfirmAlreadyRunning: () -> Unit,
@@ -244,6 +246,7 @@ fun TimerScreen(
             onConfirmDelete = onConfirmDelete,
             onOpenUrl = onOpenUrl,
             onApplyPreset = onApplyPreset,
+            onStartFromRecentEntry = onStartFromRecentEntry,
             onManagePresetsClick = { showManagePresetsDialog = true }
         )
     } else {
@@ -262,6 +265,7 @@ fun TimerScreen(
             onConfirmDelete = onConfirmDelete,
             onOpenUrl = onOpenUrl,
             onApplyPreset = onApplyPreset,
+            onStartFromRecentEntry = onStartFromRecentEntry,
             onSavePresetClick = { showSavePresetDialog = true },
             onManagePresetsClick = { showManagePresetsDialog = true }
         )
@@ -285,6 +289,7 @@ private fun IdleView(
     onConfirmDelete: (String, String, Boolean) -> Unit,
     onOpenUrl: (String) -> Unit,
     onApplyPreset: (String, Preset) -> Unit = { _, _ -> },
+    onStartFromRecentEntry: (RecentEntryInfo) -> Unit = {},
     onSavePresetClick: () -> Unit,
     onManagePresetsClick: () -> Unit
 ) {
@@ -486,8 +491,10 @@ private fun IdleView(
             RecentEntriesSection(
                 entries = uiState.recentEntries,
                 loading = uiState.recentEntriesLoading,
+                workspaces = uiState.workspaces,
                 onDelete = { re -> onConfirmDelete(re.pageId, re.title, false) },
                 onOpenUrl = onOpenUrl,
+                onPlay = onStartFromRecentEntry,
                 dateFormat = uiState.dateFormat,
                 timeFormat = uiState.timeFormat,
                 showNotionLink = uiState.showNotionLink,
@@ -515,6 +522,7 @@ private fun RunningView(
     onConfirmDelete: (String, String, Boolean) -> Unit,
     onOpenUrl: (String) -> Unit,
     onApplyPreset: (String, Preset) -> Unit = { _, _ -> },
+    onStartFromRecentEntry: (RecentEntryInfo) -> Unit = {},
     onManagePresetsClick: () -> Unit = {}
 ) {
     val timer = uiState.activeTimer ?: return
@@ -859,8 +867,10 @@ private fun RunningView(
             RecentEntriesSection(
                 entries = uiState.recentEntries,
                 loading = uiState.recentEntriesLoading,
+                workspaces = uiState.workspaces,
                 onDelete = { re -> onConfirmDelete(re.pageId, re.title, false) },
                 onOpenUrl = onOpenUrl,
+                onPlay = onStartFromRecentEntry,
                 dateFormat = uiState.dateFormat,
                 timeFormat = uiState.timeFormat,
                 showNotionLink = uiState.showNotionLink,
@@ -985,8 +995,10 @@ private fun OtherRunningTimers(
 private fun RecentEntriesSection(
     entries: List<RecentEntryInfo>,
     loading: Boolean,
+    workspaces: List<com.impca201.notiontimetracker.data.models.Workspace> = emptyList(),
     onDelete: (RecentEntryInfo) -> Unit,
     onOpenUrl: (String) -> Unit,
+    onPlay: (RecentEntryInfo) -> Unit = {},
     dateFormat: String,
     timeFormat: String,
     showNotionLink: Boolean = true,
@@ -1012,10 +1024,13 @@ private fun RecentEntriesSection(
     }
     entries.forEach { re ->
         val timeRange = formatRecentRange(re.startISO, re.endISO, dateFormat, timeFormat == "12h")
+        val wsAccent = workspaceAccentColor(workspaces.firstOrNull { it.id == re.workspaceId }?.color)
+        val cardContainerColor = wsAccent?.copy(alpha = 0.15f) ?: MaterialTheme.colorScheme.surfaceVariant
 
         Card(
             modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+            colors = CardDefaults.cardColors(containerColor = cardContainerColor),
+            border = wsAccent?.let { BorderStroke(1.dp, it.copy(alpha = 0.4f)) }
         ) {
             Row(
                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
@@ -1036,6 +1051,14 @@ private fun RecentEntriesSection(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
+                    )
+                }
+                IconButton(onClick = { onPlay(re) }, modifier = Modifier.size(36.dp)) {
+                    Icon(
+                        Icons.Default.PlayArrow,
+                        contentDescription = stringResource(R.string.title_start_from_entry),
+                        modifier = Modifier.size(18.dp),
+                        tint = wsAccent ?: MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
                 if (showNotionLink && re.url.isNotBlank()) {

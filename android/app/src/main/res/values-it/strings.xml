@@ -122,6 +122,7 @@
     <string name="recent_entries_heading">Registrazioni recenti</string>
     <string name="title_delete_entry">Elimina</string>
     <string name="title_open_in_notion">Apri in Notion</string>
+    <string name="title_start_from_entry">Avvia un nuovo timer con questi dati</string>
     <string name="confirm_delete_title">Archiviare questa registrazione?</string>
     <string name="confirm_delete_message">\"%1$s\" sarà archiviata in Notion.</string>
     <string name="confirm_delete_confirm">Archivia</string>

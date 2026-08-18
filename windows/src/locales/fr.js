@@ -136,6 +136,7 @@ export default {
   recentEntriesHeading: 'Saisies de temps récentes',
   titleDeleteEntry: 'Supprimer',
   titleOpenInNotion: 'Ouvrir dans Notion',
+  titleStartFromEntry: 'Démarrer un nouveau chronomètre avec ces informations',
   confirmDeleteTitle: 'Archiver cette saisie dans Notion ?',
   confirmDeleteConfirm: 'Archiver',
   toastDeleteError: 'Impossible de supprimer la saisie',
