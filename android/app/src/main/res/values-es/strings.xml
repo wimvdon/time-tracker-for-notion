@@ -64,9 +64,9 @@
     <string name="hint_time_entry_date_prop">Almacena la hora de inicio y fin.</string>
     <string name="label_time_entry_status_prop">Campo de estado</string>
     <string name="hint_time_entry_status_prop">Indica si el temporizador está activo o terminado.</string>
-    <string name="label_time_entry_status_running">Opción de estado "Activo"</string>
+    <string name="label_time_entry_status_running">Opción de estado \"Activo\"</string>
     <string name="hint_time_entry_status_running">La opción que marca una entrada como en curso.</string>
-    <string name="label_time_entry_status_done">Opción de estado "Terminado"</string>
+    <string name="label_time_entry_status_done">Opción de estado \"Terminado\"</string>
     <string name="hint_time_entry_status_done">La opción que marca una entrada como terminada.</string>
     <string name="label_relation_prop">Campo de relación (proyectos)</string>
     <string name="loading_properties">Cargando…</string>

@@ -64,9 +64,9 @@
     <string name="hint_time_entry_date_prop">Memorizza l\'ora di inizio e di fine.</string>
     <string name="label_time_entry_status_prop">Campo di stato</string>
     <string name="hint_time_entry_status_prop">Indica se il timer è attivo o completato.</string>
-    <string name="label_time_entry_status_running">Opzione stato "In corso"</string>
+    <string name="label_time_entry_status_running">Opzione stato \"In corso\"</string>
     <string name="hint_time_entry_status_running">L\'opzione che indica una registrazione come in corso.</string>
-    <string name="label_time_entry_status_done">Opzione stato "Completato"</string>
+    <string name="label_time_entry_status_done">Opzione stato \"Completato\"</string>
     <string name="hint_time_entry_status_done">L\'opzione che indica una registrazione come completata.</string>
     <string name="label_relation_prop">Campo relazione (progetti)</string>
     <string name="loading_properties">Caricamento…</string>

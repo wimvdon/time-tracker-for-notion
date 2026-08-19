@@ -64,9 +64,9 @@
     <string name="hint_time_entry_date_prop">Speichert Start- und Endzeit.</string>
     <string name="label_time_entry_status_prop">Statusfeld</string>
     <string name="hint_time_entry_status_prop">Verfolgt, ob der Timer läuft oder abgeschlossen ist.</string>
-    <string name="label_time_entry_status_running">Status-Option für "Laufend"</string>
+    <string name="label_time_entry_status_running">Status-Option für \"Laufend\"</string>
     <string name="hint_time_entry_status_running">Die Option, die einen Zeiteintrag als in Bearbeitung markiert.</string>
-    <string name="label_time_entry_status_done">Status-Option für "Abgeschlossen"</string>
+    <string name="label_time_entry_status_done">Status-Option für \"Abgeschlossen\"</string>
     <string name="hint_time_entry_status_done">Die Option, die einen Zeiteintrag als abgeschlossen markiert.</string>
     <string name="label_relation_prop">Verknüpfungsfeld (Projekte)</string>
     <string name="loading_properties">Lade…</string>
