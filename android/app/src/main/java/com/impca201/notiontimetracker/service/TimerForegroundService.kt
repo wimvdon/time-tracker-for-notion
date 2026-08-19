@@ -7,12 +7,14 @@ import android.content.pm.ServiceInfo
 import android.graphics.Color
 import android.os.*
 import androidx.core.app.NotificationCompat
+import com.impca201.notiontimetracker.LocaleHelper
 import com.impca201.notiontimetracker.MainActivity
 import com.impca201.notiontimetracker.NotionTimeTrackerApp
 import com.impca201.notiontimetracker.R
 import com.impca201.notiontimetracker.data.models.ActiveTimer
 import com.impca201.notiontimetracker.data.models.PropertyMap
 import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.first
 
 class TimerForegroundService : Service() {
 
@@ -58,7 +60,6 @@ class TimerForegroundService : Service() {
     }
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
-    private var tickJob: Job? = null
 
     private var pageId: String = ""
     private var roundedStart: String = ""
@@ -68,6 +69,8 @@ class TimerForegroundService : Service() {
     private var workspaceColor: String? = null
     private var propertyMap: PropertyMap = PropertyMap()
     private var startMillis: Long = 0L
+    /** Set when a Stop from the notification could not reach Notion. */
+    private var stopFailed: Boolean = false
 
     private val handler = Handler(Looper.getMainLooper())
     private val ticker = object : Runnable {
@@ -77,12 +80,31 @@ class TimerForegroundService : Service() {
         }
     }
 
+    /**
+     * Resources in the language chosen in Settings. A Service's own context
+     * follows the *system* language — only the Activity is locale-wrapped —
+     * so the notification's title and Stop button used to stay in the phone's
+     * language even when the app was set to another one.
+     */
+    private var localised: Context = this
+    private var localisedFor: String? = null
+    private fun refreshLocalisedContext() {
+        val repo = (application as? NotionTimeTrackerApp)?.settingsRepository ?: return
+        val code = runCatching { runBlocking { repo.localeFlow.first() } }.getOrDefault("system")
+        if (code == localisedFor) return
+        localised = LocaleHelper.wrap(this, code)
+        localisedFor = code
+    }
+
     override fun onCreate() {
         super.onCreate()
+        refreshLocalisedContext()
         createNotificationChannel()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        // Picks up a language switch made while the timer was already running.
+        refreshLocalisedContext()
         when (intent?.action) {
             ACTION_START -> {
                 pageId = intent.getStringExtra(EXTRA_PAGE_ID) ?: ""
@@ -150,6 +172,7 @@ class TimerForegroundService : Service() {
 
     private fun handleStop() {
         handler.removeCallbacks(ticker)
+        stopFailed = false
         serviceScope.launch {
             val app = application as NotionTimeTrackerApp
             if (pageId.isNotBlank()) {
@@ -166,13 +189,27 @@ class TimerForegroundService : Service() {
                 val startISO = toNotionDateTime(startMs)
                 val endISO = toNotionDateTime(endMs)
 
-                runCatching {
+                val stopped = runCatching {
                     app.notionRepository.stopTimeEntry(
                         pageId = pageId,
                         startISO = startISO,
                         endISO = endISO,
                         propertyMap = propertyMap
                     )
+                }
+                if (stopped.isFailure) {
+                    // The entry is still running in Notion. Clearing the local
+                    // timer here would lose it silently — offline, that meant
+                    // one tap on Stop and the entry ran on forever with nobody
+                    // tracking it. Keep the timer and say so on the
+                    // notification instead, so it can be stopped again.
+                    android.util.Log.e("TimerForegroundService", "Stop failed", stopped.exceptionOrNull())
+                    stopFailed = true
+                    val elapsed = (System.currentTimeMillis() - startMillis) / 1000L
+                    startForegroundCompat(buildNotification(elapsed.coerceAtLeast(0L)))
+                    handler.removeCallbacks(ticker)
+                    handler.post(ticker)
+                    return@launch
                 }
                 val activeTimer = app.settingsRepository.getActiveTimer()
                 if (activeTimer != null && activeTimer.notionPageId == pageId) {
@@ -203,7 +240,11 @@ class TimerForegroundService : Service() {
         val contentTitle = if (description.isNotBlank())
             "⏱ $workspaceName – $description" else "⏱ $workspaceName"
         val elapsedStr = formatElapsed(elapsedSecs)
-        val contentText = elapsedStr
+        val contentText = if (stopFailed) {
+            "$elapsedStr — ${localised.getString(R.string.error_stop_from_notification_failed)}"
+        } else {
+            elapsedStr
+        }
 
         val openIntent = PendingIntent.getActivity(
             this, 0,
@@ -219,7 +260,7 @@ class TimerForegroundService : Service() {
 
         val stopAction = NotificationCompat.Action.Builder(
             R.drawable.ic_notification,
-            getString(R.string.notification_action_stop),
+            localised.getString(R.string.notification_action_stop),
             stopIntent
         ).build()
 
@@ -241,10 +282,13 @@ class TimerForegroundService : Service() {
             }
         }
 
-        if (Build.VERSION.SDK_INT >= 36) {
-            Api36Helper.buildProgressStyleNotification(this, builder, elapsedSecs, roundingMinutes, CHANNEL_ID)
-        } else {
-            val totalSecs = (roundingMinutes * 60).coerceAtLeast(1)
+        // Progress towards the end of the current rounding interval. This used
+        // to be skipped on Android 16 in favour of a Notification.ProgressStyle
+        // that was built but never attached to the notification, so that
+        // version ended up with no progress bar at all. With rounding off there
+        // is no interval to fill, so no bar is shown.
+        if (roundingMinutes > 0) {
+            val totalSecs = roundingMinutes * 60
             val progress = ((elapsedSecs.toFloat() / totalSecs) * 100).toInt().coerceIn(0, 100)
             builder.setProgress(100, progress, false)
         }
@@ -255,10 +299,10 @@ class TimerForegroundService : Service() {
     private fun createNotificationChannel() {
         val channel = NotificationChannel(
             CHANNEL_ID,
-            getString(R.string.notification_channel_name),
+            localised.getString(R.string.notification_channel_name),
             NotificationManager.IMPORTANCE_LOW
         ).apply {
-            description = getString(R.string.notification_channel_description)
+            description = localised.getString(R.string.notification_channel_description)
             setShowBadge(false)
         }
         val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
@@ -276,25 +320,6 @@ class TimerForegroundService : Service() {
         return "%02d:%02d:%02d".format(h, m, s)
     }
 
-    private fun buildIntervalString(roundedStart: String, elapsedSecs: Long, rounding: Int): String {
-        return try {
-            val startMs = parseIso(roundedStart)
-            val nowMs = startMs + elapsedSecs * 1000L
-            val startFmt = formatHHMM(startMs)
-            if (rounding == 0) {
-                val endFmt = formatHHMM(nowMs)
-                "$startFmt → $endFmt"
-            } else {
-                val minEnd = startMs + rounding * 60_000L
-                val roundMs = roundToNearest(nowMs, rounding)
-                val endMs = if (roundMs < minEnd) minEnd else roundMs
-                "$startFmt → ${formatHHMM(endMs)}"
-            }
-        } catch (_: Exception) {
-            ""
-        }
-    }
-
 
 
     private fun roundToNearest(ms: Long, minutes: Int): Long {
@@ -306,13 +331,10 @@ class TimerForegroundService : Service() {
         return java.time.OffsetDateTime.parse(iso).toInstant().toEpochMilli()
     }
 
-    private fun formatHHMM(ms: Long): String {
-        val cal = java.util.Calendar.getInstance().apply { timeInMillis = ms }
-        return "%02d:%02d".format(cal.get(java.util.Calendar.HOUR_OF_DAY), cal.get(java.util.Calendar.MINUTE))
-    }
-
+    // Seconds are dropped to match the rest of the app (and the desktop one).
     private fun toNotionDateTime(ms: Long): String {
         val odt = java.time.Instant.ofEpochMilli(ms).atZone(java.time.ZoneId.systemDefault())
+            .withSecond(0).withNano(0)
         return java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME.format(odt)
     }
 
@@ -321,53 +343,6 @@ class TimerForegroundService : Service() {
             startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
         } else {
             startForeground(NOTIFICATION_ID, notification)
-        }
-    }
-}
-
-@androidx.annotation.RequiresApi(36)
-private object Api36Helper {
-    fun buildProgressStyleNotification(
-        context: Context,
-        builder: NotificationCompat.Builder,
-        elapsedSecs: Long,
-        roundingMinutes: Int,
-        channelId: String
-    ) {
-        val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        if (!nm.canPostPromotedNotifications()) return
-
-        val totalSecs = (roundingMinutes * 60L).coerceAtLeast(1L)
-        val progress = ((elapsedSecs.toFloat() / totalSecs) * 100f).coerceIn(0f, 100f)
-        val elapsed = progress.toInt().coerceAtLeast(1)
-        val remaining = (100 - elapsed).coerceAtLeast(0)
-
-        try {
-            val progressStyle = Notification.ProgressStyle()
-            progressStyle.setProgress(elapsed)
-            if (remaining > 0) {
-                progressStyle.setProgressSegments(
-                    listOf(
-                        Notification.ProgressStyle.Segment(elapsed)
-                            .setColor(Color.rgb(239, 68, 68)),
-                        Notification.ProgressStyle.Segment(remaining)
-                            .setColor(Color.rgb(113, 113, 122))
-                    )
-                )
-            }
-            val nativeBuilder = Notification.Builder(context, channelId)
-                .setSmallIcon(R.drawable.ic_notification)
-                .setStyle(progressStyle)
-            builder.extend(object : NotificationCompat.Extender {
-                override fun extend(b: NotificationCompat.Builder): NotificationCompat.Builder {
-                    b.notification.extras?.putString("android.progressStyle", "true")
-                    return b
-                }
-            })
-        } catch (_: Exception) {
-            // Fall through to standard progress bar
-            val p = ((elapsedSecs.toFloat() / totalSecs) * 100).toInt().coerceIn(0, 100)
-            builder.setProgress(100, p, false)
         }
     }
 }

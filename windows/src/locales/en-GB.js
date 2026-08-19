@@ -116,6 +116,8 @@ export default {
 
   // Toasts
   toastApiKeySaved: 'API key works and was saved.',
+  btnRemoveKey: 'Remove key',
+  toastApiKeyRemoved: 'API key removed.',
   toastConnectionFailed: 'Connection failed',
   toastProjectAdded: 'Workspace "{name}" added.',
   toastProjectsError: 'Could not load projects',
@@ -183,6 +185,9 @@ export default {
   deletedPageConfirm: 'Dismiss',
   warnAlreadyRunningTitle: 'Timer already running',
   warnAlreadyRunningBody: 'A timer is already running. Stop it and start the new one, or cancel?',
+  warnAlreadyRunningIn: 'Currently running in:',
+  presetsNoneConfigured: 'No presets configured',
+  colorNone: 'None',
   btnStopAndStartNew: 'Stop & start new',
   dialogSavePresetTitle: 'Save Preset',
   dialogSavePresetBody: 'Save the current description and selected workspace/fields as a preset.',

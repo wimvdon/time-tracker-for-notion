@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { useStore } from '../store/useStore.js';
-import { computeEndTime } from '../lib/rounding.js';
 import { formatHHMM, formatElapsed, formatDateStr, formatTimeStr, parseTimeStr } from '../lib/format.js';
 import { t } from '../lib/i18n.js';
 import { buildPropertyValue } from '../lib/notionValues.js';
@@ -299,7 +298,8 @@ export default function Timer() {
             <p className="text-xs text-zinc-300">{t('warnAlreadyRunningBody')}</p>
             {timer.running && (
               <p className="text-xs text-zinc-400">
-                Currently running in: <span className="font-semibold text-zinc-200">{workspaces.find(w => w.id === timer.workspaceId)?.name || 'Notion'}</span>
+                {t('warnAlreadyRunningIn')}{' '}
+                <span className="font-semibold text-zinc-200">{workspaces.find(w => w.id === timer.workspaceId)?.name || 'Notion'}</span>
               </p>
             )}
             <div className="flex flex-col gap-2 mt-1">
@@ -381,7 +381,7 @@ export default function Timer() {
                   (ws.presets || []).map((p, index, arr) => ({ ws, p, index, arr }))
                 );
                 if (allPresets.length === 0) {
-                  return <div className="text-xs text-zinc-500 py-4 text-center">No presets configured</div>;
+                  return <div className="text-xs text-zinc-500 py-4 text-center">{t('presetsNoneConfigured')}</div>;
                 }
                 return allPresets.map(({ ws, p, index, arr }) => (
                   <div key={p.id} className="flex items-center justify-between bg-zinc-900 border border-zinc-800 rounded px-2.5 py-1.5 text-xs">
@@ -471,15 +471,15 @@ function RunningView({
   const addToast = useStore((s) => s.addToast);
   const stopTimer = useStore((s) => s.stopTimer);
   const updateStartTime = useStore((s) => s.updateStartTime);
-  const getRoundingMinutes = useStore((s) => s.getRoundingMinutes);
-  const timeFormat = useStore((s) => s.timeFormat);
-  const dateFormat = useStore((s) => s.dateFormat);
   const workspaces = useStore((s) => s.workspaces);
   const apiKey = useStore((s) => s.apiKey);
   const isDarkTheme = useIsDarkTheme();
   const accentColor = workspaceColor ? getWorkspaceAccentColor(workspaceColor, isDarkTheme) : null;
 
-  const [startInput, setStartInput] = useState(() => formatTimeStr(timer.roundedStart, timeFormat));
+  // <input type="time"> only accepts a 24-hour "HH:MM" value — it renders blank
+  // for anything else — so the value stays 24-hour whatever the display format
+  // is. The browser presents it in the OS's own 12/24-hour convention.
+  const [startInput, setStartInput] = useState(() => formatHHMM(new Date(timer.roundedStart)));
   const [endInput, setEndInput] = useState('');
   const [localDesc, setLocalDesc] = useState(description);
   const [localExtras, setLocalExtras] = useState({ ...extraValues });
@@ -493,8 +493,8 @@ function RunningView({
   const descriptionMissing = !!activeWorkspace?.descriptionRequired && !localDesc.trim();
 
   useEffect(() => {
-    setStartInput(formatTimeStr(timer.roundedStart, timeFormat));
-  }, [timer.startISO, timeFormat]); // eslint-disable-line react-hooks/exhaustive-deps
+    setStartInput(formatHHMM(new Date(timer.roundedStart)));
+  }, [timer.startISO]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     setLocalDesc(description);
@@ -509,7 +509,7 @@ function RunningView({
 
   const commitStart = () => {
     if (!startInput) {
-      setStartInput(formatTimeStr(timer.roundedStart, timeFormat));
+      setStartInput(formatHHMM(new Date(timer.roundedStart)));
       return;
     }
     updateStartTime(timeOnDate(timer.rawStart, startInput));
@@ -544,9 +544,6 @@ function RunningView({
   const blurOnEnter = (e) => {
     if (e.key === 'Enter') e.currentTarget.blur();
   };
-
-  const rm = getRoundingMinutes();
-  const projectedEnd = rm > 0 ? computeEndTime(timer.roundedStart, new Date(), rm) : new Date();
 
   const timeInputClass =
     'w-full bg-zinc-800 border border-zinc-700 rounded-md px-2 py-1.5 text-sm tabular-nums text-center';

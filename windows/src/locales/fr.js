@@ -116,6 +116,8 @@ export default {
 
   // Toasts
   toastApiKeySaved: 'La clé API fonctionne et a été enregistrée.',
+  btnRemoveKey: 'Supprimer la clé',
+  toastApiKeyRemoved: 'Clé API supprimée.',
   toastConnectionFailed: 'La connexion a échoué',
   toastProjectAdded: 'Espace de travail "{name}" ajouté.',
   toastProjectsError: 'Impossible de charger les projets',
@@ -183,6 +185,9 @@ export default {
   deletedPageConfirm: 'Fermer',
   warnAlreadyRunningTitle: 'Minuteur déjà en cours',
   warnAlreadyRunningBody: 'Un minuteur est déjà en cours. Voulez-vous l\'arrêter et démarrer le nouveau, ou annuler ?',
+  warnAlreadyRunningIn: 'En cours dans :',
+  presetsNoneConfigured: 'Aucun préréglage configuré',
+  colorNone: 'Aucune',
   btnStopAndStartNew: 'Arrêter & démarrer nouveau',
   dialogSavePresetTitle: 'Enregistrer le préréglage',
   dialogSavePresetBody: 'Enregistrer la description et les champs actuels en tant que préréglage.',

@@ -375,7 +375,13 @@ fun SettingsScreen(
                 NamedOption("es", stringResource(R.string.language_es)),
                 NamedOption("it", stringResource(R.string.language_it))
             )
-            val selectedLanguage = languageOptions.firstOrNull { it.id == uiState.locale } ?: languageOptions.first()
+            // A locale pulled in from the Windows app arrives as a full tag
+            // ("en-GB", "nl-BE"), so the option is matched on the language
+            // subtag — otherwise the picker reads "System" while the app is
+            // actually rendering that language.
+            val localeLanguage = uiState.locale.lowercase().substringBefore('-').substringBefore('_')
+            val selectedLanguage = languageOptions.firstOrNull { it.id == localeLanguage }
+                ?: languageOptions.first()
             SearchableDropdown(
                 options = languageOptions,
                 selected = selectedLanguage,

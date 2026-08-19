@@ -428,6 +428,9 @@ export const useStore = create((set, get) => ({
     await api.saveSettings({ locale });
     setLocale(locale);
     set({ locale });
+    // The tray menu is built in the main process and has its own copy of the
+    // strings, so it has to be told the language changed.
+    api.notifySettingsChanged?.();
     get().touchSettingsUpdatedAt();
   },
 
@@ -770,7 +773,10 @@ export const useStore = create((set, get) => ({
     const { timer, addToast } = get();
     if (!timer.running) return true;
 
-    const rm = get().getRoundingMinutes();
+    // The timer's own workspace decides the rounding, not whichever one the
+    // picker happens to be showing.
+    const timerWorkspace = get().workspaces.find((w) => w.id === timer.workspaceId);
+    const rm = timerWorkspace?.roundingMinutes ?? get().getRoundingMinutes();
     const rounding = rm > 0;
     const rawStart = new Date(timer.rawStart);
     if (manualEnd && manualEnd.getTime() < rawStart.getTime()) {
@@ -1361,7 +1367,10 @@ function applySyncPayload(set, get, payload) {
   if (payload.timeFormat !== undefined) patch.timeFormat = payload.timeFormat;
   if (payload.showNotionLink !== undefined) patch.showNotionLink = payload.showNotionLink;
   if (payload.showArchiveAction !== undefined) patch.showArchiveAction = payload.showArchiveAction;
-  api.saveSettings(patch);
+  // A pulled payload can carry different workspaces, presets and language —
+  // all three are baked into the tray menu, so it is rebuilt once the main
+  // process has the new values on disk.
+  Promise.resolve(api.saveSettings(patch)).then(() => api.notifySettingsChanged?.());
   set(patch);
   get().applyTheme();
 }

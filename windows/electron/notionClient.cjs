@@ -5,29 +5,50 @@
 const BASE_URL = process.env.NOTION_API_BASE_URL || 'https://api.notion.com/v1';
 const NOTION_VERSION = '2022-06-28';
 
+/**
+ * Notion allows roughly three requests per second per integration and answers
+ * 429 once that is exceeded. Loading a workspace's fields fires several calls
+ * at once (schema, related-database pages, users) on top of the running-timer
+ * and recent-entry queries for every workspace, so a burst can easily hit that
+ * ceiling. Retrying here — honouring Retry-After — keeps a throttled call from
+ * surfacing as an empty schema or an empty option list further up.
+ */
+const MAX_ATTEMPTS = 4;
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
 async function notionFetch(apiKey, method, endpoint, body) {
   if (!apiKey) {
     throw new Error('No Notion API key configured. Add one in Settings.');
   }
-  let response;
-  try {
-    response = await fetch(`${BASE_URL}${endpoint}`, {
-      method,
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Notion-Version': NOTION_VERSION,
-        'Content-Type': 'application/json',
-      },
-      body: body ? JSON.stringify(body) : undefined,
-    });
-  } catch (err) {
-    throw new Error(`Network error reaching Notion: ${err.message}`);
+  for (let attempt = 0; ; attempt++) {
+    let response;
+    try {
+      response = await fetch(`${BASE_URL}${endpoint}`, {
+        method,
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          'Notion-Version': NOTION_VERSION,
+          'Content-Type': 'application/json',
+        },
+        body: body ? JSON.stringify(body) : undefined,
+      });
+    } catch (err) {
+      throw new Error(`Network error reaching Notion: ${err.message}`);
+    }
+    const data = await response.json().catch(() => ({}));
+    if (response.ok) return data;
+
+    const message = data.message || `Notion API error (HTTP ${response.status})`;
+    const retryable = response.status === 429 || response.status >= 500;
+    if (!retryable || attempt >= MAX_ATTEMPTS - 1) throw new Error(message);
+
+    const retryAfterMs = Number(response.headers.get('Retry-After')) * 1000;
+    const backoffMs = Number.isFinite(retryAfterMs) && retryAfterMs > 0
+      ? retryAfterMs
+      : 500 * 2 ** attempt;
+    await sleep(Math.min(10_000, Math.max(300, backoffMs)));
   }
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    throw new Error(data.message || `Notion API error (HTTP ${response.status})`);
-  }
-  return data;
 }
 
 /**
@@ -94,11 +115,12 @@ async function fetchDatabasePages(apiKey, dbId) {
     });
     for (const page of data.results) {
       const titleProp = Object.values(page.properties || {}).find((p) => p.type === 'title');
-      const name = (titleProp?.title || [])
-        .map((t) => t.plain_text)
-        .join('')
-        .trim();
-      if (name) results.push({ id: page.id, name });
+      // Entries without a title still have to be listed: a relation value
+      // pointing at one would otherwise have no matching option and the field
+      // would read as empty even though the page is linked.
+      const name =
+        (titleProp?.title || []).map((t) => t.plain_text).join('').trim() || '(Untitled)';
+      results.push({ id: page.id, name });
     }
     cursor = data.has_more ? data.next_cursor : undefined;
   } while (cursor);

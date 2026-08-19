@@ -116,6 +116,8 @@ export default {
 
   // Toasts
   toastApiKeySaved: 'La chiave API funziona ed è stata salvata.',
+  btnRemoveKey: 'Rimuovi chiave',
+  toastApiKeyRemoved: 'Chiave API rimossa.',
   toastConnectionFailed: 'Connessione fallita',
   toastProjectAdded: 'Spazio di lavoro "{name}" aggiunto.',
   toastProjectsError: 'Impossibile caricare i progetti',
@@ -183,6 +185,9 @@ export default {
   deletedPageConfirm: 'Chiudi',
   warnAlreadyRunningTitle: 'Timer già attivo',
   warnAlreadyRunningBody: 'Un timer è già attivo. Vuoi fermarlo e avviare quello nuovo, oppure annullare?',
+  warnAlreadyRunningIn: 'Attualmente in corso in:',
+  presetsNoneConfigured: 'Nessuna preimpostazione configurata',
+  colorNone: 'Nessuno',
   btnStopAndStartNew: 'Ferma e avvia nuovo',
   dialogSavePresetTitle: 'Salva preimpostazione',
   dialogSavePresetBody: 'Salva la descrizione e i campi correnti come preimpostazione.',

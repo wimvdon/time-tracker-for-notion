@@ -234,4 +234,17 @@
     <string name="language_it">Italiano</string>
     <string name="error_extras_load_failed">Kon de velden van deze workspace niet uit Notion laden. De getoonde waarden zijn mogelijk onvolledig.</string>
     <string name="error_extras_missing_props">Sommige ingestelde eigenschappen bestaan niet meer in deze database. Controleer de workspace in Instellingen.</string>
+    <string name="app_title">Time Tracker</string>
+    <string name="title_save_preset">Opslaan als snelstarter</string>
+    <string name="title_manage_presets">Snelstarters beheren</string>
+    <string name="title_select_start_time">Starttijd kiezen</string>
+    <string name="title_select_end_time">Eindtijd kiezen</string>
+    <string name="title_move_preset_up">Snelstarter omhoog</string>
+    <string name="title_move_preset_down">Snelstarter omlaag</string>
+    <string name="title_info">Informatie</string>
+    <string name="error_no_api_key">Geen Notion API-sleutel ingesteld.</string>
+    <string name="error_start_failed">Kon de timer niet starten</string>
+    <string name="error_stop_failed">Kon de timer niet stoppen</string>
+    <string name="error_delete_failed">Kon de registratie niet verwijderen</string>
+    <string name="error_stop_from_notification_failed">Stoppen mislukt — open de app om het opnieuw te proberen</string>
 </resources>

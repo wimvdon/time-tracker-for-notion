@@ -118,13 +118,27 @@ let timerColor = null;
 let isQuitting = false;
 let cachedWorkspaces = [];
 
-// Tray menu strings live in the main process, where the renderer's i18n is
-// not available; app.getLocale() reflects the Windows display language.
+// Tray menu strings live in the main process, where the renderer's i18n is not
+// available. Keyed by language subtag so both this app's tags ('nl-BE') and the
+// Android app's ('nl') resolve to the same entry.
 const TRAY_STRINGS = {
-  'en-GB': { open: 'Open', stopTimer: 'Stop timer', quit: 'Quit', quickStart: 'Quick Start' },
-  'nl-BE': { open: 'Openen', stopTimer: 'Timer stoppen', quit: 'Afsluiten', quickStart: 'Snelstarters' },
+  en: { open: 'Open', stopTimer: 'Stop timer', quit: 'Quit' },
+  nl: { open: 'Openen', stopTimer: 'Timer stoppen', quit: 'Afsluiten' },
+  fr: { open: 'Ouvrir', stopTimer: 'Arrêter le minuteur', quit: 'Quitter' },
+  de: { open: 'Öffnen', stopTimer: 'Timer stoppen', quit: 'Beenden' },
+  es: { open: 'Abrir', stopTimer: 'Detener temporizador', quit: 'Salir' },
+  it: { open: 'Apri', stopTimer: 'Ferma timer', quit: 'Esci' },
 };
-let trayStrings = TRAY_STRINGS['en-GB'];
+
+/** Picks a tray string set for a locale tag, falling back to English. */
+function trayStringsFor(locale) {
+  const lang = String(locale || '').toLowerCase().split(/[-_]/)[0];
+  return TRAY_STRINGS[lang] || TRAY_STRINGS.en;
+}
+
+// Starts on the Windows display language; the renderer overrides it with the
+// language chosen in Settings as soon as it has loaded them.
+let trayStrings = TRAY_STRINGS.en;
 
 const assetPath = (name) => path.join(__dirname, '..', 'assets', name);
 
@@ -346,9 +360,14 @@ ipcMain.on('timer:state', (_event, data) => {
   }
 });
 
-// Renderer notifies that workspace settings changed (e.g. presets added)
+// Renderer notifies that settings changed (presets added, language switched,
+// a newer configuration pulled in from the sync page, …)
 ipcMain.on('settings:changed', () => {
   cachedWorkspaces = store.get('workspaces') || [];
+  const storedLocale = store.get('locale');
+  trayStrings = trayStringsFor(
+    !storedLocale || storedLocale === 'system' ? app.getLocale() : storedLocale
+  );
   if (tray) rebuildTrayMenu();
 });
 
@@ -368,10 +387,11 @@ if (!gotLock) {
   });
 
   app.whenReady().then(() => {
-    // Same detection rule as the renderer: any Dutch locale maps to nl-BE
-    if (app.getLocale().toLowerCase().startsWith('nl')) {
-      trayStrings = TRAY_STRINGS['nl-BE'];
-    }
+    // The stored language wins; 'system' (or nothing stored) follows Windows.
+    const storedLocale = store.get('locale');
+    trayStrings = trayStringsFor(
+      !storedLocale || storedLocale === 'system' ? app.getLocale() : storedLocale
+    );
     cachedWorkspaces = store.get('workspaces') || [];
 
     if (app.isPackaged) {

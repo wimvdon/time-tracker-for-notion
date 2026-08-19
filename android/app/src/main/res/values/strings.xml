@@ -234,4 +234,17 @@
     <string name="language_it">Italiano</string>
     <string name="error_extras_load_failed">Could not load the fields for this workspace from Notion. The values shown may be incomplete.</string>
     <string name="error_extras_missing_props">Some configured properties no longer exist in this database. Check the workspace in Settings.</string>
+    <string name="app_title">Time Tracker</string>
+    <string name="title_save_preset">Save as preset</string>
+    <string name="title_manage_presets">Manage presets</string>
+    <string name="title_select_start_time">Select start time</string>
+    <string name="title_select_end_time">Select end time</string>
+    <string name="title_move_preset_up">Move preset up</string>
+    <string name="title_move_preset_down">Move preset down</string>
+    <string name="title_info">Information</string>
+    <string name="error_no_api_key">No Notion API key set.</string>
+    <string name="error_start_failed">Could not start the timer</string>
+    <string name="error_stop_failed">Could not stop the timer</string>
+    <string name="error_delete_failed">Could not delete the entry</string>
+    <string name="error_stop_from_notification_failed">Stopping failed — open the app to try again</string>
 </resources>

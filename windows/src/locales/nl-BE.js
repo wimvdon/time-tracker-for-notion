@@ -116,6 +116,8 @@ export default {
 
   // Toasts
   toastApiKeySaved: 'API-sleutel werkt en is opgeslagen.',
+  btnRemoveKey: 'Sleutel verwijderen',
+  toastApiKeyRemoved: 'API-sleutel verwijderd.',
   toastConnectionFailed: 'Verbinding mislukt',
   toastProjectAdded: 'Werkruimte "{name}" toegevoegd.',
   toastProjectsError: 'Kon projecten niet laden',
@@ -179,6 +181,9 @@ export default {
   deletedPageConfirm: 'Sluiten',
   warnAlreadyRunningTitle: 'Timer is al actief',
   warnAlreadyRunningBody: 'Er is al een timer actief. Wil je die stoppen en de nieuwe starten, of annuleren?',
+  warnAlreadyRunningIn: 'Loopt momenteel in:',
+  presetsNoneConfigured: 'Geen snelstarters ingesteld',
+  colorNone: 'Geen',
   btnStopAndStartNew: 'Stoppen & nieuwe starten',
   dialogSavePresetTitle: 'Snelstarter opslaan',
   dialogSavePresetBody: 'Sla de huidige omschrijving en geselecteerde werkruimte/velden op als een snelstarter.',

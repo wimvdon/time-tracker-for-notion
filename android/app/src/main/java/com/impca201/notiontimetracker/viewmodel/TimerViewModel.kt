@@ -25,6 +25,30 @@ import java.time.format.DateTimeFormatter
 /** Every date format offered in Settings. */
 private val DATE_FORMATS = listOf("DD/MM/YYYY", "MM/DD/YYYY", "YYYY-MM-DD")
 
+/** How long a locally-stopped timer stays hidden from the running-timer list
+ *  while Notion's query catches up. */
+private const val RECENTLY_STOPPED_TTL_MS = 60_000L
+
+/**
+ * Keys for the messages the timer screen can show. The view model cannot
+ * translate them itself — its Application context follows the *system*
+ * language, not the one chosen in Settings — so it emits a key and the
+ * composables resolve it against their (locale-wrapped) resources. A key may
+ * carry Notion's own message after a `|`, which is appended as detail.
+ */
+object UiError {
+    const val NO_API_KEY = "no_api_key"
+    const val START_FAILED = "start_failed"
+    const val STOP_FAILED = "stop_failed"
+    const val UPDATE_FAILED = "update_failed"
+    const val DELETE_FAILED = "delete_failed"
+}
+
+private fun uiError(key: String, detail: String?): String =
+    if (detail.isNullOrBlank()) key else "$key|$detail"
+
+private fun uiError(key: String, cause: Throwable): String = uiError(key, cause.message)
+
 class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
 
     data class UiState(
@@ -82,6 +106,25 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
     // A preset launched from a home-screen / launcher shortcut before workspaces
     // finished loading (cold start). Applied once loadInitialState() completes.
     private var pendingPreset: Pair<String, String>? = null
+
+    // pageId -> when it was stopped on this device. Notion's running-timer query
+    // can keep returning a just-stopped entry for a moment (replication lag);
+    // without this the very next refresh adopted it again as the active timer,
+    // putting the notification back and re-starting a timer the user had
+    // deliberately stopped.
+    private val recentlyStopped = mutableMapOf<String, Long>()
+
+    private fun markStopped(pageId: String) {
+        if (pageId.isBlank()) return
+        recentlyStopped[pageId] = System.currentTimeMillis()
+    }
+
+    /** Drops just-stopped entries, and prunes the guard map as it goes. */
+    private fun withoutRecentlyStopped(timers: List<RunningTimerInfo>): List<RunningTimerInfo> {
+        val now = System.currentTimeMillis()
+        recentlyStopped.entries.removeAll { now - it.value >= RECENTLY_STOPPED_TTL_MS }
+        return timers.filterNot { recentlyStopped.containsKey(it.pageId) }
+    }
 
     init {
         viewModelScope.launch { loadInitialState() }
@@ -446,7 +489,9 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
             settingsRepo.clearActiveTimer()
             _uiState.update { it.copy(running = false, activeTimer = null, elapsedSeconds = 0L, infoToast = "timer_stopped_elsewhere") }
             
-            val next = running.firstOrNull()
+            // Same replication-lag guard as the list refresh: never promote an
+            // entry this device has just stopped.
+            val next = running.firstOrNull { it.pageId !in recentlyStopped }
             if (next != null) {
                 val nextInfo = RunningTimerInfo(
                     pageId = next.pageId,
@@ -471,7 +516,8 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
         val state = _uiState.value
         val timer = state.activeTimer ?: return
         viewModelScope.launch {
-            val extraNotionValues = buildExtraNotionValues(state.extraFieldDefs, extraValues)
+            val extraNotionValues =
+                buildExtraNotionValues(state.extraFieldDefs, extraValues, clearEmpty = true)
             val properties = mutableMapOf<String, Any?>()
             val projectName = state.projects.firstOrNull { it.id == projectId }?.name ?: ""
             // The description may be cleared; the page itself never gets an empty
@@ -521,7 +567,7 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
                     if (isPageDeletedError(msg)) {
                         _uiState.update { it.copy(editTimerOpen = false, deletedPageDialogVisible = true, deletedPageDialogTitle = description.ifBlank { null }) }
                     } else {
-                        _uiState.update { it.copy(error = msg) }
+                        _uiState.update { it.copy(error = uiError(UiError.UPDATE_FAILED, msg)) }
                     }
                 }
         }
@@ -530,7 +576,7 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
     fun startTimer() {
         val initial = _uiState.value
         val workspace = initial.workspaces.firstOrNull { it.id == initial.selectedWorkspaceId } ?: return
-        if (initial.apiKey.isBlank()) { _uiState.update { it.copy(error = "No Notion API key set.") }; return }
+        if (initial.apiKey.isBlank()) { _uiState.update { it.copy(error = UiError.NO_API_KEY) }; return }
 
         // No validation on start (validated on stop instead)
 
@@ -596,7 +642,7 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
                 loadRecentEntries()
                 syncServiceNotifications()
             }.onFailure { err ->
-                _uiState.update { it.copy(isStarting = false, error = err.message ?: "Could not start timer") }
+                _uiState.update { it.copy(isStarting = false, error = uiError(UiError.START_FAILED, err)) }
             }
         }
     }
@@ -637,6 +683,7 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
         }
 
         if (outcome.isSuccess) {
+            markStopped(timer.notionPageId)
             settingsRepo.clearActiveTimer()
             tickJob?.cancel()
             _uiState.update { it.copy(running = false, activeTimer = null, elapsedSeconds = 0L) }
@@ -645,20 +692,52 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
 
         val msg = outcome.exceptionOrNull()?.message ?: ""
         if (isPageDeletedError(msg)) {
+            markStopped(timer.notionPageId)
             settingsRepo.clearActiveTimer()
             tickJob?.cancel()
             _uiState.update { it.copy(running = false, activeTimer = null, elapsedSeconds = 0L) }
             return StopResult.Deleted
         }
-        return StopResult.Failed(msg.ifBlank { "Could not stop timer" })
+        return StopResult.Failed(uiError(UiError.STOP_FAILED, msg))
     }
 
-    fun stopTimer(manualEndMs: Long? = null) {
+    /**
+     * Writes a description that was typed in the running view but not saved
+     * yet. Stopping used to ignore the draft entirely: the typed text was
+     * dropped, and in a workspace that requires a description the stop was
+     * even refused while the text was sitting there on screen.
+     */
+    private suspend fun commitDescription(timer: ActiveTimer, description: String) {
+        val trimmed = description.trim()
+        if (trimmed == timer.description.trim()) return
+        val titleProp = timer.propertyMap.timeEntryTitleProp
+        if (titleProp.isNotBlank()) {
+            val startMs = runCatching { parseIso(timer.rawStart) }.getOrDefault(System.currentTimeMillis())
+            // Same fallback as everywhere else: never leave the page "Untitled".
+            val title = trimmed.ifBlank { fallbackDescription(startMs, _uiState.value.dateFormat) }
+            runCatching {
+                notionRepo.updatePageProperties(
+                    timer.notionPageId,
+                    mapOf(titleProp to mapOf("title" to listOf(mapOf("text" to mapOf("content" to title)))))
+                )
+            }
+        }
+        val updated = timer.copy(description = trimmed)
+        _uiState.update { it.copy(activeTimer = updated, description = trimmed) }
+        settingsRepo.saveActiveTimer(updated)
+    }
+
+    /**
+     * @param pendingDescription the description as it stands in the running
+     *   view's input, which may not have been saved yet.
+     */
+    fun stopTimer(manualEndMs: Long? = null, pendingDescription: String? = null) {
         val state = _uiState.value
         val timer = state.activeTimer ?: return
+        val description = pendingDescription?.trim() ?: state.description
 
         val workspace = state.workspaces.firstOrNull { it.id == timer.workspaceId }
-        if (workspace?.descriptionRequired == true && state.description.isBlank()) {
+        if (workspace?.descriptionRequired == true && description.isBlank()) {
             _uiState.update { it.copy(stopError = "description_before_stopping") }
             return
         }
@@ -674,7 +753,8 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
 
         viewModelScope.launch {
             val stoppedPageId = timer.notionPageId
-            val stoppedTitle = state.description
+            val stoppedTitle = description
+            commitDescription(timer, description)
             when (val result = stopActivePage(manualEndMs)) {
                 is StopResult.Success -> {
                     val remainingRunning = _uiState.value.runningTimers.filter { it.pageId != stoppedPageId }
@@ -753,7 +833,7 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
                 if (isPageDeletedError(msg)) {
                     _uiState.update { it.copy(deletedPageDialogVisible = true, deletedPageDialogTitle = timer.description.ifBlank { null }) }
                 } else {
-                    _uiState.update { it.copy(error = msg) }
+                    _uiState.update { it.copy(error = uiError(UiError.UPDATE_FAILED, msg)) }
                 }
             }
         }
@@ -764,6 +844,7 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
         tickJob?.cancel()
 
         val pageToFilter = stoppedPageId ?: state.activeTimer?.notionPageId
+        pageToFilter?.let { markStopped(it) }
         val remainingRunning = if (pageToFilter != null) {
             state.runningTimers.filter { it.pageId != pageToFilter }
         } else {
@@ -833,14 +914,15 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
             }
         }
         allRunning.sortByDescending { it.startISO }
+        val visibleRunning = withoutRecentlyStopped(allRunning)
         // Merge deltas into the existing list instead of replacing it wholesale, so
         // entries that are still running keep their identity/position (no flicker or
         // momentary disappearance while switching timers).
-        _uiState.update { it.copy(runningTimersLoading = false, runningTimers = mergeById(it.runningTimers, allRunning) { r -> r.pageId }) }
+        _uiState.update { it.copy(runningTimersLoading = false, runningTimers = mergeById(it.runningTimers, visibleRunning) { r -> r.pageId }) }
         syncServiceNotifications()
         val updatedState = _uiState.value
-        if (!updatedState.running && updatedState.activeTimer == null && allRunning.isNotEmpty()) {
-            loadRunningTimer(allRunning.first())
+        if (!updatedState.running && updatedState.activeTimer == null && visibleRunning.isNotEmpty()) {
+            loadRunningTimer(visibleRunning.first())
         }
     }
 
@@ -911,6 +993,7 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             runCatching { notionRepo.deletePage(info.pageId) }
                 .onSuccess {
+                    markStopped(info.pageId)
                     val isActiveTimer = _uiState.value.activeTimer?.notionPageId == info.pageId
                     when {
                         isActiveTimer -> {
@@ -933,7 +1016,7 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
                     loadRecentEntries()
                 }
                 .onFailure { err ->
-                    _uiState.update { it.copy(error = err.message ?: "Could not delete entry") }
+                    _uiState.update { it.copy(error = uiError(UiError.DELETE_FAILED, err)) }
                 }
         }
     }
@@ -1104,10 +1187,13 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
                     propertyMap = rt.propertyMap
                 )
             }.onSuccess {
+                markStopped(rt.pageId)
                 val remainingRunning = _uiState.value.runningTimers.filter { t -> t.pageId != rt.pageId }
                 _uiState.update { it.copy(runningTimers = remainingRunning) }
+                loadRunningTimers()
+                loadRecentEntries()
             }.onFailure { err ->
-                _uiState.update { it.copy(error = err.message ?: "Could not stop timer") }
+                _uiState.update { it.copy(error = uiError(UiError.STOP_FAILED, err)) }
             }
         }
     }
@@ -1286,14 +1372,25 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
         app.stopService(Intent(app, TimerForegroundService::class.java))
     }
 
+    /**
+     * Notion property values for the extra fields.
+     *
+     * On create, an empty field is left out so Notion applies whatever default
+     * the database has. On update it has to be written as an explicit empty
+     * value instead ([clearEmpty]) — skipping it there meant a value could be
+     * set but never cleared again, since the page kept the old one.
+     */
     private fun buildExtraNotionValues(
         defs: List<ExtraFieldDef>,
-        values: Map<String, String>
+        values: Map<String, String>,
+        clearEmpty: Boolean = false
     ): Map<String, Any?> {
         val result = mutableMapOf<String, Any?>()
         for (def in defs) {
             val raw = values[def.propName] ?: continue
-            val notionValue = buildPropertyValue(def.type, raw) ?: continue
+            val notionValue = buildPropertyValue(def.type, raw)
+                ?: (if (clearEmpty) emptyPropertyValue(def.type) else null)
+                ?: continue
             result[def.propName] = notionValue
         }
         return result
@@ -1326,8 +1423,11 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
         return Math.round(ms.toDouble() / intervalMs) * intervalMs
     }
 
+    // Seconds are dropped so an entry's start/end read as whole minutes, the
+    // same as the desktop app writes them (it always emits ":00").
     private fun toNotionDateTime(ms: Long): String {
         val odt = Instant.ofEpochMilli(ms).atZone(ZoneId.systemDefault())
+            .withSecond(0).withNano(0)
         return DateTimeFormatter.ISO_OFFSET_DATE_TIME.format(odt)
     }
 
@@ -1476,6 +1576,27 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
                 else mapOf("files" to listOf(mapOf("name" to "file", "external" to mapOf("url" to value.trim()))))
                 else -> null
             }
+        }
+
+        /**
+         * The Notion value that clears a property. `checkbox` is absent on
+         * purpose: false is already a real value that [buildPropertyValue]
+         * writes, so there is nothing to clear.
+         */
+        fun emptyPropertyValue(type: String): Any? = when (type) {
+            "rich_text" -> mapOf("rich_text" to emptyList<Any>())
+            "number" -> mapOf("number" to null)
+            "select" -> mapOf("select" to null)
+            "status" -> mapOf("status" to null)
+            "multi_select" -> mapOf("multi_select" to emptyList<Any>())
+            "date" -> mapOf("date" to null)
+            "url" -> mapOf("url" to null)
+            "email" -> mapOf("email" to null)
+            "phone_number" -> mapOf("phone_number" to null)
+            "people" -> mapOf("people" to emptyList<Any>())
+            "relation" -> mapOf("relation" to emptyList<Any>())
+            "files" -> mapOf("files" to emptyList<Any>())
+            else -> null
         }
 
         /** Reverse of [buildPropertyValue]: reads a Notion page property's raw JSON

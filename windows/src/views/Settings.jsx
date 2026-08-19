@@ -66,6 +66,13 @@ export default function Settings() {
 
   const handleSaveAndTestKey = async () => {
     const key = keyInput.trim();
+    // Emptying the field and saving removes the stored key — there is nothing
+    // to test in that case.
+    if (!key) {
+      await saveApiKey('');
+      addToast({ type: 'success', message: t('toastApiKeyRemoved') });
+      return;
+    }
     setTesting(true);
     try {
       await window.notionAPI.testConnection(key, null);
@@ -117,10 +124,14 @@ export default function Settings() {
         </div>
         <button
           onClick={handleSaveAndTestKey}
-          disabled={testing || !keyInput.trim()}
+          disabled={testing}
           className="mt-2 px-3 py-1.5 rounded-md bg-zinc-700 hover:bg-zinc-600 disabled:opacity-50 text-sm"
         >
-          {testing ? t('btnTestingKey') : t('btnTestAndSaveKey')}
+          {testing
+            ? t('btnTestingKey')
+            : keyInput.trim()
+            ? t('btnTestAndSaveKey')
+            : t('btnRemoveKey')}
         </button>
       </div>
 
@@ -296,7 +307,7 @@ export default function Settings() {
         <select
           value={locale}
           onChange={(e) => setLocale(e.target.value)}
-          className="w-full bg-zinc-900 border border-zinc-755 rounded-md px-2.5 py-1.5 text-xs text-zinc-200 focus:outline-none focus:border-zinc-500"
+          className="w-full bg-zinc-900 border border-zinc-700 rounded-md px-2.5 py-1.5 text-xs text-zinc-200 focus:outline-none focus:border-zinc-500"
         >
           <option value="system">{t('optSystem')}</option>
           <option value="en-GB">English</option>
@@ -314,7 +325,7 @@ export default function Settings() {
         <select
           value={dateFormat}
           onChange={(e) => setDateFormat(e.target.value)}
-          className="w-full bg-zinc-900 border border-zinc-755 rounded-md px-2.5 py-1.5 text-xs text-zinc-200 focus:outline-none focus:border-zinc-500"
+          className="w-full bg-zinc-900 border border-zinc-700 rounded-md px-2.5 py-1.5 text-xs text-zinc-200 focus:outline-none focus:border-zinc-500"
         >
           <option value="DD/MM/YYYY">DD/MM/YYYY</option>
           <option value="MM/DD/YYYY">MM/DD/YYYY</option>
@@ -328,7 +339,7 @@ export default function Settings() {
         <select
           value={timeFormat}
           onChange={(e) => setTimeFormat(e.target.value)}
-          className="w-full bg-zinc-900 border border-zinc-755 rounded-md px-2.5 py-1.5 text-xs text-zinc-200 focus:outline-none focus:border-zinc-500"
+          className="w-full bg-zinc-900 border border-zinc-700 rounded-md px-2.5 py-1.5 text-xs text-zinc-200 focus:outline-none focus:border-zinc-500"
         >
           <option value="12h">{t('opt12h')}</option>
           <option value="24h">{t('opt24h')}</option>
@@ -957,7 +968,7 @@ function WorkspaceColorPicker({ value, onChange }) {
         <button
           type="button"
           onClick={() => onChange('')}
-          title="None"
+          title={t('colorNone')}
           className={`w-7 h-7 rounded-full border-2 bg-zinc-700 flex items-center justify-center text-xs transition-colors ${
             !value ? 'border-emerald-500' : 'border-zinc-600 hover:border-zinc-400'
           }`}
