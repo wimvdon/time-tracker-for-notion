@@ -64,9 +64,9 @@
     <string name="hint_time_entry_date_prop">Stocke les heures de début et de fin.</string>
     <string name="label_time_entry_status_prop">Champ de statut</string>
     <string name="hint_time_entry_status_prop">Indique si le minuteur est en cours ou terminé.</string>
-    <string name="label_time_entry_status_running">Option de statut "En cours"</string>
+    <string name="label_time_entry_status_running">Option de statut \"En cours\"</string>
     <string name="hint_time_entry_status_running">L\'option qui marque une saisie comme en cours.</string>
-    <string name="label_time_entry_status_done">Option de statut "Terminé"</string>
+    <string name="label_time_entry_status_done">Option de statut \"Terminé\"</string>
     <string name="hint_time_entry_status_done">L\'option qui marque une saisie comme terminée.</string>
     <string name="label_relation_prop">Relation de projet (projets)</string>
     <string name="loading_properties">Chargement…</string>
@@ -233,7 +233,7 @@
     <string name="language_es">Español</string>
     <string name="language_it">Italiano</string>
     <string name="error_extras_load_failed">Impossible de charger les champs de cet espace depuis Notion. Les valeurs affichées peuvent être incomplètes.</string>
-    <string name="error_extras_missing_props">Certaines propriétés configurées n'existent plus dans cette base de données. Vérifiez l'espace dans les Paramètres.</string>
+    <string name="error_extras_missing_props">Certaines propriétés configurées n\'existent plus dans cette base de données. Vérifiez l\'espace dans les Paramètres.</string>
     <string name="app_title">Time Tracker</string>
     <string name="title_save_preset">Enregistrer comme préréglage</string>
     <string name="title_manage_presets">Gérer les préréglages</string>
