@@ -60,8 +60,11 @@ class SettingsViewModel(private val app: Application) : AndroidViewModel(app) {
         val presets: List<Preset> = emptyList(),
         val saving: Boolean = false,
         val saveError: String? = null,
-        val extraPropRelationPages: Map<Int, List<NamedOption>> = emptyMap(),
-        val extraPropRelationLoading: Set<Int> = emptySet()
+        /** Identifies this editing session. Async loads carry the token they were
+         *  started with and only apply while it still matches, so a response for a
+         *  workspace (or database) the user has since left can never land in the
+         *  form that is open now. */
+        val session: Long = 0L
     )
 
     private val _uiState = MutableStateFlow(UiState())
@@ -69,6 +72,22 @@ class SettingsViewModel(private val app: Application) : AndroidViewModel(app) {
 
     private val _editState = MutableStateFlow<WorkspaceEditState?>(null)
     val editState: StateFlow<WorkspaceEditState?> = _editState.asStateFlow()
+
+    private var editSessionCounter = 0L
+
+    /** Applies [transform] only if the edit form is still the one identified by
+     *  [session] (and, when given, still pointing at [dbId]). */
+    private fun updateEditIfCurrent(
+        session: Long,
+        dbId: String? = null,
+        transform: (WorkspaceEditState) -> WorkspaceEditState
+    ) {
+        _editState.update { state ->
+            if (state == null || state.session != session) state
+            else if (dbId != null && state.timeEntriesDbId != dbId) state
+            else transform(state)
+        }
+    }
 
     private val settingsRepo get() = (app as NotionTimeTrackerApp).settingsRepository
     private val notionRepo get() = (app as NotionTimeTrackerApp).notionRepository
@@ -176,6 +195,9 @@ class SettingsViewModel(private val app: Application) : AndroidViewModel(app) {
             runCatching { notionRepo.testConnectionWithKey(key) }
                 .onSuccess {
                     settingsRepo.saveApiKey(key)
+                    // Cached schemas/options belong to whatever integration the old key
+                    // pointed at.
+                    notionRepo.invalidateMetadataCache()
                     _uiState.update { it.copy(testingKey = false, keyTestSuccess = true, snackbarMessage = "api_key_saved") }
                 }
                 .onFailure { err ->
@@ -212,13 +234,14 @@ class SettingsViewModel(private val app: Application) : AndroidViewModel(app) {
     // --- Workspace edit ---
 
     fun openAddWorkspace() {
-        _editState.value = WorkspaceEditState(isNew = true)
+        _editState.value = WorkspaceEditState(isNew = true, session = ++editSessionCounter)
         loadDatabases()
     }
 
     fun openEditWorkspace(workspace: Workspace) {
         _editState.value = WorkspaceEditState(
             isNew = false,
+            session = ++editSessionCounter,
             workspaceId = workspace.id,
             name = workspace.name,
             color = workspace.color,
@@ -236,51 +259,58 @@ class SettingsViewModel(private val app: Application) : AndroidViewModel(app) {
         if (workspace.timeEntriesDbId.isNotBlank()) loadSchema(workspace.timeEntriesDbId)
     }
 
-    fun closeWorkspaceEdit() { _editState.value = null }
+    fun closeWorkspaceEdit() {
+        // Bumping the token makes every in-flight load for this form a no-op, so it
+        // cannot write into the next workspace the user opens.
+        editSessionCounter++
+        _editState.value = null
+    }
 
     fun loadDatabases() {
-        _editState.update { it?.copy(databasesLoading = true, databasesError = null) } ?: return
+        val session = _editState.value?.session ?: return
+        _editState.update { it?.copy(databasesLoading = true, databasesError = null) }
         viewModelScope.launch {
             runCatching { notionRepo.searchDatabases() }
-                .onSuccess { dbs -> _editState.update { it?.copy(databases = dbs, databasesLoading = false) } }
-                .onFailure { err -> _editState.update { it?.copy(databasesLoading = false, databasesError = err.message) } }
+                .onSuccess { dbs -> updateEditIfCurrent(session) { it.copy(databases = dbs, databasesLoading = false) } }
+                .onFailure { err -> updateEditIfCurrent(session) { it.copy(databasesLoading = false, databasesError = err.message) } }
         }
     }
 
     fun setWorkspaceName(name: String) = _editState.update { it?.copy(name = name) }
 
     fun setTimeEntriesDb(dbId: String) {
-        _editState.update { it?.copy(timeEntriesDbId = dbId, schema = emptyMap(), timeEntryDateProp = "", timeEntryStatusProp = "", timeEntryStatusRunning = "", timeEntryStatusDone = "") }
+        _editState.update { state ->
+            if (state == null || state.timeEntriesDbId == dbId) state
+            else state.copy(
+                timeEntriesDbId = dbId,
+                schema = emptyMap(),
+                schemaError = null,
+                timeEntryDateProp = "",
+                timeEntryStatusProp = "",
+                timeEntryStatusRunning = "",
+                timeEntryStatusDone = "",
+                // Extra fields name properties of the previous database; keeping them
+                // would save property names this database does not have, which then
+                // silently disappear from the timer form.
+                extraProps = if (state.timeEntriesDbId.isBlank()) state.extraProps else emptyList()
+            )
+        }
         if (dbId.isNotBlank()) loadSchema(dbId)
     }
 
     fun loadSchema(dbId: String) {
-        _editState.update { it?.copy(schemaLoading = true, schemaError = null) } ?: return
+        val session = _editState.value?.session ?: return
+        _editState.update { it?.copy(schemaLoading = true, schemaError = null) }
         viewModelScope.launch {
-            runCatching { notionRepo.getDatabaseSchema(dbId) }
+            // Always live: the whole point of this screen is to configure against the
+            // database as it is right now.
+            runCatching { notionRepo.getDatabaseSchema(dbId, forceRefresh = true) }
                 .onSuccess { schema ->
-                    _editState.update { it?.copy(schema = schema, schemaLoading = false) }
-                    loadRelationPagesForExtraProps(schema)
+                    updateEditIfCurrent(session, dbId) { it.copy(schema = schema, schemaLoading = false) }
                 }
-                .onFailure { err -> _editState.update { it?.copy(schemaLoading = false, schemaError = err.message) } }
-        }
-    }
-
-    private fun loadRelationPagesForExtraProps(schema: Map<String, SchemaProperty>) {
-        val state = _editState.value ?: return
-        state.extraProps.forEachIndexed { index, ep ->
-            if (ep.propName.isBlank()) return@forEachIndexed
-            if (schema[ep.propName]?.type != "relation") return@forEachIndexed
-            val relDbId = schema[ep.propName]?.relationDatabaseId ?: return@forEachIndexed
-            if (relDbId.isBlank()) return@forEachIndexed
-            _editState.update { it?.copy(extraPropRelationLoading = it.extraPropRelationLoading + index) }
-            viewModelScope.launch {
-                val pages = runCatching { notionRepo.fetchDatabasePages(relDbId) }.getOrDefault(emptyList())
-                _editState.update { it?.copy(
-                    extraPropRelationPages = it.extraPropRelationPages + (index to pages),
-                    extraPropRelationLoading = it.extraPropRelationLoading - index
-                )}
-            }
+                .onFailure { err ->
+                    updateEditIfCurrent(session, dbId) { it.copy(schemaLoading = false, schemaError = err.message) }
+                }
         }
     }
 
@@ -307,20 +337,6 @@ class SettingsViewModel(private val app: Application) : AndroidViewModel(app) {
             state?.copy(extraProps = state.extraProps.toMutableList().also { list ->
                 if (index < list.size) list[index] = list[index].copy(propName = name, type = state.schema[name]?.type ?: "rich_text", defaultValue = null)
             })
-        }
-        val state = _editState.value ?: return
-        if (state.schema[name]?.type == "relation") {
-            val relDbId = state.schema[name]?.relationDatabaseId
-            if (!relDbId.isNullOrBlank()) {
-                _editState.update { it?.copy(extraPropRelationLoading = it.extraPropRelationLoading + index) }
-                viewModelScope.launch {
-                    val pages = runCatching { notionRepo.fetchDatabasePages(relDbId) }.getOrDefault(emptyList())
-                    _editState.update { it?.copy(
-                        extraPropRelationPages = it.extraPropRelationPages + (index to pages),
-                        extraPropRelationLoading = it.extraPropRelationLoading - index
-                    )}
-                }
-            }
         }
     }
 
@@ -363,36 +379,64 @@ class SettingsViewModel(private val app: Application) : AndroidViewModel(app) {
         if (!isEditValid(edit)) { _editState.update { it?.copy(saveError = "incomplete") }; return }
 
         val validExtraProps = edit.extraProps.filter { it.propName.isNotBlank() }
-        val relPropName = edit.schema.entries.firstOrNull { it.value.type == "relation" }?.key ?: ""
-        val projectsDbId = edit.schema[relPropName]?.relationDatabaseId ?: ""
-        val workspace = Workspace(
-            id = edit.workspaceId,
-            name = edit.name.trim(),
-            color = edit.color.trim(),
-            timeEntriesDbId = edit.timeEntriesDbId,
-            projectsDbId = projectsDbId,
-            roundingMinutes = edit.roundingMinutes,
-            descriptionRequired = edit.descriptionRequired,
-            propertyMap = PropertyMap(
-                timeEntryTitleProp = edit.schema.entries.firstOrNull { it.value.type == "title" }?.key ?: "Name",
-                timeEntryDateProp = edit.timeEntryDateProp,
-                timeEntryStatusProp = edit.timeEntryStatusProp,
-                timeEntryStatusRunning = edit.timeEntryStatusRunning,
-                timeEntryRelationProp = relPropName,
-                timeEntryStatusDone = edit.timeEntryStatusDone
-            ),
-            extraProps = validExtraProps,
-            presets = edit.presets.map { p ->
-                p.copy(name = p.name.trim(), pageTitle = p.pageTitle.trim())
-            }
-        )
 
         _editState.update { it?.copy(saving = true) }
         viewModelScope.launch {
             val list = settingsRepo.getWorkspaces().toMutableList()
+            val existing = list.firstOrNull { it.id == edit.workspaceId }
+
+            // The title property and the "project" relation are derived from the live
+            // schema, which is not always there — reopening a saved workspace while
+            // offline (or rate limited) leaves it empty. Deriving from an empty schema
+            // wrote back a title property of "Name" and an empty relation, quietly
+            // breaking a workspace that was configured correctly, so an unavailable
+            // schema keeps whatever was saved before instead.
+            val schemaAvailable = edit.schema.isNotEmpty()
+            val titleProp = if (schemaAvailable) {
+                edit.schema.entries.firstOrNull { it.value.type == "title" }?.key ?: "Name"
+            } else {
+                existing?.propertyMap?.timeEntryTitleProp?.takeIf { it.isNotBlank() } ?: "Name"
+            }
+            val relPropName = if (schemaAvailable) {
+                edit.schema.entries.firstOrNull { it.value.type == "relation" }?.key ?: ""
+            } else {
+                existing?.propertyMap?.timeEntryRelationProp ?: ""
+            }
+            val projectsDbId = if (schemaAvailable) {
+                edit.schema[relPropName]?.relationDatabaseId ?: ""
+            } else {
+                existing?.projectsDbId ?: ""
+            }
+
+            val workspace = Workspace(
+                id = edit.workspaceId,
+                name = edit.name.trim(),
+                color = edit.color.trim(),
+                timeEntriesDbId = edit.timeEntriesDbId,
+                projectsDbId = projectsDbId,
+                roundingMinutes = edit.roundingMinutes,
+                descriptionRequired = edit.descriptionRequired,
+                propertyMap = PropertyMap(
+                    timeEntryTitleProp = titleProp,
+                    timeEntryDateProp = edit.timeEntryDateProp,
+                    timeEntryStatusProp = edit.timeEntryStatusProp,
+                    timeEntryStatusRunning = edit.timeEntryStatusRunning,
+                    timeEntryRelationProp = relPropName,
+                    timeEntryStatusDone = edit.timeEntryStatusDone
+                ),
+                extraProps = validExtraProps,
+                presets = edit.presets.map { p ->
+                    p.copy(name = p.name.trim(), pageTitle = p.pageTitle.trim())
+                }
+            )
+
             if (edit.isNew) list.add(workspace)
             else { val idx = list.indexOfFirst { it.id == workspace.id }; if (idx >= 0) list[idx] = workspace else list.add(workspace) }
             saveWorkspaces(list)
+            // The timer screen builds its fields from the cached schema; the database
+            // this workspace points at may just have changed.
+            notionRepo.invalidateMetadataCache()
+            editSessionCounter++
             _editState.value = null
             _uiState.update { it.copy(snackbarMessage = if (edit.isNew) "workspace_added:${workspace.name}" else "workspace_saved:${workspace.name}") }
         }

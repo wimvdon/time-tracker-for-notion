@@ -239,9 +239,18 @@ fun WorkspaceModal(
             )
             Spacer(Modifier.height(8.dp))
 
-            val editableProps = state.schema.entries
+            // Properties this database offers, plus any already-configured name the
+            // schema does not (or could not) report: without those the dropdown of a
+            // configured field would render empty, as if nothing were selected.
+            val schemaProps = state.schema.entries
                 .filter { (_, v) -> v.type in WRITABLE_EXTRA_TYPES && v.type !in READ_ONLY_TYPES }
                 .map { NamedOption(it.key, it.key) }
+            val configuredOnly = state.extraProps
+                .map { it.propName }
+                .filter { it.isNotBlank() && schemaProps.none { p -> p.id == it } }
+                .distinct()
+                .map { NamedOption(it, it) }
+            val editableProps = schemaProps + configuredOnly
 
             state.extraProps.forEachIndexed { index, prop ->
                 ExtraPropRow(
@@ -249,8 +258,6 @@ fun WorkspaceModal(
                     prop = prop,
                     availableProps = editableProps,
                     schema = state.schema,
-                    relationPages = state.extraPropRelationPages[index] ?: emptyList(),
-                    relationLoading = index in state.extraPropRelationLoading,
                     onNameChange = { onExtraPropNameChange(index, it) },
                     onRequiredChange = { onExtraPropRequiredChange(index, it) },
                     onDefaultChange = { onExtraPropDefaultChange(index, it) },
@@ -383,8 +390,6 @@ private fun ExtraPropRow(
     prop: ExtraProp,
     availableProps: List<NamedOption>,
     schema: Map<String, SchemaProperty>,
-    relationPages: List<NamedOption>,
-    relationLoading: Boolean,
     onNameChange: (String) -> Unit,
     onRequiredChange: (Boolean) -> Unit,
     onDefaultChange: (String?) -> Unit,

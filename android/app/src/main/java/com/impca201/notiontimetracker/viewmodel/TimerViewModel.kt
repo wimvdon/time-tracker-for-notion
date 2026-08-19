@@ -45,6 +45,7 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
         val isStarting: Boolean = false,
         val isStopping: Boolean = false,
         val extrasLoading: Boolean = false,
+        val extrasError: String? = null,
         val runningTimers: List<RunningTimerInfo> = emptyList(),
         val runningTimersLoading: Boolean = false,
         val recentEntries: List<RecentEntryInfo> = emptyList(),
@@ -71,6 +72,12 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
 
     private var tickJob: Job? = null
     private var tickStartMs: Long = 0L
+
+    // Loading a workspace's extra fields hits the network several times (schema,
+    // related-database entries, users). Switching workspace while one of those is
+    // in flight used to let the older, slower load finish last and write another
+    // workspace's fields into the UI, so every new load cancels the previous one.
+    private var extrasJob: Job? = null
 
     // A preset launched from a home-screen / launcher shortcut before workspaces
     // finished loading (cold start). Applied once loadInitialState() completes.
@@ -142,7 +149,7 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
                             extraValues = activeTimer.extraValues
                         )
                     }
-                    loadExtraFieldDefs(workspace)
+                    loadExtraFieldDefsAndWait(workspace)
                     val rawStartMs = runCatching { parseIso(activeTimer.rawStart) }.getOrElse { System.currentTimeMillis() }
                     tickStartMs = rawStartMs
                     startTicking(rawStartMs)
@@ -181,6 +188,7 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
 
     fun refreshSettings() {
         viewModelScope.launch {
+            val previousWorkspace = _uiState.value.workspaces.firstOrNull { it.id == _uiState.value.selectedWorkspaceId }
             val apiKey = settingsRepo.getApiKey()
             val workspaces = settingsRepo.getWorkspaces()
             val locale = settingsRepo.localeFlow.first()
@@ -199,9 +207,18 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
             ) }
             ShortcutHelper.updateShortcuts(app, workspaces)
             val current = _uiState.value.selectedWorkspaceId
-            if (current == null || workspaces.none { it.id == current }) {
+            val currentWorkspace = workspaces.firstOrNull { it.id == current }
+            if (currentWorkspace == null) {
                 val firstId = workspaces.firstOrNull()?.id
                 if (firstId != null) selectWorkspace(firstId)
+            } else if (previousWorkspace?.extraProps != currentWorkspace.extraProps ||
+                previousWorkspace.timeEntriesDbId != currentWorkspace.timeEntriesDbId
+            ) {
+                // The extra-field configuration changed (edited here or pulled in from
+                // another device by the sync) — the form on screen is describing the
+                // old configuration, so rebuild it.
+                extrasJob?.cancel()
+                extrasJob = viewModelScope.launch { loadExtraFieldDefs(currentWorkspace) }
             }
             loadRunningTimers()
             loadRecentEntries()
@@ -222,58 +239,116 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
                 selectedProjectId = currentProj,
                 extraFieldDefs = emptyList(),
                 extraValues = currentExtras,
-                extrasLoading = workspace.extraProps.isNotEmpty()
+                extrasLoading = workspace.extraProps.isNotEmpty(),
+                extrasError = null
             )
         }
-        viewModelScope.launch {
+        extrasJob?.cancel()
+        extrasJob = viewModelScope.launch {
             settingsRepo.saveLastWorkspaceId(id)
             loadExtraFieldDefs(workspace)
         }
     }
 
+    /** True while [workspace] is still the one the UI is showing. Every async
+     *  field load checks this before writing, so a load that was overtaken by a
+     *  workspace switch can never put its fields or values on screen. */
+    private fun isStillSelected(workspace: Workspace) =
+        _uiState.value.selectedWorkspaceId == workspace.id
+
+    /** Loads [workspace]'s extra fields as the current extras load (superseding any
+     *  in flight) and waits for it, so callers that need the definitions before they
+     *  can act — presets, shortcuts, "play" on a recent entry — get them. */
+    private suspend fun loadExtraFieldDefsAndWait(workspace: Workspace) {
+        extrasJob?.cancel()
+        val job = viewModelScope.launch { loadExtraFieldDefs(workspace) }
+        extrasJob = job
+        job.join()
+    }
+
+    /**
+     * Builds the input definitions for [workspace]'s extra properties: the live
+     * Notion type of each configured property plus the options it can be set to.
+     *
+     * Two rules keep the result honest. Nothing is written unless [workspace] is
+     * still the selected one, so a load overtaken by a workspace switch cannot
+     * show another workspace's fields. And a failure never silently empties the
+     * form: without a schema there is no way to tell a deleted property from an
+     * unreachable API, so the current fields stay on screen and the failure is
+     * reported instead.
+     */
     private suspend fun loadExtraFieldDefs(workspace: Workspace) {
         if (workspace.extraProps.isEmpty() || workspace.timeEntriesDbId.isBlank()) {
-            _uiState.update { it.copy(extraFieldDefs = emptyList(), extrasLoading = false) }
+            if (!isStillSelected(workspace)) return
+            _uiState.update { it.copy(extraFieldDefs = emptyList(), extrasLoading = false, extrasError = null) }
             initExtraValues(workspace.extraProps, emptyList())
             return
         }
 
-        val defs = runCatching {
-            val schema = retryNotionCall { notionRepo.getDatabaseSchema(workspace.timeEntriesDbId) }
-                ?: emptyMap()
+        val schema = retryNotionCall { notionRepo.getDatabaseSchema(workspace.timeEntriesDbId) }
+        if (schema == null) {
+            if (!isStillSelected(workspace)) return
+            _uiState.update { it.copy(extrasLoading = false, extrasError = "extras_load_failed") }
+            return
+        }
 
-            workspace.extraProps.mapNotNull { prop ->
-                val schemaProp = schema[prop.propName] ?: return@mapNotNull null
-                val type = schemaProp.type
+        var optionsIncomplete = false
+        val defs = workspace.extraProps.mapNotNull { prop ->
+            val schemaProp = schema[prop.propName] ?: return@mapNotNull null
+            val type = schemaProp.type
+            // A property whose type the app cannot write (a formula, a rollup, …)
+            // would render as a text box whose value is dropped on save, so it is
+            // left out and reported together with the missing ones.
+            if (type !in WRITABLE_EXTRA_TYPES) return@mapNotNull null
 
-                val options: List<NamedOption> = when (type) {
-                    // getDatabaseSchema() only populates selectOptions for select/multi_select
-                    // (statusOptions is status-only) — reading statusOptions here left every
-                    // select/multi_select field with no options at all, so nothing (default,
-                    // preset, or synced) could ever show as selected.
-                    "select", "multi_select" -> schemaProp.selectOptions.map { NamedOption(it.name, it.name) }
-                    "status" -> schemaProp.statusOptions.map { NamedOption(it.name, it.name) }
-                    "people" -> runCatching { notionRepo.listUsers() }.getOrDefault(emptyList())
-                    "relation" -> {
-                        val relDbId = schemaProp.relationDatabaseId ?: ""
-                        if (relDbId.isNotBlank()) {
-                            runCatching { notionRepo.fetchDatabasePages(relDbId) }.getOrDefault(emptyList())
-                        } else emptyList()
-                    }
-                    else -> emptyList()
+            val options: List<NamedOption> = when (type) {
+                // getDatabaseSchema() only populates selectOptions for select/multi_select
+                // (statusOptions is status-only) — reading statusOptions here left every
+                // select/multi_select field with no options at all, so nothing (default,
+                // preset, or synced) could ever show as selected.
+                "select", "multi_select" -> schemaProp.selectOptions.map { NamedOption(it.name, it.name) }
+                "status" -> schemaProp.statusOptions.map { NamedOption(it.name, it.name) }
+                // An empty option list hides the stored value (the dropdown can only
+                // show a value it has an option for), so these are retried as well and
+                // a failure is reported rather than passed off as "no options".
+                "people" -> retryNotionCall { notionRepo.listUsers() }
+                    ?: emptyList<NamedOption>().also { optionsIncomplete = true }
+                "relation" -> {
+                    val relDbId = schemaProp.relationDatabaseId ?: ""
+                    if (relDbId.isNotBlank()) {
+                        retryNotionCall { notionRepo.fetchDatabasePages(relDbId) }
+                            ?: emptyList<NamedOption>().also { optionsIncomplete = true }
+                    } else emptyList()
                 }
-                ExtraFieldDef(
-                    propName = prop.propName,
-                    type = type,
-                    required = prop.required,
-                    defaultValue = prop.defaultValue,
-                    options = options,
-                    statusOptions = schemaProp.statusOptions
-                )
+                else -> emptyList()
             }
-        }.getOrDefault(emptyList())
+            ExtraFieldDef(
+                propName = prop.propName,
+                type = type,
+                required = prop.required,
+                defaultValue = prop.defaultValue,
+                options = options,
+                statusOptions = schemaProp.statusOptions
+            )
+        }
 
-        _uiState.update { it.copy(extraFieldDefs = defs, extrasLoading = false) }
+        // A configured property that is no longer in the database (renamed or
+        // deleted in Notion) is dropped from the form — say so instead of just
+        // showing fewer fields than the workspace is configured with.
+        val missing = workspace.extraProps.count { prop ->
+            prop.propName.isNotBlank() && (schema[prop.propName]?.type ?: "") !in WRITABLE_EXTRA_TYPES
+        }
+
+        if (!isStillSelected(workspace)) return
+        _uiState.update { it.copy(
+            extraFieldDefs = defs,
+            extrasLoading = false,
+            extrasError = when {
+                optionsIncomplete -> "extras_load_failed"
+                missing > 0 -> "extras_missing_props"
+                else -> null
+            }
+        ) }
         initExtraValues(workspace.extraProps, defs)
     }
 
@@ -283,14 +358,20 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
             _uiState.update { it.copy(extraValues = active.extraValues) }
             return
         }
+        val current = _uiState.value.extraValues
         val values = extraProps.associate { prop ->
+            // Loading the definitions takes a network round trip; anything already
+            // filled in (or applied from a preset) while it ran is kept rather than
+            // reset to the configured default.
+            val existing = current[prop.propName]?.takeIf { it.isNotBlank() }
             val def = defs.firstOrNull { it.propName == prop.propName }
-            val defaultVal = when {
+            val value = when {
+                existing != null -> existing
                 prop.defaultValue != null -> prop.defaultValue
                 def?.type == "checkbox" -> "false"
                 else -> ""
             }
-            prop.propName to defaultVal
+            prop.propName to value
         }
         _uiState.update { it.copy(extraValues = values) }
     }
@@ -402,10 +483,17 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
             properties[timer.propertyMap.timeEntryTitleProp] = mapOf(
                 "title" to listOf(mapOf("text" to mapOf("content" to newTitle)))
             )
-            if (timer.propertyMap.timeEntryRelationProp.isNotBlank()) {
-                properties[timer.propertyMap.timeEntryRelationProp] = if (!projectId.isNullOrBlank())
-                    mapOf("relation" to listOf(mapOf("id" to projectId)))
-                else mapOf("relation" to emptyList<Any>())
+            // The relation the workspace uses as its "project" link. It is only
+            // written when there is an id to write: the timer screen has no project
+            // picker, so a null id means "this device does not know the value", not
+            // "the user cleared it" — writing an empty relation there wiped the link
+            // on the Notion page on every description/extra-field save. When the same
+            // property is also configured as an extra field, that field is the single
+            // source of truth and this must not write it at all.
+            val relationProp = timer.propertyMap.timeEntryRelationProp
+            val relationIsExtraField = state.extraFieldDefs.any { it.propName == relationProp }
+            if (relationProp.isNotBlank() && !relationIsExtraField && !projectId.isNullOrBlank()) {
+                properties[relationProp] = mapOf("relation" to listOf(mapOf("id" to projectId)))
             }
             extraNotionValues.forEach { (k, v) -> properties[k] = v }
             runCatching { notionRepo.updatePageProperties(timer.notionPageId, properties) }
@@ -440,16 +528,22 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
     }
 
     fun startTimer() {
-        val state = _uiState.value
-        val workspace = state.workspaces.firstOrNull { it.id == state.selectedWorkspaceId } ?: return
-        val apiKey = state.apiKey
-        if (apiKey.isBlank()) { _uiState.update { it.copy(error = "No Notion API key set.") }; return }
+        val initial = _uiState.value
+        val workspace = initial.workspaces.firstOrNull { it.id == initial.selectedWorkspaceId } ?: return
+        if (initial.apiKey.isBlank()) { _uiState.update { it.copy(error = "No Notion API key set.") }; return }
 
         // No validation on start (validated on stop instead)
 
         _uiState.update { it.copy(isStarting = true, error = null) }
 
         viewModelScope.launch {
+            // The field definitions decide which extra properties get written, so a
+            // start fired while they are still loading (preset, launcher shortcut, or
+            // a fast tap right after switching workspace) waits for them first —
+            // otherwise every extra value, required ones included, is silently
+            // dropped from the new entry.
+            extrasJob?.join()
+            val state = _uiState.value
             runCatching {
                 val nowMs = System.currentTimeMillis()
                 val rawStartISO = toNotionDateTime(nowMs)
@@ -922,6 +1016,9 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
         repeat(attempts) { attempt ->
             val result = runCatching { block() }
             if (result.isSuccess) return result.getOrNull()
+            // runCatching also catches cancellation; rethrow it so a superseded
+            // load stops immediately instead of retrying into a stale write.
+            (result.exceptionOrNull() as? kotlinx.coroutines.CancellationException)?.let { throw it }
             if (attempt < attempts - 1) delay(1000L * (attempt + 1))
         }
         return null
@@ -1058,7 +1155,7 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
                 // fired right after launch, before the workspace's own selectWorkspace()
                 // load finished), the preset's defaults would silently be dropped.
                 if (_uiState.value.extraFieldDefs.isEmpty() && workspace.extraProps.isNotEmpty()) {
-                    loadExtraFieldDefs(workspace)
+                    loadExtraFieldDefsAndWait(workspace)
                 }
             }
             _uiState.update { it.copy(
@@ -1116,7 +1213,14 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
                         extrasLoading = workspace.extraProps.isNotEmpty()
                     )}
                     settingsRepo.saveLastWorkspaceId(entry.workspaceId)
-                    loadExtraFieldDefs(workspace)
+                }
+                // Also (re)load when the workspace is already selected but its fields
+                // never made it in: startTimer() only writes properties it has a
+                // definition for, so the restored values would be dropped otherwise.
+                if (workspace.extraProps.isNotEmpty() &&
+                    (_uiState.value.selectedWorkspaceId != workspace.id || _uiState.value.extraFieldDefs.isEmpty())
+                ) {
+                    loadExtraFieldDefsAndWait(workspace)
                 }
 
                 val startMs = entry.startISO?.let { iso -> runCatching { parseIso(iso) }.getOrNull() }
@@ -1136,14 +1240,22 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
                         ?.let { parsePropertyValue(props.getAsJsonObject(it), "relation") }
                         ?.split(",")?.firstOrNull { it.isNotBlank() }
 
+                    // The stored extraProps[].type is not a reliable source of the real
+                    // Notion type, so the live schema decides how each value is parsed.
+                    // Without it every value would parse as blank and overwrite the
+                    // defaults that were just loaded, so the values are left alone.
                     val schema = if (workspace.extraProps.isNotEmpty() && workspace.timeEntriesDbId.isNotBlank()) {
-                        runCatching { notionRepo.getDatabaseSchema(workspace.timeEntriesDbId) }.getOrDefault(emptyMap())
+                        retryNotionCall { notionRepo.getDatabaseSchema(workspace.timeEntriesDbId) }
                     } else emptyMap()
-                    val extraValues = workspace.extraProps.associate { prop ->
-                        val type = schema[prop.propName]?.type ?: prop.type
-                        prop.propName to parsePropertyValue(props.getAsJsonObject(prop.propName), type)
+                    if (schema != null) {
+                        val extraValues = workspace.extraProps.associate { prop ->
+                            val type = schema[prop.propName]?.type ?: prop.type
+                            prop.propName to parsePropertyValue(props.getAsJsonObject(prop.propName), type)
+                        }
+                        _uiState.update { it.copy(selectedProjectId = projectId, extraValues = extraValues) }
+                    } else {
+                        _uiState.update { it.copy(selectedProjectId = projectId) }
                     }
-                    _uiState.update { it.copy(selectedProjectId = projectId, extraValues = extraValues) }
                 }
                 startTimer()
             }

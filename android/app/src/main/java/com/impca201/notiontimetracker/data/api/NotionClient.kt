@@ -4,6 +4,7 @@ import com.google.gson.Gson
 import com.google.gson.JsonObject
 import com.impca201.notiontimetracker.data.models.*
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import okhttp3.*
 import okhttp3.MediaType.Companion.toMediaType
@@ -18,6 +19,16 @@ class NotionClient {
     private val gson = Gson()
     private val JSON = "application/json".toMediaType()
     private val httpClient = OkHttpClient.Builder().build()
+
+    /**
+     * Notion allows roughly three requests per second per integration and answers
+     * 429 once that is exceeded. Loading a workspace's fields fires several calls
+     * at once (schema, related-database pages, users) on top of the running-timer
+     * and recent-entry queries for every workspace, so a burst can easily hit that
+     * ceiling. Retrying here — honouring Retry-After — keeps a throttled call from
+     * surfacing as an empty schema or an empty option list further up.
+     */
+    private val maxAttempts = 4
 
     private suspend fun fetch(
         apiKey: String,
@@ -41,17 +52,25 @@ class NotionClient {
             .method(method, reqBody)
             .build()
 
-        val response = httpClient.newCall(request).await()
-        val responseBody = response.body?.string() ?: "{}"
-        val data = runCatching { gson.fromJson(responseBody, JsonObject::class.java) }
-            .getOrDefault(JsonObject())
+        var lastError = Exception("Notion API error")
+        repeat(maxAttempts) { attempt ->
+            val response = httpClient.newCall(request).await()
+            val responseBody = response.body?.string() ?: "{}"
+            val data = runCatching { gson.fromJson(responseBody, JsonObject::class.java) }
+                .getOrDefault(JsonObject())
 
-        if (!response.isSuccessful) {
-            val message = data.get("message")?.asString
-                ?: "Notion API error (HTTP ${response.code})"
-            throw Exception(message)
+            if (response.isSuccessful) return@withContext data
+
+            lastError = Exception(
+                data.get("message")?.asString ?: "Notion API error (HTTP ${response.code})"
+            )
+            val retryable = response.code == 429 || response.code >= 500
+            if (!retryable || attempt == maxAttempts - 1) throw lastError
+
+            val retryAfterMs = response.header("Retry-After")?.toDoubleOrNull()?.times(1000)?.toLong()
+            delay((retryAfterMs ?: (500L shl attempt)).coerceIn(300L, 10_000L))
         }
-        data
+        throw lastError
     }
 
     suspend fun testConnection(apiKey: String, dbId: String? = null) {
@@ -130,12 +149,14 @@ class NotionClient {
                 val titleProp = propsObj.entrySet()
                     .map { it.value.asJsonObject }
                     .firstOrNull { it.get("type")?.asString == "title" }
+                // Entries without a title still have to be listed: a relation value
+                // pointing at one would otherwise have no matching option and the
+                // field would read as empty even though the page is linked.
                 val name = titleProp?.getAsJsonArray("title")
                     ?.joinToString("") { it.asJsonObject.get("plain_text")?.asString ?: "" }
                     ?.trim()
-                if (!name.isNullOrBlank()) {
-                    results.add(NamedOption(page.get("id").asString, name))
-                }
+                    ?.ifBlank { "(Untitled)" } ?: "(Untitled)"
+                results.add(NamedOption(page.get("id").asString, name))
             }
             cursor = if (data.get("has_more")?.asBoolean == true)
                 data.get("next_cursor")?.asString else null

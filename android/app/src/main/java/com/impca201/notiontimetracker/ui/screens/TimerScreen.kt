@@ -426,10 +426,39 @@ private fun IdleView(
                 )
             }
 
+            // Loading the fields can fail (offline, rate limited) or find properties
+            // that no longer exist in the database. Both used to just show fewer
+            // fields than configured, with no way to tell that from "correct".
+            uiState.extrasError?.let { err ->
+                Spacer(Modifier.height(8.dp))
+                Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)) {
+                    Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            when (err) {
+                                "extras_load_failed" -> stringResource(R.string.error_extras_load_failed)
+                                "extras_missing_props" -> stringResource(R.string.error_extras_missing_props)
+                                else -> err
+                            },
+                            modifier = Modifier.weight(1f),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onErrorContainer
+                        )
+                        uiState.selectedWorkspaceId?.let { wsId ->
+                            TextButton(onClick = { onWorkspaceSelect(wsId) }) {
+                                Text(stringResource(R.string.btn_retry))
+                            }
+                        }
+                    }
+                }
+            }
+
             Spacer(Modifier.height(8.dp))
 
+            // Starting while the fields are still loading would drop every extra
+            // value from the new entry, so the button waits for them.
             val canStart = uiState.apiKey.isNotBlank() &&
                     uiState.selectedWorkspaceId != null &&
+                    !uiState.extrasLoading &&
                     !uiState.isStarting
 
             val selectedWorkspace = uiState.workspaces.firstOrNull { it.id == uiState.selectedWorkspaceId }
@@ -688,6 +717,10 @@ private fun RunningView(
             var localExtras by remember(timer.notionPageId) { mutableStateOf(uiState.extraValues) }
             var pendingSave by remember(timer.notionPageId) { mutableStateOf(false) }
             LaunchedEffect(uiState.extraFieldDefs, uiState.selectedProjectId, uiState.extraValues, timer.notionPageId) {
+                // A refresh from Notion must not overwrite an edit that has not been
+                // saved yet (the save is debounced by 600 ms, the auto-refresh runs
+                // every 60 s — without this the value snapped back while typing).
+                if (pendingSave) return@LaunchedEffect
                 localProjectId = uiState.selectedProjectId
                 localExtras = uiState.extraValues
             }

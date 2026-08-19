@@ -232,4 +232,6 @@
     <string name="language_de">Deutsch</string>
     <string name="language_es">Español</string>
     <string name="language_it">Italiano</string>
+    <string name="error_extras_load_failed">Kon de velden van deze workspace niet uit Notion laden. De getoonde waarden zijn mogelijk onvolledig.</string>
+    <string name="error_extras_missing_props">Sommige ingestelde eigenschappen bestaan niet meer in deze database. Controleer de workspace in Instellingen.</string>
 </resources>

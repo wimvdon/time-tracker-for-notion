@@ -61,9 +61,13 @@ fun ExtraFieldInput(
             }
 
             "people", "relation" -> {
+                // A Notion relation/people property can hold several ids, which are
+                // stored comma-separated. The dropdown edits one, but it has to show
+                // the first stored id rather than reading a multi-value link as empty.
+                val firstId = value.split(",").map { it.trim() }.firstOrNull { it.isNotBlank() }
                 SearchableDropdown(
                     options = fieldDef.options,
-                    selected = fieldDef.options.firstOrNull { it.id == value },
+                    selected = fieldDef.options.firstOrNull { it.id == firstId },
                     placeholder = stringResource(R.string.placeholder_select),
                     onSelect = { onValueChange(it?.id ?: "") },
                     allowClear = !fieldDef.required,
