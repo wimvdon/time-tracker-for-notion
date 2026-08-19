@@ -28,7 +28,12 @@ fun EditTimerModal(
     var description by remember(timer.notionPageId) { mutableStateOf(timer.description) }
     var selectedProjectId by remember(timer.notionPageId) { mutableStateOf(timer.projectId) }
     var extraValues by remember(timer.notionPageId) { mutableStateOf(uiState.extraValues) }
+    // Set as soon as the user changes something here. The 60-second refresh keeps
+    // pushing Notion's values into uiState while this modal is open; adopting them
+    // after an edit would throw the unsaved change away mid-typing.
+    var dirty by remember(timer.notionPageId) { mutableStateOf(false) }
     LaunchedEffect(uiState.extraFieldDefs, timer.projectId, uiState.extraValues, timer.notionPageId) {
+        if (dirty) return@LaunchedEffect
         selectedProjectId = timer.projectId
         extraValues = uiState.extraValues
     }
@@ -72,7 +77,7 @@ fun EditTimerModal(
             )
             OutlinedTextField(
                 value = description,
-                onValueChange = { description = it },
+                onValueChange = { description = it; dirty = true },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
                 isError = descriptionRequired && description.isBlank(),
@@ -84,7 +89,7 @@ fun EditTimerModal(
                 ExtraFieldInput(
                     fieldDef = def,
                     value = extraValues[def.propName] ?: "",
-                    onValueChange = { extraValues = extraValues + (def.propName to it) },
+                    onValueChange = { extraValues = extraValues + (def.propName to it); dirty = true },
                     modifier = Modifier.fillMaxWidth()
                 )
             }

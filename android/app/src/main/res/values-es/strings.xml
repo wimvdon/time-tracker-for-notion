@@ -232,4 +232,6 @@
     <string name="language_de">Deutsch</string>
     <string name="language_es">Español</string>
     <string name="language_it">Italiano</string>
+    <string name="error_extras_load_failed">No se pudieron cargar los campos de este espacio desde Notion. Los valores mostrados pueden estar incompletos.</string>
+    <string name="error_extras_missing_props">Algunas propiedades configuradas ya no existen en esta base de datos. Revise el espacio en Ajustes.</string>
 </resources>

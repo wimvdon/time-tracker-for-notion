@@ -44,6 +44,9 @@ class SettingsSyncer(
         payload.timeFormat?.let { settingsRepo.saveTimeFormat(it) }
         payload.showNotionLink?.let { settingsRepo.saveShowNotionLink(it) }
         payload.showArchiveAction?.let { settingsRepo.saveShowArchiveAction(it) }
+        // A pulled payload can point workspaces at other databases; anything cached
+        // describes the previous configuration.
+        notionRepo.invalidateMetadataCache()
     }
 
     /** Pull-or-push against the configured sync page, whichever side is newer.
