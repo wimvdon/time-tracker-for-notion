@@ -116,6 +116,8 @@ export default {
 
   // Toasts
   toastApiKeySaved: 'La clave API funciona y ha sido guardada.',
+  btnRemoveKey: 'Eliminar clave',
+  toastApiKeyRemoved: 'Clave API eliminada.',
   toastConnectionFailed: 'La conexión ha fallado',
   toastProjectAdded: 'Espacio de trabajo "{name}" añadido.',
   toastProjectsError: 'No se pudieron cargar los proyectos',
@@ -183,6 +185,9 @@ export default {
   deletedPageConfirm: 'Descartar',
   warnAlreadyRunningTitle: 'Temporizador ya activo',
   warnAlreadyRunningBody: 'Ya hay un temporizador activo. ¿Desea detenerlo y comenzar el nuevo, o cancelar?',
+  warnAlreadyRunningIn: 'En curso en:',
+  presetsNoneConfigured: 'No hay preajustes configurados',
+  colorNone: 'Ninguno',
   btnStopAndStartNew: 'Detener e iniciar nuevo',
   dialogSavePresetTitle: 'Guardar preajuste',
   dialogSavePresetBody: 'Guardar la descripción y campos actuales como preajuste.',

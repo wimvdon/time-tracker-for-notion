@@ -234,4 +234,17 @@
     <string name="language_it">Italiano</string>
     <string name="error_extras_load_failed">No se pudieron cargar los campos de este espacio desde Notion. Los valores mostrados pueden estar incompletos.</string>
     <string name="error_extras_missing_props">Algunas propiedades configuradas ya no existen en esta base de datos. Revise el espacio en Ajustes.</string>
+    <string name="app_title">Time Tracker</string>
+    <string name="title_save_preset">Guardar como preajuste</string>
+    <string name="title_manage_presets">Gestionar preajustes</string>
+    <string name="title_select_start_time">Elegir hora de inicio</string>
+    <string name="title_select_end_time">Elegir hora de fin</string>
+    <string name="title_move_preset_up">Subir preajuste</string>
+    <string name="title_move_preset_down">Bajar preajuste</string>
+    <string name="title_info">Información</string>
+    <string name="error_no_api_key">No hay ninguna clave de API de Notion configurada.</string>
+    <string name="error_start_failed">No se pudo iniciar el temporizador</string>
+    <string name="error_stop_failed">No se pudo detener el temporizador</string>
+    <string name="error_delete_failed">No se pudo eliminar la entrada</string>
+    <string name="error_stop_from_notification_failed">Error al detener: abra la aplicación para reintentar</string>
 </resources>

@@ -63,7 +63,7 @@ fun TimerScreen(
     onDescriptionChange: (String) -> Unit,
     onExtraValueChange: (String, String) -> Unit,
     onStart: () -> Unit,
-    onStop: (Long?) -> Unit,
+    onStop: (Long?, String?) -> Unit,
     onUpdateStartTime: (String) -> Unit,
     onNavigateToSettings: () -> Unit,
     onClearError: () -> Unit,
@@ -211,10 +211,7 @@ fun TimerScreen(
 
     uiState.infoToast?.let { msg ->
         val context = androidx.compose.ui.platform.LocalContext.current
-        val displayMsg = when (msg) {
-            "timer_stopped_elsewhere" -> stringResource(R.string.timer_stopped_elsewhere)
-            else -> msg
-        }
+        val displayMsg = localisedMessage(msg)
         LaunchedEffect(msg) {
             android.widget.Toast.makeText(context, displayMsg, android.widget.Toast.LENGTH_SHORT).show()
             onClearInfoToast()
@@ -307,7 +304,7 @@ private fun IdleView(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Time Tracker",
+                    text = stringResource(R.string.app_title),
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold
                 )
@@ -353,10 +350,7 @@ private fun IdleView(
             }
 
             uiState.error?.let { err ->
-                val message = when (err) {
-                    "required_fields_missing" -> stringResource(R.string.toast_required_fields_missing)
-                    else -> err
-                }
+                val message = localisedMessage(err)
                 Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)) {
                     Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                         Text(message, modifier = Modifier.weight(1f), color = MaterialTheme.colorScheme.onErrorContainer)
@@ -434,11 +428,7 @@ private fun IdleView(
                 Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)) {
                     Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            when (err) {
-                                "extras_load_failed" -> stringResource(R.string.error_extras_load_failed)
-                                "extras_missing_props" -> stringResource(R.string.error_extras_missing_props)
-                                else -> err
-                            },
+                            localisedMessage(err),
                             modifier = Modifier.weight(1f),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onErrorContainer
@@ -497,7 +487,7 @@ private fun IdleView(
                 ) {
                     Icon(
                         imageVector = Icons.Default.BookmarkBorder,
-                        contentDescription = "Save Preset",
+                        contentDescription = stringResource(R.string.title_save_preset),
                         tint = if (canStart) buttonColor else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
                     )
                 }
@@ -538,7 +528,7 @@ private fun IdleView(
 @Composable
 private fun RunningView(
     uiState: TimerViewModel.UiState,
-    onStop: (Long?) -> Unit,
+    onStop: (Long?, String?) -> Unit,
     onUpdateStartTime: (String) -> Unit,
     onNavigateToSettings: () -> Unit,
     onRetryStop: () -> Unit,
@@ -562,6 +552,11 @@ private fun RunningView(
     var startTimeInput by remember(timer.roundedStart, uiState.timeFormat) { mutableStateOf(formatHHMM(timer.roundedStart, uiState.timeFormat == "12h")) }
     var endTimeInput by remember { mutableStateOf("") }
 
+    // Declared here rather than next to its text field: stopping has to hand
+    // the draft over so a description typed but not yet saved is not lost.
+    var titleDraft by remember(timer.description) { mutableStateOf(timer.description) }
+    val isTitleDirty = titleDraft.trim() != timer.description.trim()
+
     var showTimeErrorDialog by remember { mutableStateOf(false) }
     var pendingEndTimeMs by remember { mutableStateOf(0L) }
 
@@ -575,7 +570,7 @@ private fun RunningView(
                     onClick = {
                         showTimeErrorDialog = false
                         val nextDayMs = pendingEndTimeMs + 24 * 3600 * 1000L
-                        onStop(nextDayMs)
+                        onStop(nextDayMs, titleDraft)
                         endTimeInput = ""
                     }
                 ) {
@@ -635,7 +630,7 @@ private fun RunningView(
             pendingEndTimeMs = manualEnd
             showTimeErrorDialog = true
         } else {
-            onStop(manualEnd)
+            onStop(manualEnd, titleDraft)
         }
     }
 
@@ -668,7 +663,7 @@ private fun RunningView(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Time Tracker",
+                    text = stringResource(R.string.app_title),
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold
                 )
@@ -711,8 +706,6 @@ private fun RunningView(
                 color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
             )
 
-            var titleDraft by remember(timer.description) { mutableStateOf(timer.description) }
-            val isTitleDirty = titleDraft.trim() != timer.description.trim()
             var localProjectId by remember(timer.notionPageId) { mutableStateOf(uiState.selectedProjectId) }
             var localExtras by remember(timer.notionPageId) { mutableStateOf(uiState.extraValues) }
             var pendingSave by remember(timer.notionPageId) { mutableStateOf(false) }
@@ -792,7 +785,7 @@ private fun RunningView(
                         singleLine = true,
                         textStyle = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onBackground),
                         trailingIcon = {
-                            Icon(Icons.Default.AccessTime, contentDescription = "Select start time", tint = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f))
+                            Icon(Icons.Default.AccessTime, contentDescription = stringResource(R.string.title_select_start_time), tint = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f))
                         },
                         colors = OutlinedTextFieldDefaults.colors(
                             disabledTextColor = MaterialTheme.colorScheme.onBackground,
@@ -822,7 +815,7 @@ private fun RunningView(
                         placeholder = { Text(stringResource(R.string.hint_manual_end), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f)) },
                         textStyle = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onBackground),
                         trailingIcon = {
-                            Icon(Icons.Default.AccessTime, contentDescription = "Select end time", tint = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f))
+                            Icon(Icons.Default.AccessTime, contentDescription = stringResource(R.string.title_select_end_time), tint = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f))
                         },
                         colors = OutlinedTextFieldDefaults.colors(
                             disabledTextColor = MaterialTheme.colorScheme.onBackground,
@@ -855,15 +848,11 @@ private fun RunningView(
             }
 
             uiState.stopError?.let { err ->
-                val errMsg = when (err) {
-                    "required_fields_before_stopping" -> stringResource(R.string.toast_required_before_stopping)
-                    "description_before_stopping" -> stringResource(R.string.toast_description_before_stopping)
-                    else -> err
-                }
+                val errMsg = localisedMessage(err)
                 Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)) {
                     Row(modifier = Modifier.padding(12.dp)) {
                         Text(errMsg, modifier = Modifier.weight(1f), color = MaterialTheme.colorScheme.onErrorContainer)
-                        if (err != "required_fields_before_stopping" && err != "description_before_stopping") {
+                        if (!isValidationMessage(err)) {
                             TextButton(onClick = onRetryStop) { Text(stringResource(R.string.toast_stop_retry)) }
                         }
                     }
@@ -929,13 +918,15 @@ private fun OtherRunningTimers(
 ) {
     if (timers.isEmpty()) return
 
-    var tick by remember { mutableStateOf(0) }
+    // Drives the per-second elapsed counters below. It has to be *read* while
+    // composing them — a state that is only written recomposes nothing, which
+    // left every timer in this list frozen at the value it had when the list
+    // was first drawn.
+    var nowMs by remember { mutableStateOf(System.currentTimeMillis()) }
     LaunchedEffect(timers) {
-        if (timers.isNotEmpty()) {
-            while (true) {
-                kotlinx.coroutines.delay(1000L)
-                tick++
-            }
+        while (true) {
+            kotlinx.coroutines.delay(1000L)
+            nowMs = System.currentTimeMillis()
         }
     }
 
@@ -958,7 +949,7 @@ private fun OtherRunningTimers(
     timers.forEach { rt ->
         val isActive = rt.pageId == activePageId
         val startMs = runCatching { OffsetDateTime.parse(rt.startISO).toInstant().toEpochMilli() }.getOrDefault(0L)
-        val elapsedSecs = if (startMs > 0) (System.currentTimeMillis() - startMs) / 1000L else 0L
+        val elapsedSecs = if (startMs > 0) (nowMs - startMs) / 1000L else 0L
         val elapsedStr = formatElapsed(elapsedSecs.coerceAtLeast(0L))
 
         Card(
@@ -1167,7 +1158,7 @@ private fun PresetChips(
             ) {
                 Icon(
                     Icons.Default.Edit,
-                    contentDescription = "Manage Presets",
+                    contentDescription = stringResource(R.string.title_manage_presets),
                     modifier = Modifier.size(16.dp),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -1217,6 +1208,39 @@ private fun RefreshIconButton(loading: Boolean, onClick: () -> Unit) {
         )
     }
 }
+
+/**
+ * Resolves a message key from the view model (see `UiError`) to text in the
+ * language the app is set to. Anything after a `|` is Notion's own message and
+ * is appended as detail; an unrecognised key is shown as-is so a message is
+ * never swallowed.
+ */
+@Composable
+private fun localisedMessage(raw: String): String {
+    val key = raw.substringBefore('|')
+    val detail = raw.substringAfter('|', "")
+    val resId = when (key) {
+        "no_api_key" -> R.string.error_no_api_key
+        "start_failed" -> R.string.toast_start_error
+        "stop_failed" -> R.string.toast_stop_error
+        "update_failed" -> R.string.toast_update_error
+        "delete_failed" -> R.string.toast_delete_error
+        "required_fields_missing" -> R.string.toast_required_fields_missing
+        "required_fields_before_stopping" -> R.string.toast_required_before_stopping
+        "description_before_stopping" -> R.string.toast_description_before_stopping
+        "timer_stopped_elsewhere" -> R.string.timer_stopped_elsewhere
+        "extras_load_failed" -> R.string.error_extras_load_failed
+        "extras_missing_props" -> R.string.error_extras_missing_props
+        else -> null
+    } ?: return raw
+    val text = stringResource(resId)
+    return if (detail.isBlank()) text else "$text: $detail"
+}
+
+/** True for the validation messages that the user fixes by filling the form in,
+ *  rather than by retrying the failed call. */
+private fun isValidationMessage(raw: String): Boolean =
+    raw.substringBefore('|') in setOf("required_fields_before_stopping", "description_before_stopping")
 
 @Composable
 private fun FieldLabel(text: String) {
@@ -1340,7 +1364,7 @@ private fun ManagePresetsDialog(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Icon(Icons.Default.Info, contentDescription = "Info", tint = MaterialTheme.colorScheme.onSecondaryContainer)
+                        Icon(Icons.Default.Info, contentDescription = stringResource(R.string.title_info), tint = MaterialTheme.colorScheme.onSecondaryContainer)
                         Text(
                             text = stringResource(R.string.tooltip_presets_shortcuts),
                             style = MaterialTheme.typography.bodySmall,
@@ -1374,20 +1398,20 @@ private fun ManagePresetsDialog(
                                 enabled = indexInWorkspace > 0,
                                 modifier = Modifier.size(32.dp)
                             ) {
-                                Icon(Icons.Default.ArrowUpward, contentDescription = "Move up", modifier = Modifier.size(16.dp))
+                                Icon(Icons.Default.ArrowUpward, contentDescription = stringResource(R.string.title_move_preset_up), modifier = Modifier.size(16.dp))
                             }
                             IconButton(
                                 onClick = { onMovePresetDown(ws.id, preset.id) },
                                 enabled = indexInWorkspace < ws.presets.size - 1,
                                 modifier = Modifier.size(32.dp)
                             ) {
-                                Icon(Icons.Default.ArrowDownward, contentDescription = "Move down", modifier = Modifier.size(16.dp))
+                                Icon(Icons.Default.ArrowDownward, contentDescription = stringResource(R.string.title_move_preset_down), modifier = Modifier.size(16.dp))
                             }
                             IconButton(
                                 onClick = { onDeletePreset(ws.id, preset.id) },
                                 modifier = Modifier.size(32.dp)
                             ) {
-                                Icon(Icons.Default.Delete, contentDescription = "Delete", modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.error)
+                                Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.title_remove_preset), modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.error)
                             }
                         }
                     }

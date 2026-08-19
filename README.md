@@ -66,13 +66,13 @@ On first launch the app opens on Settings:
 
 ### How it behaves
 
-- **Start**: creates a time entry with status = running and the description as the title. Start time is rounded to the nearest configured interval.
+- **Start**: creates a time entry with status = running and the description as the title. The entry's start and end are rounded to the configured interval when the timer is stopped.
 - **Empty description**: the entry is titled with its start date, formatted as configured in Settings (`DD/MM/YYYY`, `MM/DD/YYYY` or `YYYY-MM-DD`). The description field itself is never pre-filled — the date is only written to the Notion page, so an entry never shows up as "Untitled".
 - **Stop**: fills in the end time and sets status = completed. End time is rounded with a minimum duration equal to one interval.
-- **Edit timer**: while a timer is running, click the edit icon to change the title, project, or extra field values. Clearing the title falls back to the start date, exactly as when starting.
+- **Edit timer**: the running view's fields are editable in place — change the title or any extra field value and it is written to the Notion page. Clearing the title falls back to the start date, exactly as when starting.
 - **Description required**: workspaces can require a description (Settings → workspace). The field is then marked with `*` and a timer in that workspace cannot be stopped until it is filled in — starting stays a single click, same as for required extra fields.
-- **Closing the window** minimises to the system tray. The tray icon turns red while a timer runs.
-- **Crash recovery**: if force-quit while a timer runs, next launch asks whether to stop, resume, or discard.
+- **Closing the window** minimises to the system tray. The tray icon turns red while a timer runs (or takes the workspace's colour, if one is set).
+- **Crash recovery**: if force-quit while a timer runs, it is picked up again on the next launch and keeps counting.
 - **Auto-refresh**: running timers and recent entries refresh every 60 seconds. If the active timer was stopped on another device, it is automatically cleared from the view.
 - **Deleted pages**: if Notion reports that a page no longer exists when stopping or editing, the app shows the local details and asks you to confirm before discarding.
 
@@ -85,11 +85,13 @@ Presets are quick-start configurations defined per workspace. Each preset has:
 
 Presets appear as clickable chips above the workspace selector in the timer view. Clicking a chip immediately starts the timer with those values.
 
-On Windows, presets also appear in the **right-click tray menu** and **taskbar context menu** when no timer is running.
+On Windows, presets also appear in the **right-click tray menu**. Picking one while a timer is already running asks whether to stop it and start the new one.
 
-### Syncing settings to Android
+### Syncing settings between devices
 
-Each workspace can be exported as a QR code (click the QR button next to the workspace name in Settings). Scanning this code from the Android app imports the full workspace configuration — databases, field mappings, extra fields, presets, and rounding settings. The Notion API key is intentionally not included; enter it manually on each device.
+Settings are shared through a **sync page** in your own Notion workspace: Settings → *Create sync page* writes a JSON code block onto a page you pick, and every device attached to that page (Settings → *Load existing sync page*) pulls or pushes whichever side is newer, on launch and every 60 seconds.
+
+What is synced: workspaces, field mappings, extra fields, presets, rounding, theme, language, date/time format and the per-entry Notion actions. The Notion API key is intentionally **not** included — enter it manually on each device. Device-local preferences (always-on-top and start-with-Windows on the desktop, Material You on Android) stay put as well.
 
 ### Troubleshooting (Windows)
 
@@ -97,7 +99,7 @@ Each workspace can be exported as a QR code (click the QR button next to the wor
 |---|---|
 | "Connection failed: API token is invalid" | Re-copy the secret from notion.so/my-integrations; no spaces. |
 | Database dropdowns are empty | Integration isn't connected to the pages — see setup step 5. |
-| Project dropdown stays empty | Only records with a non-empty page title are shown — check the Projects database in the workspace settings. |
+| Project dropdown stays empty | Check the Projects database in the workspace settings. Records without a page title are listed as *(Untitled)* rather than hidden, so an already-linked one always shows. |
 | App seems closed but won't restart | It's in the system tray (bottom-right, behind `^`). Right-click → Quit. |
 | Installer blocked by SmartScreen | More info → Run anyway (unsigned personal build). |
 
@@ -112,10 +114,10 @@ windows/
 ├── src/
 │   ├── App.jsx
 │   ├── views/             # Timer.jsx, Settings.jsx
-│   ├── components/        # ExtraFieldInput, SearchableSelect, Toasts, RecoveryModal
-│   ├── store/useStore.js  # Zustand store (settings, session, timer, migrations)
-│   ├── locales/           # en-GB.js, nl-BE.js
-│   └── lib/               # rounding.js, format.js, i18n.js, schema.js, notionValues.js
+│   ├── components/        # ExtraFieldInput, SearchableSelect, Toasts
+│   ├── store/useStore.js  # Zustand store (settings, session, timer, sync, migrations)
+│   ├── locales/           # en-GB, nl-BE, fr, de, es, it
+│   └── lib/               # rounding.js, format.js, i18n.js, schema.js, notionValues.js, color.js
 ├── assets/
 └── package.json
 ```
@@ -128,8 +130,8 @@ A native Android app built with Kotlin + Jetpack Compose. Functionally identical
 
 - A **sticky foreground notification** replaces the system tray while a timer is running
 - Tap **Stop** in the notification to stop the timer even when the app is closed
-- **Android 16+**: uses `Notification.ProgressStyle` (Live Updates) for a visual progress bar
-- Crash recovery, identical rounding logic, and bilingual support (Dutch/English) — all ported 1:1
+- The notification carries a progress bar filling towards the end of the current rounding interval
+- Crash recovery, identical rounding logic, and the same six languages — all ported 1:1
 
 ### Tech stack
 
@@ -141,7 +143,7 @@ A native Android app built with Kotlin + Jetpack Compose. Functionally identical
 | Storage | DataStore (Preferences) + EncryptedSharedPreferences (API key) |
 | HTTP | OkHttp + Gson |
 | Background | Foreground Service |
-| Notifications | NotificationCompat + `Notification.ProgressStyle` (API 36+) |
+| Notifications | NotificationCompat (ongoing, with progress) |
 | Min SDK | 26 (Android 8) |
 | Target SDK | 36 (Android 16) |
 
@@ -150,15 +152,15 @@ A native Android app built with Kotlin + Jetpack Compose. Functionally identical
 1. Open the app. Tap the gear icon to open Settings.
 2. Paste your Notion API key and tap **Test connection & save**.
 3. Tap **+ Add workspace** and follow the step-by-step modal.
-4. Optionally add up to five **extra fields** and up to five **presets** per workspace.
+4. Optionally add up to five **extra fields** per workspace. Presets are created from the timer screen (the bookmark button next to START).
 5. Tap the back arrow to go to the timer.
 
-Alternatively, scan a workspace QR code from the Windows app to import a workspace configuration directly (see [Syncing settings](#syncing-settings-to-android-1)).
+Alternatively, attach the app to an existing sync page to import a whole configuration at once (see [Syncing settings](#syncing-settings-between-devices-1)).
 
 ### How it behaves
 
 - **Start / Stop**: same logic as Windows — rounding, status transitions, relation fields, and the start-date fallback for an empty description.
-- **Edit timer**: while a timer is running, tap the edit icon to update the title, project, or extra field values. Clearing the title falls back to the start date.
+- **Edit timer**: the running view's fields are editable in place. The title is saved with the check button (or the keyboard's Done key) and extra fields save themselves shortly after you change them; stopping also saves a title you typed but did not confirm. Clearing the title falls back to the start date.
 - **Description required**: identical per-workspace option as on Windows; the timer cannot be stopped until a description is filled in.
 - **Auto-refresh**: running timers and recent entries refresh every 60 seconds. If the active timer was stopped on another device, it is automatically cleared and a toast is shown.
 - **Deleted pages**: if Notion reports that a page no longer exists when stopping or editing, the app shows the local details and asks you to confirm before discarding.
@@ -169,9 +171,9 @@ Presets appear as tappable chips above the workspace selector in the timer view.
 
 Presets also appear as **Android dynamic shortcuts** — long-press the app icon on your home screen or app drawer to see up to four preset shortcuts. The shortcuts are refreshed automatically each time the app loads its settings.
 
-### Syncing settings to Android
+### Syncing settings between devices
 
-On Windows, click the QR button next to any workspace in Settings to show a QR code. In the Android app, go to Settings and tap **Scan QR code to import settings**. The Notion API key is intentionally not included in the QR code; enter it manually on each device.
+Same mechanism as on the desktop: Settings → *Create sync page* or *Load existing sync page*, attaching this device to a JSON code block on a Notion page that all your devices read and write. The Notion API key is not part of it; enter it manually on each device.
 
 ### Setup & build
 
@@ -255,19 +257,20 @@ android/
 │       │   │   ├── api/NotionClient.kt        # OkHttp Notion REST client
 │       │   │   └── repository/
 │       │   │       ├── SettingsRepository.kt  # DataStore + EncryptedSharedPreferences
+│       │   │       ├── SettingsSyncer.kt       # Pull-or-push against the Notion sync page
 │       │   │       └── NotionRepository.kt
 │       │   ├── service/TimerForegroundService.kt  # Ongoing notification, stop action
 │       │   ├── ui/
-│       │   │   ├── theme/                    # Material 3 dark theme
-│       │   │   ├── screens/                  # TimerScreen.kt, SettingsScreen.kt, QrScannerScreen.kt
+│       │   │   ├── theme/                    # Material 3 theme + workspace colours
+│       │   │   ├── screens/                  # TimerScreen.kt, SettingsScreen.kt
 │       │   │   └── components/               # SearchableDropdown, ExtraFieldInput,
-│       │   │                                 # WorkspaceModal, RecoveryDialog, EditTimerModal
+│       │   │                                 # WorkspaceModal, EditTimerModal
 │       │   └── viewmodel/
 │       │       ├── TimerViewModel.kt         # Timer state, rounding, start/stop, presets
 │       │       └── SettingsViewModel.kt      # API key, workspace CRUD, presets
 │       └── res/
 │           ├── values/strings.xml            # English (UK)
-│           └── values-nl/strings.xml         # Dutch (NL/BE)
+│           └── values-{nl,fr,de,es,it}/      # Dutch, French, German, Spanish, Italian
 ├── build.gradle.kts
 └── settings.gradle.kts
 ```

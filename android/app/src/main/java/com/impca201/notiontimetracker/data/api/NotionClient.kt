@@ -17,6 +17,17 @@ class NotionClient {
     private val BASE_URL = "https://api.notion.com/v1"
     private val NOTION_VERSION = "2022-06-28"
     private val gson = Gson()
+
+    /**
+     * Request bodies are serialised with nulls kept. Notion reads an explicit
+     * `null` as "clear this" — `{"select": null}` empties a select, `{"end":
+     * null}` removes a date's end — and Gson's default of dropping null map
+     * entries turned those into `{}`, which Notion ignores. The plain [gson]
+     * above still encodes the sync payload, where an absent key and a null one
+     * have to stay distinguishable for the desktop app reading it back.
+     */
+    private val requestGson = com.google.gson.GsonBuilder().serializeNulls().create()
+
     private val JSON = "application/json".toMediaType()
     private val httpClient = OkHttpClient.Builder().build()
 
@@ -39,7 +50,7 @@ class NotionClient {
         if (apiKey.isBlank()) throw Exception("No Notion API key configured. Add one in Settings.")
 
         val reqBody = when {
-            body != null -> gson.toJson(body).toRequestBody(JSON)
+            body != null -> requestGson.toJson(body).toRequestBody(JSON)
             method != "GET" -> "{}".toRequestBody(JSON)
             else -> null
         }

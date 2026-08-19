@@ -5,16 +5,6 @@ import deDE from '../locales/de.js';
 import esES from '../locales/es.js';
 import itIT from '../locales/it.js';
 
-export function detectLocale() {
-  const lang = (navigator.language || navigator.languages?.[0] || 'en-GB').toLowerCase();
-  if (lang.startsWith('nl')) return 'nl-BE';
-  if (lang.startsWith('fr')) return 'fr';
-  if (lang.startsWith('de')) return 'de';
-  if (lang.startsWith('es')) return 'es';
-  if (lang.startsWith('it')) return 'it';
-  return 'en-GB';
-}
-
 const locales = {
   'en-GB': enGB,
   'nl-BE': nlBE,
@@ -24,6 +14,31 @@ const locales = {
   'it': itIT
 };
 
+/**
+ * Maps any locale tag to one of the bundled locales by its language subtag.
+ * Both apps write their own tags into the shared sync page — this app stores
+ * `en-GB`/`nl-BE`, the Android app stores `en`/`nl` — so a tag pulled from the
+ * other device has to resolve by language, not by exact match, or the language
+ * silently falls back to English on every sync.
+ */
+export function normaliseLocale(locale) {
+  const lang = String(locale || '').toLowerCase().split(/[-_]/)[0];
+  switch (lang) {
+    case 'nl': return 'nl-BE';
+    case 'fr': return 'fr';
+    case 'de': return 'de';
+    case 'es': return 'es';
+    case 'it': return 'it';
+    case 'en': return 'en-GB';
+    default: return null;
+  }
+}
+
+export function detectLocale() {
+  const lang = navigator.language || navigator.languages?.[0] || 'en-GB';
+  return normaliseLocale(lang) ?? 'en-GB';
+}
+
 let activeLocale = 'system';
 let resolvedLocaleStr = detectLocale();
 
@@ -32,10 +47,16 @@ export function setLocale(locale) {
   if (locale === 'system' || !locale) {
     resolvedLocaleStr = detectLocale();
   } else {
-    resolvedLocaleStr = locale;
+    resolvedLocaleStr = normaliseLocale(locale) ?? 'en-GB';
   }
 }
 
+/** The locale setting as chosen in Settings ('system' included). */
+export function getSelectedLocale() {
+  return activeLocale;
+}
+
+/** The bundled locale actually in use ('system' already resolved). */
 export function getActiveLocale() {
   return resolvedLocaleStr;
 }

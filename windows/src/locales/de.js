@@ -116,6 +116,8 @@ export default {
 
   // Toasts
   toastApiKeySaved: 'API-Schlüssel funktioniert und wurde gespeichert.',
+  btnRemoveKey: 'Schlüssel entfernen',
+  toastApiKeyRemoved: 'API-Schlüssel entfernt.',
   toastConnectionFailed: 'Verbindung fehlgeschlagen',
   toastProjectAdded: 'Workspace "{name}" hinzugefügt.',
   toastProjectsError: 'Projekte konnten nicht geladen werden',
@@ -183,6 +185,9 @@ export default {
   deletedPageConfirm: 'Schließen',
   warnAlreadyRunningTitle: 'Timer läuft bereits',
   warnAlreadyRunningBody: 'Ein Timer läuft bereits. Möchten Sie ihn stoppen und den neuen starten, oder abbrechen?',
+  warnAlreadyRunningIn: 'Läuft derzeit in:',
+  presetsNoneConfigured: 'Keine Vorlagen eingerichtet',
+  colorNone: 'Keine',
   btnStopAndStartNew: 'Stoppen & neu starten',
   dialogSavePresetTitle: 'Vorlage speichern',
   dialogSavePresetBody: 'Aktuelle Beschreibung und ausgewählte Workspace/Felder als Vorlage speichern.',

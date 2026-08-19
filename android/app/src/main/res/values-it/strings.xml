@@ -234,4 +234,17 @@
     <string name="language_it">Italiano</string>
     <string name="error_extras_load_failed">Impossibile caricare i campi di questo spazio da Notion. I valori mostrati potrebbero essere incompleti.</string>
     <string name="error_extras_missing_props">Alcune proprietà configurate non esistono più in questo database. Controlla lo spazio nelle Impostazioni.</string>
+    <string name="app_title">Time Tracker</string>
+    <string name="title_save_preset">Salva come preimpostazione</string>
+    <string name="title_manage_presets">Gestisci preimpostazioni</string>
+    <string name="title_select_start_time">Scegli ora di inizio</string>
+    <string name="title_select_end_time">Scegli ora di fine</string>
+    <string name="title_move_preset_up">Sposta preimpostazione su</string>
+    <string name="title_move_preset_down">Sposta preimpostazione giù</string>
+    <string name="title_info">Informazioni</string>
+    <string name="error_no_api_key">Nessuna chiave API Notion configurata.</string>
+    <string name="error_start_failed">Impossibile avviare il timer</string>
+    <string name="error_stop_failed">Impossibile fermare il timer</string>
+    <string name="error_delete_failed">Impossibile eliminare la voce</string>
+    <string name="error_stop_from_notification_failed">Arresto non riuscito: apri l\'app per riprovare</string>
 </resources>
