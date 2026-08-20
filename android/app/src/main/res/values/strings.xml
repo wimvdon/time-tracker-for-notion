@@ -233,6 +233,7 @@
     <string name="language_es">Español</string>
     <string name="language_it">Italiano</string>
     <string name="error_extras_load_failed">Could not load the fields for this workspace from Notion. The values shown may be incomplete.</string>
+    <string name="error_running_timers_failed">Could not load the running timers from Notion. The list may be incomplete.</string>
     <string name="error_extras_missing_props">Some configured properties no longer exist in this database. Check the workspace in Settings.</string>
     <string name="app_title">Time Tracker</string>
     <string name="title_save_preset">Save as preset</string>
