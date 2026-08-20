@@ -498,6 +498,7 @@ private fun IdleView(
             OtherRunningTimers(
                 timers = uiState.runningTimers,
                 loading = uiState.runningTimersLoading,
+                error = uiState.runningTimersError,
                 activePageId = null,
                 onLoad = onLoadRunningTimer,
                 onStop = onStopOtherRunningTimer,
@@ -877,6 +878,7 @@ private fun RunningView(
             OtherRunningTimers(
                 timers = uiState.runningTimers,
                 loading = uiState.runningTimersLoading,
+                error = uiState.runningTimersError,
                 activePageId = uiState.activeTimer?.notionPageId,
                 onLoad = onLoadRunningTimer,
                 onStop = onStopOtherRunningTimer,
@@ -908,6 +910,7 @@ private fun RunningView(
 private fun OtherRunningTimers(
     timers: List<RunningTimerInfo>,
     loading: Boolean,
+    error: String?,
     activePageId: String?,
     onLoad: (RunningTimerInfo) -> Unit,
     onStop: (RunningTimerInfo) -> Unit,
@@ -916,7 +919,9 @@ private fun OtherRunningTimers(
     showNotionLink: Boolean = true,
     showArchiveAction: Boolean = true
 ) {
-    if (timers.isEmpty()) return
+    // A failed query is still worth a line even with nothing to list: an empty
+    // list would otherwise read as "nothing is running".
+    if (timers.isEmpty() && error == null) return
 
     // Drives the per-second elapsed counters below. It has to be *read* while
     // composing them — a state that is only written recomposes nothing, which
@@ -945,6 +950,13 @@ private fun OtherRunningTimers(
             Spacer(Modifier.width(8.dp))
             CircularProgressIndicator(modifier = Modifier.size(12.dp), strokeWidth = 2.dp)
         }
+    }
+    error?.let { err ->
+        Text(
+            localisedMessage(err),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.error
+        )
     }
     timers.forEach { rt ->
         val isActive = rt.pageId == activePageId
@@ -1225,6 +1237,7 @@ private fun localisedMessage(raw: String): String {
         "stop_failed" -> R.string.toast_stop_error
         "update_failed" -> R.string.toast_update_error
         "delete_failed" -> R.string.toast_delete_error
+        "running_timers_failed" -> R.string.error_running_timers_failed
         "required_fields_missing" -> R.string.toast_required_fields_missing
         "required_fields_before_stopping" -> R.string.toast_required_before_stopping
         "description_before_stopping" -> R.string.toast_description_before_stopping

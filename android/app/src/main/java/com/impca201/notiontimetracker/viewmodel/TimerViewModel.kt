@@ -6,6 +6,10 @@ import android.content.Intent
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.impca201.notiontimetracker.NotionTimeTrackerApp
+import com.impca201.notiontimetracker.data.api.arrayOrNull
+import com.impca201.notiontimetracker.data.api.asObjectOrNull
+import com.impca201.notiontimetracker.data.api.objOrNull
+import com.impca201.notiontimetracker.data.api.stringOrNull
 import com.impca201.notiontimetracker.data.models.*
 import com.impca201.notiontimetracker.ShortcutHelper
 import com.impca201.notiontimetracker.data.models.Preset
@@ -42,6 +46,7 @@ object UiError {
     const val STOP_FAILED = "stop_failed"
     const val UPDATE_FAILED = "update_failed"
     const val DELETE_FAILED = "delete_failed"
+    const val RUNNING_TIMERS_FAILED = "running_timers_failed"
 }
 
 private fun uiError(key: String, detail: String?): String =
@@ -72,6 +77,7 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
         val extrasError: String? = null,
         val runningTimers: List<RunningTimerInfo> = emptyList(),
         val runningTimersLoading: Boolean = false,
+        val runningTimersError: String? = null,
         val recentEntries: List<RecentEntryInfo> = emptyList(),
         val recentEntriesLoading: Boolean = false,
         val deleteConfirmInfo: DeleteConfirmInfo? = null,
@@ -884,45 +890,62 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
 
         _uiState.update { it.copy(runningTimersLoading = true) }
 
-        val allRunning = mutableListOf<RunningTimerInfo>()
-        for (ws in state.workspaces) {
-            val pm = ws.propertyMap
-            if (ws.timeEntriesDbId.isBlank() || pm.timeEntryStatusProp.isBlank() ||
-                pm.timeEntryStatusRunning.isBlank()) continue
-            val result = runCatching {
-                notionRepo.fetchRunningTimers(
-                    ws.timeEntriesDbId, pm.timeEntryStatusProp,
-                    pm.timeEntryStatusRunning, pm.timeEntryDateProp
-                )
-            }
-            if (result.isFailure) {
-                // Keep previously fetched running timers for this workspace
-                val prevForWs = state.runningTimers.filter { it.workspaceId == ws.id }
-                allRunning.addAll(prevForWs)
-            } else {
-                result.getOrThrow().forEach { res ->
-                    allRunning.add(RunningTimerInfo(
-                        pageId = res.pageId,
-                        title = res.title,
-                        startISO = res.startISO,
-                        url = res.url,
-                        workspaceId = ws.id,
-                        workspaceName = ws.name,
-                        propertyMap = pm
-                    ))
+        // The flag is cleared in a finally: left set by an unexpected failure it
+        // would turn every later refresh — manual and periodic alike — into an
+        // immediate no-op, with nothing on screen to say why.
+        try {
+            val allRunning = mutableListOf<RunningTimerInfo>()
+            var failure: Throwable? = null
+            for (ws in state.workspaces) {
+                val pm = ws.propertyMap
+                if (ws.timeEntriesDbId.isBlank() || pm.timeEntryStatusProp.isBlank() ||
+                    pm.timeEntryStatusRunning.isBlank()) continue
+                val result = runCatching {
+                    notionRepo.fetchRunningTimers(
+                        ws.timeEntriesDbId, pm.timeEntryStatusProp,
+                        pm.timeEntryStatusRunning, pm.timeEntryDateProp
+                    )
+                }
+                if (result.isFailure) {
+                    // Keep previously fetched running timers for this workspace, and
+                    // report it: a query that failed used to be indistinguishable
+                    // from a workspace with nothing running.
+                    failure = result.exceptionOrNull()
+                    android.util.Log.e(
+                        "TimerViewModel", "Could not load running timers for ${ws.name}", failure
+                    )
+                    val prevForWs = state.runningTimers.filter { it.workspaceId == ws.id }
+                    allRunning.addAll(prevForWs)
+                } else {
+                    result.getOrThrow().forEach { res ->
+                        allRunning.add(RunningTimerInfo(
+                            pageId = res.pageId,
+                            title = res.title,
+                            startISO = res.startISO,
+                            url = res.url,
+                            workspaceId = ws.id,
+                            workspaceName = ws.name,
+                            propertyMap = pm
+                        ))
+                    }
                 }
             }
-        }
-        allRunning.sortByDescending { it.startISO }
-        val visibleRunning = withoutRecentlyStopped(allRunning)
-        // Merge deltas into the existing list instead of replacing it wholesale, so
-        // entries that are still running keep their identity/position (no flicker or
-        // momentary disappearance while switching timers).
-        _uiState.update { it.copy(runningTimersLoading = false, runningTimers = mergeById(it.runningTimers, visibleRunning) { r -> r.pageId }) }
-        syncServiceNotifications()
-        val updatedState = _uiState.value
-        if (!updatedState.running && updatedState.activeTimer == null && visibleRunning.isNotEmpty()) {
-            loadRunningTimer(visibleRunning.first())
+            allRunning.sortByDescending { it.startISO }
+            val visibleRunning = withoutRecentlyStopped(allRunning)
+            // Merge deltas into the existing list instead of replacing it wholesale, so
+            // entries that are still running keep their identity/position (no flicker or
+            // momentary disappearance while switching timers).
+            _uiState.update { it.copy(
+                runningTimers = mergeById(it.runningTimers, visibleRunning) { r -> r.pageId },
+                runningTimersError = failure?.let { err -> uiError(UiError.RUNNING_TIMERS_FAILED, err) }
+            ) }
+            syncServiceNotifications()
+            val updatedState = _uiState.value
+            if (!updatedState.running && updatedState.activeTimer == null && visibleRunning.isNotEmpty()) {
+                loadRunningTimer(visibleRunning.first())
+            }
+        } finally {
+            _uiState.update { it.copy(runningTimersLoading = false) }
         }
     }
 
@@ -1121,7 +1144,7 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
 
         val relProp = propertyMap.timeEntryRelationProp
         val projectId = relProp.takeIf { it.isNotBlank() }
-            ?.let { parsePropertyValue(props.getAsJsonObject(it), "relation") }
+            ?.let { parsePropertyValue(props.objOrNull(it), "relation") }
             ?.split(",")?.firstOrNull { it.isNotBlank() }
         val projectName = if (projectId != null && workspace.projectsDbId.isNotBlank()) {
             runCatching { notionRepo.fetchDatabasePages(workspace.projectsDbId) }.getOrDefault(emptyList())
@@ -1142,7 +1165,7 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
             val schema = retryNotionCall { notionRepo.getDatabaseSchema(workspace.timeEntriesDbId) } ?: return
             workspace.extraProps.associate { prop ->
                 val type = schema[prop.propName]?.type ?: prop.type
-                prop.propName to parsePropertyValue(props.getAsJsonObject(prop.propName), type)
+                prop.propName to parsePropertyValue(props.objOrNull(prop.propName), type)
             }
         }
 
@@ -1323,7 +1346,7 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
                 if (props != null) {
                     val relProp = workspace.propertyMap.timeEntryRelationProp
                     val projectId = relProp.takeIf { it.isNotBlank() }
-                        ?.let { parsePropertyValue(props.getAsJsonObject(it), "relation") }
+                        ?.let { parsePropertyValue(props.objOrNull(it), "relation") }
                         ?.split(",")?.firstOrNull { it.isNotBlank() }
 
                     // The stored extraProps[].type is not a reliable source of the real
@@ -1336,7 +1359,7 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
                     if (schema != null) {
                         val extraValues = workspace.extraProps.associate { prop ->
                             val type = schema[prop.propName]?.type ?: prop.type
-                            prop.propName to parsePropertyValue(props.getAsJsonObject(prop.propName), type)
+                            prop.propName to parsePropertyValue(props.objOrNull(prop.propName), type)
                         }
                         _uiState.update { it.copy(selectedProjectId = projectId, extraValues = extraValues) }
                     } else {
@@ -1603,25 +1626,29 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
          *  value back into the string format used by extraValues/ExtraFieldInput. */
         fun parsePropertyValue(prop: com.google.gson.JsonObject?, type: String): String {
             prop ?: return ""
+            // Every read here goes through the null-safe accessors: an empty
+            // select/status/date arrives as JSON `null`, which Gson's own
+            // getAsJsonObject() throws a ClassCastException on rather than
+            // reading as "no value".
             return when (type) {
-                "rich_text" -> prop.getAsJsonArray("rich_text")
-                    ?.joinToString("") { it.asJsonObject.get("plain_text")?.asString ?: "" } ?: ""
-                "number" -> prop.get("number")?.takeIf { !it.isJsonNull }?.asString ?: ""
+                "rich_text" -> prop.arrayOrNull("rich_text")
+                    ?.joinToString("") { it.asObjectOrNull()?.stringOrNull("plain_text") ?: "" } ?: ""
+                "number" -> prop.stringOrNull("number") ?: ""
                 "checkbox" -> if (prop.get("checkbox")?.takeIf { !it.isJsonNull }?.asBoolean == true) "true" else "false"
-                "select" -> prop.getAsJsonObject("select")?.get("name")?.asString ?: ""
-                "status" -> prop.getAsJsonObject("status")?.get("name")?.asString ?: ""
-                "multi_select" -> prop.getAsJsonArray("multi_select")
-                    ?.joinToString(",") { it.asJsonObject.get("name")?.asString ?: "" } ?: ""
-                "date" -> prop.getAsJsonObject("date")?.get("start")?.asString ?: ""
-                "url" -> prop.get("url")?.takeIf { !it.isJsonNull }?.asString ?: ""
-                "email" -> prop.get("email")?.takeIf { !it.isJsonNull }?.asString ?: ""
-                "phone_number" -> prop.get("phone_number")?.takeIf { !it.isJsonNull }?.asString ?: ""
-                "people" -> prop.getAsJsonArray("people")
-                    ?.joinToString(",") { it.asJsonObject.get("id")?.asString ?: "" } ?: ""
-                "relation" -> prop.getAsJsonArray("relation")
-                    ?.joinToString(",") { it.asJsonObject.get("id")?.asString ?: "" } ?: ""
-                "files" -> prop.getAsJsonArray("files")?.firstOrNull()?.asJsonObject
-                    ?.getAsJsonObject("external")?.get("url")?.asString ?: ""
+                "select" -> prop.objOrNull("select")?.stringOrNull("name") ?: ""
+                "status" -> prop.objOrNull("status")?.stringOrNull("name") ?: ""
+                "multi_select" -> prop.arrayOrNull("multi_select")
+                    ?.joinToString(",") { it.asObjectOrNull()?.stringOrNull("name") ?: "" } ?: ""
+                "date" -> prop.objOrNull("date")?.stringOrNull("start") ?: ""
+                "url" -> prop.stringOrNull("url") ?: ""
+                "email" -> prop.stringOrNull("email") ?: ""
+                "phone_number" -> prop.stringOrNull("phone_number") ?: ""
+                "people" -> prop.arrayOrNull("people")
+                    ?.joinToString(",") { it.asObjectOrNull()?.stringOrNull("id") ?: "" } ?: ""
+                "relation" -> prop.arrayOrNull("relation")
+                    ?.joinToString(",") { it.asObjectOrNull()?.stringOrNull("id") ?: "" } ?: ""
+                "files" -> prop.arrayOrNull("files")?.firstOrNull()?.asObjectOrNull()
+                    ?.objOrNull("external")?.stringOrNull("url") ?: ""
                 else -> ""
             }
         }

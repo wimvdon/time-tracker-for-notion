@@ -233,6 +233,7 @@
     <string name="language_es">Español</string>
     <string name="language_it">Italiano</string>
     <string name="error_extras_load_failed">Die Felder dieses Workspace konnten nicht aus Notion geladen werden. Die angezeigten Werte sind möglicherweise unvollständig.</string>
+    <string name="error_running_timers_failed">Die laufenden Timer konnten nicht aus Notion geladen werden. Die Liste ist möglicherweise unvollständig.</string>
     <string name="error_extras_missing_props">Einige konfigurierte Eigenschaften gibt es in dieser Datenbank nicht mehr. Prüfen Sie den Workspace in den Einstellungen.</string>
     <string name="app_title">Time Tracker</string>
     <string name="title_save_preset">Als Vorlage speichern</string>

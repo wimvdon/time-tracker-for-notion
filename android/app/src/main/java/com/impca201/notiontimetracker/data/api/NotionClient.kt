@@ -73,7 +73,7 @@ class NotionClient {
             if (response.isSuccessful) return@withContext data
 
             lastError = Exception(
-                data.get("message")?.asString ?: "Notion API error (HTTP ${response.code})"
+                data.stringOrNull("message") ?: "Notion API error (HTTP ${response.code})"
             )
             val retryable = response.code == 429 || response.code >= 500
             if (!retryable || attempt == maxAttempts - 1) throw lastError
@@ -103,46 +103,54 @@ class NotionClient {
                 if (cursor != null) put("start_cursor", cursor!!)
             }
             val data = fetch(apiKey, "POST", "/search", body)
-            data.getAsJsonArray("results")?.forEach { el ->
-                val db = el.asJsonObject
-                val name = db.getAsJsonArray("title")
-                    ?.joinToString("") { it.asJsonObject.get("plain_text")?.asString ?: "" }
+            data.arrayOrNull("results")?.forEach { el ->
+                val db = el.asObjectOrNull() ?: return@forEach
+                val id = db.stringOrNull("id") ?: return@forEach
+                val name = db.arrayOrNull("title")
+                    ?.joinToString("") { it.asObjectOrNull()?.stringOrNull("plain_text") ?: "" }
                     ?.trim()
                     ?.ifBlank { "(Untitled)" } ?: "(Untitled)"
-                results.add(NamedOption(db.get("id").asString, name))
+                results.add(NamedOption(id, name))
             }
-            cursor = if (data.get("has_more")?.asBoolean == true)
-                data.get("next_cursor")?.asString else null
+            cursor = if (data.boolOrNull("has_more") == true)
+                data.stringOrNull("next_cursor") else null
         } while (cursor != null)
         return results
     }
 
     suspend fun getDatabaseSchema(apiKey: String, dbId: String): Map<String, SchemaProperty> {
         val data = fetch(apiKey, "GET", "/databases/$dbId")
-        val props = data.getAsJsonObject("properties") ?: return emptyMap()
-        return props.entrySet().associate { (name, el) ->
-            val prop = el.asJsonObject
-            val type = prop.get("type")?.asString ?: "rich_text"
-            val statusOptions = if (type == "status") {
-                prop.getAsJsonObject("status")
-                    ?.getAsJsonArray("options")
-                    ?.map { opt ->
-                        val o = opt.asJsonObject
-                        StatusOption(name = o.get("name")?.asString ?: "", color = o.get("color")?.asString ?: "")
-                    } ?: emptyList()
-            } else emptyList()
+        val props = data.objOrNull("properties") ?: return emptyMap()
+        return props.entrySet().mapNotNull { (name, el) ->
+            val prop = el.asObjectOrNull() ?: return@mapNotNull null
+            val type = prop.stringOrNull("type") ?: "rich_text"
+            fun optionsOf(holder: String): List<StatusOption> =
+                prop.objOrNull(holder)?.arrayOrNull("options")?.mapNotNull { opt ->
+                    opt.asObjectOrNull()?.let { o ->
+                        StatusOption(name = o.stringOrNull("name") ?: "", color = o.stringOrNull("color") ?: "")
+                    }
+                } ?: emptyList()
+            val statusOptions = if (type == "status") optionsOf("status") else emptyList()
             val selectOptions = when (type) {
-                "select" -> prop.getAsJsonObject("select")?.getAsJsonArray("options")
-                    ?.map { opt -> val o = opt.asJsonObject; StatusOption(name = o.get("name")?.asString ?: "", color = o.get("color")?.asString ?: "") } ?: emptyList()
-                "multi_select" -> prop.getAsJsonObject("multi_select")?.getAsJsonArray("options")
-                    ?.map { opt -> val o = opt.asJsonObject; StatusOption(name = o.get("name")?.asString ?: "", color = o.get("color")?.asString ?: "") } ?: emptyList()
+                "select" -> optionsOf("select")
+                "multi_select" -> optionsOf("multi_select")
                 else -> emptyList()
             }
             val relationDatabaseId = if (type == "relation")
-                prop.getAsJsonObject("relation")?.get("database_id")?.asString else null
+                prop.objOrNull("relation")?.stringOrNull("database_id") else null
             name to SchemaProperty(name = name, type = type, statusOptions = statusOptions, selectOptions = selectOptions, relationDatabaseId = relationDatabaseId)
-        }
+        }.toMap()
     }
+
+    /** The plain text of a page's title property, or "Untitled" when it has none. */
+    private fun titleOf(properties: JsonObject, fallback: String = "(Untitled)"): String =
+        properties.entrySet()
+            .mapNotNull { it.value.asObjectOrNull() }
+            .firstOrNull { it.stringOrNull("type") == "title" }
+            ?.arrayOrNull("title")
+            ?.joinToString("") { it.asObjectOrNull()?.stringOrNull("plain_text") ?: "" }
+            ?.trim()
+            ?.ifBlank { fallback } ?: fallback
 
     suspend fun fetchDatabasePages(apiKey: String, dbId: String): List<NamedOption> {
         val results = mutableListOf<NamedOption>()
@@ -154,23 +162,18 @@ class NotionClient {
                 if (cursor != null) put("start_cursor", cursor!!)
             }
             val data = fetch(apiKey, "POST", "/databases/$dbId/query", body)
-            data.getAsJsonArray("results")?.forEach { el ->
-                val page = el.asJsonObject
-                val propsObj = page.getAsJsonObject("properties") ?: return@forEach
-                val titleProp = propsObj.entrySet()
-                    .map { it.value.asJsonObject }
-                    .firstOrNull { it.get("type")?.asString == "title" }
+            data.arrayOrNull("results")?.forEach { el ->
+                val page = el.asObjectOrNull() ?: return@forEach
+                val id = page.stringOrNull("id") ?: return@forEach
+                val propsObj = page.objOrNull("properties") ?: return@forEach
                 // Entries without a title still have to be listed: a relation value
                 // pointing at one would otherwise have no matching option and the
                 // field would read as empty even though the page is linked.
-                val name = titleProp?.getAsJsonArray("title")
-                    ?.joinToString("") { it.asJsonObject.get("plain_text")?.asString ?: "" }
-                    ?.trim()
-                    ?.ifBlank { "(Untitled)" } ?: "(Untitled)"
-                results.add(NamedOption(page.get("id").asString, name))
+                val name = titleOf(propsObj)
+                results.add(NamedOption(id, name))
             }
-            cursor = if (data.get("has_more")?.asBoolean == true)
-                data.get("next_cursor")?.asString else null
+            cursor = if (data.boolOrNull("has_more") == true)
+                data.stringOrNull("next_cursor") else null
         } while (cursor != null)
         return results
     }
@@ -181,17 +184,18 @@ class NotionClient {
         do {
             val endpoint = "/users?page_size=100" + if (cursor != null) "&start_cursor=$cursor" else ""
             val data = fetch(apiKey, "GET", endpoint)
-            data.getAsJsonArray("results")?.forEach { el ->
-                val user = el.asJsonObject
-                if (user.get("type")?.asString == "person") {
-                    val name = user.get("name")?.asString
-                        ?: user.getAsJsonObject("person")?.get("email")?.asString
-                        ?: user.get("id").asString
-                    results.add(NamedOption(user.get("id").asString, name))
+            data.arrayOrNull("results")?.forEach { el ->
+                val user = el.asObjectOrNull() ?: return@forEach
+                val id = user.stringOrNull("id") ?: return@forEach
+                if (user.stringOrNull("type") == "person") {
+                    val name = user.stringOrNull("name")
+                        ?: user.objOrNull("person")?.stringOrNull("email")
+                        ?: id
+                    results.add(NamedOption(id, name))
                 }
             }
-            cursor = if (data.get("has_more")?.asBoolean == true)
-                data.get("next_cursor")?.asString else null
+            cursor = if (data.boolOrNull("has_more") == true)
+                data.stringOrNull("next_cursor") else null
         } while (cursor != null)
         return results.sortedBy { it.name }
     }
@@ -227,7 +231,7 @@ class NotionClient {
             "parent" to mapOf("database_id" to dbId),
             "properties" to properties
         ))
-        return data.get("id").asString
+        return data.stringOrNull("id") ?: throw Exception("Notion did not return a page id")
     }
 
     suspend fun fetchRunningTimers(
@@ -249,24 +253,23 @@ class NotionClient {
                 if (cursor != null) put("start_cursor", cursor!!)
             }
             val data = fetch(apiKey, "POST", "/databases/$dbId/query", body)
-            data.getAsJsonArray("results")?.forEach { el ->
-                val page = el.asJsonObject
-                val propsObj = page.getAsJsonObject("properties") ?: return@forEach
-                val titleProp = propsObj.entrySet()
-                    .map { it.value.asJsonObject }
-                    .firstOrNull { it.get("type")?.asString == "title" }
-                val title = titleProp?.getAsJsonArray("title")
-                    ?.joinToString("") { it.asJsonObject.get("plain_text")?.asString ?: "" }
-                    ?.trim()?.ifBlank { "Untitled" } ?: "Untitled"
+            data.arrayOrNull("results")?.forEach { el ->
+                val page = el.asObjectOrNull() ?: return@forEach
+                val pageId = page.stringOrNull("id") ?: return@forEach
+                val propsObj = page.objOrNull("properties") ?: return@forEach
+                val title = titleOf(propsObj, fallback = "Untitled")
+                // An entry with no start (its date was never set, or was cleared in
+                // Notion) has no elapsed time to show, so it is skipped — but only
+                // it: the rest of the query's entries are still returned.
                 val startISO = if (dateProp.isNotBlank())
-                    propsObj.getAsJsonObject(dateProp)?.getAsJsonObject("date")?.get("start")?.asString
+                    propsObj.objOrNull(dateProp)?.objOrNull("date")?.stringOrNull("start")
                 else null
                 startISO ?: return@forEach
-                val url = page.get("url")?.asString ?: ""
-                results.add(RunningTimerResult(pageId = page.get("id").asString, title = title, startISO = startISO, url = url))
+                val url = page.stringOrNull("url") ?: ""
+                results.add(RunningTimerResult(pageId = pageId, title = title, startISO = startISO, url = url))
             }
-            cursor = if (data.get("has_more")?.asBoolean == true)
-                data.get("next_cursor")?.asString else null
+            cursor = if (data.boolOrNull("has_more") == true)
+                data.stringOrNull("next_cursor") else null
         } while (cursor != null)
         return results
     }
@@ -287,20 +290,16 @@ class NotionClient {
         }
         val data = fetch(apiKey, "POST", "/databases/$dbId/query", body)
         val results = mutableListOf<RecentEntryResult>()
-        data.getAsJsonArray("results")?.forEach { el ->
-            val page = el.asJsonObject
-            val propsObj = page.getAsJsonObject("properties") ?: return@forEach
-            val titleProp = propsObj.entrySet()
-                .map { it.value.asJsonObject }
-                .firstOrNull { it.get("type")?.asString == "title" }
-            val title = titleProp?.getAsJsonArray("title")
-                ?.joinToString("") { it.asJsonObject.get("plain_text")?.asString ?: "" }
-                ?.trim()?.ifBlank { "Untitled" } ?: "Untitled"
-            val datePropObj = if (dateProp.isNotBlank()) propsObj.getAsJsonObject(dateProp)?.getAsJsonObject("date") else null
-            val startISO = datePropObj?.get("start")?.asString
-            val endISO = datePropObj?.get("end")?.asString
-            val url = page.get("url")?.asString ?: ""
-            results.add(RecentEntryResult(pageId = page.get("id").asString, title = title, startISO = startISO, endISO = endISO, url = url))
+        data.arrayOrNull("results")?.forEach { el ->
+            val page = el.asObjectOrNull() ?: return@forEach
+            val pageId = page.stringOrNull("id") ?: return@forEach
+            val propsObj = page.objOrNull("properties") ?: return@forEach
+            val title = titleOf(propsObj, fallback = "Untitled")
+            val datePropObj = if (dateProp.isNotBlank()) propsObj.objOrNull(dateProp)?.objOrNull("date") else null
+            val startISO = datePropObj?.stringOrNull("start")
+            val endISO = datePropObj?.stringOrNull("end")
+            val url = page.stringOrNull("url") ?: ""
+            results.add(RecentEntryResult(pageId = pageId, title = title, startISO = startISO, endISO = endISO, url = url))
         }
         return results
     }
@@ -313,7 +312,7 @@ class NotionClient {
      *  values (e.g. connected project) when loading an already-running timer. */
     suspend fun fetchPageProperties(apiKey: String, pageId: String): JsonObject {
         val data = fetch(apiKey, "GET", "/pages/$pageId")
-        return data.getAsJsonObject("properties") ?: JsonObject()
+        return data.objOrNull("properties") ?: JsonObject()
     }
 
     suspend fun deletePage(apiKey: String, pageId: String) {
@@ -362,18 +361,14 @@ class NotionClient {
                 if (cursor != null) put("start_cursor", cursor!!)
             }
             val data = fetch(apiKey, "POST", "/search", body)
-            data.getAsJsonArray("results")?.forEach { el ->
-                val page = el.asJsonObject
-                val propsObj = page.getAsJsonObject("properties")
-                val titleProp = propsObj?.entrySet()?.map { it.value.asJsonObject }
-                    ?.firstOrNull { it.get("type")?.asString == "title" }
-                val name = titleProp?.getAsJsonArray("title")
-                    ?.joinToString("") { it.asJsonObject.get("plain_text")?.asString ?: "" }
-                    ?.trim()?.ifBlank { "(Untitled)" } ?: "(Untitled)"
-                results.add(NamedOption(page.get("id").asString, name))
+            data.arrayOrNull("results")?.forEach { el ->
+                val page = el.asObjectOrNull() ?: return@forEach
+                val id = page.stringOrNull("id") ?: return@forEach
+                val name = page.objOrNull("properties")?.let { titleOf(it) } ?: "(Untitled)"
+                results.add(NamedOption(id, name))
             }
-            cursor = if (data.get("has_more")?.asBoolean == true)
-                data.get("next_cursor")?.asString else null
+            cursor = if (data.boolOrNull("has_more") == true)
+                data.stringOrNull("next_cursor") else null
         } while (cursor != null)
         return results
     }
@@ -401,7 +396,7 @@ class NotionClient {
             )
         )
         val data = fetch(apiKey, "POST", "/pages", body)
-        return data.get("id").asString
+        return data.stringOrNull("id") ?: throw Exception("Notion did not return a page id")
     }
 
     /**
@@ -411,20 +406,21 @@ class NotionClient {
      */
     suspend fun fetchSyncPageContent(apiKey: String, pageId: String): SyncFetchResult? {
         val data = fetch(apiKey, "GET", "/blocks/$pageId/children?page_size=100")
-        val results = data.getAsJsonArray("results") ?: return null
+        val results = data.arrayOrNull("results") ?: return null
         for (el in results) {
-            val block = el.asJsonObject
-            if (block.get("type")?.asString != "code") continue
-            val richText = block.getAsJsonObject("code")?.getAsJsonArray("rich_text") ?: continue
+            val block = el.asObjectOrNull() ?: continue
+            if (block.stringOrNull("type") != "code") continue
+            val blockId = block.stringOrNull("id") ?: continue
+            val richText = block.objOrNull("code")?.arrayOrNull("rich_text") ?: continue
             val json = richText.joinToString("") { rt ->
-                val rtObj = rt.asJsonObject
-                rtObj.get("plain_text")?.asString
-                    ?: rtObj.getAsJsonObject("text")?.get("content")?.asString
+                val rtObj = rt.asObjectOrNull() ?: return@joinToString ""
+                rtObj.stringOrNull("plain_text")
+                    ?: rtObj.objOrNull("text")?.stringOrNull("content")
                     ?: ""
             }
             val payload = runCatching { gson.fromJson(json, SyncPayload::class.java) }.getOrNull()
             if (payload != null && payload.workspaces != null && !payload.updatedAt.isNullOrBlank()) {
-                return SyncFetchResult(block.get("id").asString, sanitizeSyncPayload(payload))
+                return SyncFetchResult(blockId, sanitizeSyncPayload(payload))
             }
         }
         return null
