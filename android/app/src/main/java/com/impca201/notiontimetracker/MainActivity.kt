@@ -189,6 +189,7 @@ private fun AppNavigation(
                 onApiKeyChange = settingsViewModel::setApiKey,
                 onToggleApiKeyVisible = settingsViewModel::toggleApiKeyVisible,
                 onTestAndSave = settingsViewModel::testAndSaveApiKey,
+                onRemoveApiKey = settingsViewModel::removeApiKey,
                 onMoveUp = settingsViewModel::moveWorkspaceUp,
                 onMoveDown = settingsViewModel::moveWorkspaceDown,
                 onEditWorkspace = settingsViewModel::openEditWorkspace,
