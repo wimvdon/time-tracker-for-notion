@@ -18,6 +18,9 @@ class SettingsViewModel(private val app: Application) : AndroidViewModel(app) {
 
     data class UiState(
         val apiKey: String = "",
+        /** The key currently persisted, so the UI can tell "nothing stored yet"
+         *  apart from "stored key, field edited". */
+        val savedApiKey: String = "",
         val apiKeyVisible: Boolean = false,
         val workspaces: List<Workspace> = emptyList(),
         val timerRunning: Boolean = false,
@@ -119,6 +122,7 @@ class SettingsViewModel(private val app: Application) : AndroidViewModel(app) {
         val syncPageTitle = settingsRepo.syncPageTitleFlow.first()
         _uiState.update { it.copy(
             apiKey = apiKey,
+            savedApiKey = apiKey,
             workspaces = workspaces,
             themeMode = themeMode,
             dynamicColor = dynamicColor,
@@ -180,16 +184,26 @@ class SettingsViewModel(private val app: Application) : AndroidViewModel(app) {
 
     fun toggleApiKeyVisible() = _uiState.update { it.copy(apiKeyVisible = !it.apiKeyVisible) }
 
+    /** Removes the stored key. Only offered while one is actually stored. */
+    fun removeApiKey() {
+        viewModelScope.launch {
+            settingsRepo.saveApiKey("")
+            _uiState.update {
+                it.copy(
+                    apiKey = "",
+                    savedApiKey = "",
+                    keyTestSuccess = false,
+                    keyTestError = null,
+                    snackbarMessage = "api_key_removed"
+                )
+            }
+        }
+    }
+
     fun testAndSaveApiKey() {
         val key = _uiState.value.apiKey.trim()
-        if (key.isBlank()) {
-            // Emptying the field and saving removes the stored key.
-            viewModelScope.launch {
-                settingsRepo.saveApiKey("")
-                _uiState.update { it.copy(apiKey = "", keyTestSuccess = false, keyTestError = null, snackbarMessage = "api_key_removed") }
-            }
-            return
-        }
+        // Nothing to test or save; the button is disabled in this state anyway.
+        if (key.isBlank()) return
         _uiState.update { it.copy(testingKey = true, keyTestError = null, keyTestSuccess = false) }
         viewModelScope.launch {
             runCatching { notionRepo.testConnectionWithKey(key) }
@@ -198,7 +212,15 @@ class SettingsViewModel(private val app: Application) : AndroidViewModel(app) {
                     // Cached schemas/options belong to whatever integration the old key
                     // pointed at.
                     notionRepo.invalidateMetadataCache()
-                    _uiState.update { it.copy(testingKey = false, keyTestSuccess = true, snackbarMessage = "api_key_saved") }
+                    _uiState.update {
+                        it.copy(
+                            apiKey = key,
+                            savedApiKey = key,
+                            testingKey = false,
+                            keyTestSuccess = true,
+                            snackbarMessage = "api_key_saved"
+                        )
+                    }
                 }
                 .onFailure { err ->
                     _uiState.update { it.copy(testingKey = false, keyTestError = err.message) }

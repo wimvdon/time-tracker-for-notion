@@ -40,6 +40,7 @@ fun SettingsScreen(
     onApiKeyChange: (String) -> Unit,
     onToggleApiKeyVisible: () -> Unit,
     onTestAndSave: () -> Unit,
+    onRemoveApiKey: () -> Unit,
     onMoveUp: (String) -> Unit,
     onMoveDown: (String) -> Unit,
     onEditWorkspace: (Workspace) -> Unit,
@@ -193,7 +194,7 @@ fun SettingsScreen(
 
             Button(
                 onClick = onTestAndSave,
-                enabled = !uiState.testingKey,
+                enabled = !uiState.testingKey && uiState.apiKey.isNotBlank(),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 if (uiState.testingKey) {
@@ -201,9 +202,20 @@ fun SettingsScreen(
                     Spacer(Modifier.width(8.dp))
                     Text(stringResource(R.string.btn_testing_key))
                 } else {
+                    Text(stringResource(R.string.btn_test_and_save_key))
+                }
+            }
+
+            // Removing is its own action, offered only while a key is actually stored.
+            if (uiState.savedApiKey.isNotBlank()) {
+                TextButton(
+                    onClick = onRemoveApiKey,
+                    enabled = !uiState.testingKey,
+                    modifier = Modifier.align(Alignment.End)
+                ) {
                     Text(
-                        if (uiState.apiKey.isBlank()) stringResource(R.string.btn_remove_key)
-                        else stringResource(R.string.btn_test_and_save_key)
+                        stringResource(R.string.btn_remove_key),
+                        color = MaterialTheme.colorScheme.error
                     )
                 }
             }
