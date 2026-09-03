@@ -66,13 +66,8 @@ export default function Settings() {
 
   const handleSaveAndTestKey = async () => {
     const key = keyInput.trim();
-    // Emptying the field and saving removes the stored key — there is nothing
-    // to test in that case.
-    if (!key) {
-      await saveApiKey('');
-      addToast({ type: 'success', message: t('toastApiKeyRemoved') });
-      return;
-    }
+    // Nothing to test or save; the button is disabled in this state anyway.
+    if (!key) return;
     setTesting(true);
     try {
       await window.notionAPI.testConnection(key, null);
@@ -83,6 +78,13 @@ export default function Settings() {
     } finally {
       setTesting(false);
     }
+  };
+
+  // Removing is its own action, offered only while a key is actually stored.
+  const handleRemoveKey = async () => {
+    await saveApiKey('');
+    setKeyInput('');
+    addToast({ type: 'success', message: t('toastApiKeyRemoved') });
   };
 
   return (
@@ -122,17 +124,24 @@ export default function Settings() {
             {showKey ? <EyeOff20Regular className="w-4 h-4" /> : <Eye20Regular className="w-4 h-4" />}
           </button>
         </div>
-        <button
-          onClick={handleSaveAndTestKey}
-          disabled={testing}
-          className="mt-2 px-3 py-1.5 rounded-md bg-zinc-700 hover:bg-zinc-600 disabled:opacity-50 text-sm"
-        >
-          {testing
-            ? t('btnTestingKey')
-            : keyInput.trim()
-            ? t('btnTestAndSaveKey')
-            : t('btnRemoveKey')}
-        </button>
+        <div className="mt-2 flex items-center gap-2">
+          <button
+            onClick={handleSaveAndTestKey}
+            disabled={testing || !keyInput.trim()}
+            className="px-3 py-1.5 rounded-md bg-zinc-700 hover:bg-zinc-600 disabled:opacity-50 text-sm"
+          >
+            {testing ? t('btnTestingKey') : t('btnTestAndSaveKey')}
+          </button>
+          {apiKey && (
+            <button
+              onClick={handleRemoveKey}
+              disabled={testing}
+              className="px-3 py-1.5 rounded-md text-sm text-red-400 hover:text-red-300 hover:bg-zinc-800 disabled:opacity-50"
+            >
+              {t('btnRemoveKey')}
+            </button>
+          )}
+        </div>
       </div>
 
       <div>
