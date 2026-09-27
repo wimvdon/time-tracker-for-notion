@@ -53,6 +53,10 @@ const migrateActiveTimer = (at) => {
 const RECENTLY_STOPPED_TTL_MS = 60_000;
 
 let toastSeq = 0;
+// React StrictMode deliberately runs mount effects twice in development. Keep
+// initialization process-wide so that this does not register duplicate tray
+// listeners or start multiple auto-refresh intervals.
+let initialized = false;
 
 export const useStore = create((set, get) => ({
   // Settings
@@ -131,6 +135,9 @@ export const useStore = create((set, get) => ({
   // ---- Init / settings ----
 
   init: async () => {
+    if (initialized) return;
+    initialized = true;
+
     const settings = await api.getSettings();
 
     const hasLegacy =
@@ -695,6 +702,10 @@ export const useStore = create((set, get) => ({
   },
 
   beginTicking: ({ pageId, roundedStart, startISO, rawStart, propertyMap }) => {
+    // Starting/restoring a timer replaces the existing ticker. This is also a
+    // safety net for callers switching directly between running entries.
+    const previousInterval = get().timer.tickInterval;
+    if (previousInterval) clearInterval(previousInterval);
     const tickInterval = setInterval(() => {
       set((s) => ({
         timer: {
