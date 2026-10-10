@@ -2,7 +2,7 @@
 //   assets/icon.svg         – master artwork (Windows tile), for reference
 //   assets/icon.ico         – Windows app/installer icon, 16–256 px (PNG-in-ICO)
 //   assets/icon-256.png     – window icon on non-Windows platforms
-//   assets/tray-idle.png    – tray icon, idle (stopwatch)
+//   assets/tray-idle.png    – tray icon, idle (stopwatch badge)
 //   assets/tray-running.png – tray icon, running (red dot)
 //   ../android/app/src/main/res/drawable/ic_launcher_*.xml – Android adaptive icon layers
 // Every size is rendered straight from the vectors, so small sizes stay crisp.
@@ -93,45 +93,71 @@ const polar = (cx, cy, r, deg) => {
   return [cx + r * Math.cos(a), cy + r * Math.sin(a)];
 };
 
-const FACE = { cx: 54, cy: 59 };
-const HAND_END = polar(FACE.cx, FACE.cy, 13, 135);
+// Scales a shape drawn at design size into place on the grid (keeps the art inside the safe zone)
+const ART = { from: [56, 56], to: [54, 54], scale: 0.88 };
+const px = (x) => ART.to[0] + (x - ART.from[0]) * ART.scale;
+const py = (y) => ART.to[1] + (y - ART.from[1]) * ART.scale;
+const pl = (l) => l * ART.scale;
+function place(s) {
+  const out = { ...s };
+  for (const k of ['x', 'x1', 'x2', 'cx']) if (k in s) out[k] = px(s[k]);
+  for (const k of ['y', 'y1', 'y2', 'cy']) if (k in s) out[k] = py(s[k]);
+  for (const k of ['w', 'h', 'r', 'width']) if (k in s) out[k] = pl(s[k]);
+  if (s.points) out.points = s.points.map(([x, y]) => [px(x), py(y)]);
+  if (s.rotate) out.rotate = { ...s.rotate, cx: px(s.rotate.cx), cy: py(s.rotate.cy) };
+  return out;
+}
 
-// Stopwatch outline: crown, side button, case, hand
-const OUTLINE = [
-  { type: 'rrect', x: 47.5, y: 25, w: 13, h: 6, r: 3 },
-  { type: 'rrect', x: 51.5, y: 29, w: 5, h: 7, r: 1 },
-  { type: 'poly', points: [[70.5, 33.5], [74.7, 37.7], [71.3, 41.1], [67.1, 36.9]] },
-  { type: 'ring', ...FACE, r: 23, width: 6 },
-  { type: 'line', x1: FACE.cx, y1: FACE.cy, x2: HAND_END[0], y2: HAND_END[1], width: 4.5 },
-  { type: 'circle', ...FACE, r: 3.6 },
+// A time log: a tilted sheet with three entries
+const SHEET_TILT = { deg: -7, cx: 50, cy: 52 };
+const SHEET = { type: 'rrect', x: 31, y: 29, w: 38, h: 46, r: 7, rotate: SHEET_TILT };
+const ENTRIES = [
+  { type: 'rrect', x: 37.5, y: 38, w: 25, h: 5, r: 2.5, rotate: SHEET_TILT },
+  { type: 'rrect', x: 37.5, y: 48, w: 18, h: 5, r: 2.5, rotate: SHEET_TILT },
+  { type: 'rrect', x: 37.5, y: 58, w: 11, h: 5, r: 2.5, rotate: SHEET_TILT },
 ];
-// Elapsed time, filled red behind the hand
-const ELAPSED = { type: 'wedge', ...FACE, r: 16.5, from: 0, to: 135 };
+// ...with a running stopwatch badge on its corner
+const BADGE = { cx: 68, cy: 70 };
+const HOUR_END = polar(BADGE.cx, BADGE.cy, 7, 110);
+const BADGE_CROWN = { type: 'rrect', x: 65, y: 49.5, w: 6, h: 4, r: 1.5 };
+const BADGE_HALO = { type: 'circle', ...BADGE, r: 16.5 };
+const BADGE_FACE = { type: 'circle', ...BADGE, r: 14 };
+const HANDS = [
+  { type: 'line', x1: BADGE.cx, y1: BADGE.cy, x2: BADGE.cx, y2: 61.5, width: 3.6 },
+  { type: 'line', x1: BADGE.cx, y1: BADGE.cy, x2: HOUR_END[0], y2: HOUR_END[1], width: 3.6 },
+];
 
 const FOREGROUND = [
-  { ...ELAPSED, color: RED },
-  ...OUTLINE.map((s) => ({ ...s, color: WHITE })),
-];
-// Android 13+ themed icon: the launcher tints this single-colour layer
+  { ...SHEET, color: WHITE },
+  { ...ENTRIES[0], color: '#3F3F46' }, // zinc-700
+  { ...ENTRIES[1], color: '#A1A1AA' }, // zinc-400
+  { ...ENTRIES[2], color: '#A1A1AA' },
+  { ...BADGE_HALO, color: BG_BOTTOM },
+  { ...BADGE_CROWN, color: RED },
+  { ...BADGE_FACE, color: RED },
+  ...HANDS.map((s) => ({ ...s, color: WHITE })),
+].map(place);
+// Android 13+ themed icon: the launcher tints this single-colour layer, so depth comes from alpha
 const MONOCHROME = [
-  { ...ELAPSED, color: '#FFFFFF', alpha: 0.5 },
-  ...OUTLINE.map((s) => ({ ...s, color: '#FFFFFF' })),
-];
+  { ...SHEET, color: '#FFFFFF', alpha: 0.35 },
+  ...ENTRIES.map((s) => ({ ...s, color: '#FFFFFF' })),
+  { ...BADGE_CROWN, color: '#FFFFFF' },
+  { type: 'ring', ...BADGE, r: 12.5, width: 3, color: '#FFFFFF' },
+  ...HANDS.map((s) => ({ ...s, color: '#FFFFFF' })),
+].map(place);
+// Tray: the stopwatch badge alone
+const TRAY_GLYPH = [
+  BADGE_CROWN,
+  { type: 'ring', ...BADGE, r: 12.5, width: 3.4 },
+  ...HANDS,
+].map((s) => ({ ...s, color: SLATE }));
 
 // Windows tile: a rounded square cut from the adaptive grid, artwork inset slightly
 const TILE = { x: 20, y: 20, size: 68, radius: 15 };
 const TILE_VIEW = { x: 19, y: 19, size: 70 };
-const TILE_ART_SCALE = 0.9;
-// Tray: the stopwatch alone, filling the icon
-const TRAY_VIEW = { x: 23, y: 24, size: 62 };
-
-// Wedges become polygons so every renderer only needs straight edges
-function wedgePoints({ cx, cy, r, from, to }) {
-  const steps = Math.max(8, Math.ceil((to - from) / 4));
-  const pts = [[cx, cy]];
-  for (let i = 0; i <= steps; i++) pts.push(polar(cx, cy, r, from + ((to - from) * i) / steps));
-  return pts;
-}
+const TILE_ART_SCALE = 0.92;
+// Tray view is in design units, framing the badge
+const TRAY_VIEW = { x: 50, y: 49, size: 36 };
 
 // ---- Signed distance per shape (negative inside), in grid units ----
 
@@ -157,6 +183,15 @@ function polygonDistance(pts) {
 }
 
 function distanceFn(s) {
+  if (s.rotate) {
+    // Evaluate the unrotated shape at the point rotated back
+    const d = distanceFn({ ...s, rotate: null });
+    const a = (-s.rotate.deg * Math.PI) / 180;
+    const cos = Math.cos(a);
+    const sin = Math.sin(a);
+    const { cx, cy } = s.rotate;
+    return (x, y) => d(cx + (x - cx) * cos - (y - cy) * sin, cy + (x - cx) * sin + (y - cy) * cos);
+  }
   switch (s.type) {
     case 'circle':
       return (x, y) => Math.hypot(x - s.cx, y - s.cy) - s.r;
@@ -177,8 +212,6 @@ function distanceFn(s) {
     }
     case 'poly':
       return polygonDistance(s.points);
-    case 'wedge':
-      return polygonDistance(wedgePoints(s));
     default:
       throw new Error(`Unknown shape ${s.type}`);
   }
@@ -324,12 +357,6 @@ function vectorPath(s) {
     }
     case 'poly':
       return { d: 'M' + s.points.map(([x, y]) => `${n(x)},${n(y)}`).join('L') + 'z' };
-    case 'wedge': {
-      const [x0, y0] = polar(s.cx, s.cy, s.r, s.from);
-      const [x1, y1] = polar(s.cx, s.cy, s.r, s.to);
-      const large = s.to - s.from > 180 ? 1 : 0;
-      return { d: `M${s.cx},${s.cy}L${n(x0)},${n(y0)}A${s.r},${s.r} 0 ${large},1 ${n(x1)},${n(y1)}z` };
-    }
     default:
       throw new Error(`Unknown shape ${s.type}`);
   }
@@ -338,9 +365,10 @@ function vectorPath(s) {
 function svgShape(s) {
   const p = vectorPath(s);
   const alpha = s.alpha != null ? ` opacity="${s.alpha}"` : '';
-  return p.stroke
+  const rotate = s.rotate ? ` transform="rotate(${s.rotate.deg} ${n(s.rotate.cx)} ${n(s.rotate.cy)})"` : '';
+  return (p.stroke
     ? `<path d="${p.d}" fill="none" stroke="${s.color}" stroke-width="${p.width}"${p.cap ? ` stroke-linecap="${p.cap}"` : ''}${alpha}/>`
-    : `<path d="${p.d}" fill="${s.color}"${alpha}/>`;
+    : `<path d="${p.d}" fill="${s.color}"${alpha}/>`).replace('/>', `${rotate}/>`);
 }
 
 function iconSVG() {
@@ -368,7 +396,10 @@ function vectorDrawable(shapes) {
       ? [`android:strokeColor="${s.color}"`, `android:strokeWidth="${p.width}"`, ...(p.cap ? [`android:strokeLineCap="${p.cap}"`] : [])]
       : [`android:fillColor="${s.color}"`];
     if (s.alpha != null) attrs.push(`android:${p.stroke ? 'strokeAlpha' : 'fillAlpha'}="${s.alpha}"`);
-    return `    <path\n        ${attrs.join('\n        ')}\n        android:pathData="${p.d}"/>`;
+    const xml = `    <path\n        ${attrs.join('\n        ')}\n        android:pathData="${p.d}"/>`;
+    if (!s.rotate) return xml;
+    const { deg, cx, cy } = s.rotate;
+    return `    <group\n        android:rotation="${deg}"\n        android:pivotX="${n(cx)}"\n        android:pivotY="${n(cy)}">\n${xml.replace(/^/gm, '    ')}\n    </group>`;
   });
   return `<?xml version="1.0" encoding="utf-8"?>
 <!-- Generated by windows/scripts/generate-icons.cjs (npm run icons). Do not edit by hand. -->
@@ -405,7 +436,7 @@ fs.writeFileSync(path.join(assetsDir, 'icon-256.png'), tiles.at(-1).png);
 fs.writeFileSync(path.join(assetsDir, 'icon.ico'), encodeICO(tiles));
 fs.writeFileSync(
   path.join(assetsDir, 'tray-idle.png'),
-  render(32, TRAY_VIEW, { shapes: MONOCHROME.map((s) => ({ ...s, color: SLATE })) })
+  render(32, TRAY_VIEW, { shapes: TRAY_GLYPH })
 );
 fs.writeFileSync(path.join(assetsDir, 'tray-running.png'), drawDot(32, RED));
 
