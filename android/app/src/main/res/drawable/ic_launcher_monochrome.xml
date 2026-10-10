@@ -9,11 +9,11 @@
     <path
         android:strokeColor="#FFFFFF"
         android:strokeWidth="6"
-        android:pathData="M30,54a24,24 0 1,0 48,0a24,24 0 1,0 -48,0z"/>
+        android:pathData="M27,54a27,27 0 1,0 54,0a27,27 0 1,0 -54,0z"/>
     <path
         android:fillColor="#FFFFFF"
         android:fillAlpha="0.5"
-        android:pathData="M54,54L54,36.5A17.5,17.5 0 0,1 66.37,66.37z"/>
+        android:pathData="M54,54L54,33A21,21 0 0,1 68.85,68.85z"/>
     <path
         android:strokeColor="#FFFFFF"
         android:strokeWidth="4.5"
