@@ -1507,10 +1507,7 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
         }
         
         _uiState.update { it.copy(workspaces = updatedWorkspaces) }
-        viewModelScope.launch {
-            settingsRepo.saveWorkspaces(updatedWorkspaces)
-            ShortcutHelper.updateShortcuts(app, updatedWorkspaces)
-        }
+        viewModelScope.launch { savePresetChanges(updatedWorkspaces) }
     }
 
     fun deletePreset(workspaceId: String, presetId: String) {
@@ -1521,10 +1518,7 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
             } else ws
         }
         _uiState.update { it.copy(workspaces = workspaces) }
-        viewModelScope.launch {
-            settingsRepo.saveWorkspaces(workspaces)
-            ShortcutHelper.updateShortcuts(app, workspaces)
-        }
+        viewModelScope.launch { savePresetChanges(workspaces) }
     }
 
     fun movePresetUp(workspaceId: String, presetId: String) {
@@ -1542,10 +1536,7 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
             } else ws
         }
         _uiState.update { it.copy(workspaces = workspaces) }
-        viewModelScope.launch {
-            settingsRepo.saveWorkspaces(workspaces)
-            ShortcutHelper.updateShortcuts(app, workspaces)
-        }
+        viewModelScope.launch { savePresetChanges(workspaces) }
     }
 
     fun movePresetDown(workspaceId: String, presetId: String) {
@@ -1563,10 +1554,17 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
             } else ws
         }
         _uiState.update { it.copy(workspaces = workspaces) }
-        viewModelScope.launch {
-            settingsRepo.saveWorkspaces(workspaces)
-            ShortcutHelper.updateShortcuts(app, workspaces)
-        }
+        viewModelScope.launch { savePresetChanges(workspaces) }
+    }
+
+    /** Persists a preset edit made from the timer screen. Bumping the settings
+     * timestamp is what tells the next sync this device has edits to push;
+     * without it the change stayed local and a newer remote payload would
+     * silently overwrite it. (Same as SettingsViewModel.saveWorkspaces.) */
+    private suspend fun savePresetChanges(workspaces: List<Workspace>) {
+        settingsRepo.saveWorkspaces(workspaces)
+        ShortcutHelper.updateShortcuts(app, workspaces)
+        settingsRepo.touchSettingsUpdatedAt()
     }
 
     companion object {
