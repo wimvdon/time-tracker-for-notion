@@ -11,7 +11,7 @@ Lightweight time-tracking app for Notion — available as a Windows desktop widg
 
 ## Windows (Electron)
 
-A lightweight, always-on-top Windows desktop widget. Pick a workspace and project, press **START**, and the app creates a time entry page in your Notion database. Press **STOP** and it fills in the end time — optionally rounded to the nearest configured interval.
+A lightweight, always-on-top Windows desktop widget. Pick a workspace, type what you're working on, press **START**, and the app creates a time entry page in your Notion database. Press **STOP** and it fills in the end time — optionally rounded to the nearest configured interval.
 
 Built with Electron, React, Vite, Tailwind CSS and Zustand.
 
@@ -28,7 +28,7 @@ The app talks directly to the Notion API. You need a (free) internal integration
 ### What your databases need
 
 - A **Time Entries database**: needs a title property, a date property (start/end range), a status property (one option for "running", one for "completed"), and optionally a relation property linking to a projects database.
-- A **Projects database**: page titles are used as picker options — no configuration needed.
+- A **Projects database** (optional): the database the relation property points to. It is detected automatically from the relation; nothing to configure. The app never clears a project link you set in Notion: editing a running timer keeps it, and starting from a recent entry copies it.
 
 ### Developing
 
@@ -41,7 +41,7 @@ npm run dev
 Other commands:
 
 ```bash
-npm test           # run the time-rounding unit tests
+npm test           # run the unit tests (rounding, formatting, colours, Notion values, store)
 npm run icons      # regenerate icons in assets/
 ```
 
@@ -52,7 +52,7 @@ cd windows
 build.bat          # or: npm run dist
 ```
 
-The installer ends up in `windows/release/Notion Timer Setup 1.0.0.exe`.
+The installer ends up in the `release/` folder at the root of the repo (next to `android/`), as `Time Tracker for Notion Setup 1.0.0.exe`.
 
 ### First launch & workspace configuration
 
@@ -61,15 +61,14 @@ On first launch the app opens on Settings:
 1. Paste your Notion API key and click **Test connection & save**.
 2. Click **+ Add workspace** and follow the step-by-step modal.
 3. Optionally add up to five **extra fields** from the Time Entries database (text, number, select, multi-select, status, date, checkbox, URL, e-mail, phone, people, relation).
-4. Optionally add up to five **presets** per workspace — quick-start configurations with a default title and extra field values (see [Presets](#presets)).
-5. Click `←` to go to the timer.
+4. Click `←` to go to the timer. Presets are created there, with the bookmark button next to START (see [Presets](#presets)).
 
 ### How it behaves
 
 - **Start**: creates a time entry with status = running and the description as the title. The entry's start and end are rounded to the configured interval when the timer is stopped.
 - **Empty description**: the entry is titled with its start date, formatted as configured in Settings (`DD/MM/YYYY`, `MM/DD/YYYY` or `YYYY-MM-DD`). The description field itself is never pre-filled — the date is only written to the Notion page, so an entry never shows up as "Untitled".
 - **Stop**: fills in the end time and sets status = completed. End time is rounded with a minimum duration equal to one interval.
-- **Edit timer**: the running view's fields are editable in place — change the title or any extra field value and it is written to the Notion page. Clearing the title falls back to the start date, exactly as when starting.
+- **Edit timer**: the running view's fields are editable in place. The title is saved when you leave the field (or press Enter); extra fields save themselves shortly after you stop typing. Pressing STOP first saves anything not yet written, so no edit is lost. Clearing the title falls back to the start date, exactly as when starting.
 - **Description required**: workspaces can require a description (Settings → workspace). The field is then marked with `*` and a timer in that workspace cannot be stopped until it is filled in — starting stays a single click, same as for required extra fields.
 - **Closing the window** minimises to the system tray. The tray icon turns red while a timer runs (or takes the workspace's colour, if one is set).
 - **Crash recovery**: if force-quit while a timer runs, it is picked up again on the next launch and keeps counting.
@@ -78,14 +77,14 @@ On first launch the app opens on Settings:
 
 ### Presets
 
-Presets are quick-start configurations defined per workspace. Each preset has:
-- A **name** (always prefixed with the workspace name)
-- An optional **default title** for new time entries
-- Optional **default values** for extra fields
+Presets are quick-start configurations defined per workspace. To create one, fill in the timer form (workspace, description, extra fields) and click the **bookmark** button next to START. Each preset has:
+- A **name** (optional, always shown after the workspace name)
+- A **default title**: the description at the time it was saved
+- **Default values** for extra fields
 
-Presets appear as clickable chips above the workspace selector in the timer view. Clicking a chip immediately starts the timer with those values.
+Presets appear as chips at the top of the timer view, both before and while a timer runs. A chip reads *Workspace – Preset*, or just the workspace name for an unnamed preset; a label that doesn't fit on one line ends in "…" (hover for the full name). Clicking a chip immediately starts the timer with those values; if a timer is already running, the app asks whether to stop it and start the new one. The chips are hidden until an API key is set. The pencil button after the chips opens **Manage presets** to reorder or delete them.
 
-On Windows, presets also appear in the **right-click tray menu**. Picking one while a timer is already running asks whether to stop it and start the new one.
+Presets also appear in the **right-click tray menu** (the first ten).
 
 ### Syncing settings between devices
 
@@ -167,7 +166,7 @@ Alternatively, attach the app to an existing sync page to import a whole configu
 
 ### Presets
 
-Presets appear as tappable chips above the workspace selector in the timer view. Tapping a chip immediately starts the timer with those values.
+Presets work as on Windows: create one with the bookmark button next to START, and tap a chip at the top of the timer view to start the timer with those values. Chips use the same *Workspace – Preset* label (ellipsized when too long), are hidden until an API key is set, and the pencil button after them opens **Manage presets**.
 
 Presets also appear as **Android dynamic shortcuts** — long-press the app icon on your home screen or app drawer to see up to four preset shortcuts. The shortcuts are refreshed automatically each time the app loads its settings.
 
