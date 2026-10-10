@@ -97,6 +97,7 @@ class MainActivity : ComponentActivity() {
         val filter = IntentFilter(TimerForegroundService.ACTION_TIMER_STOPPED)
         ContextCompat.registerReceiver(this, timerStoppedReceiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
         timerViewModel.refreshSettings()
+        timerViewModel.reconcileActiveTimer()
     }
 
     override fun onPause() {

@@ -645,7 +645,11 @@ function WorkspaceModal({ workspace, onClose }) {
     const relPropName = propertiesByType(teSchema.schema, 'relation')[0]?.name ?? '';
     const titlePropName = propertiesByType(teSchema.schema, 'title')[0]?.name ?? '';
     const projectsDbId = teSchema.schema[relPropName]?.relation?.database_id ?? '';
+    // Fields this form doesn't edit (and anything the Android app stores that
+    // this app doesn't know about) are carried over from the saved workspace,
+    // so editing here never strips them from the synced configuration.
     const saved = {
+      ...(workspace || {}),
       id: workspace?.id || crypto.randomUUID(),
       name: name.trim(),
       color: color.trim(),
@@ -661,7 +665,12 @@ function WorkspaceModal({ workspace, onClose }) {
         timeEntryStatusDone: sel.timeEntryStatusDone,
         timeEntryRelationProp: relPropName,
       },
+      // Keeps each row's other fields — notably the default value set in the
+      // Android app, which this form has no input for. A row whose property
+      // was changed here starts fresh (see the field picker below), so a
+      // default never carries over to a different property.
       extraProps: extraProps.filter((ep) => !!ep.propName).map((ep) => ({
+        ...ep,
         propName: ep.propName,
         required: !!ep.required,
       })),

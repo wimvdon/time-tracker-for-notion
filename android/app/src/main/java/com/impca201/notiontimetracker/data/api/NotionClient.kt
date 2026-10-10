@@ -418,12 +418,43 @@ class NotionClient {
                     ?: rtObj.objOrNull("text")?.stringOrNull("content")
                     ?: ""
             }
-            val payload = runCatching { gson.fromJson(json, SyncPayload::class.java) }.getOrNull()
+            val payload = runCatching {
+                val tree = com.google.gson.JsonParser.parseString(json).asJsonObject
+                normalizePresetValues(tree)
+                gson.fromJson(tree, SyncPayload::class.java)
+            }.getOrNull()
             if (payload != null && payload.workspaces != null && !payload.updatedAt.isNullOrBlank()) {
                 return SyncFetchResult(blockId, sanitizeSyncPayload(payload))
             }
         }
         return null
+    }
+
+    /**
+     * The desktop app stores a preset's extra values in its own input shapes —
+     * a multi-select as an array of names, a checkbox as a boolean — where this
+     * app keeps every value as a string. Gson cannot read an array into a
+     * String, so one such preset made the whole payload undecodable: the sync
+     * page read as "not a sync page" and syncing stopped on this device.
+     * Values are flattened to this app's string format before decoding.
+     */
+    private fun normalizePresetValues(root: JsonObject) {
+        root.arrayOrNull("workspaces")?.forEach { wsEl ->
+            wsEl.asObjectOrNull()?.arrayOrNull("presets")?.forEach { presetEl ->
+                val values = presetEl.asObjectOrNull()?.objOrNull("extraValues") ?: return@forEach
+                for ((key, value) in values.entrySet().toList()) {
+                    val flat = when {
+                        value == null || value.isJsonNull -> ""
+                        value.isJsonArray -> value.asJsonArray
+                            .mapNotNull { (it as? com.google.gson.JsonPrimitive)?.asString }
+                            .joinToString(",")
+                        value.isJsonPrimitive -> value.asString
+                        else -> ""
+                    }
+                    values.addProperty(key, flat)
+                }
+            }
+        }
     }
 
     /**

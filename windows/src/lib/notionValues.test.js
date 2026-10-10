@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildPropertyValue, emptyValueFor, WRITABLE_EXTRA_TYPES } from './notionValues.js';
+import { buildPropertyValue, coerceInputValue, emptyValueFor, WRITABLE_EXTRA_TYPES } from './notionValues.js';
 
 test('empty values are omitted (null) for every writable type', () => {
   for (const type of WRITABLE_EXTRA_TYPES) {
@@ -52,4 +52,17 @@ test('files wraps a URL as an external file', () => {
   assert.deepEqual(buildPropertyValue('files', 'https://x.be/f.pdf'), {
     files: [{ name: 'https://x.be/f.pdf', type: 'external', external: { url: 'https://x.be/f.pdf' } }],
   });
+});
+
+test('preset values synced from Android are read in this app\'s input shapes', () => {
+  assert.deepEqual(coerceInputValue('multi_select', 'a, b,'), ['a', 'b']);
+  assert.deepEqual(coerceInputValue('multi_select', ['a']), ['a']);
+  assert.equal(coerceInputValue('checkbox', 'false'), false);
+  assert.equal(coerceInputValue('checkbox', 'true'), true);
+  assert.equal(coerceInputValue('checkbox', true), true);
+  assert.equal(coerceInputValue('relation', 'id1,id2'), 'id1');
+  assert.equal(coerceInputValue('people', ''), '');
+  assert.equal(coerceInputValue('rich_text', 'notes'), 'notes');
+  assert.equal(coerceInputValue('number', 3), '3');
+  assert.deepEqual(coerceInputValue('multi_select', null), []);
 });

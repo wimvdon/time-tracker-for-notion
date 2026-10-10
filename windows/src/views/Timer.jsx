@@ -571,7 +571,15 @@ function RunningView({
       const pendingExtras = cancelPendingExtras();
       const savedDesc = useStore.getState().description;
       if (pendingExtras || localDesc.trim() !== savedDesc.trim()) {
-        await updateTimerDetails(selectedProjectId, localDesc, pendingExtras || localExtras);
+        // If the edits couldn't be written (a toast says why), the entry stays
+        // running: stopping anyway closed it with the old values and the
+        // edits were gone. Stop again once they can be saved.
+        const saved = await updateTimerDetails(selectedProjectId, localDesc, pendingExtras || localExtras);
+        if (!saved) {
+          // Keep them pending, so the next Stop tries to write them again.
+          if (pendingExtras) pendingExtrasRef.current = pendingExtras;
+          return;
+        }
       }
     } finally {
       setFlushingStop(false);

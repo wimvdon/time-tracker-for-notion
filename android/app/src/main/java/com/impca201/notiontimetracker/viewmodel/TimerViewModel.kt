@@ -120,6 +120,18 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
     // deliberately stopped.
     private val recentlyStopped = mutableMapOf<String, Long>()
 
+    // pageId -> when it was started on this device. The same lag works the other
+    // way: a page created a moment ago can be missing from the running-timer
+    // query, which read as "stopped elsewhere" and dropped the timer that was
+    // just started.
+    private val recentlyStarted = mutableMapOf<String, Long>()
+
+    private fun wasJustStarted(pageId: String): Boolean {
+        val now = System.currentTimeMillis()
+        recentlyStarted.entries.removeAll { now - it.value >= RECENTLY_STOPPED_TTL_MS }
+        return recentlyStarted.containsKey(pageId)
+    }
+
     private fun markStopped(pageId: String) {
         if (pageId.isBlank()) return
         recentlyStopped[pageId] = System.currentTimeMillis()
@@ -489,7 +501,7 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
             return
         }
         val running = result.getOrThrow()
-        if (running.none { it.pageId == timer.notionPageId }) {
+        if (running.none { it.pageId == timer.notionPageId } && !wasJustStarted(timer.notionPageId)) {
             tickJob?.cancel()
             stopService()
             settingsRepo.clearActiveTimer()
@@ -641,6 +653,7 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
 
                 timer to nowMs
             }.onSuccess { (timer, startMs) ->
+                recentlyStarted[timer.notionPageId] = System.currentTimeMillis()
                 tickStartMs = startMs
                 _uiState.update { it.copy(running = true, activeTimer = timer, description = timer.description, isStarting = false, elapsedSeconds = 0L) }
                 startTicking(startMs)
@@ -712,25 +725,35 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
      * yet. Stopping used to ignore the draft entirely: the typed text was
      * dropped, and in a workspace that requires a description the stop was
      * even refused while the text was sitting there on screen.
+     *
+     * Returns false when the write failed. The draft is then kept on screen but
+     * not recorded as saved — recording it anyway made a retried Stop skip the
+     * write and close the entry with its old title.
      */
-    private suspend fun commitDescription(timer: ActiveTimer, description: String) {
+    private suspend fun commitDescription(timer: ActiveTimer, description: String): Boolean {
         val trimmed = description.trim()
-        if (trimmed == timer.description.trim()) return
+        if (trimmed == timer.description.trim()) return true
         val titleProp = timer.propertyMap.timeEntryTitleProp
         if (titleProp.isNotBlank()) {
             val startMs = runCatching { parseIso(timer.rawStart) }.getOrDefault(System.currentTimeMillis())
             // Same fallback as everywhere else: never leave the page "Untitled".
             val title = trimmed.ifBlank { fallbackDescription(startMs, _uiState.value.dateFormat) }
-            runCatching {
+            val written = runCatching {
                 notionRepo.updatePageProperties(
                     timer.notionPageId,
                     mapOf(titleProp to mapOf("title" to listOf(mapOf("text" to mapOf("content" to title)))))
                 )
             }
+            // A deleted page is left to the stop itself, which reports it.
+            if (written.isFailure && !isPageDeletedError(written.exceptionOrNull()?.message ?: "")) {
+                _uiState.update { it.copy(description = trimmed) }
+                return false
+            }
         }
         val updated = timer.copy(description = trimmed)
         _uiState.update { it.copy(activeTimer = updated, description = trimmed) }
         settingsRepo.saveActiveTimer(updated)
+        return true
     }
 
     /**
@@ -760,7 +783,12 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             val stoppedPageId = timer.notionPageId
             val stoppedTitle = description
-            commitDescription(timer, description)
+            if (!commitDescription(timer, description)) {
+                // The entry stays running so the description isn't lost; Retry
+                // writes it again before stopping.
+                _uiState.update { it.copy(isStopping = false, stopError = UiError.UPDATE_FAILED) }
+                return@launch
+            }
             when (val result = stopActivePage(manualEndMs)) {
                 is StopResult.Success -> {
                     val remainingRunning = _uiState.value.runningTimers.filter { it.pageId != stoppedPageId }
@@ -842,6 +870,25 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
                     _uiState.update { it.copy(error = uiError(UiError.UPDATE_FAILED, msg)) }
                 }
             }
+        }
+    }
+
+    /**
+     * Catches up with a Stop tapped on the notification while the app was in
+     * the background. The service reports that with a broadcast only the
+     * visible activity receives, so the screen kept showing the timer as
+     * running — and stopping it again from there overwrote the end time the
+     * notification had already written. The service clears the stored active
+     * timer once Notion has the stop, so a running timer with nothing stored
+     * behind it was stopped elsewhere.
+     */
+    fun reconcileActiveTimer() {
+        viewModelScope.launch {
+            val active = _uiState.value.activeTimer ?: return@launch
+            if (_uiState.value.isStopping) return@launch
+            if (settingsRepo.getActiveTimer() != null) return@launch
+            if (_uiState.value.activeTimer?.notionPageId != active.notionPageId) return@launch
+            handleTimerStoppedFromService(active.notionPageId)
         }
     }
 
@@ -1492,79 +1539,66 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
     fun saveCurrentAsPreset(name: String) {
         val state = _uiState.value
         val workspaceId = state.selectedWorkspaceId ?: return
-        val workspace = state.workspaces.firstOrNull { it.id == workspaceId } ?: return
-        val currentPresets = workspace.presets
-        
+        if (state.workspaces.none { it.id == workspaceId }) return
         val newPreset = Preset(
             id = java.util.UUID.randomUUID().toString(),
             name = name,
             pageTitle = state.description,
             extraValues = state.extraValues
         )
-        val updatedWorkspace = workspace.copy(presets = currentPresets + newPreset)
-        val updatedWorkspaces = state.workspaces.map {
-            if (it.id == workspaceId) updatedWorkspace else it
-        }
-        
-        _uiState.update { it.copy(workspaces = updatedWorkspaces) }
-        viewModelScope.launch { savePresetChanges(updatedWorkspaces) }
+        editPresets(workspaceId) { it + newPreset }
     }
 
     fun deletePreset(workspaceId: String, presetId: String) {
-        val state = _uiState.value
-        val workspaces = state.workspaces.map { ws ->
-            if (ws.id == workspaceId) {
-                ws.copy(presets = ws.presets.filter { it.id != presetId })
-            } else ws
-        }
-        _uiState.update { it.copy(workspaces = workspaces) }
-        viewModelScope.launch { savePresetChanges(workspaces) }
+        editPresets(workspaceId) { presets -> presets.filter { it.id != presetId } }
     }
 
     fun movePresetUp(workspaceId: String, presetId: String) {
-        val state = _uiState.value
-        val workspaces = state.workspaces.map { ws ->
-            if (ws.id == workspaceId) {
-                val list = ws.presets.toMutableList()
-                val idx = list.indexOfFirst { it.id == presetId }
-                if (idx > 0) {
-                    val temp = list[idx]
-                    list[idx] = list[idx - 1]
-                    list[idx - 1] = temp
-                }
-                ws.copy(presets = list)
-            } else ws
+        editPresets(workspaceId) { presets ->
+            val list = presets.toMutableList()
+            val idx = list.indexOfFirst { it.id == presetId }
+            if (idx > 0) {
+                val temp = list[idx]
+                list[idx] = list[idx - 1]
+                list[idx - 1] = temp
+            }
+            list
         }
-        _uiState.update { it.copy(workspaces = workspaces) }
-        viewModelScope.launch { savePresetChanges(workspaces) }
     }
 
     fun movePresetDown(workspaceId: String, presetId: String) {
-        val state = _uiState.value
-        val workspaces = state.workspaces.map { ws ->
-            if (ws.id == workspaceId) {
-                val list = ws.presets.toMutableList()
-                val idx = list.indexOfFirst { it.id == presetId }
-                if (idx in 0 until list.size - 1) {
-                    val temp = list[idx]
-                    list[idx] = list[idx + 1]
-                    list[idx + 1] = temp
-                }
-                ws.copy(presets = list)
-            } else ws
+        editPresets(workspaceId) { presets ->
+            val list = presets.toMutableList()
+            val idx = list.indexOfFirst { it.id == presetId }
+            if (idx in 0 until list.size - 1) {
+                val temp = list[idx]
+                list[idx] = list[idx + 1]
+                list[idx + 1] = temp
+            }
+            list
         }
-        _uiState.update { it.copy(workspaces = workspaces) }
-        viewModelScope.launch { savePresetChanges(workspaces) }
     }
 
-    /** Persists a preset edit made from the timer screen. Bumping the settings
-     * timestamp is what tells the next sync this device has edits to push;
-     * without it the change stayed local and a newer remote payload would
-     * silently overwrite it. (Same as SettingsViewModel.saveWorkspaces.) */
-    private suspend fun savePresetChanges(workspaces: List<Workspace>) {
-        settingsRepo.saveWorkspaces(workspaces)
-        ShortcutHelper.updateShortcuts(app, workspaces)
-        settingsRepo.touchSettingsUpdatedAt()
+    /**
+     * Applies a preset edit made from the timer screen. The change is shown at
+     * once, then applied to the *stored* workspaces rather than to this
+     * screen's copy: writing the copy back undid anything a sync had pulled in
+     * since it was loaded — and, with the timestamp bumped, pushed that older
+     * list over the newer one on every other device. Bumping the settings
+     * timestamp is what tells the next sync this device has edits to push.
+     * (Same as SettingsViewModel.saveWorkspaces.)
+     */
+    private fun editPresets(workspaceId: String, transform: (List<Preset>) -> List<Preset>) {
+        val apply = { list: List<Workspace> ->
+            list.map { ws -> if (ws.id == workspaceId) ws.copy(presets = transform(ws.presets)) else ws }
+        }
+        _uiState.update { it.copy(workspaces = apply(it.workspaces)) }
+        viewModelScope.launch {
+            val stored = settingsRepo.updateWorkspaces(apply)
+            settingsRepo.touchSettingsUpdatedAt()
+            _uiState.update { it.copy(workspaces = stored) }
+            ShortcutHelper.updateShortcuts(app, stored)
+        }
     }
 
     companion object {

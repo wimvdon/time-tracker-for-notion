@@ -498,7 +498,7 @@ class SettingsViewModel(private val app: Application) : AndroidViewModel(app) {
         _uiState.update { it.copy(syncing = true, syncError = null) }
         viewModelScope.launch {
             try {
-                val now = java.time.Instant.now().toString()
+                val now = settingsRepo.syncTimestamp()
                 val payload = syncer.buildPayload(now)
                 val pageId = notionRepo.createSyncPage(parentPageId, title.trim(), payload)
                 settingsRepo.saveSyncPage(pageId, title.trim())
