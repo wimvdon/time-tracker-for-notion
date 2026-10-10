@@ -314,7 +314,7 @@ Other commands, typed in the same terminal:
 | Type this | What it does |
 |---|---|
 | `npm test` | Runs the unit tests (rounding, formatting, colours, Notion values, store). |
-| `npm run icons` | Regenerates the icons in `assets/`. |
+| `npm run icons` | Regenerates the app and tray icons in `assets/` and the Android launcher icon, all from one vector design. |
 | `npm run dist` | Builds the installer, same as double-clicking `build.bat`. |
 
 ```

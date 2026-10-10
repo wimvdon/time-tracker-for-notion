@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="19 19 70 70">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="20" x2="0" y2="88" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#34343A"/>
+      <stop offset="1" stop-color="#18181B"/>
+    </linearGradient>
+  </defs>
+  <path d="M35,20h38a15,15 0 0,1 15,15v38a15,15 0 0,1 -15,15h-38a15,15 0 0,1 -15,-15v-38a15,15 0 0,1 15,-15z" fill="url(#bg)"/>
+  <g transform="translate(54 54) scale(0.9) translate(-54 -54)">
+    <path d="M54,59L54,42.5A16.5,16.5 0 0,1 65.67,70.67z" fill="#E53935"/>
+    <path d="M50.5,25h7a3,3 0 0,1 3,3v0a3,3 0 0,1 -3,3h-7a3,3 0 0,1 -3,-3v0a3,3 0 0,1 3,-3z" fill="#FAFAFA"/>
+    <path d="M52.5,29h3a1,1 0 0,1 1,1v5a1,1 0 0,1 -1,1h-3a1,1 0 0,1 -1,-1v-5a1,1 0 0,1 1,-1z" fill="#FAFAFA"/>
+    <path d="M70.5,33.5L74.7,37.7L71.3,41.1L67.1,36.9z" fill="#FAFAFA"/>
+    <path d="M31,59a23,23 0 1,0 46,0a23,23 0 1,0 -46,0z" fill="none" stroke="#FAFAFA" stroke-width="6"/>
+    <path d="M54,59L63.19,68.19" fill="none" stroke="#FAFAFA" stroke-width="4.5" stroke-linecap="round"/>
+    <path d="M50.4,59a3.6,3.6 0 1,0 7.2,0a3.6,3.6 0 1,0 -7.2,0z" fill="#FAFAFA"/>
+  </g>
+</svg>
