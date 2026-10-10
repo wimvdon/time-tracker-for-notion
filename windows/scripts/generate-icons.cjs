@@ -1,8 +1,9 @@
 // Generates every app icon from one vector definition, without image dependencies:
-//   assets/icon.svg         – master artwork (Windows icon), for reference
-//   assets/icon.ico         – Windows app/installer icon, 16–256 px (PNG-in-ICO)
+//   assets/icon-on-{dark,light}.ico – Windows icon for dark/light taskbars, 16–256 px (PNG-in-ICO)
+//   assets/icon-on-{dark,light}.svg – the same artwork as vectors, for reference
+//   assets/icon.ico         – installer/shortcut icon (the light-surface version)
 //   assets/icon-256.png     – window icon on non-Windows platforms
-//   assets/tray-idle.png    – tray icon, idle (stopwatch)
+//   assets/tray-idle-on-{dark,light}.png – tray icon, idle (stopwatch)
 //   assets/tray-running.png – tray icon, running (red dot)
 //   ../android/app/src/main/res/drawable/ic_launcher_*.xml – Android adaptive icon layers
 // Every size is rendered straight from the vectors, so small sizes stay crisp.
@@ -84,7 +85,6 @@ function encodeICO(images) {
 
 const WHITE = '#FAFAFA';
 const RED = '#E53935';
-const SLATE = '#CBD5E1';
 const INK = '#18181B'; // zinc-900, the app's dark background
 const ANDROID_BACKGROUND = '#FFFFFF';
 
@@ -108,38 +108,16 @@ const OUTLINE = [
 // Elapsed time, filled red behind the hand
 const ELAPSED = { type: 'wedge', ...FACE, r: 16.5, from: 0, to: 135 };
 
-// Grows a convex polygon outwards by d (corners stay sharp)
-function inflatePoly(points, d) {
-  const n = points.length;
-  const lines = points.map(([x1, y1], i) => {
-    const [x2, y2] = points[(i + 1) % n];
-    const len = Math.hypot(x2 - x1, y2 - y1);
-    const nx = (y2 - y1) / len; // outward normal for clockwise points (y down)
-    const ny = -(x2 - x1) / len;
-    return { x: x1 + nx * d, y: y1 + ny * d, dx: x2 - x1, dy: y2 - y1 };
-  });
-  return lines.map((l, i) => {
-    const m = lines[(i + n - 1) % n];
-    const t = ((l.x - m.x) * l.dy - (l.y - m.y) * l.dx) / (m.dx * l.dy - m.dy * l.dx);
-    return [m.x + m.dx * t, m.y + m.dy * t];
-  });
-}
-
-// The icon stands on its own, with no tile behind it, so it carries its own contrast: a dark
-// face and a thin dark edge around the white parts keep it readable on light and dark surfaces.
-const EDGE = 1.6;
-const [CROWN, STEM, BUTTON] = OUTLINE;
-const BACKING = [
-  { type: 'circle', ...FACE, r: 26 + EDGE },
-  ...[CROWN, STEM].map((s) => ({ ...s, x: s.x - EDGE, y: s.y - EDGE, w: s.w + 2 * EDGE, h: s.h + 2 * EDGE, r: s.r + EDGE })),
-  { ...BUTTON, points: inflatePoly(BUTTON.points, EDGE) },
-];
-
-const FOREGROUND = [
-  ...BACKING.map((s) => ({ ...s, color: INK })),
+// The icon has no tile behind it, so it comes in two colourings: a white stopwatch with a dark
+// face for dark surfaces, and the inverse for light ones. The red wedge stays the same.
+const FACE_DISC = { type: 'circle', ...FACE, r: 23 };
+const stopwatch = (body, face) => [
+  { ...FACE_DISC, color: face },
   { ...ELAPSED, color: RED },
-  ...OUTLINE.map((s) => ({ ...s, color: WHITE })),
+  ...OUTLINE.map((s) => ({ ...s, color: body })),
 ];
+const ON_DARK = stopwatch(WHITE, INK);
+const ON_LIGHT = stopwatch(INK, WHITE);
 // Android 13+ themed icon: the launcher tints this single-colour layer
 const MONOCHROME = [
   { ...ELAPSED, color: '#FFFFFF', alpha: 0.5 },
@@ -147,9 +125,7 @@ const MONOCHROME = [
 ];
 
 // Windows: the stopwatch alone on a transparent background
-const ICON_VIEW = { x: 20.5, y: 22, size: 67 };
-// Tray: the stopwatch alone, filling the icon
-const TRAY_VIEW = { x: 23, y: 24, size: 62 };
+const ICON_VIEW = { x: 21, y: 23, size: 66 };
 
 // Wedges become polygons so every renderer only needs straight edges
 function wedgePoints({ cx, cy, r, from, to }) {
@@ -289,7 +265,7 @@ function render(size, view, { shapes }) {
   return encodePNG(size, size, downsample(c, SS));
 }
 
-const renderIcon = (size) => render(size, ICON_VIEW, { shapes: FOREGROUND });
+const renderIcon = (size, shapes) => render(size, ICON_VIEW, { shapes });
 
 function drawDot(size, color) {
   const mid = size / 2;
@@ -339,9 +315,9 @@ function svgShape(s) {
     : `<path d="${p.d}" fill="${s.color}"${alpha}/>`;
 }
 
-function iconSVG() {
+function iconSVG(shapes) {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="${ICON_VIEW.x} ${ICON_VIEW.y} ${ICON_VIEW.size} ${ICON_VIEW.size}">
-  ${FOREGROUND.map(svgShape).join('\n  ')}
+  ${shapes.map(svgShape).join('\n  ')}
 </svg>
 `;
 }
@@ -381,19 +357,23 @@ const assetsDir = path.join(__dirname, '..', 'assets');
 fs.mkdirSync(assetsDir, { recursive: true });
 
 const ICO_SIZES = [16, 20, 24, 32, 40, 48, 64, 96, 128, 256];
-const tiles = ICO_SIZES.map((size) => ({ size, png: renderIcon(size) }));
-fs.writeFileSync(path.join(assetsDir, 'icon.svg'), iconSVG());
-fs.writeFileSync(path.join(assetsDir, 'icon-256.png'), tiles.at(-1).png);
-fs.writeFileSync(path.join(assetsDir, 'icon.ico'), encodeICO(tiles));
-fs.writeFileSync(
-  path.join(assetsDir, 'tray-idle.png'),
-  render(32, TRAY_VIEW, { shapes: MONOCHROME.map((s) => ({ ...s, color: SLATE })) })
-);
+for (const [surface, shapes] of [['dark', ON_DARK], ['light', ON_LIGHT]]) {
+  const icons = ICO_SIZES.map((size) => ({ size, png: renderIcon(size, shapes) }));
+  fs.writeFileSync(path.join(assetsDir, `icon-on-${surface}.ico`), encodeICO(icons));
+  fs.writeFileSync(path.join(assetsDir, `icon-on-${surface}.svg`), iconSVG(shapes));
+  fs.writeFileSync(path.join(assetsDir, `tray-idle-on-${surface}.png`), renderIcon(32, shapes));
+  // The installer, shortcuts and Start menu can't follow the theme; they use the light-surface
+  // version, matching Windows 11's default light theme
+  if (surface === 'light') {
+    fs.writeFileSync(path.join(assetsDir, 'icon.ico'), encodeICO(icons));
+    fs.writeFileSync(path.join(assetsDir, 'icon-256.png'), icons.at(-1).png);
+  }
+}
 fs.writeFileSync(path.join(assetsDir, 'tray-running.png'), drawDot(32, RED));
 
 const androidRes = path.join(__dirname, '..', '..', 'android', 'app', 'src', 'main', 'res', 'drawable');
 fs.writeFileSync(path.join(androidRes, 'ic_launcher_background.xml'), androidBackground);
-fs.writeFileSync(path.join(androidRes, 'ic_launcher_foreground.xml'), vectorDrawable(FOREGROUND));
+fs.writeFileSync(path.join(androidRes, 'ic_launcher_foreground.xml'), vectorDrawable(ON_LIGHT));
 fs.writeFileSync(path.join(androidRes, 'ic_launcher_monochrome.xml'), vectorDrawable(MONOCHROME));
 
 console.log('Icons written to assets/ and android/app/src/main/res/drawable/');

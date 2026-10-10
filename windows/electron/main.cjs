@@ -1,4 +1,5 @@
 const { app, BrowserWindow, Tray, Menu, ipcMain, nativeImage, nativeTheme, shell, systemPreferences } = require('electron');
+const { execFile, execFileSync } = require('child_process');
 const os = require('os');
 const path = require('path');
 const zlib = require('zlib');
@@ -165,6 +166,43 @@ function fallbackBackground() {
   return nativeTheme.shouldUseDarkColors ? '#202020' : '#f3f3f3';
 }
 
+// The taskbar and tray follow Windows' "system" theme, which can differ from the
+// app theme, so the window and tray icons pick the stopwatch that reads on it.
+let taskbarIsLight = false;
+
+function taskbarIconPath() {
+  return assetPath(taskbarIsLight ? 'icon-on-light.ico' : 'icon-on-dark.ico');
+}
+
+const PERSONALIZE_QUERY = [
+  'query',
+  'HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize',
+  '/v',
+  'SystemUsesLightTheme',
+];
+const parseTaskbarIsLight = (stdout) => /SystemUsesLightTheme\s+REG_DWORD\s+0x1\b/.test(stdout);
+
+// Read once synchronously at startup so the first window and tray icons are right
+function readTaskbarTheme() {
+  if (process.platform !== 'win32') return;
+  try {
+    taskbarIsLight = parseTaskbarIsLight(execFileSync('reg', PERSONALIZE_QUERY, { windowsHide: true, encoding: 'utf8' }));
+  } catch {
+    taskbarIsLight = false;
+  }
+}
+
+function refreshTaskbarTheme() {
+  if (process.platform !== 'win32') return;
+  execFile('reg', PERSONALIZE_QUERY, { windowsHide: true }, (err, stdout) => {
+    const isLight = !err && parseTaskbarIsLight(stdout);
+    if (isLight === taskbarIsLight) return;
+    taskbarIsLight = isLight;
+    mainWindow?.setIcon(taskbarIconPath());
+    tray?.setImage(trayIcon());
+  });
+}
+
 /** The Windows accent colour as '#rrggbb', or null when unavailable. */
 function accentColor() {
   try {
@@ -191,7 +229,7 @@ function createWindow() {
     alwaysOnTop: store.get('alwaysOnTop'),
     show: !startHidden,
     // The .ico carries every size, so Windows picks a sharp one for the taskbar and title bar
-    icon: assetPath(process.platform === 'win32' ? 'icon.ico' : 'icon-256.png'),
+    icon: process.platform === 'win32' ? taskbarIconPath() : assetPath('icon-256.png'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
       contextIsolation: true,
@@ -228,7 +266,9 @@ function createWindow() {
 }
 
 function trayIcon() {
-  if (!timerRunning) return nativeImage.createFromPath(assetPath('tray-idle.png'));
+  if (!timerRunning) {
+    return nativeImage.createFromPath(assetPath(taskbarIsLight ? 'tray-idle-on-light.png' : 'tray-idle-on-dark.png'));
+  }
   if (timerColor) {
     const colored = makeColoredTrayIcon(timerColor);
     if (colored) return colored;
@@ -460,14 +500,18 @@ if (!gotLock) {
       app.setLoginItemSettings({ openAtLogin: startWithWindows, args: startWithWindows ? ['--hidden'] : [] });
     }
 
+    readTaskbarTheme();
     createWindow();
     createTray();
 
     nativeTheme.on('updated', () => {
       if (mainWindow && !useMica) mainWindow.setBackgroundColor(fallbackBackground());
+      refreshTaskbarTheme();
     });
+    mainWindow.on('focus', refreshTaskbarTheme);
     if (process.platform === 'win32') {
       systemPreferences.on('accent-color-changed', () => {
+        refreshTaskbarTheme();
         const accent = accentColor();
         if (mainWindow && accent) mainWindow.webContents.send('appearance:accent', accent);
       });
