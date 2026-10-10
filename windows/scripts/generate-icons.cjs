@@ -1,5 +1,5 @@
 // Generates every app icon from one vector definition, without image dependencies:
-//   assets/icon.svg         – master artwork (Windows tile), for reference
+//   assets/icon.svg         – master artwork (Windows icon), for reference
 //   assets/icon.ico         – Windows app/installer icon, 16–256 px (PNG-in-ICO)
 //   assets/icon-256.png     – window icon on non-Windows platforms
 //   assets/tray-idle.png    – tray icon, idle (stopwatch)
@@ -85,8 +85,8 @@ function encodeICO(images) {
 const WHITE = '#FAFAFA';
 const RED = '#E53935';
 const SLATE = '#CBD5E1';
-const BG_TOP = '#34343A';
-const BG_BOTTOM = '#18181B'; // zinc-900, the app's dark background
+const INK = '#18181B'; // zinc-900, the app's dark background
+const ANDROID_BACKGROUND = '#FFFFFF';
 
 const polar = (cx, cy, r, deg) => {
   const a = ((deg - 90) * Math.PI) / 180;
@@ -108,7 +108,35 @@ const OUTLINE = [
 // Elapsed time, filled red behind the hand
 const ELAPSED = { type: 'wedge', ...FACE, r: 16.5, from: 0, to: 135 };
 
+// Grows a convex polygon outwards by d (corners stay sharp)
+function inflatePoly(points, d) {
+  const n = points.length;
+  const lines = points.map(([x1, y1], i) => {
+    const [x2, y2] = points[(i + 1) % n];
+    const len = Math.hypot(x2 - x1, y2 - y1);
+    const nx = (y2 - y1) / len; // outward normal for clockwise points (y down)
+    const ny = -(x2 - x1) / len;
+    return { x: x1 + nx * d, y: y1 + ny * d, dx: x2 - x1, dy: y2 - y1 };
+  });
+  return lines.map((l, i) => {
+    const m = lines[(i + n - 1) % n];
+    const t = ((l.x - m.x) * l.dy - (l.y - m.y) * l.dx) / (m.dx * l.dy - m.dy * l.dx);
+    return [m.x + m.dx * t, m.y + m.dy * t];
+  });
+}
+
+// The icon stands on its own, with no tile behind it, so it carries its own contrast: a dark
+// face and a thin dark edge around the white parts keep it readable on light and dark surfaces.
+const EDGE = 1.6;
+const [CROWN, STEM, BUTTON] = OUTLINE;
+const BACKING = [
+  { type: 'circle', ...FACE, r: 26 + EDGE },
+  ...[CROWN, STEM].map((s) => ({ ...s, x: s.x - EDGE, y: s.y - EDGE, w: s.w + 2 * EDGE, h: s.h + 2 * EDGE, r: s.r + EDGE })),
+  { ...BUTTON, points: inflatePoly(BUTTON.points, EDGE) },
+];
+
 const FOREGROUND = [
+  ...BACKING.map((s) => ({ ...s, color: INK })),
   { ...ELAPSED, color: RED },
   ...OUTLINE.map((s) => ({ ...s, color: WHITE })),
 ];
@@ -118,10 +146,8 @@ const MONOCHROME = [
   ...OUTLINE.map((s) => ({ ...s, color: '#FFFFFF' })),
 ];
 
-// Windows tile: a rounded square cut from the adaptive grid, artwork inset slightly
-const TILE = { x: 20, y: 20, size: 68, radius: 15 };
-const TILE_VIEW = { x: 19, y: 19, size: 70 };
-const TILE_ART_SCALE = 0.9;
+// Windows: the stopwatch alone on a transparent background
+const ICON_VIEW = { x: 20.5, y: 22, size: 67 };
 // Tray: the stopwatch alone, filling the icon
 const TRAY_VIEW = { x: 23, y: 24, size: 62 };
 
@@ -247,53 +273,23 @@ function downsample(canvas, factor) {
   return out;
 }
 
-// Renders shapes seen through a square view of the grid. `art` maps canvas grid units to
-// artwork units (for the tile inset); `clip` optionally limits everything to a shape.
-function render(size, view, { background, shapes, artScale = 1, clip }) {
+// Renders shapes seen through a square view of the grid, on a transparent background
+function render(size, view, { shapes }) {
   const SS = size <= 32 ? 8 : 4;
   const c = new Canvas(size * SS);
   const k = (size * SS) / view.size; // pixels per grid unit
   const toGrid = (p, origin) => origin + p / k;
-  const clipD = clip ? distanceFn(clip) : null;
-  const clipCov = (gx, gy) => (clipD ? 0.5 - clipD(gx, gy) * k : 1);
 
-  if (background) {
-    const top = hexRGB(background.top);
-    const bottom = hexRGB(background.bottom);
-    const y0 = clip ? clip.y : view.y;
-    const h = clip ? clip.h : view.size;
-    c.paint(
-      (x, y) => clipCov(toGrid(x, view.x), toGrid(y, view.y)),
-      (x, y) => {
-        const t = Math.max(0, Math.min(1, (toGrid(y, view.y) - y0) / h));
-        return top.map((v, i) => v + (bottom[i] - v) * t);
-      }
-    );
-  }
   for (const s of shapes) {
     const d = distanceFn(s);
     const rgb = hexRGB(s.color);
     const alpha = s.alpha ?? 1;
-    c.paint((x, y) => {
-      const gx = toGrid(x, view.x);
-      const gy = toGrid(y, view.y);
-      const ax = 54 + (gx - 54) / artScale;
-      const ay = 54 + (gy - 54) / artScale;
-      const cov = Math.min(1, 0.5 - d(ax, ay) * artScale * k) * alpha;
-      return Math.min(cov, clipCov(gx, gy));
-    }, () => rgb);
+    c.paint((x, y) => Math.min(1, 0.5 - d(toGrid(x, view.x), toGrid(y, view.y)) * k) * alpha, () => rgb);
   }
   return encodePNG(size, size, downsample(c, SS));
 }
 
-const tileClip = { type: 'rrect', x: TILE.x, y: TILE.y, w: TILE.size, h: TILE.size, r: TILE.radius };
-const renderTile = (size) =>
-  render(size, TILE_VIEW, {
-    background: { top: BG_TOP, bottom: BG_BOTTOM },
-    shapes: FOREGROUND,
-    artScale: TILE_ART_SCALE,
-    clip: tileClip,
-  });
+const renderIcon = (size) => render(size, ICON_VIEW, { shapes: FOREGROUND });
 
 function drawDot(size, color) {
   const mid = size / 2;
@@ -344,19 +340,8 @@ function svgShape(s) {
 }
 
 function iconSVG() {
-  const { y, size } = TILE;
-  const tile = vectorPath(tileClip).d;
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="${TILE_VIEW.x} ${TILE_VIEW.y} ${TILE_VIEW.size} ${TILE_VIEW.size}">
-  <defs>
-    <linearGradient id="bg" x1="0" y1="${y}" x2="0" y2="${y + size}" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="${BG_TOP}"/>
-      <stop offset="1" stop-color="${BG_BOTTOM}"/>
-    </linearGradient>
-  </defs>
-  <path d="${tile}" fill="url(#bg)"/>
-  <g transform="translate(54 54) scale(${TILE_ART_SCALE}) translate(-54 -54)">
-    ${FOREGROUND.map(svgShape).join('\n    ')}
-  </g>
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="${ICON_VIEW.x} ${ICON_VIEW.y} ${ICON_VIEW.size} ${ICON_VIEW.size}">
+  ${FOREGROUND.map(svgShape).join('\n  ')}
 </svg>
 `;
 }
@@ -386,10 +371,7 @@ const androidBackground = `<?xml version="1.0" encoding="utf-8"?>
 <!-- Generated by windows/scripts/generate-icons.cjs (npm run icons). Do not edit by hand. -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android"
     android:shape="rectangle">
-    <gradient
-        android:angle="270"
-        android:startColor="${BG_TOP}"
-        android:endColor="${BG_BOTTOM}"/>
+    <solid android:color="${ANDROID_BACKGROUND}"/>
 </shape>
 `;
 
@@ -399,7 +381,7 @@ const assetsDir = path.join(__dirname, '..', 'assets');
 fs.mkdirSync(assetsDir, { recursive: true });
 
 const ICO_SIZES = [16, 20, 24, 32, 40, 48, 64, 96, 128, 256];
-const tiles = ICO_SIZES.map((size) => ({ size, png: renderTile(size) }));
+const tiles = ICO_SIZES.map((size) => ({ size, png: renderIcon(size) }));
 fs.writeFileSync(path.join(assetsDir, 'icon.svg'), iconSVG());
 fs.writeFileSync(path.join(assetsDir, 'icon-256.png'), tiles.at(-1).png);
 fs.writeFileSync(path.join(assetsDir, 'icon.ico'), encodeICO(tiles));

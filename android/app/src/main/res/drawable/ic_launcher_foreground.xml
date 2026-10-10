@@ -6,6 +6,18 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
     <path
+        android:fillColor="#18181B"
+        android:pathData="M26.4,59a27.6,27.6 0 1,0 55.2,0a27.6,27.6 0 1,0 -55.2,0z"/>
+    <path
+        android:fillColor="#18181B"
+        android:pathData="M50.5,23.4h7a4.6,4.6 0 0,1 4.6,4.6v0a4.6,4.6 0 0,1 -4.6,4.6h-7a4.6,4.6 0 0,1 -4.6,-4.6v0a4.6,4.6 0 0,1 4.6,-4.6z"/>
+    <path
+        android:fillColor="#18181B"
+        android:pathData="M52.5,27.4h2.999999999999999a2.6,2.6 0 0,1 2.6,2.6v4.999999999999999a2.6,2.6 0 0,1 -2.6,2.6h-2.999999999999999a2.6,2.6 0 0,1 -2.6,-2.6v-4.999999999999999a2.6,2.6 0 0,1 2.6,-2.6z"/>
+    <path
+        android:fillColor="#18181B"
+        android:pathData="M70.5,31.24L76.96,37.7L71.3,43.36L64.84,36.9z"/>
+    <path
         android:fillColor="#E53935"
         android:pathData="M54,59L54,42.5A16.5,16.5 0 0,1 65.67,70.67z"/>
     <path
