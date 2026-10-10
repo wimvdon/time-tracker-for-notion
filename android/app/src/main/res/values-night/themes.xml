@@ -1,4 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <style name="Theme.NotionTimeTracker" parent="android:Theme.Material.NoActionBar" />
+
+    <style name="Theme.NotionTimeTracker.Starting" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">#18181B</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+        <item name="postSplashScreenTheme">@style/Theme.NotionTimeTracker</item>
+    </style>
 </resources>
