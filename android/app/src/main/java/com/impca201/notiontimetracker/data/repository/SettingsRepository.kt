@@ -105,6 +105,22 @@ class SettingsRepository(private val context: Context) {
         }
     }
 
+    /** Applies [transform] to the stored workspaces in one atomic edit and
+     *  returns the result. Edits made from a screen's own copy of the list
+     *  wrote that whole copy back — undoing anything the sync (or another
+     *  screen) had stored since that copy was taken. */
+    suspend fun updateWorkspaces(transform: (List<Workspace>) -> List<Workspace>): List<Workspace> {
+        var updated: List<Workspace> = emptyList()
+        context.dataStore.edit { prefs ->
+            val current = prefs[WORKSPACES_KEY]
+                ?.let { runCatching { json.decodeFromString<List<Workspace>>(it) }.getOrNull() }
+                ?: emptyList()
+            updated = transform(current)
+            prefs[WORKSPACES_KEY] = json.encodeToString(updated)
+        }
+        return updated
+    }
+
     val lastWorkspaceIdFlow: Flow<String?> = context.dataStore.data.map { prefs ->
         prefs[LAST_WORKSPACE_KEY]
     }
@@ -226,10 +242,19 @@ class SettingsRepository(private val context: Context) {
     /** Bumped whenever a synced field changes locally, so sync knows this
      * device has edits that need pushing. */
     suspend fun touchSettingsUpdatedAt(): String {
-        val now = java.time.Instant.now().toString()
+        val now = syncTimestamp()
         context.dataStore.edit { prefs -> prefs[SETTINGS_UPDATED_AT_KEY] = now }
         return now
     }
+
+    /**
+     * "Now" in the exact shape the desktop app writes (`toISOString()`: UTC,
+     * always three fraction digits). Both apps decide which side is newer by
+     * comparing these strings, and `Instant.toString()` varies its precision —
+     * it drops the fraction entirely on a whole second, and "…:05Z" sorts
+     * after "…:05.300Z" although it is earlier.
+     */
+    fun syncTimestamp(): String = SYNC_TIMESTAMP_FORMAT.format(java.time.Instant.now())
 
     suspend fun saveSettingsUpdatedAt(value: String) {
         context.dataStore.edit { prefs -> prefs[SETTINGS_UPDATED_AT_KEY] = value }
@@ -237,5 +262,11 @@ class SettingsRepository(private val context: Context) {
 
     suspend fun saveLastSyncedUpdatedAt(value: String) {
         context.dataStore.edit { prefs -> prefs[LAST_SYNCED_UPDATED_AT_KEY] = value }
+    }
+
+    private companion object {
+        val SYNC_TIMESTAMP_FORMAT: java.time.format.DateTimeFormatter =
+            java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
+                .withZone(java.time.ZoneOffset.UTC)
     }
 }

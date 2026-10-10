@@ -3,7 +3,7 @@ import { computeStartTime, computeEndTime } from '../lib/rounding.js';
 import { toNotionDateTime, fallbackDescription, isFallbackDescription } from '../lib/format.js';
 import { t, setLocale } from '../lib/i18n.js';
 import { errorMessage } from '../lib/errors.js';
-import { WRITABLE_EXTRA_TYPES, emptyValueFor, buildPropertyValue, parsePropertyValue } from '../lib/notionValues.js';
+import { WRITABLE_EXTRA_TYPES, emptyValueFor, buildPropertyValue, parsePropertyValue, coerceInputValue } from '../lib/notionValues.js';
 
 const api = window.notionAPI;
 
@@ -54,6 +54,18 @@ const migrateActiveTimer = (at) => {
 // How long a locally-stopped timer is hidden from the running-timer list while
 // Notion's query catches up.
 const RECENTLY_STOPPED_TTL_MS = 60_000;
+
+// pageId -> when it was started on this device. The same lag works the other
+// way: a page created a moment ago can be missing from the running-timer query,
+// which read as "stopped elsewhere" and cleared the timer that was just started.
+const recentlyStarted = new Map();
+const wasJustStarted = (pageId) => {
+  const ts = recentlyStarted.get(pageId);
+  if (ts === undefined) return false;
+  if (Date.now() - ts < RECENTLY_STOPPED_TTL_MS) return true;
+  recentlyStarted.delete(pageId);
+  return false;
+};
 
 let toastSeq = 0;
 // React StrictMode deliberately runs mount effects twice in development. Keep
@@ -570,6 +582,7 @@ export const useStore = create((set, get) => ({
       state.addToast({ type: 'error', message: `${t('toastStartError')}: ${errorMessage(err)}` });
       return;
     }
+    recentlyStarted.set(pageId, Date.now());
 
     api.saveSettings({
       activeTimer: {
@@ -611,7 +624,14 @@ export const useStore = create((set, get) => ({
       await waitForExtraFields(get);
       set({ description: preset.pageTitle || '' });
       if (preset.extraValues && Object.keys(preset.extraValues).length > 0) {
-        set({ extraValues: { ...get().extraValues, ...preset.extraValues } });
+        const types = Object.fromEntries(get().extraFieldDefs.map((def) => [def.name, def.type]));
+        const values = Object.fromEntries(
+          Object.entries(preset.extraValues).map(([name, value]) => [
+            name,
+            types[name] ? coerceInputValue(types[name], value) : value,
+          ])
+        );
+        set({ extraValues: { ...get().extraValues, ...values } });
       }
       await get().startTimer();
     };
@@ -879,6 +899,11 @@ export const useStore = create((set, get) => ({
 
     set({ runningTimersLoading: true });
     const allRunning = [];
+    // Workspaces whose query failed (offline, waking from sleep, rate limited).
+    // Their result is unknown, not empty: a failed query used to read as
+    // "nothing running", which cleared the active timer as "stopped elsewhere"
+    // on every network blip.
+    const failedWorkspaceIds = new Set();
 
     for (const ws of workspaces) {
       const pm = ws.propertyMap;
@@ -894,7 +919,9 @@ export const useStore = create((set, get) => ({
           allRunning.push({ ...page, workspaceId: ws.id, workspaceName: ws.name, propertyMap: pm });
         }
       } catch {
-        // silently ignore per-workspace errors
+        // Keep what was last known for this workspace (same as the Android app).
+        failedWorkspaceIds.add(ws.id);
+        allRunning.push(...get().runningTimers.filter((rt) => rt.workspaceId === ws.id));
       }
     }
 
@@ -918,7 +945,10 @@ export const useStore = create((set, get) => ({
     const activeTimer = get().timer;
     if (activeTimer.running && activeTimer.notionPageId) {
       const stillRunning = visibleRunning.some((rt) => rt.pageId === activeTimer.notionPageId);
-      if (!stillRunning) {
+      if (failedWorkspaceIds.has(activeTimer.workspaceId) || wasJustStarted(activeTimer.notionPageId)) {
+        // Couldn't check, or Notion's query hasn't caught up with a timer
+        // started here yet — keep it running until the next refresh.
+      } else if (!stillRunning) {
         clearInterval(activeTimer.tickInterval);
         api.saveSettings({ activeTimer: null });
         api.setTimerRunning(false);
@@ -1279,9 +1309,10 @@ export const useStore = create((set, get) => ({
 
   // ---- Edit running timer ----
 
+  /** Writes the running entry's details. Resolves true once Notion has them. */
   updateTimerDetails: async (projectId, description, extraValues) => {
     const state = get();
-    if (!state.timer.running) return;
+    if (!state.timer.running) return false;
     const pm = state.timer.propertyMap;
     // The description may be cleared; the page itself never gets an empty title
     // (that shows up as "Untitled" in Notion), so it falls back to the entry's
@@ -1323,15 +1354,15 @@ export const useStore = create((set, get) => ({
       const msg = errorMessage(err);
       if (isPageDeletedError(msg)) {
         get()._showDeletedPageDialog(state.timer);
-        return;
+        return false;
       }
       get().addToast({ type: 'error', message: `${t('toastUpdateError')}: ${msg}` });
-      return;
+      return false;
     }
 
     // The timer may have been stopped or switched while the write was in
     // flight; don't put its values back into the (now idle/other) form.
-    if (get().timer.notionPageId !== state.timer.notionPageId) return;
+    if (get().timer.notionPageId !== state.timer.notionPageId) return true;
 
     set({
       description: newDescription,
@@ -1354,6 +1385,7 @@ export const useStore = create((set, get) => ({
     // Refresh to ensure consistency
     get().loadRunningTimers();
     get().loadRecentEntries();
+    return true;
   },
 
   // ---- Deleted page handling ----

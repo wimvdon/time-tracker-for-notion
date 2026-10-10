@@ -3,6 +3,8 @@ package com.impca201.notiontimetracker.data.repository
 import com.impca201.notiontimetracker.data.models.SyncPayload
 import com.impca201.notiontimetracker.data.models.ThemeMode
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 /**
  * Reads/writes the Notion sync page's JSON code block. Shared by the Settings
@@ -52,7 +54,14 @@ class SettingsSyncer(
     /** Pull-or-push against the configured sync page, whichever side is newer.
      * Returns false if no sync page is configured or it no longer has valid
      * sync data. */
-    suspend fun syncNow(): Boolean {
+    suspend fun syncNow(): Boolean = syncMutex.withLock { syncLocked() }
+
+    // The Settings screen and the timer screen's refresh both sync, and could
+    // do so at the same moment; one pass at a time keeps a pull and a push
+    // from interleaving.
+    private val syncMutex = Mutex()
+
+    private suspend fun syncLocked(): Boolean {
         val pageId = settingsRepo.getSyncPageId() ?: return false
         val result = notionRepo.fetchSyncPageContent(pageId) ?: return false
         val localUpdatedAt = settingsRepo.getSettingsUpdatedAt() ?: ""

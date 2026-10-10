@@ -34,6 +34,32 @@ export function emptyValueFor(type) {
 }
 
 /**
+ * Brings a stored value into the input shape this app uses for `type`.
+ * Presets synced from the Android app store every value as a string —
+ * multi-select and people as comma-separated names/ids, checkboxes as
+ * "true"/"false" — which this app's inputs don't read: a multi-select was
+ * silently dropped and "false" ticked the checkbox.
+ */
+export function coerceInputValue(type, value) {
+  if (value == null) return emptyValueFor(type);
+  const list = () =>
+    (Array.isArray(value) ? value : String(value).split(','))
+      .map((v) => String(v).trim())
+      .filter(Boolean);
+  switch (type) {
+    case 'multi_select':
+      return list();
+    case 'checkbox':
+      return typeof value === 'boolean' ? value : String(value).trim().toLowerCase() === 'true';
+    case 'people':
+    case 'relation':
+      return list()[0] ?? '';
+    default:
+      return Array.isArray(value) ? value.join(',') : String(value);
+  }
+}
+
+/**
  * Converts a raw input value into a Notion API property value.
  * Returns null when the value is empty — empty fields are omitted from the
  * create payload so Notion keeps its own defaults.
