@@ -57,6 +57,9 @@ let toastSeq = 0;
 // initialization process-wide so that this does not register duplicate tray
 // listeners or start multiple auto-refresh intervals.
 let initialized = false;
+// The in-flight loadExtraFields() of the selected workspace, so a start can
+// wait for its field definitions.
+let extrasLoadPromise = null;
 
 export const useStore = create((set, get) => ({
   // Settings
@@ -477,7 +480,9 @@ export const useStore = create((set, get) => ({
     });
     api.saveSettings({ lastUsedWorkspaceId: workspaceId });
     if (!workspace) return;
-    await get().loadExtraFields(workspace, active);
+    const promise = get().loadExtraFields(workspace, active);
+    extrasLoadPromise = promise;
+    await promise;
   },
 
   loadExtraFields: async (workspace, active = null) => {
@@ -518,9 +523,15 @@ export const useStore = create((set, get) => ({
   // ---- Timer ----
 
   startTimer: async () => {
-    const state = get();
-    if (state.timer.running || state.isStarting) return;
+    if (get().timer.running || get().isStarting) return;
     set({ isStarting: true });
+
+    // The field definitions decide which extra properties get written, so a
+    // start fired while they are still loading (preset, tray/shortcut, recent
+    // entry "play") waits for them — otherwise every extra value is silently
+    // dropped from the new entry.
+    await waitForExtraFields(get);
+    const state = get();
 
     const workspace = state.workspaces.find((w) => w.id === state.selectedWorkspaceId);
     if (!workspace) {
@@ -592,6 +603,9 @@ export const useStore = create((set, get) => ({
       if (state.selectedWorkspaceId !== workspaceId) {
         await get().selectWorkspace(workspaceId);
       }
+      // A field load still in flight would reset extraValues when it lands,
+      // wiping the preset's values merged in below.
+      await waitForExtraFields(get);
       set({ description: preset.pageTitle || '' });
       if (preset.extraValues && Object.keys(preset.extraValues).length > 0) {
         set({ extraValues: { ...get().extraValues, ...preset.extraValues } });
@@ -626,6 +640,7 @@ export const useStore = create((set, get) => ({
       if (state.selectedWorkspaceId !== entry.workspaceId) {
         await get().selectWorkspace(entry.workspaceId);
       }
+      await waitForExtraFields(get);
 
       const workspace = get().workspaces.find((w) => w.id === entry.workspaceId);
       // Bail out rather than starting an unrelated timer in whatever workspace
@@ -904,7 +919,7 @@ export const useStore = create((set, get) => ({
         clearInterval(activeTimer.tickInterval);
         api.saveSettings({ activeTimer: null });
         api.setTimerRunning(false);
-        set({ timer: { ...idleTimer } });
+        set({ timer: { ...idleTimer }, description: '', selectedProjectId: null });
         get().addToast({ type: 'info', message: t('timerStoppedElsewhere') });
       } else {
         get().refreshActiveTimerFieldsFromNotion(activeTimer.notionPageId, get().selectedWorkspaceId, activeTimer.propertyMap);
@@ -1073,16 +1088,18 @@ export const useStore = create((set, get) => ({
 
       if (get().timer.notionPageId !== pageId) return;
       set({ selectedProjectId: projectId, extraValues });
+      const { timer: current } = get();
       api.saveSettings({
         activeTimer: {
           notionPageId: pageId,
-          roundedStart: get().timer.startISO,
-          rawStart: get().timer.startISO,
+          roundedStart: current.startISO,
+          rawStart: current.rawStart?.toISOString?.() ?? current.startISO,
           workspaceId,
           projectId,
           projectName,
           description: get().description,
           propertyMap,
+          extraValues,
         },
       });
     } catch {
@@ -1273,10 +1290,15 @@ export const useStore = create((set, get) => ({
         title: [{ text: { content: newTitle } }],
       };
     }
-    if (pm?.timeEntryRelationProp) {
-      properties[pm.timeEntryRelationProp] = projectId
-        ? { relation: [{ id: projectId }] }
-        : { relation: [] };
+    // The timer view has no project picker, so a null projectId means "not
+    // known on this device", not "cleared" — writing an empty relation here
+    // wiped the page's project link on every description/extra-field save.
+    // When the same property is configured as an extra field, that field is
+    // the single source of truth. (Same rules as the Android app.)
+    const relProp = pm?.timeEntryRelationProp;
+    const relationIsExtraField = state.extraFieldDefs.some((def) => def.name === relProp);
+    if (relProp && !relationIsExtraField && projectId) {
+      properties[relProp] = { relation: [{ id: projectId }] };
     }
     for (const def of state.extraFieldDefs) {
       const value = buildPropertyValue(def.type, extraValues[def.name]);
@@ -1298,6 +1320,10 @@ export const useStore = create((set, get) => ({
       get().addToast({ type: 'error', message: `${t('toastUpdateError')}: ${msg}` });
       return;
     }
+
+    // The timer may have been stopped or switched while the write was in
+    // flight; don't put its values back into the (now idle/other) form.
+    if (get().timer.notionPageId !== state.timer.notionPageId) return;
 
     set({
       description: newDescription,
@@ -1353,6 +1379,13 @@ export const useStore = create((set, get) => ({
 }));
 
 // ---- Helpers ----
+
+/** Resolves once the selected workspace's extra-field definitions are loaded. */
+async function waitForExtraFields(get) {
+  if (get().extrasLoading && extrasLoadPromise) {
+    await extrasLoadPromise.catch(() => {});
+  }
+}
 
 /** Builds the payload written to the sync page's code block. Excludes the
  * Notion API key and device-local toggles (alwaysOnTop, startWithWindows). */

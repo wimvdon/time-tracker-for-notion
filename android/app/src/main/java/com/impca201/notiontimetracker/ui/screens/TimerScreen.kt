@@ -1145,10 +1145,20 @@ private fun PresetChips(
         ) {
             allPresets.forEach { (ws, preset) ->
                 val wsColor = workspaceAccentColor(ws.color)
-                val chipLabel = if (preset.name.isBlank() || preset.name == ws.name) "▶ ${ws.name}" else "▶ ${ws.name} – ${preset.name}"
+                val presetName = preset.name.trim()
+                val chipLabel = if (presetName.isBlank() || presetName == ws.name) "▶ ${ws.name}" else "▶ ${ws.name} – $presetName"
                 SuggestionChip(
                     onClick = { onApplyPreset(ws.id, preset) },
-                    label = { Text(chipLabel, style = MaterialTheme.typography.labelMedium) },
+                    // One line, ellipsized only when the chip would be wider than
+                    // the row — same as the Windows chips.
+                    label = {
+                        Text(
+                            chipLabel,
+                            style = MaterialTheme.typography.labelMedium,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    },
                     colors = if (wsColor != null) SuggestionChipDefaults.suggestionChipColors(
                         containerColor = wsColor.copy(alpha = 0.15f),
                         labelColor = wsColor
