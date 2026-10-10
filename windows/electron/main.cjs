@@ -210,7 +210,8 @@ function rebuildTrayMenu() {
   if (presetItems.length > 0) {
     items.push({ type: 'separator' });
     for (const { workspace, preset } of presetItems.slice(0, 10)) {
-      const label = preset.name ? `${workspace.name} – ${preset.name}` : workspace.name;
+      const name = preset.name?.trim();
+      const label = name && name !== workspace.name ? `${workspace.name} – ${name}` : workspace.name;
       items.push({
         label: `▶ ${label}`,
         click: () => {
@@ -329,7 +330,11 @@ ipcMain.handle('notion:updateSyncBlock', (_event, blockId, payload) =>
   notion.updateSyncBlock(store.get('apiKey'), blockId, payload)
 );
 
-ipcMain.handle('shell:openExternal', (_event, url) => shell.openExternal(url));
+// Only web links (Notion page URLs) — never file:// or other protocol handlers.
+ipcMain.handle('shell:openExternal', (_event, url) => {
+  if (typeof url !== 'string' || !/^https?:\/\//i.test(url)) return;
+  return shell.openExternal(url);
+});
 
 // apiKey is passed explicitly here so Settings can test a key before saving it
 ipcMain.handle('notion:test', (_event, apiKey, dbId) =>

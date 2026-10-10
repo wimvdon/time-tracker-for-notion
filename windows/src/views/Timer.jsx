@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useStore } from '../store/useStore.js';
 import { formatHHMM, formatElapsed, formatDateStr, formatTimeStr, parseTimeStr } from '../lib/format.js';
 import { t } from '../lib/i18n.js';
@@ -329,8 +329,8 @@ export default function Timer() {
             <p className="text-xs text-zinc-300">{t('dialogSavePresetBody')}</p>
             <p className="text-xs text-zinc-400 italic">{t('dialogSavePresetOptional')}</p>
             <div className="flex items-center w-full bg-zinc-900 border border-zinc-700 rounded-md px-3 py-2 text-xs focus-within:border-zinc-500">
-              <span className="text-zinc-300 select-none mr-1 font-medium whitespace-nowrap">
-                {`${workspaces.find((w) => w.id === selectedWorkspaceId)?.name || ''} -`}
+              <span className="text-zinc-300 select-none mr-1 font-medium whitespace-nowrap truncate max-w-[55%] shrink-0">
+                {`${workspaces.find((w) => w.id === selectedWorkspaceId)?.name || ''} –`}
               </span>
               <input
                 type="text"
@@ -496,14 +496,45 @@ function RunningView({
     setStartInput(formatHHMM(new Date(timer.roundedStart)));
   }, [timer.startISO]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Extra-field edits are saved after a short pause instead of on every
+  // keystroke (same 600 ms debounce as the Android app). While one is pending,
+  // a refresh from Notion must not overwrite the draft.
+  const pendingExtrasRef = useRef(null);
+  const extrasTimeoutRef = useRef(null);
+  const descSaveRef = useRef(null);
+  const localDescRef = useRef(localDesc);
+  localDescRef.current = localDesc;
+
+  const cancelPendingExtras = () => {
+    clearTimeout(extrasTimeoutRef.current);
+    extrasTimeoutRef.current = null;
+    const pending = pendingExtrasRef.current;
+    pendingExtrasRef.current = null;
+    return pending;
+  };
+
+  const scheduleExtrasSave = (newExtras) => {
+    clearTimeout(extrasTimeoutRef.current);
+    pendingExtrasRef.current = newExtras;
+    extrasTimeoutRef.current = setTimeout(() => {
+      const pending = cancelPendingExtras();
+      if (pending) updateTimerDetails(selectedProjectId, localDescRef.current, pending);
+    }, 600);
+  };
+
   useEffect(() => {
+    // Switching to another running timer: drop the old timer's pending edit.
+    cancelPendingExtras();
     setLocalDesc(description);
     setLocalExtras({ ...extraValues });
   }, [timer.notionPageId]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  useEffect(() => () => clearTimeout(extrasTimeoutRef.current), []);
+
   // Extra field values (e.g. connected project) can arrive asynchronously
   // shortly after a running timer is loaded — re-sync the draft once they do.
   useEffect(() => {
+    if (pendingExtrasRef.current) return;
     setLocalExtras({ ...extraValues });
   }, [extraValues]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -515,7 +546,7 @@ function RunningView({
     updateStartTime(timeOnDate(timer.rawStart, startInput));
   };
 
-  const handleStop = (manualEnd = null) => {
+  const handleStop = async (manualEnd = null) => {
     if (descriptionMissing) {
       addToast({ type: 'error', message: t('toastDescriptionBeforeStopping') });
       return;
@@ -526,6 +557,15 @@ function RunningView({
     if (missingRequired) {
       addToast({ type: 'error', message: t('toastRequiredBeforeStopping') });
       return;
+    }
+    // Write unsaved edits (a pending extra field, or a description that is
+    // still being typed) before the entry is closed, so they aren't lost.
+    // Clicking Stop blurs the description first; let that save land.
+    await descSaveRef.current;
+    const pendingExtras = cancelPendingExtras();
+    const savedDesc = useStore.getState().description;
+    if (pendingExtras || localDesc.trim() !== savedDesc.trim()) {
+      await updateTimerDetails(selectedProjectId, localDesc, pendingExtras || localExtras);
     }
     stopTimer(manualEnd);
   };
@@ -569,7 +609,11 @@ function RunningView({
           type="text"
           value={localDesc}
           onChange={(e) => setLocalDesc(e.target.value)}
-          onBlur={() => updateTimerDetails(selectedProjectId, localDesc, localExtras)}
+          onBlur={() => {
+            if (localDesc.trim() === description.trim()) return;
+            const pending = cancelPendingExtras();
+            descSaveRef.current = updateTimerDetails(selectedProjectId, localDesc, pending || localExtras);
+          }}
           onKeyDown={blurOnEnter}
           placeholder={t('placeholderDescription')}
           className={`mt-1 w-full bg-transparent border rounded-md px-2 py-0.5 text-sm text-zinc-200 text-center placeholder-zinc-600 outline-none transition-colors ${
@@ -621,7 +665,7 @@ function RunningView({
                 onChange={(value) => {
                   const newExtras = { ...localExtras, [def.name]: value };
                   setLocalExtras(newExtras);
-                  updateTimerDetails(selectedProjectId, localDesc, newExtras);
+                  scheduleExtrasSave(newExtras);
                 }}
               />
             ))}
@@ -789,12 +833,22 @@ function RunningTimerItem({ rt, isActive, onLoad, onStop, onDelete, onOpenUrl })
   );
 }
 
-/** Quick-start preset chips — shown when any workspace has presets, in both
+/** "Workspace – Preset", or just the workspace name for an unnamed preset
+ *  (or one named after its workspace). Same label as the Android chips and
+ *  the tray menu. */
+function presetLabel(workspace, preset) {
+  const name = preset.name?.trim();
+  return name && name !== workspace.name ? `${workspace.name} – ${name}` : workspace.name;
+}
+
+/** Quick-start preset chips — shown when an API key is set and any workspace
+ *  has presets, in both
  *  the idle form and the running view. Clicking one while a timer is already
  *  running goes through `applyPreset`'s "already running" confirmation. */
 function PresetChips({ workspaces, apiKey, onApplyPreset, onManageClick, className = '' }) {
   const isDarkTheme = useIsDarkTheme();
-  if (!workspaces.some((w) => (w.presets?.length ?? 0) > 0)) return null;
+  // Hidden (not just disabled) without an API key, same as on Android.
+  if (!apiKey || !workspaces.some((w) => (w.presets?.length ?? 0) > 0)) return null;
   return (
     <div className={`w-full flex flex-wrap items-center gap-1.5 ${className}`}>
       {workspaces.flatMap((w) =>
@@ -804,17 +858,20 @@ function PresetChips({ workspaces, apiKey, onApplyPreset, onManageClick, classNa
           const chipStyle = accent
             ? { borderColor: accent + '66', color: accent, backgroundColor: accent + '22' }
             : {};
+          const label = presetLabel(w, preset);
+          // The label only truncates once the chip would overflow the row, so
+          // "Workspace – Preset" stays readable instead of being cut off at a
+          // fixed width (which chopped it right before the dash).
           return (
             <button
               key={`${w.id}:${preset.id}`}
               onClick={() => onApplyPreset(w.id, preset)}
-              disabled={!apiKey}
-              title={preset.name && preset.name !== w.name ? `${w.name} – ${preset.name}` : w.name}
+              title={label}
               style={chipStyle}
-              className="flex items-center gap-1 px-2.5 py-1 bg-zinc-800 hover:bg-emerald-700 border border-zinc-700 hover:border-emerald-600 rounded-full text-xs text-zinc-300 hover:text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              className="flex items-center gap-1 min-w-0 max-w-full px-2.5 py-1 bg-zinc-800 hover:bg-emerald-700 border border-zinc-700 hover:border-emerald-600 rounded-full text-xs text-zinc-300 hover:text-white transition-colors"
             >
-              <Play20Regular className="w-3 h-3" />
-              <span className="max-w-[140px] truncate">{preset.name && preset.name !== w.name ? `${w.name} – ${preset.name}` : w.name}</span>
+              <Play20Regular className="w-3 h-3 shrink-0" />
+              <span className="min-w-0 truncate">{label}</span>
             </button>
           );
         })

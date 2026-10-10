@@ -1,5 +1,14 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
+// A preset can be sent (desktop shortcut with --preset=…) before the renderer
+// has loaded its settings and subscribed; queue it instead of dropping it.
+const pendingPresets = [];
+let presetCallback = null;
+ipcRenderer.on('tray:apply-preset', (_event, data) => {
+  if (presetCallback) presetCallback(data);
+  else pendingPresets.push(data);
+});
+
 contextBridge.exposeInMainWorld('notionAPI', {
   getSettings: () => ipcRenderer.invoke('store:get'),
   saveSettings: (data) => ipcRenderer.invoke('store:set', data),
@@ -33,8 +42,11 @@ contextBridge.exposeInMainWorld('notionAPI', {
     return () => ipcRenderer.removeListener('tray:stop-timer', listener);
   },
   onTrayApplyPreset: (callback) => {
-    const listener = (_event, data) => callback(data);
-    ipcRenderer.on('tray:apply-preset', listener);
-    return () => ipcRenderer.removeListener('tray:apply-preset', listener);
+    presetCallback = callback;
+    // Deliver anything that arrived before the renderer finished loading.
+    for (const data of pendingPresets.splice(0)) callback(data);
+    return () => {
+      if (presetCallback === callback) presetCallback = null;
+    };
   },
 });
