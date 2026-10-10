@@ -16,8 +16,7 @@ import { t } from '../lib/i18n.js';
  * @param {boolean}  [loading]     - Disables and shows placeholder while loading
  * @param {string}   [className]   - Applied to the outer wrapper div
  * @param {string}   [triggerClass] - Background class for the trigger button
- *                                    (default 'bg-zinc-900' for modals;
- *                                     pass 'bg-zinc-800' for the timer view)
+ *                                    (default 'bg-control')
  */
 export default function SearchableSelect({
   value = '',
@@ -28,7 +27,7 @@ export default function SearchableSelect({
   disabled = false,
   loading = false,
   className = '',
-  triggerClass = 'bg-zinc-900',
+  triggerClass = 'bg-control',
 }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
@@ -107,22 +106,22 @@ export default function SearchableSelect({
     ? createPortal(
         <div
           style={panelStyle}
-          className="fixed z-[9999] bg-zinc-900 border border-zinc-700 rounded-md shadow-xl flex flex-col"
+          className="fixed z-[9999] bg-flyout border border-surface-stroke rounded-lg shadow-flyout py-1 flex flex-col"
           onMouseDown={(e) => e.stopPropagation()}
         >
-          <div className="p-1.5 border-b border-zinc-700 shrink-0">
+          <div className="p-1.5 border-b border-stroke shrink-0">
             <input
               ref={searchRef}
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder={t('placeholderSearch')}
-              className="w-full bg-zinc-800 border border-zinc-600 rounded px-2 py-1.5 text-sm placeholder-zinc-600 outline-none"
+              className="w-full bg-control border border-stroke rounded px-2 py-1.5 text-sm placeholder-fg3 outline-none"
             />
           </div>
           <div className="overflow-y-auto py-1 min-h-0">
             {displayOptions.length === 0 && (
-              <div className="px-3 py-1.5 text-xs text-zinc-500 italic">
+              <div className="px-3 py-1.5 text-xs text-fg3 italic">
                 {t('searchNoResults')}
               </div>
             )}
@@ -131,12 +130,12 @@ export default function SearchableSelect({
                 key={o.value === '' ? '__empty__' : o.value}
                 type="button"
                 onClick={() => select(o.value)}
-                className={`w-full text-left px-3 py-1.5 text-sm transition-colors hover:bg-zinc-700 ${
+                className={`w-full text-left px-3 py-1.5 text-sm transition-colors hover:bg-subtle-hover ${
                   o.value !== '' && o.value === value
-                    ? 'bg-zinc-700 font-medium text-zinc-100'
+                    ? 'bg-subtle-hover font-medium text-fg1'
                     : o.value === ''
-                    ? 'text-zinc-500 italic'
-                    : 'text-zinc-100'
+                    ? 'text-fg3 italic'
+                    : 'text-fg1'
                 }`}
               >
                 {o.label}
@@ -154,14 +153,14 @@ export default function SearchableSelect({
         type="button"
         onClick={open ? closePanel : openPanel}
         disabled={disabled || loading}
-        className={`w-full flex items-center justify-between ${triggerClass} border border-zinc-700 rounded-md px-3 py-2 text-sm text-left disabled:opacity-50 hover:border-zinc-500 transition-colors`}
+        className={`w-full flex items-center justify-between ${triggerClass} border border-stroke rounded-md px-3 py-2 text-sm text-left disabled:opacity-50 hover:border-stroke-strong transition-colors`}
       >
-        <span className={selectedLabel ? 'text-zinc-100' : 'text-zinc-500'}>
+        <span className={selectedLabel ? 'text-fg1' : 'text-fg3'}>
           {loading
             ? (placeholder || '…')
             : (selectedLabel || placeholder || '–')}
         </span>
-        <span className="ml-2 text-zinc-500 text-xs shrink-0">▾</span>
+        <span className="ml-2 text-fg3 text-xs shrink-0">▾</span>
       </button>
       {panel}
     </div>

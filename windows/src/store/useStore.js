@@ -7,6 +7,9 @@ import { WRITABLE_EXTRA_TYPES, emptyValueFor, buildPropertyValue, parsePropertyV
 
 const api = window.notionAPI;
 
+// Set once applyTheme has subscribed to OS light/dark changes.
+let followingSystemTheme = false;
+
 const idleTimer = {
   running: false,
   notionPageId: null,
@@ -1142,16 +1145,21 @@ export const useStore = create((set, get) => ({
 
   applyTheme: () => {
     const { theme } = get();
-    const root = document.documentElement;
-    if (theme === 'dark') {
-      root.classList.add('dark');
-      root.classList.remove('light');
-    } else if (theme === 'light') {
-      root.classList.add('light');
-      root.classList.remove('dark');
-    } else {
-      root.classList.remove('dark', 'light');
+    // Keeps the Mica backdrop and native controls in the same mode as the UI.
+    api.setNativeTheme?.(theme);
+    // "auto" resolves to the system mode here, so the CSS only has to know
+    // about the explicit light/dark classes.
+    const mq = typeof window.matchMedia === 'function'
+      ? window.matchMedia('(prefers-color-scheme: dark)')
+      : null;
+    if (mq && !followingSystemTheme) {
+      followingSystemTheme = true;
+      mq.addEventListener('change', () => get().applyTheme());
     }
+    const dark = theme === 'dark' || (theme !== 'light' && (mq ? mq.matches : true));
+    const root = document.documentElement;
+    root.classList.add(dark ? 'dark' : 'light');
+    root.classList.remove(dark ? 'light' : 'dark');
   },
 
   // ---- Refresh ----

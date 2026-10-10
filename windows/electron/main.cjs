@@ -1,4 +1,5 @@
-const { app, BrowserWindow, Tray, Menu, ipcMain, nativeImage, shell } = require('electron');
+const { app, BrowserWindow, Tray, Menu, ipcMain, nativeImage, nativeTheme, shell, systemPreferences } = require('electron');
+const os = require('os');
 const path = require('path');
 const zlib = require('zlib');
 const Store = require('electron-store');
@@ -142,11 +143,47 @@ let trayStrings = TRAY_STRINGS.en;
 
 const assetPath = (name) => path.join(__dirname, '..', 'assets', name);
 
+// ---- Fluent appearance: Mica, light/dark and accent colour ----
+
+// The app's theme setting maps onto Electron's native theme, which drives the
+// Mica tint, the title bar and the renderer's prefers-color-scheme.
+const THEME_SOURCES = { auto: 'system', light: 'light', dark: 'dark' };
+
+function applyNativeTheme(theme) {
+  nativeTheme.themeSource = THEME_SOURCES[theme] || 'system';
+}
+
+// Mica needs Windows 11 22H2 (build 22621) or later. Elsewhere the window gets
+// an opaque Fluent background instead.
+const useMica = (() => {
+  if (process.platform !== 'win32') return false;
+  const build = Number(os.release().split('.')[2]);
+  return Number.isFinite(build) && build >= 22621;
+})();
+
+function fallbackBackground() {
+  return nativeTheme.shouldUseDarkColors ? '#202020' : '#f3f3f3';
+}
+
+/** The Windows accent colour as '#rrggbb', or null when unavailable. */
+function accentColor() {
+  try {
+    const rgba = systemPreferences.getAccentColor();
+    return /^[0-9a-f]{6}/i.test(rgba) ? `#${rgba.slice(0, 6)}` : null;
+  } catch {
+    return null;
+  }
+}
+
 function createWindow() {
   const startHidden = process.argv.includes('--hidden');
+  applyNativeTheme(store.get('theme'));
   mainWindow = new BrowserWindow({
     width: 340,
     height: 480,
+    ...(useMica
+      ? { backgroundMaterial: 'mica', backgroundColor: '#00000000' }
+      : { backgroundColor: fallbackBackground() }),
     resizable: false,
     maximizable: false,
     fullscreenable: false,
@@ -166,10 +203,18 @@ function createWindow() {
   mainWindow.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   mainWindow.webContents.on('will-navigate', (event) => event.preventDefault());
 
+  // Appearance is passed in the URL so the first paint already uses it.
+  const query = {};
+  if (useMica) query.mica = '1';
+  const accent = accentColor();
+  if (accent) query.accent = accent;
+
   if (process.env.VITE_DEV_SERVER_URL) {
-    mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL);
+    const url = new URL(process.env.VITE_DEV_SERVER_URL);
+    for (const [key, value] of Object.entries(query)) url.searchParams.set(key, value);
+    mainWindow.loadURL(url.toString());
   } else {
-    mainWindow.loadFile(path.join(__dirname, '..', 'dist', 'index.html'));
+    mainWindow.loadFile(path.join(__dirname, '..', 'dist', 'index.html'), { query });
   }
 
   // Closing the window minimises to tray instead of quitting
@@ -360,6 +405,11 @@ ipcMain.handle('window:startWithWindows', (_event, value) => {
   return value;
 });
 
+ipcMain.on('window:setTheme', (_event, theme) => {
+  applyNativeTheme(theme);
+  if (mainWindow && !useMica) mainWindow.setBackgroundColor(fallbackBackground());
+});
+
 // Renderer reports timer state so the tray icon/menu can reflect it
 ipcMain.on('timer:state', (_event, data) => {
   timerRunning = typeof data === 'object' ? !!data.running : !!data;
@@ -411,6 +461,16 @@ if (!gotLock) {
 
     createWindow();
     createTray();
+
+    nativeTheme.on('updated', () => {
+      if (mainWindow && !useMica) mainWindow.setBackgroundColor(fallbackBackground());
+    });
+    if (process.platform === 'win32') {
+      systemPreferences.on('accent-color-changed', () => {
+        const accent = accentColor();
+        if (mainWindow && accent) mainWindow.webContents.send('appearance:accent', accent);
+      });
+    }
 
     // Handle --preset arg when launched fresh (app was not already running)
     const presetArg = process.argv.find((a) => a.startsWith('--preset='));

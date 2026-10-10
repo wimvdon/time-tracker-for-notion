@@ -14,8 +14,8 @@ export default function Toasts() {
           key={toast.id}
           className={`rounded-md border px-3 py-2 text-xs shadow-lg flex items-start gap-2 ${
             toast.type === 'error'
-              ? 'bg-red-950 border-red-700 text-red-200'
-              : 'bg-emerald-950 border-emerald-700 text-emerald-200'
+              ? 'bg-danger-bg border-danger-stroke text-fg1'
+              : 'bg-success-bg border-success-stroke text-fg1'
           }`}
         >
           <span className="flex-1">{toast.message}</span>

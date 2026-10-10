@@ -1,5 +1,147 @@
 @import 'tailwindcss';
 
+/* Fluent 2 (Windows 11) design tokens.
+ *
+ * Components use semantic utilities (bg-control, text-fg2, border-stroke, …)
+ * generated from these colours; the actual values live in the --fl-* custom
+ * properties below and switch between the light and dark sets.
+ *
+ * --fl-accent-base is the Windows accent colour, set at startup from the main
+ * process (see main.jsx); the fallback is the default Windows blue. */
+@theme {
+  --font-sans: 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif;
+
+  /* Fluent corner radii: 4px for controls, 8px for cards, dialogs and flyouts. */
+  --radius-md: 0.25rem;
+  --radius-lg: 0.5rem;
+
+  --color-app: var(--fl-app);
+  --color-layer: var(--fl-layer);
+  --color-control: var(--fl-control);
+  --color-control-hover: var(--fl-control-hover);
+  --color-control-pressed: var(--fl-control-pressed);
+  --color-control-disabled: var(--fl-control-disabled);
+  --color-input-active: var(--fl-input-active);
+  --color-subtle-hover: var(--fl-subtle-hover);
+  --color-dialog: var(--fl-dialog);
+  --color-flyout: var(--fl-flyout);
+  --color-smoke: var(--fl-smoke);
+
+  --color-fg1: var(--fl-fg1);
+  --color-fg2: var(--fl-fg2);
+  --color-fg3: var(--fl-fg3);
+  --color-fg-disabled: var(--fl-fg-disabled);
+
+  --color-stroke: var(--fl-stroke);
+  --color-stroke-strong: var(--fl-stroke-strong);
+  --color-surface-stroke: var(--fl-surface-stroke);
+
+  --color-accent: var(--fl-accent);
+  --color-accent-hover: var(--fl-accent-hover);
+  --color-accent-pressed: var(--fl-accent-pressed);
+  --color-on-accent: var(--fl-on-accent);
+
+  --color-success: var(--fl-success);
+  --color-success-bg: var(--fl-success-bg);
+  --color-success-stroke: var(--fl-success-stroke);
+  --color-danger: var(--fl-danger);
+  --color-danger-bg: var(--fl-danger-bg);
+  --color-danger-stroke: var(--fl-danger-stroke);
+  --color-warning-bg: var(--fl-warning-bg);
+  --color-warning-stroke: var(--fl-warning-stroke);
+  --color-info-bg: var(--fl-info-bg);
+  --color-info-stroke: var(--fl-info-stroke);
+
+  --shadow-flyout: 0 8px 16px rgba(0, 0, 0, 0.14);
+  --shadow-dialog: 0 32px 64px rgba(0, 0, 0, 0.19), 0 2px 21px rgba(0, 0, 0, 0.15);
+}
+
+/* Dark (default) */
+:root {
+  color-scheme: dark;
+  --fl-accent-base: #0078d4;
+
+  --fl-app: #202020;
+  --fl-layer: rgba(58, 58, 58, 0.3);
+  --fl-control: rgba(255, 255, 255, 0.0605);
+  --fl-control-hover: rgba(255, 255, 255, 0.0837);
+  --fl-control-pressed: rgba(255, 255, 255, 0.0326);
+  --fl-control-disabled: rgba(255, 255, 255, 0.0419);
+  --fl-input-active: rgba(30, 30, 30, 0.7);
+  --fl-subtle-hover: rgba(255, 255, 255, 0.0605);
+  --fl-dialog: #2b2b2b;
+  --fl-flyout: #2c2c2c;
+  --fl-smoke: rgba(0, 0, 0, 0.3);
+
+  --fl-fg1: #ffffff;
+  --fl-fg2: rgba(255, 255, 255, 0.786);
+  --fl-fg3: rgba(255, 255, 255, 0.544);
+  --fl-fg-disabled: rgba(255, 255, 255, 0.363);
+
+  --fl-stroke: rgba(255, 255, 255, 0.0837);
+  --fl-stroke-strong: rgba(255, 255, 255, 0.544);
+  --fl-surface-stroke: rgba(117, 117, 117, 0.4);
+
+  /* Dark mode uses a lighter tint of the accent with dark text on it. */
+  --fl-accent: color-mix(in srgb, var(--fl-accent-base) 55%, white);
+  --fl-accent-hover: color-mix(in srgb, var(--fl-accent) 90%, transparent);
+  --fl-accent-pressed: color-mix(in srgb, var(--fl-accent) 80%, transparent);
+  --fl-on-accent: #000000;
+
+  --fl-success: #6ccb5f;
+  --fl-success-bg: #393d1b;
+  --fl-success-stroke: rgba(108, 203, 95, 0.4);
+  --fl-danger: #ff99a4;
+  --fl-danger-bg: #442726;
+  --fl-danger-stroke: rgba(255, 153, 164, 0.4);
+  --fl-warning-bg: #433519;
+  --fl-warning-stroke: rgba(252, 225, 0, 0.35);
+  --fl-info-bg: #2b2b2b;
+  --fl-info-stroke: var(--fl-surface-stroke);
+}
+
+/* Light. The store resolves the "auto" theme to this class too (applyTheme). */
+html.light {
+  color-scheme: light;
+  --fl-app: #f3f3f3;
+  --fl-layer: rgba(255, 255, 255, 0.5);
+  --fl-control: rgba(255, 255, 255, 0.7);
+  --fl-control-hover: rgba(249, 249, 249, 0.5);
+  --fl-control-pressed: rgba(249, 249, 249, 0.3);
+  --fl-control-disabled: rgba(249, 249, 249, 0.3);
+  --fl-input-active: #ffffff;
+  --fl-subtle-hover: rgba(0, 0, 0, 0.0373);
+  --fl-dialog: #ffffff;
+  --fl-flyout: #f9f9f9;
+  --fl-smoke: rgba(0, 0, 0, 0.3);
+
+  --fl-fg1: rgba(0, 0, 0, 0.896);
+  --fl-fg2: rgba(0, 0, 0, 0.606);
+  --fl-fg3: rgba(0, 0, 0, 0.446);
+  --fl-fg-disabled: rgba(0, 0, 0, 0.361);
+
+  --fl-stroke: rgba(0, 0, 0, 0.0803);
+  --fl-stroke-strong: rgba(0, 0, 0, 0.446);
+  --fl-surface-stroke: rgba(117, 117, 117, 0.4);
+
+  /* Light mode uses a darker shade of the accent with white text on it. */
+  --fl-accent: color-mix(in srgb, var(--fl-accent-base) 85%, black);
+  --fl-accent-hover: color-mix(in srgb, var(--fl-accent) 90%, transparent);
+  --fl-accent-pressed: color-mix(in srgb, var(--fl-accent) 80%, transparent);
+  --fl-on-accent: #ffffff;
+
+  --fl-success: #0f7b0f;
+  --fl-success-bg: #dff6dd;
+  --fl-success-stroke: rgba(15, 123, 15, 0.3);
+  --fl-danger: #c42b1c;
+  --fl-danger-bg: #fde7e9;
+  --fl-danger-stroke: rgba(196, 43, 28, 0.3);
+  --fl-warning-bg: #fff4ce;
+  --fl-warning-stroke: rgba(157, 93, 0, 0.3);
+  --fl-info-bg: #f6f6f6;
+  --fl-info-stroke: var(--fl-surface-stroke);
+}
+
 html,
 body,
 #root {
@@ -7,50 +149,58 @@ body,
 }
 
 body {
-  @apply bg-zinc-900 text-zinc-100 select-none overflow-hidden;
-  font-family: 'Segoe UI', system-ui, sans-serif;
+  @apply bg-app text-fg1 font-sans select-none overflow-hidden;
+  font-size: 14px;
+  line-height: 20px;
 }
 
-/* Light theme */
-html.light body {
-  @apply bg-zinc-50 text-zinc-900;
+/* With Mica the window material shows through; main.jsx adds this class only
+ * when the main process enabled it (Windows 11 22H2 and later). */
+html.mica body {
+  background: transparent;
 }
-
-/* Auto mode: follow system preference */
-@media (prefers-color-scheme: light) {
-  html:not(.dark):not(.light) body {
-    @apply bg-zinc-50 text-zinc-900;
-  }
-  html:not(.dark):not(.light) .bg-zinc-950 { @apply bg-zinc-100; }
-  html:not(.dark):not(.light) .bg-zinc-900 { @apply bg-zinc-50; }
-  html:not(.dark):not(.light) .bg-zinc-800 { @apply bg-zinc-100; }
-  html:not(.dark):not(.light) .bg-zinc-700 { @apply bg-zinc-200; }
-  html:not(.dark):not(.light) .text-zinc-100 { @apply text-zinc-900; }
-  html:not(.dark):not(.light) .text-zinc-200 { @apply text-zinc-800; }
-  html:not(.dark):not(.light) .text-zinc-300 { @apply text-zinc-700; }
-  html:not(.dark):not(.light) .text-zinc-400 { @apply text-zinc-600; }
-  html:not(.dark):not(.light) .text-zinc-500 { @apply text-zinc-600; }
-  html:not(.dark):not(.light) .border-zinc-800 { @apply border-zinc-200; }
-  html:not(.dark):not(.light) .border-zinc-700 { @apply border-zinc-300; }
-  html:not(.dark):not(.light) .border-zinc-600 { @apply border-zinc-400; }
-}
-
-/* Explicit light class */
-html.light .bg-zinc-950 { @apply bg-zinc-100; }
-html.light .bg-zinc-900 { @apply bg-zinc-50; }
-html.light .bg-zinc-800 { @apply bg-zinc-100; }
-html.light .bg-zinc-700 { @apply bg-zinc-200; }
-html.light .text-zinc-100 { @apply text-zinc-900; }
-html.light .text-zinc-200 { @apply text-zinc-800; }
-html.light .text-zinc-300 { @apply text-zinc-700; }
-html.light .text-zinc-400 { @apply text-zinc-600; }
-html.light .text-zinc-500 { @apply text-zinc-600; }
-html.light .border-zinc-800 { @apply border-zinc-200; }
-html.light .border-zinc-700 { @apply border-zinc-300; }
-html.light .border-zinc-600 { @apply border-zinc-400; }
 
 input,
 textarea,
 select {
   user-select: text;
+}
+
+/* Fluent text fields: a stronger bottom stroke at rest, an accent underline
+ * and solid fill while focused. Unlayered so it applies over the border
+ * utilities; fields marked as errors or borderless keep their own border. */
+:is(input:not([type]), input[type='text'], input[type='number'], input[type='password'], input[type='search'], input[type='url'], textarea, select):not(.border-danger):not(.border-transparent) {
+  border-bottom-color: var(--fl-stroke-strong);
+}
+
+:is(input:not([type]), input[type='text'], input[type='number'], input[type='password'], input[type='search'], input[type='url'], textarea, select):focus {
+  outline: none;
+  background-color: var(--fl-input-active);
+}
+
+:is(input:not([type]), input[type='text'], input[type='number'], input[type='password'], input[type='search'], input[type='url'], textarea, select):not(.border-danger):focus {
+  border-bottom-color: var(--fl-accent);
+  box-shadow: inset 0 -1px 0 var(--fl-accent);
+}
+
+/* Fluent keyboard focus ring */
+button:focus-visible,
+a:focus-visible,
+input[type='checkbox']:focus-visible,
+input[type='radio']:focus-visible {
+  outline: 2px solid var(--fl-fg1);
+  outline-offset: 1px;
+}
+
+/* Thin overlay-style scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--fl-fg3);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
 }
