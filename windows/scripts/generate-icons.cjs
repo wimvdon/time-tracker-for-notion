@@ -83,9 +83,10 @@ function encodeICO(images) {
 // keeps everything within a radius of 33 from the centre. Angles run clockwise from 12 o'clock.
 
 const WHITE = '#FAFAFA';
+const RED = '#E53935';
 const SLATE = '#CBD5E1';
-const RED = '#E53935'; // close to the Android app's primary red
-const BACKGROUND = RED; // flat, no gradient
+const BG_TOP = '#34343A';
+const BG_BOTTOM = '#18181B'; // zinc-900, the app's dark background
 
 const polar = (cx, cy, r, deg) => {
   const a = ((deg - 90) * Math.PI) / 180;
@@ -104,14 +105,18 @@ const OUTLINE = [
   { type: 'line', x1: FACE.cx, y1: FACE.cy, x2: HAND_END[0], y2: HAND_END[1], width: 4.5 },
   { type: 'circle', ...FACE, r: 3.6 },
 ];
-// Elapsed time, a translucent wedge behind the hand
-const ELAPSED = { type: 'wedge', ...FACE, r: 16.5, from: 0, to: 135, alpha: 0.4 };
+// Elapsed time, filled red behind the hand
+const ELAPSED = { type: 'wedge', ...FACE, r: 16.5, from: 0, to: 135 };
 
-const FOREGROUND = [ELAPSED, ...OUTLINE].map((s) => ({ ...s, color: WHITE }));
+const FOREGROUND = [
+  { ...ELAPSED, color: RED },
+  ...OUTLINE.map((s) => ({ ...s, color: WHITE })),
+];
 // Android 13+ themed icon: the launcher tints this single-colour layer
-const MONOCHROME = [ELAPSED, ...OUTLINE].map((s) => ({ ...s, color: '#FFFFFF' }));
-// Tray: the same stopwatch in slate
-const TRAY_GLYPH = [ELAPSED, ...OUTLINE].map((s) => ({ ...s, color: SLATE }));
+const MONOCHROME = [
+  { ...ELAPSED, color: '#FFFFFF', alpha: 0.5 },
+  ...OUTLINE.map((s) => ({ ...s, color: '#FFFFFF' })),
+];
 
 // Windows tile: a rounded square cut from the adaptive grid, artwork inset slightly
 const TILE = { x: 20, y: 20, size: 68, radius: 15 };
@@ -152,15 +157,6 @@ function polygonDistance(pts) {
 }
 
 function distanceFn(s) {
-  if (s.rotate) {
-    // Evaluate the unrotated shape at the point rotated back
-    const d = distanceFn({ ...s, rotate: null });
-    const a = (-s.rotate.deg * Math.PI) / 180;
-    const cos = Math.cos(a);
-    const sin = Math.sin(a);
-    const { cx, cy } = s.rotate;
-    return (x, y) => d(cx + (x - cx) * cos - (y - cy) * sin, cy + (x - cx) * sin + (y - cy) * cos);
-  }
   switch (s.type) {
     case 'circle':
       return (x, y) => Math.hypot(x - s.cx, y - s.cy) - s.r;
@@ -262,8 +258,17 @@ function render(size, view, { background, shapes, artScale = 1, clip }) {
   const clipCov = (gx, gy) => (clipD ? 0.5 - clipD(gx, gy) * k : 1);
 
   if (background) {
-    const rgb = hexRGB(background);
-    c.paint((x, y) => clipCov(toGrid(x, view.x), toGrid(y, view.y)), () => rgb);
+    const top = hexRGB(background.top);
+    const bottom = hexRGB(background.bottom);
+    const y0 = clip ? clip.y : view.y;
+    const h = clip ? clip.h : view.size;
+    c.paint(
+      (x, y) => clipCov(toGrid(x, view.x), toGrid(y, view.y)),
+      (x, y) => {
+        const t = Math.max(0, Math.min(1, (toGrid(y, view.y) - y0) / h));
+        return top.map((v, i) => v + (bottom[i] - v) * t);
+      }
+    );
   }
   for (const s of shapes) {
     const d = distanceFn(s);
@@ -284,7 +289,7 @@ function render(size, view, { background, shapes, artScale = 1, clip }) {
 const tileClip = { type: 'rrect', x: TILE.x, y: TILE.y, w: TILE.size, h: TILE.size, r: TILE.radius };
 const renderTile = (size) =>
   render(size, TILE_VIEW, {
-    background: BACKGROUND,
+    background: { top: BG_TOP, bottom: BG_BOTTOM },
     shapes: FOREGROUND,
     artScale: TILE_ART_SCALE,
     clip: tileClip,
@@ -333,16 +338,22 @@ function vectorPath(s) {
 function svgShape(s) {
   const p = vectorPath(s);
   const alpha = s.alpha != null ? ` opacity="${s.alpha}"` : '';
-  const rotate = s.rotate ? ` transform="rotate(${s.rotate.deg} ${n(s.rotate.cx)} ${n(s.rotate.cy)})"` : '';
-  return (p.stroke
+  return p.stroke
     ? `<path d="${p.d}" fill="none" stroke="${s.color}" stroke-width="${p.width}"${p.cap ? ` stroke-linecap="${p.cap}"` : ''}${alpha}/>`
-    : `<path d="${p.d}" fill="${s.color}"${alpha}/>`).replace('/>', `${rotate}/>`);
+    : `<path d="${p.d}" fill="${s.color}"${alpha}/>`;
 }
 
 function iconSVG() {
+  const { y, size } = TILE;
   const tile = vectorPath(tileClip).d;
   return `<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="${TILE_VIEW.x} ${TILE_VIEW.y} ${TILE_VIEW.size} ${TILE_VIEW.size}">
-  <path d="${tile}" fill="${BACKGROUND}"/>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="${y}" x2="0" y2="${y + size}" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="${BG_TOP}"/>
+      <stop offset="1" stop-color="${BG_BOTTOM}"/>
+    </linearGradient>
+  </defs>
+  <path d="${tile}" fill="url(#bg)"/>
   <g transform="translate(54 54) scale(${TILE_ART_SCALE}) translate(-54 -54)">
     ${FOREGROUND.map(svgShape).join('\n    ')}
   </g>
@@ -357,10 +368,7 @@ function vectorDrawable(shapes) {
       ? [`android:strokeColor="${s.color}"`, `android:strokeWidth="${p.width}"`, ...(p.cap ? [`android:strokeLineCap="${p.cap}"`] : [])]
       : [`android:fillColor="${s.color}"`];
     if (s.alpha != null) attrs.push(`android:${p.stroke ? 'strokeAlpha' : 'fillAlpha'}="${s.alpha}"`);
-    const xml = `    <path\n        ${attrs.join('\n        ')}\n        android:pathData="${p.d}"/>`;
-    if (!s.rotate) return xml;
-    const { deg, cx, cy } = s.rotate;
-    return `    <group\n        android:rotation="${deg}"\n        android:pivotX="${n(cx)}"\n        android:pivotY="${n(cy)}">\n${xml.replace(/^/gm, '    ')}\n    </group>`;
+    return `    <path\n        ${attrs.join('\n        ')}\n        android:pathData="${p.d}"/>`;
   });
   return `<?xml version="1.0" encoding="utf-8"?>
 <!-- Generated by windows/scripts/generate-icons.cjs (npm run icons). Do not edit by hand. -->
@@ -378,7 +386,10 @@ const androidBackground = `<?xml version="1.0" encoding="utf-8"?>
 <!-- Generated by windows/scripts/generate-icons.cjs (npm run icons). Do not edit by hand. -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android"
     android:shape="rectangle">
-    <solid android:color="${BACKGROUND}"/>
+    <gradient
+        android:angle="270"
+        android:startColor="${BG_TOP}"
+        android:endColor="${BG_BOTTOM}"/>
 </shape>
 `;
 
@@ -394,7 +405,7 @@ fs.writeFileSync(path.join(assetsDir, 'icon-256.png'), tiles.at(-1).png);
 fs.writeFileSync(path.join(assetsDir, 'icon.ico'), encodeICO(tiles));
 fs.writeFileSync(
   path.join(assetsDir, 'tray-idle.png'),
-  render(32, TRAY_VIEW, { shapes: TRAY_GLYPH })
+  render(32, TRAY_VIEW, { shapes: MONOCHROME.map((s) => ({ ...s, color: SLATE })) })
 );
 fs.writeFileSync(path.join(assetsDir, 'tray-running.png'), drawDot(32, RED));
 
