@@ -502,6 +502,9 @@ function RunningView({
   const pendingExtrasRef = useRef(null);
   const extrasTimeoutRef = useRef(null);
   const descSaveRef = useRef(null);
+  // True while unsaved edits are written just before stopping, so the Stop
+  // button shows its spinner right away and can't be clicked twice.
+  const [flushingStop, setFlushingStop] = useState(false);
   const localDescRef = useRef(localDesc);
   localDescRef.current = localDesc;
 
@@ -561,11 +564,17 @@ function RunningView({
     // Write unsaved edits (a pending extra field, or a description that is
     // still being typed) before the entry is closed, so they aren't lost.
     // Clicking Stop blurs the description first; let that save land.
-    await descSaveRef.current;
-    const pendingExtras = cancelPendingExtras();
-    const savedDesc = useStore.getState().description;
-    if (pendingExtras || localDesc.trim() !== savedDesc.trim()) {
-      await updateTimerDetails(selectedProjectId, localDesc, pendingExtras || localExtras);
+    if (flushingStop) return;
+    setFlushingStop(true);
+    try {
+      await descSaveRef.current;
+      const pendingExtras = cancelPendingExtras();
+      const savedDesc = useStore.getState().description;
+      if (pendingExtras || localDesc.trim() !== savedDesc.trim()) {
+        await updateTimerDetails(selectedProjectId, localDesc, pendingExtras || localExtras);
+      }
+    } finally {
+      setFlushingStop(false);
     }
     stopTimer(manualEnd);
   };
@@ -674,10 +683,10 @@ function RunningView({
 
         <button
           onClick={() => handleStop()}
-          disabled={isStopping}
+          disabled={isStopping || flushingStop}
           className="mt-5 w-full py-3 rounded-lg bg-red-600 hover:bg-red-500 active:bg-red-700 font-semibold text-lg transition-colors flex items-center justify-center disabled:opacity-50"
         >
-          {isStopping ? (
+          {isStopping || flushingStop ? (
             <span className="animate-spin inline-block w-5 h-5 border-2 border-current border-t-transparent rounded-full" />
           ) : (
             t('btnStop')
@@ -842,8 +851,7 @@ function presetLabel(workspace, preset) {
 }
 
 /** Quick-start preset chips — shown when an API key is set and any workspace
- *  has presets, in both
- *  the idle form and the running view. Clicking one while a timer is already
+ *  has presets, in both the idle form and the running view. Clicking one while a timer is already
  *  running goes through `applyPreset`'s "already running" confirmation. */
 function PresetChips({ workspaces, apiKey, onApplyPreset, onManageClick, className = '' }) {
   const isDarkTheme = useIsDarkTheme();

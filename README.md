@@ -1,115 +1,327 @@
-# Notion Time Tracker
+# Time Tracker for Notion
 
-Lightweight time-tracking app for Notion — available as a Windows desktop widget and an Android app.
+Press **START** when you begin working and **STOP** when you're done. Time Tracker writes each block of time as a row in a Notion database, either from a small window on your Windows PC or from an app on your Android phone. This guide takes you from nothing to your first tracked hour, step by step.
 
-## Platforms
+## Contents
 
-- [Windows (Electron)](#windows-electron) — always-visible widget with system tray
-- [Android](#android) — native app with a sticky foreground notification as the active indicator
+1. [What you need](#1-what-you-need)
+2. [Prepare your Notion database](#2-prepare-your-notion-database)
+3. [Give the app a key to your Notion](#3-give-the-app-a-key-to-your-notion)
+4. [Install on Windows](#4-install-on-windows)
+5. [Install on Android](#5-install-on-android)
+6. [Connect the app to Notion](#6-connect-the-app-to-notion)
+7. [Track your time](#7-track-your-time)
+8. [Presets: start a timer in one click](#8-presets-start-a-timer-in-one-click)
+9. [Use the same settings on all your devices](#9-use-the-same-settings-on-all-your-devices)
+10. [Solving problems](#10-solving-problems)
+11. [For developers](#11-for-developers)
+12. [Sources](#12-sources)
 
 ---
 
-## Windows (Electron)
+## 1. What you need
 
-A lightweight, always-on-top Windows desktop widget. Pick a workspace and project, press **START**, and the app creates a time entry page in your Notion database. Press **STOP** and it fills in the end time — optionally rounded to the nearest configured interval.
+- A **Notion account**. A free account works.
+- For the desktop app: a **Windows 10 or 11** PC.
+- For the phone app: an **Android** phone running Android 8 or newer.
+- About 30 minutes for the first setup. After that, starting a timer takes one click.
+
+There is no ready-made download yet. You build the app yourself from this project with a double-click; chapters 4 and 5 show how.
+
+---
+
+## 2. Prepare your Notion database
+
+The app needs a Notion *database* to write your time into. A database is a table in Notion where every row is a page. Each row will be one block of work, for example "Writing report, 09:00 – 10:30".
+
+If you already have a time-tracking database with a date column and a status column, skip to [chapter 3](#3-give-the-app-a-key-to-your-notion).
+
+1. Open Notion and click **+ New page** in the sidebar on the left.
+2. Type a title for the page, for example `Time tracking`, and press **Enter**.
+3. On the empty line below the title, type `/database` and choose **Database - Inline** from the menu that appears. A table appears with a column called **Name**. This column holds the title of each time entry; the app fills it in with what you're working on.
+4. Click the title of the table (it says **Untitled** or **New database**) and type `Time Entries`.
+5. Click the **+** at the right end of the column headers. A list of column types appears.
+6. Choose **Date** and name the column `Time`. The app stores the start and end time of each entry here.
+7. Click the **+** at the right end of the column headers again and choose **Status**. Name the column `Status`. A status column comes with the options **Not started**, **In progress** and **Done**. The app marks a running timer **In progress** and a finished one **Done**, so the default options are all you need.
+
+You now have a database with the three columns the app needs: **Name**, **Time** and **Status**.
+
+**Optional: link entries to projects.** If you keep a separate Notion database of projects or clients, add a column of type **Relation** to the Time Entries database and point it at that projects database. The app finds it automatically, keeps the link when you edit a running timer, and copies it when you restart an old entry. It never removes a link you set in Notion.
+
+---
+
+## 3. Give the app a key to your Notion
+
+Notion only lets an app read and write your pages when you give it a key. Notion calls this a *connection* (older Notion screens call it an *integration*), and the key itself an *access token*. Think of it as a house key that only opens the rooms you choose.
+
+> **Who can do this:** only a **Workspace Owner** can create a connection. On a personal Notion account, that's you. In a company workspace, ask the person who manages Notion to do these steps for you.
+
+### 3.1 Create the key
+
+1. In your web browser, go to [app.notion.com/developers](https://app.notion.com/developers) and sign in with your Notion account. This is Notion's **Developer portal**.
+2. In the sidebar, under **Build**, click **Internal connections**.
+3. Click **Create a new connection**.
+4. Type a name you will recognise, for example `Time Tracker`.
+5. Choose the Notion workspace that contains your Time Entries database, and confirm. The page of your new connection opens.
+6. Click the **Configuration** tab.
+7. Under the capabilities, make sure **Read content**, **Update content** and **Insert content** are switched on. The app needs to read your databases, add new time entries and update them when you stop a timer.
+8. Find the **Installation access token** (older Notion screens: **Internal Integration Secret**). Click to show it, then copy it. It's a long code that starts with `ntn_` or `secret_`.
+9. Paste the code into a safe place, such as a password manager. You'll paste it into the app in [chapter 6](#6-connect-the-app-to-notion). Treat it like a password: anyone who has it can change your Notion pages.
+
+### 3.2 Let the key open your time-tracking page
+
+A new connection can't see any of your pages yet. Give it access to the page that contains your database. Everything inside that page is included automatically.
+
+1. In Notion, open the page that contains your Time Entries database (in chapter 2 you called it `Time tracking`).
+2. Click **•••** in the top-right corner of the page.
+3. Click **Connections**, then **Add connection**.
+4. Type `Time Tracker` (the name from step 4 above) and click it.
+5. Click **Confirm** if Notion asks whether the connection may access the page. The connection now appears under **Connections** in the same menu.
+
+If you want to sync settings between devices ([chapter 9](#9-use-the-same-settings-on-all-your-devices)), the page where the sync page will live must be connected the same way. Connecting the `Time tracking` page covers this if you put the sync page inside it.
+
+---
+
+## 4. Install on Windows
+
+Skip this chapter if you only want the Android app.
+
+### 4.1 Install Node.js (one time only)
+
+Node.js is a free program the build script uses to put the app together. You need it once.
+
+1. Go to [nodejs.org](https://nodejs.org) and click the download button marked **LTS**. LTS means the stable version.
+2. Open the downloaded file (it's in your **Downloads** folder and ends in `.msi`).
+3. Click **Next** on every screen, accept the licence, and click **Install**. Click **Yes** if Windows asks whether the program may make changes.
+4. Click **Finish**.
+
+### 4.2 Download this project
+
+1. At the top of this project's page on GitHub, click the green **Code** button.
+2. Click **Download ZIP**. A file called `notion-time-tracker-main.zip` appears in your **Downloads** folder.
+3. Open your **Downloads** folder, right-click the ZIP file and choose **Extract All…**, then click **Extract**. A folder called `notion-time-tracker-main` opens.
+
+### 4.3 Build the installer
+
+1. In the `notion-time-tracker-main` folder, open the `windows` folder.
+2. Double-click `build.bat`. A black window opens and shows its progress. The first time, this takes a few minutes because it downloads the parts the app is made of.
+3. Wait until the window says **Done! Check the release folder**, then press any key on your keyboard to close it.
+4. Go back to the `notion-time-tracker-main` folder. It now contains a folder called `release`. Inside is the installer, `Time Tracker for Notion Setup 1.0.0.exe`.
+
+### 4.4 Install the app
+
+1. Double-click `Time Tracker for Notion Setup 1.0.0.exe`.
+2. If a blue window says **Windows protected your PC**, click **More info**, then **Run anyway**. Windows shows this for every app that isn't signed by a known publisher. This one is built by you, so it's safe.
+3. The app installs itself without further questions and opens on the **Settings** screen.
+
+The app runs as a small window that stays on top of your other windows. When you close it, it keeps running in the *system tray*: the row of small icons at the bottom-right of the taskbar, next to the clock (click the **^** arrow if you don't see it).
+
+Continue with [chapter 6](#6-connect-the-app-to-notion).
+
+---
+
+## 5. Install on Android
+
+You build the phone app on a Windows PC and then copy it to your phone.
+
+### 5.1 Install Android Studio (one time only)
+
+Android Studio is Google's free program for making Android apps. The build script uses the tools it installs.
+
+1. Go to [developer.android.com/studio](https://developer.android.com/studio) and click the download button. Accept the terms when asked.
+2. Open the downloaded file and click **Next** on every screen; the default choices are fine. Click **Install**, then **Finish**.
+3. Android Studio starts a setup wizard. Choose **Standard** and click **Next** until it starts downloading. This takes a few minutes (about 1.5 GB).
+4. When the **Welcome to Android Studio** screen appears, click **More Actions**, then **SDK Manager**.
+5. On the **SDK Platforms** tab, tick **Android 16** (API level 36). The app is built for this version of Android; it still runs on phones with older versions.
+6. Click **Apply**, then **OK**, and wait until the download finishes. Click **Finish**, then close Android Studio.
+
+### 5.2 Build the app
+
+1. Download and extract this project as described in [4.2](#42-download-this-project), if you haven't already.
+2. In the `notion-time-tracker-main` folder, open the `android` folder.
+3. Double-click `build.bat`. A black window opens. The first time takes several minutes.
+4. Wait until it says **Done! APK is located at: release\TimeTracker.apk**, then press any key to close the window. An *APK* is an Android app in a single file.
+5. The file is in the `release` folder inside `notion-time-tracker-main`.
+
+### 5.3 Put the app on your phone
+
+1. Connect your phone to the PC with a USB cable.
+2. On the phone, pull down the notification bar, tap the USB notification and choose **File transfer**. The phone now appears in File Explorer on your PC.
+3. Drag `TimeTracker.apk` from the `release` folder onto the phone's **Download** folder.
+4. On the phone, open the **Files** app (on Samsung phones: **My Files**), go to **Downloads** and tap `TimeTracker.apk`.
+5. The first time, Android says it isn't allowed to install apps from this source. Tap **Settings**, switch on **Allow from this source**, and go back.
+6. Tap **Install**. When it's done, tap **Open**.
+7. Allow notifications when asked. The app shows the running timer as a notification, so you can see and stop it without opening the app.
+
+To update the app later, repeat 5.2 and 5.3. Installing over the old version keeps your settings.
+
+---
+
+## 6. Connect the app to Notion
+
+These steps are the same on Windows and Android. On Android, open **Settings** with the gear icon at the top-right of the timer screen first.
+
+### 6.1 Add your key
+
+1. In **Settings**, click (or tap) the **Notion API Key** box and paste the key you copied in [chapter 3](#31-create-the-key).
+2. Click **Test connection & save**. When the key works, the message **API key works and was saved.** appears.
+
+### 6.2 Add a workspace
+
+In this app, a *workspace* is one Time Entries database plus how you want to use it. Most people need one; add more if you track time in several databases, for example one for work and one for a side project.
+
+1. Under **Workspaces**, click **+ Add workspace**. The **Add Workspace** window opens.
+2. In **Name**, type a short name, for example `Work`. It appears on the timer and on your preset buttons.
+3. Under **Time Entries database**, choose the database you made in chapter 2. If the list is empty, click **Refresh**; if it stays empty, the connection doesn't have access to the page yet ([3.2](#32-let-the-key-open-your-time-tracking-page)).
+4. Under **Date range field**, choose `Time`.
+5. Under **Status field**, choose `Status`.
+6. Under **Running status option**, choose **In progress**.
+7. Under **Completed status option**, choose **Done**.
+8. Optional settings in the same window:
+   - **Extra fields (optional)**: click **+ Add field** to show up to five more columns of your database in the timer, for example a *Client* or *Billable* column. Tick **Required** to make sure it's filled in before the timer can stop.
+   - **Description required**: when on, a timer can't be stopped until you've typed what you worked on.
+   - **Time rounding**: rounds start and stop times to the nearest 5, 10 or 15 minutes. Choose **No rounding** to keep exact times.
+   - **Workspace colour**: colours the timer and buttons, so you can tell workspaces apart at a glance.
+9. Click **Save**.
+10. Go back to the timer with the **←** arrow (Windows) or the back arrow (Android) at the top-left.
+
+---
+
+## 7. Track your time
+
+### 7.1 Start a timer
+
+1. Under **Workspace**, choose where the time belongs.
+2. In **Working on…**, type what you're doing, for example `Monthly report`. You can leave it empty: the entry is then titled with today's date.
+3. Fill in any extra fields you added.
+4. Click **START**. The clock starts counting and a new row appears in your Notion database with status **In progress**.
+
+On Windows, the tray icon turns red (or your workspace colour) while a timer runs. On Android, a notification shows the running timer.
+
+### 7.2 While the timer runs
+
+- **Change the description**: click it, type, and press **Enter** (or click somewhere else). It's saved to Notion straight away.
+- **Change an extra field**: just change it. It's saved a moment after you stop typing.
+- **Correct the start time**: change **Start time**, for example if you forgot to press START when you began.
+- **Stop at an earlier time**: fill in **End time**. This stops the timer at that time.
+
+### 7.3 Stop the timer
+
+1. Click **STOP**. Anything you changed but that wasn't saved yet is saved first, so nothing gets lost.
+2. The row in Notion gets its end time and the status **Done**. If you chose rounding, the start and end are rounded, and every entry lasts at least one rounding step.
+
+You can also stop the timer:
+- **Windows**: right-click the tray icon and choose **Stop timer**.
+- **Android**: tap **Stop** in the notification, even when the app is closed.
+
+### 7.4 Other things on the timer screen
+
+- **Active timers** lists timers that are running in Notion, for example one you started on your phone. Click one to continue it here.
+- **Recent time entries** lists your last finished entries. Click the play button next to one to start a new timer with the same details.
+- The refresh button at the bottom (Windows) or top (Android) reloads both lists. They also refresh by themselves every minute.
+
+If a timer is stopped on another device, this device notices within a minute and clears it with the message **Timer was stopped on another device.**
+
+---
+
+## 8. Presets: start a timer in one click
+
+A *preset* remembers a workspace, a description and extra field values, and starts a timer with them in one click. Handy for things you do often, like a daily stand-up meeting.
+
+### 8.1 Create a preset
+
+1. On the timer screen, choose the workspace, type the description and fill in the extra fields you want the preset to remember.
+2. Click the bookmark button next to **START**. The **Save Preset** window opens.
+3. Optionally type a name, for example `Stand-up`. Without a name, the preset is shown with just the workspace name.
+4. Click **Save**.
+
+### 8.2 Use a preset
+
+Your presets appear as buttons at the top of the timer screen, labelled *Workspace – Preset*, for example **Work – Stand-up**. A label too long for one line ends in "…"; on Windows, hold the mouse over it to see the full name.
+
+1. Click a preset button. The timer starts immediately with the preset's details.
+2. If a timer is already running, the app asks **Timer already running**. Click **Stop & start new** to stop the old one and start the preset, or **Cancel**.
+
+Preset buttons only appear after you've added your Notion key.
+
+You can also start presets without opening the app:
+- **Windows**: right-click the tray icon. Your first ten presets are listed there.
+- **Android**: press and hold the app icon on your home screen. Up to four presets appear as shortcuts.
+
+### 8.3 Reorder or delete presets
+
+1. Click the pencil button after the preset buttons. The **Manage Presets** window opens.
+2. Use the up and down arrows to change the order, or the bin icon to delete a preset.
+3. Click **Dismiss** to close the window.
+
+---
+
+## 9. Use the same settings on all your devices
+
+Instead of setting up every device by hand, you can keep your settings on a Notion page that all your devices read. This copies your workspaces, extra fields, presets, rounding, colours, appearance, language and date/time format. Your Notion key is **not** copied, for safety: you paste it on each device yourself ([6.1](#61-add-your-key)). Device-specific choices such as **Keep window on top** and **Start with Windows** also stay on each device.
+
+### 9.1 On your first device: create the sync page
+
+1. In **Settings**, under **Sync**, click **Create new**.
+2. Under **Page title**, type a name, for example `Time Tracker settings`.
+3. Choose the page the sync page should go in, for example `Time tracking`: under **Create inside** on Windows, or in the **Select a page…** list on Android. This page must be connected to your key ([3.2](#32-let-the-key-open-your-time-tracking-page)).
+4. Click **Create**. The message **Sync page created** appears, and the sync section now says **Synced with "Time Tracker settings"**.
+
+### 9.2 On every other device: attach to it
+
+1. Add your Notion key on this device ([6.1](#61-add-your-key)).
+2. In **Settings**, under **Sync**, click **Load existing**.
+3. Choose `Time Tracker settings` and click **Attach**. Your workspaces and presets appear within a few seconds.
+
+From now on, a change on one device reaches the others within about a minute. If you changed the same thing on two devices, the most recent change wins.
+
+---
+
+## 10. Solving problems
+
+| What you see | What to do |
+|---|---|
+| **Connection failed** after **Test connection & save** | Copy the key again from the Developer portal ([3.1](#31-create-the-key), step 8) and make sure there are no spaces before or after it. |
+| **No databases found** when adding a workspace | The key can't see your page yet. Follow [3.2](#32-let-the-key-open-your-time-tracking-page), then click **Refresh**. |
+| **Fill in required fields before stopping.** | Fill in the fields marked in red, then click **STOP** again. |
+| **Page not found in Notion** | The entry was deleted in Notion. Click **Dismiss**. To keep it, restore the page from Notion's **Trash** in the sidebar. |
+| The Windows app seems closed but won't open again | It's still running in the system tray. Click the **^** arrow next to the clock, right-click the Time Tracker icon and choose **Open**. |
+| **Windows protected your PC** when installing | Click **More info**, then **Run anyway** ([4.4](#44-install-the-app)). |
+| **App not installed** on Android | Allow installing from your file manager ([5.3](#53-put-the-app-on-your-phone), step 5). Open the APK from the **Files** app, not from a browser. |
+| No notification on Android | On the phone, open **Settings** → **Apps** → **Time Tracker** → **Notifications** and switch them on. |
+| No preset shortcuts on Android | Press and hold the app icon. Shortcuts appear after you've created at least one preset and opened the app once. |
+
+---
+
+## 11. For developers
+
+This chapter is for people who want to change the app's code.
+
+### 11.1 Windows app
 
 Built with Electron, React, Vite, Tailwind CSS and Zustand.
 
-### One-time setup: Notion API key
+To run it while you work on it:
 
-The app talks directly to the Notion API. You need a (free) internal integration:
+1. Install Node.js ([4.1](#41-install-nodejs-one-time-only)).
+2. In File Explorer, open the project's `windows` folder.
+3. Right-click an empty spot in the folder and choose **Open in Terminal**. A terminal window opens, already pointing at this folder.
+4. Type `npm install` and press **Enter**. Wait until it finishes (the first time takes a minute).
+5. Type `npm run dev` and press **Enter**. The app opens; changes to the code show up straight away.
 
-1. Go to [notion.so/my-integrations](https://www.notion.so/my-integrations) and click **New integration**.
-2. Name it **Notion Timer**, type **Internal**, and pick your Notion workspace.
-3. Under *Capabilities*, make sure **Read content**, **Insert content** and **Update content** are enabled.
-4. Copy the **Internal Integration Secret** — this is the API key you paste into Settings. It starts with `secret_` or `ntn_`.
-5. **Give the integration access to your pages.** In Notion, open each page that contains the databases you want to use → `···` → **Connections → Connect to → Notion Timer**. Do this on the **parent page containing the databases** — child databases inherit the connection.
+Other commands, typed in the same terminal:
 
-### What your databases need
-
-- A **Time Entries database**: needs a title property, a date property (start/end range), a status property (one option for "running", one for "completed"), and optionally a relation property linking to a projects database.
-- A **Projects database**: page titles are used as picker options — no configuration needed.
-
-### Developing
-
-```bash
-cd windows
-npm install
-npm run dev
-```
-
-Other commands:
-
-```bash
-npm test           # run the time-rounding unit tests
-npm run icons      # regenerate icons in assets/
-```
-
-### Building the Windows installer (.exe)
-
-```bash
-cd windows
-build.bat          # or: npm run dist
-```
-
-The installer ends up in `windows/release/Notion Timer Setup 1.0.0.exe`.
-
-### First launch & workspace configuration
-
-On first launch the app opens on Settings:
-
-1. Paste your Notion API key and click **Test connection & save**.
-2. Click **+ Add workspace** and follow the step-by-step modal.
-3. Optionally add up to five **extra fields** from the Time Entries database (text, number, select, multi-select, status, date, checkbox, URL, e-mail, phone, people, relation).
-4. Optionally add up to five **presets** per workspace — quick-start configurations with a default title and extra field values (see [Presets](#presets)).
-5. Click `←` to go to the timer.
-
-### How it behaves
-
-- **Start**: creates a time entry with status = running and the description as the title. The entry's start and end are rounded to the configured interval when the timer is stopped.
-- **Empty description**: the entry is titled with its start date, formatted as configured in Settings (`DD/MM/YYYY`, `MM/DD/YYYY` or `YYYY-MM-DD`). The description field itself is never pre-filled — the date is only written to the Notion page, so an entry never shows up as "Untitled".
-- **Stop**: fills in the end time and sets status = completed. End time is rounded with a minimum duration equal to one interval.
-- **Edit timer**: the running view's fields are editable in place — change the title or any extra field value and it is written to the Notion page. Clearing the title falls back to the start date, exactly as when starting.
-- **Description required**: workspaces can require a description (Settings → workspace). The field is then marked with `*` and a timer in that workspace cannot be stopped until it is filled in — starting stays a single click, same as for required extra fields.
-- **Closing the window** minimises to the system tray. The tray icon turns red while a timer runs (or takes the workspace's colour, if one is set).
-- **Crash recovery**: if force-quit while a timer runs, it is picked up again on the next launch and keeps counting.
-- **Auto-refresh**: running timers and recent entries refresh every 60 seconds. If the active timer was stopped on another device, it is automatically cleared from the view.
-- **Deleted pages**: if Notion reports that a page no longer exists when stopping or editing, the app shows the local details and asks you to confirm before discarding.
-
-### Presets
-
-Presets are quick-start configurations defined per workspace. Each preset has:
-- A **name** (always prefixed with the workspace name)
-- An optional **default title** for new time entries
-- Optional **default values** for extra fields
-
-Presets appear as clickable chips above the workspace selector in the timer view. Clicking a chip immediately starts the timer with those values.
-
-On Windows, presets also appear in the **right-click tray menu**. Picking one while a timer is already running asks whether to stop it and start the new one.
-
-### Syncing settings between devices
-
-Settings are shared through a **sync page** in your own Notion workspace: Settings → *Create sync page* writes a JSON code block onto a page you pick, and every device attached to that page (Settings → *Load existing sync page*) pulls or pushes whichever side is newer, on launch and every 60 seconds.
-
-What is synced: workspaces, field mappings, extra fields, presets, rounding, theme, language, date/time format and the per-entry Notion actions. The Notion API key is intentionally **not** included — enter it manually on each device. Device-local preferences (always-on-top and start-with-Windows on the desktop, Material You on Android) stay put as well.
-
-### Troubleshooting (Windows)
-
-| Problem | Fix |
+| Type this | What it does |
 |---|---|
-| "Connection failed: API token is invalid" | Re-copy the secret from notion.so/my-integrations; no spaces. |
-| Database dropdowns are empty | Integration isn't connected to the pages — see setup step 5. |
-| Project dropdown stays empty | Check the Projects database in the workspace settings. Records without a page title are listed as *(Untitled)* rather than hidden, so an already-linked one always shows. |
-| App seems closed but won't restart | It's in the system tray (bottom-right, behind `^`). Right-click → Quit. |
-| Installer blocked by SmartScreen | More info → Run anyway (unsigned personal build). |
-
-### Windows project structure
+| `npm test` | Runs the unit tests (rounding, formatting, colours, Notion values, store). |
+| `npm run icons` | Regenerates the icons in `assets/`. |
+| `npm run dist` | Builds the installer, same as double-clicking `build.bat`. |
 
 ```
 windows/
 ├── electron/
-│   ├── main.cjs           # Main process: window, tray, IPC, presets in context menu
-│   ├── preload.cjs        # contextBridge: safe API exposed to renderer
+│   ├── main.cjs           # Main process: window, tray, IPC, presets in tray menu
+│   ├── preload.cjs        # contextBridge: safe API exposed to the renderer
 │   └── notionClient.cjs   # All Notion REST calls
 ├── src/
 │   ├── App.jsx
@@ -122,155 +334,58 @@ windows/
 └── package.json
 ```
 
----
+The Notion key is stored in the app's settings file on the PC. That file is obfuscated, not strongly encrypted: anyone with access to the PC and this source code can read it.
 
-## Android
+### 11.2 Android app
 
-A native Android app built with Kotlin + Jetpack Compose. Functionally identical to the Windows app, with Android-native UX:
-
-- A **sticky foreground notification** replaces the system tray while a timer is running
-- Tap **Stop** in the notification to stop the timer even when the app is closed
-- The notification carries a progress bar filling towards the end of the current rounding interval
-- Crash recovery, identical rounding logic, and the same six languages — all ported 1:1
-
-### Tech stack
+Built with Kotlin and Jetpack Compose. It mirrors the Windows app feature for feature, with a foreground notification instead of the tray icon.
 
 | Component | Choice |
 |---|---|
-| Language | Kotlin |
-| UI | Jetpack Compose + Material You (Material 3) |
+| UI | Jetpack Compose + Material 3 (Material You) |
 | State | ViewModel + StateFlow |
 | Storage | DataStore (Preferences) + EncryptedSharedPreferences (API key) |
 | HTTP | OkHttp + Gson |
-| Background | Foreground Service |
-| Notifications | NotificationCompat (ongoing, with progress) |
-| Min SDK | 26 (Android 8) |
-| Target SDK | 36 (Android 16) |
+| Background | Foreground service with an ongoing notification |
+| Min / target SDK | 26 (Android 8) / 36 (Android 16) |
 
-### First launch & workspace configuration
+To work on it, open the `android` folder in Android Studio (**File** → **Open**, choose the `android` folder, click **OK**). If Android Studio says the project needs syncing, click **Sync Now**.
 
-1. Open the app. Tap the gear icon to open Settings.
-2. Paste your Notion API key and tap **Test connection & save**.
-3. Tap **+ Add workspace** and follow the step-by-step modal.
-4. Optionally add up to five **extra fields** per workspace. Presets are created from the timer screen (the bookmark button next to START).
-5. Tap the back arrow to go to the timer.
-
-Alternatively, attach the app to an existing sync page to import a whole configuration at once (see [Syncing settings](#syncing-settings-between-devices-1)).
-
-### How it behaves
-
-- **Start / Stop**: same logic as Windows — rounding, status transitions, relation fields, and the start-date fallback for an empty description.
-- **Edit timer**: the running view's fields are editable in place. The title is saved with the check button (or the keyboard's Done key) and extra fields save themselves shortly after you change them; stopping also saves a title you typed but did not confirm. Clearing the title falls back to the start date.
-- **Description required**: identical per-workspace option as on Windows; the timer cannot be stopped until a description is filled in.
-- **Auto-refresh**: running timers and recent entries refresh every 60 seconds. If the active timer was stopped on another device, it is automatically cleared and a toast is shown.
-- **Deleted pages**: if Notion reports that a page no longer exists when stopping or editing, the app shows the local details and asks you to confirm before discarding.
-
-### Presets
-
-Presets appear as tappable chips above the workspace selector in the timer view. Tapping a chip immediately starts the timer with those values.
-
-Presets also appear as **Android dynamic shortcuts** — long-press the app icon on your home screen or app drawer to see up to four preset shortcuts. The shortcuts are refreshed automatically each time the app loads its settings.
-
-### Syncing settings between devices
-
-Same mechanism as on the desktop: Settings → *Create sync page* or *Load existing sync page*, attaching this device to a JSON code block on a Notion page that all your devices read and write. The Notion API key is not part of it; enter it manually on each device.
-
-### Setup & build
-
-#### 1. Install Android Studio
-
-1. Download [Android Studio](https://developer.android.com/studio) — click the big download button.
-2. Run the installer, click **Next** throughout — default settings are fine.
-3. On first launch: step through the setup wizard, choose **Standard** installation.
-4. Android Studio will automatically download the JDK and SDK (~1.5 GB, takes a few minutes).
-5. Once the main screen appears: done.
+```
+android/app/src/main/
+├── AndroidManifest.xml
+├── java/com/impca201/notiontimetracker/
+│   ├── MainActivity.kt          # Entry point, handles shortcut intents
+│   ├── NotionTimeTrackerApp.kt  # Application class
+│   ├── ShortcutHelper.kt        # Home-screen shortcuts for presets
+│   ├── data/
+│   │   ├── models/Models.kt               # Workspace, ActiveTimer, Preset, ExtraProp, …
+│   │   ├── api/NotionClient.kt            # OkHttp Notion REST client
+│   │   └── repository/
+│   │       ├── SettingsRepository.kt      # DataStore + EncryptedSharedPreferences
+│   │       ├── SettingsSyncer.kt          # Pull-or-push against the Notion sync page
+│   │       └── NotionRepository.kt
+│   ├── service/TimerForegroundService.kt  # Ongoing notification, stop action
+│   ├── ui/
+│   │   ├── theme/                         # Material 3 theme + workspace colours
+│   │   ├── screens/                       # TimerScreen.kt, SettingsScreen.kt
+│   │   └── components/                    # SearchableDropdown, ExtraFieldInput, WorkspaceModal, EditTimerModal
+│   └── viewmodel/
+│       ├── TimerViewModel.kt              # Timer state, rounding, start/stop, presets
+│       └── SettingsViewModel.kt           # API key, workspaces
+└── res/
+    ├── values/strings.xml                 # English (UK)
+    └── values-{nl,fr,de,es,it}/           # Dutch, French, German, Spanish, Italian
+```
 
 ---
 
-#### 2. Enable the Android 16 SDK
+## 12. Sources
 
-In Android Studio:
-
-1. Menu bar → **Tools → SDK Manager**
-2. **SDK Platforms** tab → tick **Android 16 (API Level 36)**
-3. Click **Apply → OK** → wait for the download to finish
-4. Close SDK Manager
-
----
-
-#### 3. Build the APK
-
-Double-click `android/build.bat`. The first run takes a bit longer as Gradle sets itself up. You'll then see:
-
-```
-Done! APK is located at:
-  release\NotionTimeTracker.apk
-```
-
-The file is placed in the `release/` folder at the root of the repo.
-
----
-
-#### 4. Install the APK on your device
-
-**One-time setup on your device:**
-
-1. Go to **Settings → Apps**
-2. Find your file manager (e.g. *My Files*, *Files*, or *Google Files*)
-3. Tap it → **Install unknown apps** → turn on
-
-**For each new build:**
-
-1. Copy `release/NotionTimeTracker.apk` to your device via one of:
-   - Upload to Google Drive / OneDrive on your PC, download on your device
-   - USB cable: connect, choose **File Transfer** in the notification on your device, drag the APK to a folder
-2. Open the file manager on your device
-3. Navigate to the APK file
-4. Tap it → **Install**
-5. Reinstalling over an existing version keeps your settings intact
-
-### Troubleshooting (Android)
-
-| Problem | Fix |
-|---|---|
-| "App not installed" on manual install | Enable *Install from unknown sources* for your file manager |
-| `adb: command not found` | Add Android SDK platform-tools to PATH, or use the full path |
-| Gradle sync fails | File → Sync Project with Gradle Files; check internet connection |
-| Device not recognised via USB | Try another cable; toggle USB debugging off/on |
-| Notification not showing | Grant notification permission in Settings → Apps → Notion Time Tracker → Notifications |
-| Preset shortcuts not showing | Long-press the app icon; shortcuts appear once at least one preset is configured |
-
-### Android project structure
-
-```
-android/
-├── app/
-│   ├── build.gradle.kts
-│   └── src/main/
-│       ├── AndroidManifest.xml
-│       ├── java/com/impca201/notiontimetracker/
-│       │   ├── MainActivity.kt          # Entry point, handles shortcut intents
-│       │   ├── NotionTimeTrackerApp.kt  # Application class, DI root
-│       │   ├── ShortcutHelper.kt        # Dynamic shortcuts for preset chips
-│       │   ├── data/
-│       │   │   ├── models/Models.kt          # Workspace, ActiveTimer, Preset, ExtraProp, …
-│       │   │   ├── api/NotionClient.kt        # OkHttp Notion REST client
-│       │   │   └── repository/
-│       │   │       ├── SettingsRepository.kt  # DataStore + EncryptedSharedPreferences
-│       │   │       ├── SettingsSyncer.kt       # Pull-or-push against the Notion sync page
-│       │   │       └── NotionRepository.kt
-│       │   ├── service/TimerForegroundService.kt  # Ongoing notification, stop action
-│       │   ├── ui/
-│       │   │   ├── theme/                    # Material 3 theme + workspace colours
-│       │   │   ├── screens/                  # TimerScreen.kt, SettingsScreen.kt
-│       │   │   └── components/               # SearchableDropdown, ExtraFieldInput,
-│       │   │                                 # WorkspaceModal, EditTimerModal
-│       │   └── viewmodel/
-│       │       ├── TimerViewModel.kt         # Timer state, rounding, start/stop, presets
-│       │       └── SettingsViewModel.kt      # API key, workspace CRUD, presets
-│       └── res/
-│           ├── values/strings.xml            # English (UK)
-│           └── values-{nl,fr,de,es,it}/      # Dutch, French, German, Spanish, Italian
-├── build.gradle.kts
-└── settings.gradle.kts
-```
+- Notion Developers: [Internal connections](https://developers.notion.com/guides/get-started/internal-connections), how to create a connection and copy its access token
+- Notion Developers: [Internal integrations](https://developers.notion.com/guides/get-started/internal-integrations), the same steps under the older names
+- Notion Help: [Add & manage connections](https://www.notion.com/help/add-and-manage-connections-with-the-api), how to give a connection access to a page
+- Notion release notes, [13 May 2026](https://www.notion.com/releases/2026-05-13): the Developer portal at app.notion.com/developers
+- Notion Help: [Intro to databases](https://www.notion.com/help/intro-to-databases)
+- Node.js: [nodejs.org](https://nodejs.org)
+- Android Developers: [Install Android Studio](https://developer.android.com/studio/install)
