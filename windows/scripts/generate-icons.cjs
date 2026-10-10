@@ -1,8 +1,8 @@
 // Generates every app icon from one vector definition, without image dependencies:
-//   assets/icon.svg         – master artwork (Windows tile), for reference
+//   assets/icon.svg         – master artwork, for reference
 //   assets/icon.ico         – Windows app/installer icon, 16–256 px (PNG-in-ICO)
 //   assets/icon-256.png     – window icon on non-Windows platforms
-//   assets/tray-idle.png    – tray icon, idle (stopwatch)
+//   assets/tray-idle.png    – tray icon, idle (the same dial, in grey)
 //   assets/tray-running.png – tray icon, running (red dot)
 //   ../android/app/src/main/res/drawable/ic_launcher_*.xml – Android adaptive icon layers
 // Every size is rendered straight from the vectors, so small sizes stay crisp.
@@ -84,46 +84,42 @@ function encodeICO(images) {
 
 const WHITE = '#FAFAFA';
 const RED = '#E53935';
-const SLATE = '#CBD5E1';
-const BG_TOP = '#34343A';
-const BG_BOTTOM = '#18181B'; // zinc-900, the app's dark background
+const RED_TOP = '#F05252';
+const RED_BOTTOM = '#C62828';
+const ANDROID_BACKGROUND = '#FFFFFF';
 
 const polar = (cx, cy, r, deg) => {
   const a = ((deg - 90) * Math.PI) / 180;
   return [cx + r * Math.cos(a), cy + r * Math.sin(a)];
 };
 
-const FACE = { cx: 54, cy: 59 };
-const HAND_END = polar(FACE.cx, FACE.cy, 13, 135);
+const FACE = { cx: 54, cy: 54 };
+const DIAL_RADIUS = 27;
+const HAND_END = polar(FACE.cx, FACE.cy, 16.5, 135);
 
-// Stopwatch outline: crown, side button, case, hand
-const OUTLINE = [
-  { type: 'rrect', x: 47.5, y: 25, w: 13, h: 6, r: 3 },
-  { type: 'rrect', x: 51.5, y: 29, w: 5, h: 7, r: 1 },
-  { type: 'poly', points: [[70.5, 33.5], [74.7, 37.7], [71.3, 41.1], [67.1, 36.9]] },
-  { type: 'ring', ...FACE, r: 23, width: 6 },
-  { type: 'line', x1: FACE.cx, y1: FACE.cy, x2: HAND_END[0], y2: HAND_END[1], width: 4.5 },
-  { type: 'circle', ...FACE, r: 3.6 },
-];
-// Elapsed time, filled red behind the hand
-const ELAPSED = { type: 'wedge', ...FACE, r: 16.5, from: 0, to: 135 };
+const HAND = { type: 'line', x1: FACE.cx, y1: FACE.cy, x2: HAND_END[0], y2: HAND_END[1], width: 5.5 };
+const PIVOT = { type: 'circle', ...FACE, r: 4.2 };
+// Elapsed time, a translucent wedge behind the hand
+const ELAPSED = { type: 'wedge', ...FACE, r: 20, from: 0, to: 135 };
 
-const FOREGROUND = [
-  { ...ELAPSED, color: RED },
-  ...OUTLINE.map((s) => ({ ...s, color: WHITE })),
+// A filled red dial: it reads on light and dark surfaces alike, so one icon works everywhere.
+// The dial is shaded top to bottom; `color` as [top, bottom] is a vertical gradient over the shape.
+const ICON = [
+  { type: 'circle', ...FACE, r: DIAL_RADIUS, color: [RED_TOP, RED_BOTTOM] },
+  { ...ELAPSED, color: WHITE, alpha: 0.35 },
+  { ...HAND, color: WHITE },
+  { ...PIVOT, color: WHITE },
 ];
-// Android 13+ themed icon: the launcher tints this single-colour layer
+// Android 13+ themed icon: the launcher tints this single-colour layer, so it's drawn as a line glyph
 const MONOCHROME = [
-  { ...ELAPSED, color: '#FFFFFF', alpha: 0.5 },
-  ...OUTLINE.map((s) => ({ ...s, color: '#FFFFFF' })),
-];
+  { type: 'ring', ...FACE, r: DIAL_RADIUS - 3, width: 6 },
+  { ...ELAPSED, alpha: 0.5 },
+  HAND,
+  PIVOT,
+].map((s) => ({ ...s, color: '#FFFFFF' }));
 
-// Windows tile: a rounded square cut from the adaptive grid, artwork inset slightly
-const TILE = { x: 20, y: 20, size: 68, radius: 15 };
-const TILE_VIEW = { x: 19, y: 19, size: 70 };
-const TILE_ART_SCALE = 0.9;
-// Tray: the stopwatch alone, filling the icon
-const TRAY_VIEW = { x: 23, y: 24, size: 62 };
+// Windows: the stopwatch alone on a transparent background
+const ICON_VIEW = { x: 25, y: 25, size: 58 };
 
 // Wedges become polygons so every renderer only needs straight edges
 function wedgePoints({ cx, cy, r, from, to }) {
@@ -188,6 +184,19 @@ function distanceFn(s) {
 
 const hexRGB = (hex) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
 
+// Gradients only run over circles (the stopwatch body), top to bottom
+function colorFn(s, gridY) {
+  if (!Array.isArray(s.color)) {
+    const rgb = hexRGB(s.color);
+    return () => rgb;
+  }
+  const [top, bottom] = s.color.map(hexRGB);
+  return (x, y) => {
+    const t = Math.max(0, Math.min(1, (gridY(y) - (s.cy - s.r)) / (2 * s.r)));
+    return top.map((v, i) => v + (bottom[i] - v) * t);
+  };
+}
+
 class Canvas {
   constructor(size) {
     this.size = size;
@@ -247,53 +256,22 @@ function downsample(canvas, factor) {
   return out;
 }
 
-// Renders shapes seen through a square view of the grid. `art` maps canvas grid units to
-// artwork units (for the tile inset); `clip` optionally limits everything to a shape.
-function render(size, view, { background, shapes, artScale = 1, clip }) {
+// Renders shapes seen through a square view of the grid, on a transparent background
+function render(size, view, { shapes }) {
   const SS = size <= 32 ? 8 : 4;
   const c = new Canvas(size * SS);
   const k = (size * SS) / view.size; // pixels per grid unit
   const toGrid = (p, origin) => origin + p / k;
-  const clipD = clip ? distanceFn(clip) : null;
-  const clipCov = (gx, gy) => (clipD ? 0.5 - clipD(gx, gy) * k : 1);
 
-  if (background) {
-    const top = hexRGB(background.top);
-    const bottom = hexRGB(background.bottom);
-    const y0 = clip ? clip.y : view.y;
-    const h = clip ? clip.h : view.size;
-    c.paint(
-      (x, y) => clipCov(toGrid(x, view.x), toGrid(y, view.y)),
-      (x, y) => {
-        const t = Math.max(0, Math.min(1, (toGrid(y, view.y) - y0) / h));
-        return top.map((v, i) => v + (bottom[i] - v) * t);
-      }
-    );
-  }
   for (const s of shapes) {
     const d = distanceFn(s);
-    const rgb = hexRGB(s.color);
     const alpha = s.alpha ?? 1;
-    c.paint((x, y) => {
-      const gx = toGrid(x, view.x);
-      const gy = toGrid(y, view.y);
-      const ax = 54 + (gx - 54) / artScale;
-      const ay = 54 + (gy - 54) / artScale;
-      const cov = Math.min(1, 0.5 - d(ax, ay) * artScale * k) * alpha;
-      return Math.min(cov, clipCov(gx, gy));
-    }, () => rgb);
+    c.paint((x, y) => Math.min(1, 0.5 - d(toGrid(x, view.x), toGrid(y, view.y)) * k) * alpha, colorFn(s, (y) => toGrid(y, view.y)));
   }
   return encodePNG(size, size, downsample(c, SS));
 }
 
-const tileClip = { type: 'rrect', x: TILE.x, y: TILE.y, w: TILE.size, h: TILE.size, r: TILE.radius };
-const renderTile = (size) =>
-  render(size, TILE_VIEW, {
-    background: { top: BG_TOP, bottom: BG_BOTTOM },
-    shapes: FOREGROUND,
-    artScale: TILE_ART_SCALE,
-    clip: tileClip,
-  });
+const renderIcon = (size, shapes) => render(size, ICON_VIEW, { shapes });
 
 function drawDot(size, color) {
   const mid = size / 2;
@@ -335,28 +313,22 @@ function vectorPath(s) {
   }
 }
 
-function svgShape(s) {
+function svgShape(s, i) {
   const p = vectorPath(s);
   const alpha = s.alpha != null ? ` opacity="${s.alpha}"` : '';
-  return p.stroke
-    ? `<path d="${p.d}" fill="none" stroke="${s.color}" stroke-width="${p.width}"${p.cap ? ` stroke-linecap="${p.cap}"` : ''}${alpha}/>`
-    : `<path d="${p.d}" fill="${s.color}"${alpha}/>`;
+  if (p.stroke) {
+    return `<path d="${p.d}" fill="none" stroke="${s.color}" stroke-width="${p.width}"${p.cap ? ` stroke-linecap="${p.cap}"` : ''}${alpha}/>`;
+  }
+  if (!Array.isArray(s.color)) return `<path d="${p.d}" fill="${s.color}"${alpha}/>`;
+  const [top, bottom] = s.color;
+  return `<linearGradient id="g${i}" x1="0" y1="${s.cy - s.r}" x2="0" y2="${s.cy + s.r}" gradientUnits="userSpaceOnUse">` +
+    `<stop offset="0" stop-color="${top}"/><stop offset="1" stop-color="${bottom}"/></linearGradient>` +
+    `<path d="${p.d}" fill="url(#g${i})"${alpha}/>`;
 }
 
-function iconSVG() {
-  const { y, size } = TILE;
-  const tile = vectorPath(tileClip).d;
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="${TILE_VIEW.x} ${TILE_VIEW.y} ${TILE_VIEW.size} ${TILE_VIEW.size}">
-  <defs>
-    <linearGradient id="bg" x1="0" y1="${y}" x2="0" y2="${y + size}" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="${BG_TOP}"/>
-      <stop offset="1" stop-color="${BG_BOTTOM}"/>
-    </linearGradient>
-  </defs>
-  <path d="${tile}" fill="url(#bg)"/>
-  <g transform="translate(54 54) scale(${TILE_ART_SCALE}) translate(-54 -54)">
-    ${FOREGROUND.map(svgShape).join('\n    ')}
-  </g>
+function iconSVG(shapes) {
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="${ICON_VIEW.x} ${ICON_VIEW.y} ${ICON_VIEW.size} ${ICON_VIEW.size}">
+  ${shapes.map(svgShape).join('\n  ')}
 </svg>
 `;
 }
@@ -366,13 +338,28 @@ function vectorDrawable(shapes) {
     const p = vectorPath(s);
     const attrs = p.stroke
       ? [`android:strokeColor="${s.color}"`, `android:strokeWidth="${p.width}"`, ...(p.cap ? [`android:strokeLineCap="${p.cap}"`] : [])]
-      : [`android:fillColor="${s.color}"`];
+      : Array.isArray(s.color) ? [] : [`android:fillColor="${s.color}"`];
     if (s.alpha != null) attrs.push(`android:${p.stroke ? 'strokeAlpha' : 'fillAlpha'}="${s.alpha}"`);
-    return `    <path\n        ${attrs.join('\n        ')}\n        android:pathData="${p.d}"/>`;
+    attrs.push(`android:pathData="${p.d}"`);
+    if (!Array.isArray(s.color)) return `    <path\n        ${attrs.join('\n        ')}/>`;
+    const [top, bottom] = s.color;
+    return `    <path\n        ${attrs.join('\n        ')}>
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="linear"
+                android:startX="0"
+                android:startY="${s.cy - s.r}"
+                android:endX="0"
+                android:endY="${s.cy + s.r}"
+                android:startColor="${top}"
+                android:endColor="${bottom}"/>
+        </aapt:attr>
+    </path>`;
   });
   return `<?xml version="1.0" encoding="utf-8"?>
 <!-- Generated by windows/scripts/generate-icons.cjs (npm run icons). Do not edit by hand. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
@@ -386,10 +373,7 @@ const androidBackground = `<?xml version="1.0" encoding="utf-8"?>
 <!-- Generated by windows/scripts/generate-icons.cjs (npm run icons). Do not edit by hand. -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android"
     android:shape="rectangle">
-    <gradient
-        android:angle="270"
-        android:startColor="${BG_TOP}"
-        android:endColor="${BG_BOTTOM}"/>
+    <solid android:color="${ANDROID_BACKGROUND}"/>
 </shape>
 `;
 
@@ -399,19 +383,18 @@ const assetsDir = path.join(__dirname, '..', 'assets');
 fs.mkdirSync(assetsDir, { recursive: true });
 
 const ICO_SIZES = [16, 20, 24, 32, 40, 48, 64, 96, 128, 256];
-const tiles = ICO_SIZES.map((size) => ({ size, png: renderTile(size) }));
-fs.writeFileSync(path.join(assetsDir, 'icon.svg'), iconSVG());
-fs.writeFileSync(path.join(assetsDir, 'icon-256.png'), tiles.at(-1).png);
-fs.writeFileSync(path.join(assetsDir, 'icon.ico'), encodeICO(tiles));
-fs.writeFileSync(
-  path.join(assetsDir, 'tray-idle.png'),
-  render(32, TRAY_VIEW, { shapes: MONOCHROME.map((s) => ({ ...s, color: SLATE })) })
-);
+const icons = ICO_SIZES.map((size) => ({ size, png: renderIcon(size, ICON) }));
+fs.writeFileSync(path.join(assetsDir, 'icon.svg'), iconSVG(ICON));
+fs.writeFileSync(path.join(assetsDir, 'icon-256.png'), icons.at(-1).png);
+fs.writeFileSync(path.join(assetsDir, 'icon.ico'), encodeICO(icons));
+// Idle tray icon: the same dial in grey, so the coloured running dot stands out against it
+const TRAY_IDLE = ICON.map((s, i) => (i === 0 ? { ...s, color: ['#A1A1AA', '#71717A'] } : s));
+fs.writeFileSync(path.join(assetsDir, 'tray-idle.png'), renderIcon(32, TRAY_IDLE));
 fs.writeFileSync(path.join(assetsDir, 'tray-running.png'), drawDot(32, RED));
 
 const androidRes = path.join(__dirname, '..', '..', 'android', 'app', 'src', 'main', 'res', 'drawable');
 fs.writeFileSync(path.join(androidRes, 'ic_launcher_background.xml'), androidBackground);
-fs.writeFileSync(path.join(androidRes, 'ic_launcher_foreground.xml'), vectorDrawable(FOREGROUND));
+fs.writeFileSync(path.join(androidRes, 'ic_launcher_foreground.xml'), vectorDrawable(ICON));
 fs.writeFileSync(path.join(androidRes, 'ic_launcher_monochrome.xml'), vectorDrawable(MONOCHROME));
 
 console.log('Icons written to assets/ and android/app/src/main/res/drawable/');
