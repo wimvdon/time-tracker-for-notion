@@ -161,6 +161,11 @@ function createWindow() {
     },
   });
 
+  // The window only ever shows the bundled UI. Links go through
+  // shell:openExternal, so block in-window navigation and new windows.
+  mainWindow.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+  mainWindow.webContents.on('will-navigate', (event) => event.preventDefault());
+
   if (process.env.VITE_DEV_SERVER_URL) {
     mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL);
   } else {
