@@ -2,7 +2,7 @@
 //   assets/icon.svg         – master artwork (Windows tile), for reference
 //   assets/icon.ico         – Windows app/installer icon, 16–256 px (PNG-in-ICO)
 //   assets/icon-256.png     – window icon on non-Windows platforms
-//   assets/tray-idle.png    – tray icon, idle (stopwatch badge)
+//   assets/tray-idle.png    – tray icon, idle (stopwatch)
 //   assets/tray-running.png – tray icon, running (red dot)
 //   ../android/app/src/main/res/drawable/ic_launcher_*.xml – Android adaptive icon layers
 // Every size is rendered straight from the vectors, so small sizes stay crisp.
@@ -83,81 +83,50 @@ function encodeICO(images) {
 // keeps everything within a radius of 33 from the centre. Angles run clockwise from 12 o'clock.
 
 const WHITE = '#FAFAFA';
-const RED = '#E53935';
 const SLATE = '#CBD5E1';
-const BG_TOP = '#34343A';
-const BG_BOTTOM = '#18181B'; // zinc-900, the app's dark background
+const RED = '#E53935'; // close to the Android app's primary red
+const BACKGROUND = RED; // flat, no gradient
 
 const polar = (cx, cy, r, deg) => {
   const a = ((deg - 90) * Math.PI) / 180;
   return [cx + r * Math.cos(a), cy + r * Math.sin(a)];
 };
 
-// Scales a shape drawn at design size into place on the grid (keeps the art inside the safe zone)
-const ART = { from: [56, 56], to: [54, 54], scale: 0.88 };
-const px = (x) => ART.to[0] + (x - ART.from[0]) * ART.scale;
-const py = (y) => ART.to[1] + (y - ART.from[1]) * ART.scale;
-const pl = (l) => l * ART.scale;
-function place(s) {
-  const out = { ...s };
-  for (const k of ['x', 'x1', 'x2', 'cx']) if (k in s) out[k] = px(s[k]);
-  for (const k of ['y', 'y1', 'y2', 'cy']) if (k in s) out[k] = py(s[k]);
-  for (const k of ['w', 'h', 'r', 'width']) if (k in s) out[k] = pl(s[k]);
-  if (s.points) out.points = s.points.map(([x, y]) => [px(x), py(y)]);
-  if (s.rotate) out.rotate = { ...s.rotate, cx: px(s.rotate.cx), cy: py(s.rotate.cy) };
-  return out;
-}
+const FACE = { cx: 54, cy: 59 };
+const HAND_END = polar(FACE.cx, FACE.cy, 13, 135);
 
-// A time log: a tilted sheet with three entries
-const SHEET_TILT = { deg: -7, cx: 50, cy: 52 };
-const SHEET = { type: 'rrect', x: 31, y: 29, w: 38, h: 46, r: 7, rotate: SHEET_TILT };
-const ENTRIES = [
-  { type: 'rrect', x: 37.5, y: 38, w: 25, h: 5, r: 2.5, rotate: SHEET_TILT },
-  { type: 'rrect', x: 37.5, y: 48, w: 18, h: 5, r: 2.5, rotate: SHEET_TILT },
-  { type: 'rrect', x: 37.5, y: 58, w: 11, h: 5, r: 2.5, rotate: SHEET_TILT },
+// Stopwatch outline: crown, side button, case, hand
+const OUTLINE = [
+  { type: 'rrect', x: 47.5, y: 25, w: 13, h: 6, r: 3 },
+  { type: 'rrect', x: 51.5, y: 29, w: 5, h: 7, r: 1 },
+  { type: 'poly', points: [[70.5, 33.5], [74.7, 37.7], [71.3, 41.1], [67.1, 36.9]] },
+  { type: 'ring', ...FACE, r: 23, width: 6 },
+  { type: 'line', x1: FACE.cx, y1: FACE.cy, x2: HAND_END[0], y2: HAND_END[1], width: 4.5 },
+  { type: 'circle', ...FACE, r: 3.6 },
 ];
-// ...with a running stopwatch badge on its corner
-const BADGE = { cx: 68, cy: 70 };
-const HOUR_END = polar(BADGE.cx, BADGE.cy, 7, 110);
-const BADGE_CROWN = { type: 'rrect', x: 65, y: 49.5, w: 6, h: 4, r: 1.5 };
-const BADGE_HALO = { type: 'circle', ...BADGE, r: 16.5 };
-const BADGE_FACE = { type: 'circle', ...BADGE, r: 14 };
-const HANDS = [
-  { type: 'line', x1: BADGE.cx, y1: BADGE.cy, x2: BADGE.cx, y2: 61.5, width: 3.6 },
-  { type: 'line', x1: BADGE.cx, y1: BADGE.cy, x2: HOUR_END[0], y2: HOUR_END[1], width: 3.6 },
-];
+// Elapsed time, a translucent wedge behind the hand
+const ELAPSED = { type: 'wedge', ...FACE, r: 16.5, from: 0, to: 135, alpha: 0.4 };
 
-const FOREGROUND = [
-  { ...SHEET, color: WHITE },
-  { ...ENTRIES[0], color: '#3F3F46' }, // zinc-700
-  { ...ENTRIES[1], color: '#A1A1AA' }, // zinc-400
-  { ...ENTRIES[2], color: '#A1A1AA' },
-  { ...BADGE_HALO, color: BG_BOTTOM },
-  { ...BADGE_CROWN, color: RED },
-  { ...BADGE_FACE, color: RED },
-  ...HANDS.map((s) => ({ ...s, color: WHITE })),
-].map(place);
-// Android 13+ themed icon: the launcher tints this single-colour layer, so depth comes from alpha
-const MONOCHROME = [
-  { ...SHEET, color: '#FFFFFF', alpha: 0.35 },
-  ...ENTRIES.map((s) => ({ ...s, color: '#FFFFFF' })),
-  { ...BADGE_CROWN, color: '#FFFFFF' },
-  { type: 'ring', ...BADGE, r: 12.5, width: 3, color: '#FFFFFF' },
-  ...HANDS.map((s) => ({ ...s, color: '#FFFFFF' })),
-].map(place);
-// Tray: the stopwatch badge alone
-const TRAY_GLYPH = [
-  BADGE_CROWN,
-  { type: 'ring', ...BADGE, r: 12.5, width: 3.4 },
-  ...HANDS,
-].map((s) => ({ ...s, color: SLATE }));
+const FOREGROUND = [ELAPSED, ...OUTLINE].map((s) => ({ ...s, color: WHITE }));
+// Android 13+ themed icon: the launcher tints this single-colour layer
+const MONOCHROME = [ELAPSED, ...OUTLINE].map((s) => ({ ...s, color: '#FFFFFF' }));
+// Tray: the same stopwatch in slate
+const TRAY_GLYPH = [ELAPSED, ...OUTLINE].map((s) => ({ ...s, color: SLATE }));
 
 // Windows tile: a rounded square cut from the adaptive grid, artwork inset slightly
 const TILE = { x: 20, y: 20, size: 68, radius: 15 };
 const TILE_VIEW = { x: 19, y: 19, size: 70 };
-const TILE_ART_SCALE = 0.92;
-// Tray view is in design units, framing the badge
-const TRAY_VIEW = { x: 50, y: 49, size: 36 };
+const TILE_ART_SCALE = 0.9;
+// Tray: the stopwatch alone, filling the icon
+const TRAY_VIEW = { x: 23, y: 24, size: 62 };
+
+// Wedges become polygons so every renderer only needs straight edges
+function wedgePoints({ cx, cy, r, from, to }) {
+  const steps = Math.max(8, Math.ceil((to - from) / 4));
+  const pts = [[cx, cy]];
+  for (let i = 0; i <= steps; i++) pts.push(polar(cx, cy, r, from + ((to - from) * i) / steps));
+  return pts;
+}
 
 // ---- Signed distance per shape (negative inside), in grid units ----
 
@@ -212,6 +181,8 @@ function distanceFn(s) {
     }
     case 'poly':
       return polygonDistance(s.points);
+    case 'wedge':
+      return polygonDistance(wedgePoints(s));
     default:
       throw new Error(`Unknown shape ${s.type}`);
   }
@@ -291,17 +262,8 @@ function render(size, view, { background, shapes, artScale = 1, clip }) {
   const clipCov = (gx, gy) => (clipD ? 0.5 - clipD(gx, gy) * k : 1);
 
   if (background) {
-    const top = hexRGB(background.top);
-    const bottom = hexRGB(background.bottom);
-    const y0 = clip ? clip.y : view.y;
-    const h = clip ? clip.h : view.size;
-    c.paint(
-      (x, y) => clipCov(toGrid(x, view.x), toGrid(y, view.y)),
-      (x, y) => {
-        const t = Math.max(0, Math.min(1, (toGrid(y, view.y) - y0) / h));
-        return top.map((v, i) => v + (bottom[i] - v) * t);
-      }
-    );
+    const rgb = hexRGB(background);
+    c.paint((x, y) => clipCov(toGrid(x, view.x), toGrid(y, view.y)), () => rgb);
   }
   for (const s of shapes) {
     const d = distanceFn(s);
@@ -322,7 +284,7 @@ function render(size, view, { background, shapes, artScale = 1, clip }) {
 const tileClip = { type: 'rrect', x: TILE.x, y: TILE.y, w: TILE.size, h: TILE.size, r: TILE.radius };
 const renderTile = (size) =>
   render(size, TILE_VIEW, {
-    background: { top: BG_TOP, bottom: BG_BOTTOM },
+    background: BACKGROUND,
     shapes: FOREGROUND,
     artScale: TILE_ART_SCALE,
     clip: tileClip,
@@ -357,6 +319,12 @@ function vectorPath(s) {
     }
     case 'poly':
       return { d: 'M' + s.points.map(([x, y]) => `${n(x)},${n(y)}`).join('L') + 'z' };
+    case 'wedge': {
+      const [x0, y0] = polar(s.cx, s.cy, s.r, s.from);
+      const [x1, y1] = polar(s.cx, s.cy, s.r, s.to);
+      const large = s.to - s.from > 180 ? 1 : 0;
+      return { d: `M${s.cx},${s.cy}L${n(x0)},${n(y0)}A${s.r},${s.r} 0 ${large},1 ${n(x1)},${n(y1)}z` };
+    }
     default:
       throw new Error(`Unknown shape ${s.type}`);
   }
@@ -372,16 +340,9 @@ function svgShape(s) {
 }
 
 function iconSVG() {
-  const { y, size } = TILE;
   const tile = vectorPath(tileClip).d;
   return `<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="${TILE_VIEW.x} ${TILE_VIEW.y} ${TILE_VIEW.size} ${TILE_VIEW.size}">
-  <defs>
-    <linearGradient id="bg" x1="0" y1="${y}" x2="0" y2="${y + size}" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="${BG_TOP}"/>
-      <stop offset="1" stop-color="${BG_BOTTOM}"/>
-    </linearGradient>
-  </defs>
-  <path d="${tile}" fill="url(#bg)"/>
+  <path d="${tile}" fill="${BACKGROUND}"/>
   <g transform="translate(54 54) scale(${TILE_ART_SCALE}) translate(-54 -54)">
     ${FOREGROUND.map(svgShape).join('\n    ')}
   </g>
@@ -417,10 +378,7 @@ const androidBackground = `<?xml version="1.0" encoding="utf-8"?>
 <!-- Generated by windows/scripts/generate-icons.cjs (npm run icons). Do not edit by hand. -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android"
     android:shape="rectangle">
-    <gradient
-        android:angle="270"
-        android:startColor="${BG_TOP}"
-        android:endColor="${BG_BOTTOM}"/>
+    <solid android:color="${BACKGROUND}"/>
 </shape>
 `;
 
