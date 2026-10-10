@@ -94,13 +94,13 @@ const polar = (cx, cy, r, deg) => {
 };
 
 const FACE = { cx: 54, cy: 54 };
-const DIAL_RADIUS = 30;
-const HAND_END = polar(FACE.cx, FACE.cy, 14, 135);
+const DIAL_RADIUS = 27;
+const HAND_END = polar(FACE.cx, FACE.cy, 16.5, 135);
 
-const HAND = { type: 'line', x1: FACE.cx, y1: FACE.cy, x2: HAND_END[0], y2: HAND_END[1], width: 4.5 };
-const PIVOT = { type: 'circle', ...FACE, r: 3.6 };
+const HAND = { type: 'line', x1: FACE.cx, y1: FACE.cy, x2: HAND_END[0], y2: HAND_END[1], width: 5.5 };
+const PIVOT = { type: 'circle', ...FACE, r: 4.2 };
 // Elapsed time, a translucent wedge behind the hand
-const ELAPSED = { type: 'wedge', ...FACE, r: 21, from: 0, to: 135 };
+const ELAPSED = { type: 'wedge', ...FACE, r: 20, from: 0, to: 135 };
 
 // A filled red dial: it reads on light and dark surfaces alike, so one icon works everywhere.
 // The dial is shaded top to bottom; `color` as [top, bottom] is a vertical gradient over the shape.
@@ -119,7 +119,7 @@ const MONOCHROME = [
 ].map((s) => ({ ...s, color: '#FFFFFF' }));
 
 // Windows: the stopwatch alone on a transparent background
-const ICON_VIEW = { x: 23, y: 23, size: 62 };
+const ICON_VIEW = { x: 25, y: 25, size: 58 };
 
 // Wedges become polygons so every renderer only needs straight edges
 function wedgePoints({ cx, cy, r, from, to }) {
