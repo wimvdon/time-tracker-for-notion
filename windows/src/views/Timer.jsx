@@ -841,12 +841,14 @@ function presetLabel(workspace, preset) {
   return name && name !== workspace.name ? `${workspace.name} – ${name}` : workspace.name;
 }
 
-/** Quick-start preset chips — shown when any workspace has presets, in both
+/** Quick-start preset chips — shown when an API key is set and any workspace
+ *  has presets, in both
  *  the idle form and the running view. Clicking one while a timer is already
  *  running goes through `applyPreset`'s "already running" confirmation. */
 function PresetChips({ workspaces, apiKey, onApplyPreset, onManageClick, className = '' }) {
   const isDarkTheme = useIsDarkTheme();
-  if (!workspaces.some((w) => (w.presets?.length ?? 0) > 0)) return null;
+  // Hidden (not just disabled) without an API key, same as on Android.
+  if (!apiKey || !workspaces.some((w) => (w.presets?.length ?? 0) > 0)) return null;
   return (
     <div className={`w-full flex flex-wrap items-center gap-1.5 ${className}`}>
       {workspaces.flatMap((w) =>
@@ -864,10 +866,9 @@ function PresetChips({ workspaces, apiKey, onApplyPreset, onManageClick, classNa
             <button
               key={`${w.id}:${preset.id}`}
               onClick={() => onApplyPreset(w.id, preset)}
-              disabled={!apiKey}
               title={label}
               style={chipStyle}
-              className="flex items-center gap-1 min-w-0 max-w-full px-2.5 py-1 bg-zinc-800 hover:bg-emerald-700 border border-zinc-700 hover:border-emerald-600 rounded-full text-xs text-zinc-300 hover:text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              className="flex items-center gap-1 min-w-0 max-w-full px-2.5 py-1 bg-zinc-800 hover:bg-emerald-700 border border-zinc-700 hover:border-emerald-600 rounded-full text-xs text-zinc-300 hover:text-white transition-colors"
             >
               <Play20Regular className="w-3 h-3 shrink-0" />
               <span className="min-w-0 truncate">{label}</span>
