@@ -1,9 +1,8 @@
 // Generates every app icon from one vector definition, without image dependencies:
-//   assets/icon-on-{dark,light}.ico – Windows icon for dark/light taskbars, 16–256 px (PNG-in-ICO)
-//   assets/icon-on-{dark,light}.svg – the same artwork as vectors, for reference
-//   assets/icon.ico         – installer/shortcut icon (the light-surface version)
+//   assets/icon.svg         – master artwork, for reference
+//   assets/icon.ico         – Windows app/installer icon, 16–256 px (PNG-in-ICO)
 //   assets/icon-256.png     – window icon on non-Windows platforms
-//   assets/tray-idle-on-{dark,light}.png – tray icon, idle (stopwatch)
+//   assets/tray-idle.png    – tray icon, idle (the same dial, in grey)
 //   assets/tray-running.png – tray icon, running (red dot)
 //   ../android/app/src/main/res/drawable/ic_launcher_*.xml – Android adaptive icon layers
 // Every size is rendered straight from the vectors, so small sizes stay crisp.
@@ -85,7 +84,8 @@ function encodeICO(images) {
 
 const WHITE = '#FAFAFA';
 const RED = '#E53935';
-const INK = '#18181B'; // zinc-900, the app's dark background
+const RED_TOP = '#F05252';
+const RED_BOTTOM = '#C62828';
 const ANDROID_BACKGROUND = '#FFFFFF';
 
 const polar = (cx, cy, r, deg) => {
@@ -93,39 +93,33 @@ const polar = (cx, cy, r, deg) => {
   return [cx + r * Math.cos(a), cy + r * Math.sin(a)];
 };
 
-const FACE = { cx: 54, cy: 59 };
-const HAND_END = polar(FACE.cx, FACE.cy, 13, 135);
+const FACE = { cx: 54, cy: 54 };
+const DIAL_RADIUS = 27;
+const HAND_END = polar(FACE.cx, FACE.cy, 14, 135);
 
-// Stopwatch outline: crown, side button, case, hand
-const OUTLINE = [
-  { type: 'rrect', x: 47.5, y: 25, w: 13, h: 6, r: 3 },
-  { type: 'rrect', x: 51.5, y: 29, w: 5, h: 7, r: 1 },
-  { type: 'poly', points: [[70.5, 33.5], [74.7, 37.7], [71.3, 41.1], [67.1, 36.9]] },
-  { type: 'ring', ...FACE, r: 23, width: 6 },
-  { type: 'line', x1: FACE.cx, y1: FACE.cy, x2: HAND_END[0], y2: HAND_END[1], width: 4.5 },
-  { type: 'circle', ...FACE, r: 3.6 },
-];
-// Elapsed time, filled red behind the hand
-const ELAPSED = { type: 'wedge', ...FACE, r: 16.5, from: 0, to: 135 };
+const HAND = { type: 'line', x1: FACE.cx, y1: FACE.cy, x2: HAND_END[0], y2: HAND_END[1], width: 4.5 };
+const PIVOT = { type: 'circle', ...FACE, r: 3.6 };
+// Elapsed time, a translucent wedge behind the hand
+const ELAPSED = { type: 'wedge', ...FACE, r: 17.5, from: 0, to: 135 };
 
-// The icon has no tile behind it, so it comes in two colourings: a white stopwatch with a dark
-// face for dark surfaces, and the inverse for light ones. The red wedge stays the same.
-const FACE_DISC = { type: 'circle', ...FACE, r: 23 };
-const stopwatch = (body, face) => [
-  { ...FACE_DISC, color: face },
-  { ...ELAPSED, color: RED },
-  ...OUTLINE.map((s) => ({ ...s, color: body })),
+// A filled red dial: it reads on light and dark surfaces alike, so one icon works everywhere.
+// The dial is shaded top to bottom; `color` as [top, bottom] is a vertical gradient over the shape.
+const ICON = [
+  { type: 'circle', ...FACE, r: DIAL_RADIUS, color: [RED_TOP, RED_BOTTOM] },
+  { ...ELAPSED, color: WHITE, alpha: 0.35 },
+  { ...HAND, color: WHITE },
+  { ...PIVOT, color: WHITE },
 ];
-const ON_DARK = stopwatch(WHITE, INK);
-const ON_LIGHT = stopwatch(INK, WHITE);
-// Android 13+ themed icon: the launcher tints this single-colour layer
+// Android 13+ themed icon: the launcher tints this single-colour layer, so it's drawn as a line glyph
 const MONOCHROME = [
-  { ...ELAPSED, color: '#FFFFFF', alpha: 0.5 },
-  ...OUTLINE.map((s) => ({ ...s, color: '#FFFFFF' })),
-];
+  { type: 'ring', ...FACE, r: DIAL_RADIUS - 3, width: 6 },
+  { ...ELAPSED, alpha: 0.5 },
+  HAND,
+  PIVOT,
+].map((s) => ({ ...s, color: '#FFFFFF' }));
 
 // Windows: the stopwatch alone on a transparent background
-const ICON_VIEW = { x: 21, y: 23, size: 66 };
+const ICON_VIEW = { x: 25, y: 25, size: 58 };
 
 // Wedges become polygons so every renderer only needs straight edges
 function wedgePoints({ cx, cy, r, from, to }) {
@@ -189,6 +183,19 @@ function distanceFn(s) {
 // ---- Rasterizer (anti-aliased via signed distance, supersampled) ----
 
 const hexRGB = (hex) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+
+// Gradients only run over circles (the stopwatch body), top to bottom
+function colorFn(s, gridY) {
+  if (!Array.isArray(s.color)) {
+    const rgb = hexRGB(s.color);
+    return () => rgb;
+  }
+  const [top, bottom] = s.color.map(hexRGB);
+  return (x, y) => {
+    const t = Math.max(0, Math.min(1, (gridY(y) - (s.cy - s.r)) / (2 * s.r)));
+    return top.map((v, i) => v + (bottom[i] - v) * t);
+  };
+}
 
 class Canvas {
   constructor(size) {
@@ -258,9 +265,8 @@ function render(size, view, { shapes }) {
 
   for (const s of shapes) {
     const d = distanceFn(s);
-    const rgb = hexRGB(s.color);
     const alpha = s.alpha ?? 1;
-    c.paint((x, y) => Math.min(1, 0.5 - d(toGrid(x, view.x), toGrid(y, view.y)) * k) * alpha, () => rgb);
+    c.paint((x, y) => Math.min(1, 0.5 - d(toGrid(x, view.x), toGrid(y, view.y)) * k) * alpha, colorFn(s, (y) => toGrid(y, view.y)));
   }
   return encodePNG(size, size, downsample(c, SS));
 }
@@ -307,12 +313,17 @@ function vectorPath(s) {
   }
 }
 
-function svgShape(s) {
+function svgShape(s, i) {
   const p = vectorPath(s);
   const alpha = s.alpha != null ? ` opacity="${s.alpha}"` : '';
-  return p.stroke
-    ? `<path d="${p.d}" fill="none" stroke="${s.color}" stroke-width="${p.width}"${p.cap ? ` stroke-linecap="${p.cap}"` : ''}${alpha}/>`
-    : `<path d="${p.d}" fill="${s.color}"${alpha}/>`;
+  if (p.stroke) {
+    return `<path d="${p.d}" fill="none" stroke="${s.color}" stroke-width="${p.width}"${p.cap ? ` stroke-linecap="${p.cap}"` : ''}${alpha}/>`;
+  }
+  if (!Array.isArray(s.color)) return `<path d="${p.d}" fill="${s.color}"${alpha}/>`;
+  const [top, bottom] = s.color;
+  return `<linearGradient id="g${i}" x1="0" y1="${s.cy - s.r}" x2="0" y2="${s.cy + s.r}" gradientUnits="userSpaceOnUse">` +
+    `<stop offset="0" stop-color="${top}"/><stop offset="1" stop-color="${bottom}"/></linearGradient>` +
+    `<path d="${p.d}" fill="url(#g${i})"${alpha}/>`;
 }
 
 function iconSVG(shapes) {
@@ -327,13 +338,28 @@ function vectorDrawable(shapes) {
     const p = vectorPath(s);
     const attrs = p.stroke
       ? [`android:strokeColor="${s.color}"`, `android:strokeWidth="${p.width}"`, ...(p.cap ? [`android:strokeLineCap="${p.cap}"`] : [])]
-      : [`android:fillColor="${s.color}"`];
+      : Array.isArray(s.color) ? [] : [`android:fillColor="${s.color}"`];
     if (s.alpha != null) attrs.push(`android:${p.stroke ? 'strokeAlpha' : 'fillAlpha'}="${s.alpha}"`);
-    return `    <path\n        ${attrs.join('\n        ')}\n        android:pathData="${p.d}"/>`;
+    attrs.push(`android:pathData="${p.d}"`);
+    if (!Array.isArray(s.color)) return `    <path\n        ${attrs.join('\n        ')}/>`;
+    const [top, bottom] = s.color;
+    return `    <path\n        ${attrs.join('\n        ')}>
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="linear"
+                android:startX="0"
+                android:startY="${s.cy - s.r}"
+                android:endX="0"
+                android:endY="${s.cy + s.r}"
+                android:startColor="${top}"
+                android:endColor="${bottom}"/>
+        </aapt:attr>
+    </path>`;
   });
   return `<?xml version="1.0" encoding="utf-8"?>
 <!-- Generated by windows/scripts/generate-icons.cjs (npm run icons). Do not edit by hand. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
@@ -357,23 +383,18 @@ const assetsDir = path.join(__dirname, '..', 'assets');
 fs.mkdirSync(assetsDir, { recursive: true });
 
 const ICO_SIZES = [16, 20, 24, 32, 40, 48, 64, 96, 128, 256];
-for (const [surface, shapes] of [['dark', ON_DARK], ['light', ON_LIGHT]]) {
-  const icons = ICO_SIZES.map((size) => ({ size, png: renderIcon(size, shapes) }));
-  fs.writeFileSync(path.join(assetsDir, `icon-on-${surface}.ico`), encodeICO(icons));
-  fs.writeFileSync(path.join(assetsDir, `icon-on-${surface}.svg`), iconSVG(shapes));
-  fs.writeFileSync(path.join(assetsDir, `tray-idle-on-${surface}.png`), renderIcon(32, shapes));
-  // The installer, shortcuts and Start menu can't follow the theme; they use the light-surface
-  // version, matching Windows 11's default light theme
-  if (surface === 'light') {
-    fs.writeFileSync(path.join(assetsDir, 'icon.ico'), encodeICO(icons));
-    fs.writeFileSync(path.join(assetsDir, 'icon-256.png'), icons.at(-1).png);
-  }
-}
+const icons = ICO_SIZES.map((size) => ({ size, png: renderIcon(size, ICON) }));
+fs.writeFileSync(path.join(assetsDir, 'icon.svg'), iconSVG(ICON));
+fs.writeFileSync(path.join(assetsDir, 'icon-256.png'), icons.at(-1).png);
+fs.writeFileSync(path.join(assetsDir, 'icon.ico'), encodeICO(icons));
+// Idle tray icon: the same dial in grey, so the coloured running dot stands out against it
+const TRAY_IDLE = ICON.map((s, i) => (i === 0 ? { ...s, color: ['#A1A1AA', '#71717A'] } : s));
+fs.writeFileSync(path.join(assetsDir, 'tray-idle.png'), renderIcon(32, TRAY_IDLE));
 fs.writeFileSync(path.join(assetsDir, 'tray-running.png'), drawDot(32, RED));
 
 const androidRes = path.join(__dirname, '..', '..', 'android', 'app', 'src', 'main', 'res', 'drawable');
 fs.writeFileSync(path.join(androidRes, 'ic_launcher_background.xml'), androidBackground);
-fs.writeFileSync(path.join(androidRes, 'ic_launcher_foreground.xml'), vectorDrawable(ON_LIGHT));
+fs.writeFileSync(path.join(androidRes, 'ic_launcher_foreground.xml'), vectorDrawable(ICON));
 fs.writeFileSync(path.join(androidRes, 'ic_launcher_monochrome.xml'), vectorDrawable(MONOCHROME));
 
 console.log('Icons written to assets/ and android/app/src/main/res/drawable/');
