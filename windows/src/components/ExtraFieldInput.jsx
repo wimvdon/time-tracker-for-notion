@@ -8,8 +8,8 @@ import SearchableSelect from './SearchableSelect.jsx';
  * Pass `error={true}` to highlight the field red (required field not filled).
  */
 export default function ExtraFieldInput({ def, value, onChange, disabled, error }) {
-  const borderClass = error ? 'border-red-500' : 'border-zinc-700';
-  const inputClass = `w-full bg-zinc-800 border ${borderClass} rounded-md px-3 py-2 text-sm placeholder-zinc-600`;
+  const borderClass = error ? 'border-danger' : 'border-stroke';
+  const inputClass = `w-full bg-control border ${borderClass} rounded-md px-3 py-2 text-sm placeholder-fg3`;
 
   const input = () => {
     switch (def.type) {
@@ -40,7 +40,7 @@ export default function ExtraFieldInput({ def, value, onChange, disabled, error 
             checked={!!value}
             onChange={(e) => onChange(e.target.checked)}
             disabled={disabled}
-            className="accent-emerald-500"
+            className="accent-accent"
           />
         );
       case 'select':
@@ -59,14 +59,14 @@ export default function ExtraFieldInput({ def, value, onChange, disabled, error 
             options={selectOpts}
             placeholder={t('placeholderSelect')}
             disabled={disabled}
-            triggerClass={`bg-zinc-800 ${error ? 'border-red-500' : ''}`}
+            triggerClass={`bg-control ${error ? 'border-danger' : ''}`}
             className="w-full"
           />
         );
       }
       case 'multi_select':
         return (
-          <div className={`flex flex-wrap gap-1 ${error ? 'rounded-md ring-1 ring-red-500 p-1' : ''}`}>
+          <div className={`flex flex-wrap gap-1 ${error ? 'rounded-md ring-1 ring-danger p-1' : ''}`}>
             {def.options.map((o) => {
               const active = value.includes(o.name);
               return (
@@ -78,8 +78,8 @@ export default function ExtraFieldInput({ def, value, onChange, disabled, error 
                   disabled={disabled}
                   className={`px-2 py-1 rounded-md text-xs border transition-colors ${
                     active
-                      ? 'bg-emerald-600 border-emerald-500 text-white'
-                      : 'bg-zinc-700 border-zinc-600 text-zinc-200 hover:border-zinc-400'
+                      ? 'bg-accent border-accent text-on-accent'
+                      : 'bg-control border-stroke text-fg1 hover:bg-control-hover'
                   }`}
                 >
                   {o.name}
@@ -133,7 +133,7 @@ export default function ExtraFieldInput({ def, value, onChange, disabled, error 
     }
   };
 
-  const labelClass = `text-xs ${error ? 'text-red-400' : 'text-zinc-400'}`;
+  const labelClass = `text-xs ${error ? 'text-danger' : 'text-fg2'}`;
 
   if (def.type === 'checkbox') {
     return (

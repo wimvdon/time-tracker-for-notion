@@ -92,7 +92,7 @@ export default function Settings() {
       <div className="flex items-center gap-2">
         <button
           onClick={() => setView('timer')}
-          className="text-zinc-400 hover:text-zinc-100 text-lg"
+          className="text-fg2 hover:text-fg1 text-lg"
           title={t('titleBack')}
         >
           {t('btnBack')}
@@ -101,25 +101,25 @@ export default function Settings() {
       </div>
 
       {firstLaunch && (
-        <div className="text-xs bg-blue-900/40 border border-blue-700 text-blue-200 rounded-md p-2">
+        <div className="text-xs bg-info-bg border border-info-stroke text-fg1 rounded-md p-2">
           {t('firstLaunchHint')}
         </div>
       )}
 
       <div>
-        <label className="block text-xs text-zinc-400 mb-1">{t('labelApiKey')}</label>
+        <label className="block text-xs text-fg2 mb-1">{t('labelApiKey')}</label>
         <div className="flex gap-2">
           <input
             type={showKey ? 'text' : 'password'}
             value={keyInput}
             onChange={(e) => setKeyInput(e.target.value)}
             placeholder={t('placeholderApiKey')}
-            className="flex-1 bg-zinc-800 border border-zinc-700 rounded-md px-3 py-2 text-sm placeholder-zinc-600"
+            className="flex-1 bg-control border border-stroke rounded-md px-3 py-2 text-sm placeholder-fg3"
           />
           <button
             onClick={() => setShowKey((v) => !v)}
             title={showKey ? t('btnHideKey') : t('btnShowKey')}
-            className="px-2 bg-zinc-800 border border-zinc-700 rounded-md hover:bg-zinc-700 flex items-center justify-center"
+            className="px-2 bg-control border border-stroke rounded-md hover:bg-control-hover flex items-center justify-center"
           >
             {showKey ? <EyeOff20Regular className="w-4 h-4" /> : <Eye20Regular className="w-4 h-4" />}
           </button>
@@ -128,7 +128,7 @@ export default function Settings() {
           <button
             onClick={handleSaveAndTestKey}
             disabled={testing || !keyInput.trim()}
-            className="px-3 py-1.5 rounded-md bg-zinc-700 hover:bg-zinc-600 disabled:opacity-50 text-sm"
+            className="px-3 py-1.5 rounded-md bg-control hover:bg-control-hover active:bg-control-pressed border border-stroke disabled:opacity-50 text-sm"
           >
             {testing ? t('btnTestingKey') : t('btnTestAndSaveKey')}
           </button>
@@ -136,7 +136,7 @@ export default function Settings() {
             <button
               onClick={handleRemoveKey}
               disabled={testing}
-              className="px-3 py-1.5 rounded-md text-sm text-red-400 hover:text-red-300 hover:bg-zinc-800 disabled:opacity-50"
+              className="px-3 py-1.5 rounded-md text-sm text-danger hover:text-danger hover:bg-subtle-hover disabled:opacity-50"
             >
               {t('btnRemoveKey')}
             </button>
@@ -145,21 +145,21 @@ export default function Settings() {
       </div>
 
       <div>
-        <label className="block text-xs text-zinc-400 mb-1">{t('labelWorkspaces')}</label>
+        <label className="block text-xs text-fg2 mb-1">{t('labelWorkspaces')}</label>
         <div className="flex flex-col gap-1">
           {workspaces.length === 0 && (
-            <div className="text-xs text-zinc-600 italic py-1">{t('noWorkspacesYet')}</div>
+            <div className="text-xs text-fg3 italic py-1">{t('noWorkspacesYet')}</div>
           )}
           {workspaces.map((w, i) => (
             <div key={w.id}>
-              <div className="flex items-center justify-between bg-zinc-800 border border-zinc-700 rounded-md px-3 py-2">
+              <div className="flex items-center justify-between bg-control border border-stroke rounded-md px-3 py-2">
                 <span className="text-sm truncate">{w.name}</span>
                 <span className="flex items-center gap-1.5 ml-2 shrink-0">
                   <button
                     onClick={() => moveWorkspace(w.id, 'up')}
                     disabled={i === 0}
                     title={t('titleMoveUp')}
-                    className="text-zinc-500 hover:text-zinc-200 disabled:opacity-30 p-0.5 flex items-center justify-center"
+                    className="text-fg3 hover:text-fg1 disabled:opacity-30 p-0.5 flex items-center justify-center"
                   >
                     <ArrowUp20Regular className="w-4 h-4" />
                   </button>
@@ -167,7 +167,7 @@ export default function Settings() {
                     onClick={() => moveWorkspace(w.id, 'down')}
                     disabled={i === workspaces.length - 1}
                     title={t('titleMoveDown')}
-                    className="text-zinc-500 hover:text-zinc-200 disabled:opacity-30 p-0.5 flex items-center justify-center"
+                    className="text-fg3 hover:text-fg1 disabled:opacity-30 p-0.5 flex items-center justify-center"
                   >
                     <ArrowDown20Regular className="w-4 h-4" />
                   </button>
@@ -175,7 +175,7 @@ export default function Settings() {
                   <button
                     onClick={() => setEditingWorkspace(w)}
                     title={t('modalTitleEditWorkspace')}
-                    className="text-zinc-500 hover:text-zinc-200 p-0.5 flex items-center justify-center"
+                    className="text-fg3 hover:text-fg1 p-0.5 flex items-center justify-center"
                   >
                     <Edit20Regular className="w-4 h-4" />
                   </button>
@@ -183,7 +183,7 @@ export default function Settings() {
                     onClick={() => deleteWorkspace(w.id)}
                     disabled={timerRunning}
                     title={timerRunning ? t('titleDeleteWorkspaceDisabled') : t('titleDeleteWorkspace')}
-                    className="text-zinc-500 hover:text-red-400 disabled:opacity-40 p-0.5 flex items-center justify-center"
+                    className="text-fg3 hover:text-danger disabled:opacity-40 p-0.5 flex items-center justify-center"
                   >
                     <Delete20Regular className="w-4 h-4" />
                   </button>
@@ -198,7 +198,7 @@ export default function Settings() {
             onClick={() => setShowAddWorkspace(true)}
             disabled={!apiKey}
             title={!apiKey ? t('warnNoApiKey') : undefined}
-            className="px-3 py-1.5 rounded-md bg-zinc-700 hover:bg-zinc-600 disabled:opacity-50 text-sm"
+            className="px-3 py-1.5 rounded-md bg-control hover:bg-control-hover active:bg-control-pressed border border-stroke disabled:opacity-50 text-sm"
           >
             {t('btnAddWorkspace')}
           </button>
@@ -207,28 +207,28 @@ export default function Settings() {
 
       {/* Notion-page sync */}
       <div>
-        <label className="block text-xs text-zinc-400 mb-1">{t('labelSync')}</label>
+        <label className="block text-xs text-fg2 mb-1">{t('labelSync')}</label>
         {syncPageId ? (
-          <div className="flex items-center justify-between bg-zinc-800 border border-zinc-700 rounded-md px-3 py-2 gap-2">
+          <div className="flex items-center justify-between bg-control border border-stroke rounded-md px-3 py-2 gap-2">
             <span className="text-sm truncate flex items-center gap-1.5">
-              <ArrowClockwise20Regular className="w-4 h-4 shrink-0 text-emerald-500" />
+              <ArrowClockwise20Regular className="w-4 h-4 shrink-0 text-success" />
               {t('syncStatusConnected').replace('{title}', syncPageTitle || syncPageId)}
             </span>
             <button
               onClick={disconnectSync}
-              className="text-xs text-zinc-500 hover:text-red-400 shrink-0"
+              className="text-xs text-fg3 hover:text-danger shrink-0"
             >
               {t('btnDisconnectSync')}
             </button>
           </div>
         ) : (
           <>
-            <p className="text-xs text-zinc-500 mb-2">{t('syncStatusNotConnected')}</p>
+            <p className="text-xs text-fg3 mb-2">{t('syncStatusNotConnected')}</p>
             <div className="flex flex-wrap gap-2">
               <button
                 onClick={() => setShowCreateSync(true)}
                 disabled={!apiKey}
-                className="px-3 py-1.5 rounded-md bg-zinc-700 hover:bg-zinc-600 disabled:opacity-50 text-sm flex items-center gap-1.5"
+                className="px-3 py-1.5 rounded-md bg-control hover:bg-control-hover active:bg-control-pressed border border-stroke disabled:opacity-50 text-sm flex items-center gap-1.5"
               >
                 <ArrowClockwise20Regular className="w-4 h-4" />
                 {t('btnCreateSyncPage')}
@@ -236,7 +236,7 @@ export default function Settings() {
               <button
                 onClick={() => setShowLoadSync(true)}
                 disabled={!apiKey}
-                className="px-3 py-1.5 rounded-md bg-zinc-700 hover:bg-zinc-600 disabled:opacity-50 text-sm"
+                className="px-3 py-1.5 rounded-md bg-control hover:bg-control-hover active:bg-control-pressed border border-stroke disabled:opacity-50 text-sm"
               >
                 {t('btnLoadExistingSync')}
               </button>
@@ -250,7 +250,7 @@ export default function Settings() {
           type="checkbox"
           checked={alwaysOnTop}
           onChange={(e) => toggleAlwaysOnTop(e.target.checked)}
-          className="accent-emerald-500"
+          className="accent-accent"
         />
         {t('labelAlwaysOnTop')}
       </label>
@@ -260,21 +260,21 @@ export default function Settings() {
           type="checkbox"
           checked={startWithWindows}
           onChange={(e) => toggleStartWithWindows(e.target.checked)}
-          className="accent-emerald-500"
+          className="accent-accent"
         />
         {t('labelStartWithWindows')}
       </label>
 
       {/* Notion entry actions */}
       <div>
-        <label className="block text-xs text-zinc-400 mb-1">{t('labelNotionActions')}</label>
+        <label className="block text-xs text-fg2 mb-1">{t('labelNotionActions')}</label>
         <div className="flex flex-col gap-2">
           <label className="flex items-center gap-2 text-sm cursor-pointer">
             <input
               type="checkbox"
               checked={showNotionLink}
               onChange={(e) => setShowNotionLink(e.target.checked)}
-              className="accent-emerald-500"
+              className="accent-accent"
             />
             {t('labelShowNotionLink')}
           </label>
@@ -283,7 +283,7 @@ export default function Settings() {
               type="checkbox"
               checked={showArchiveAction}
               onChange={(e) => setShowArchiveAction(e.target.checked)}
-              className="accent-emerald-500"
+              className="accent-accent"
             />
             {t('labelShowArchiveAction')}
           </label>
@@ -292,7 +292,7 @@ export default function Settings() {
 
       {/* Theme */}
       <div>
-        <label className="block text-xs text-zinc-400 mb-1">{t('labelTheme')}</label>
+        <label className="block text-xs text-fg2 mb-1">{t('labelTheme')}</label>
         <div className="flex gap-3">
           {['auto', 'light', 'dark'].map((opt) => (
             <label key={opt} className="flex items-center gap-1.5 text-sm cursor-pointer">
@@ -302,7 +302,7 @@ export default function Settings() {
                 value={opt}
                 checked={theme === opt}
                 onChange={() => setTheme(opt)}
-                className="accent-emerald-500"
+                className="accent-accent"
               />
               {t(`theme_${opt}`)}
             </label>
@@ -312,11 +312,11 @@ export default function Settings() {
 
       {/* Language */}
       <div>
-        <label className="block text-xs text-zinc-400 mb-1">{t('labelLanguage')}</label>
+        <label className="block text-xs text-fg2 mb-1">{t('labelLanguage')}</label>
         <select
           value={locale}
           onChange={(e) => setLocale(e.target.value)}
-          className="w-full bg-zinc-900 border border-zinc-700 rounded-md px-2.5 py-1.5 text-xs text-zinc-200 focus:outline-none focus:border-zinc-500"
+          className="w-full bg-control border border-stroke rounded-md px-2.5 py-1.5 text-xs text-fg1 focus:outline-none focus:border-accent"
         >
           <option value="system">{t('optSystem')}</option>
           <option value="en-GB">English</option>
@@ -330,11 +330,11 @@ export default function Settings() {
 
       {/* Date Format */}
       <div>
-        <label className="block text-xs text-zinc-400 mb-1">{t('labelDateFormat')}</label>
+        <label className="block text-xs text-fg2 mb-1">{t('labelDateFormat')}</label>
         <select
           value={dateFormat}
           onChange={(e) => setDateFormat(e.target.value)}
-          className="w-full bg-zinc-900 border border-zinc-700 rounded-md px-2.5 py-1.5 text-xs text-zinc-200 focus:outline-none focus:border-zinc-500"
+          className="w-full bg-control border border-stroke rounded-md px-2.5 py-1.5 text-xs text-fg1 focus:outline-none focus:border-accent"
         >
           <option value="DD/MM/YYYY">DD/MM/YYYY</option>
           <option value="MM/DD/YYYY">MM/DD/YYYY</option>
@@ -344,11 +344,11 @@ export default function Settings() {
 
       {/* Time Format */}
       <div>
-        <label className="block text-xs text-zinc-400 mb-1">{t('labelTimeFormat')}</label>
+        <label className="block text-xs text-fg2 mb-1">{t('labelTimeFormat')}</label>
         <select
           value={timeFormat}
           onChange={(e) => setTimeFormat(e.target.value)}
-          className="w-full bg-zinc-900 border border-zinc-700 rounded-md px-2.5 py-1.5 text-xs text-zinc-200 focus:outline-none focus:border-zinc-500"
+          className="w-full bg-control border border-stroke rounded-md px-2.5 py-1.5 text-xs text-fg1 focus:outline-none focus:border-accent"
         >
           <option value="12h">{t('opt12h')}</option>
           <option value="24h">{t('opt24h')}</option>
@@ -406,8 +406,8 @@ function CreateSyncModal({ onClose }) {
   const pageOptions = pages.items.map((p) => ({ value: p.id, label: p.name }));
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-40 p-4">
-      <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-4 w-full max-w-sm flex flex-col gap-4">
+    <div className="fixed inset-0 bg-smoke flex items-center justify-center z-40 p-4">
+      <div className="bg-dialog border border-surface-stroke rounded-lg shadow-dialog p-4 w-full max-w-sm flex flex-col gap-4">
         <h2 className="text-sm font-semibold">{t('modalTitleCreateSync')}</h2>
         <Field label={t('placeholderSyncPageTitle')}>
           <input
@@ -415,12 +415,12 @@ function CreateSyncModal({ onClose }) {
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder={t('placeholderSyncPageTitle')}
-            className="w-full bg-zinc-900 border border-zinc-700 rounded-md px-3 py-2 text-sm"
+            className="w-full bg-control border border-stroke rounded-md px-3 py-2 text-sm"
           />
         </Field>
         <Field label={t('labelParentPage')} hint={t('hintCreateSync')}>
           {pages.error ? (
-            <div className="text-xs bg-red-950 border border-red-700 text-red-200 rounded-md p-2">
+            <div className="text-xs bg-danger-bg border border-danger-stroke text-fg1 rounded-md p-2">
               {pages.error}
             </div>
           ) : (
@@ -435,15 +435,15 @@ function CreateSyncModal({ onClose }) {
             />
           )}
         </Field>
-        {error && <p className="text-xs text-red-400">{error}</p>}
+        {error && <p className="text-xs text-danger">{error}</p>}
         <div className="flex justify-end gap-2">
-          <button onClick={onClose} className="px-3 py-1.5 rounded-md bg-zinc-700 hover:bg-zinc-600 text-sm">
+          <button onClick={onClose} className="px-3 py-1.5 rounded-md bg-control hover:bg-control-hover active:bg-control-pressed border border-stroke text-sm">
             {t('btnCancel')}
           </button>
           <button
             onClick={handleCreate}
             disabled={saving || !title.trim() || !parentPageId}
-            className="px-3 py-1.5 rounded-md bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-sm font-semibold"
+            className="px-3 py-1.5 rounded-md bg-accent hover:bg-accent-hover active:bg-accent-pressed text-on-accent disabled:opacity-50 text-sm font-semibold"
           >
             {t('btnCreate')}
           </button>
@@ -486,12 +486,12 @@ function LoadSyncModal({ onClose }) {
   const pageOptions = pages.items.map((p) => ({ value: p.id, label: p.name }));
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-40 p-4">
-      <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-4 w-full max-w-sm flex flex-col gap-4">
+    <div className="fixed inset-0 bg-smoke flex items-center justify-center z-40 p-4">
+      <div className="bg-dialog border border-surface-stroke rounded-lg shadow-dialog p-4 w-full max-w-sm flex flex-col gap-4">
         <h2 className="text-sm font-semibold">{t('modalTitleLoadSync')}</h2>
         <Field hint={t('hintLoadSync')}>
           {pages.error ? (
-            <div className="text-xs bg-red-950 border border-red-700 text-red-200 rounded-md p-2">
+            <div className="text-xs bg-danger-bg border border-danger-stroke text-fg1 rounded-md p-2">
               {pages.error}
             </div>
           ) : (
@@ -506,15 +506,15 @@ function LoadSyncModal({ onClose }) {
             />
           )}
         </Field>
-        {error && <p className="text-xs text-red-400">{error}</p>}
+        {error && <p className="text-xs text-danger">{error}</p>}
         <div className="flex justify-end gap-2">
-          <button onClick={onClose} className="px-3 py-1.5 rounded-md bg-zinc-700 hover:bg-zinc-600 text-sm">
+          <button onClick={onClose} className="px-3 py-1.5 rounded-md bg-control hover:bg-control-hover active:bg-control-pressed border border-stroke text-sm">
             {t('btnCancel')}
           </button>
           <button
             onClick={handleAttach}
             disabled={attaching || !pageId}
-            className="px-3 py-1.5 rounded-md bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-sm font-semibold"
+            className="px-3 py-1.5 rounded-md bg-accent hover:bg-accent-hover active:bg-accent-pressed text-on-accent disabled:opacity-50 text-sm font-semibold"
           >
             {t('btnAttach')}
           </button>
@@ -686,8 +686,8 @@ function WorkspaceModal({ workspace, onClose }) {
   ];
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-40 p-4">
-      <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-4 w-full max-h-full overflow-y-auto flex flex-col gap-4">
+    <div className="fixed inset-0 bg-smoke flex items-center justify-center z-40 p-4">
+      <div className="bg-dialog border border-surface-stroke rounded-lg shadow-dialog p-4 w-full max-h-full overflow-y-auto flex flex-col gap-4">
         <h2 className="text-sm font-semibold">
           {workspace ? t('modalTitleEditWorkspace') : t('modalTitleAddWorkspace')}
         </h2>
@@ -698,13 +698,13 @@ function WorkspaceModal({ workspace, onClose }) {
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="w-full bg-zinc-900 border border-zinc-700 rounded-md px-3 py-2 text-sm"
+            className="w-full bg-control border border-stroke rounded-md px-3 py-2 text-sm"
           />
         </Field>
 
         {/* Section B — Time Entries database */}
         {dbs.error && (
-          <div className="text-xs bg-red-950 border border-red-700 text-red-200 rounded-md p-2 flex items-start gap-2">
+          <div className="text-xs bg-danger-bg border border-danger-stroke text-fg1 rounded-md p-2 flex items-start gap-2">
             <span className="flex-1">{`${t('errorLoadingDatabases')}: ${dbs.error}`}</span>
             <button onClick={loadDatabases} className="font-semibold underline shrink-0">
               {t('btnRetry')}
@@ -712,17 +712,17 @@ function WorkspaceModal({ workspace, onClose }) {
           </div>
         )}
         {!dbs.loading && !dbs.error && dbs.items.length === 0 && (
-          <div className="text-xs bg-amber-900/40 border border-amber-700 text-amber-200 rounded-md p-2">
+          <div className="text-xs bg-warning-bg border border-warning-stroke text-fg1 rounded-md p-2">
             {t('noDatabasesFound')}
           </div>
         )}
         <div>
           <div className="flex items-center justify-between mb-1">
-            <label className="text-xs text-zinc-400">{t('labelTimeEntriesDb')}</label>
+            <label className="text-xs text-fg2">{t('labelTimeEntriesDb')}</label>
             <button
               onClick={loadDatabases}
               disabled={dbs.loading}
-              className="text-xs text-zinc-500 hover:text-zinc-300 disabled:opacity-50 flex items-center gap-1"
+              className="text-xs text-fg3 hover:text-fg1 disabled:opacity-50 flex items-center gap-1"
               title={t('btnRefreshDatabases')}
             >
               <ArrowClockwise20Regular className="w-3.5 h-3.5 inline mr-1" /> {t('btnRefreshDatabases')}
@@ -737,14 +737,14 @@ function WorkspaceModal({ workspace, onClose }) {
             loading={dbs.loading}
             className="w-full"
           />
-          <p className="text-xs text-zinc-600 mt-1">{t('hintTimeEntriesDb')}</p>
+          <p className="text-xs text-fg3 mt-1">{t('hintTimeEntriesDb')}</p>
         </div>
 
         {/* Section C — Time entry properties */}
         {timeEntriesDbId && (
-          <div className="flex flex-col gap-3 border-t border-zinc-700 pt-3">
+          <div className="flex flex-col gap-3 border-t border-stroke pt-3">
             {teSchema.error && (
-              <div className="text-xs bg-red-950 border border-red-700 text-red-200 rounded-md p-2 flex items-start gap-2">
+              <div className="text-xs bg-danger-bg border border-danger-stroke text-fg1 rounded-md p-2 flex items-start gap-2">
                 <span className="flex-1">{`${t('errorLoadingSchema')}: ${teSchema.error}`}</span>
                 <button
                   onClick={() => loadTeSchema(timeEntriesDbId)}
@@ -803,9 +803,9 @@ function WorkspaceModal({ workspace, onClose }) {
 
         {/* Section D — Extra fields (optional, max 5) */}
         {timeEntriesDbId && teSchema.schema && (
-          <div className="flex flex-col gap-2 border-t border-zinc-700 pt-3">
-            <p className="text-xs font-semibold text-zinc-300">{t('sectionExtraFields')}</p>
-            <p className="text-xs text-zinc-500">{t('hintExtraFields')}</p>
+          <div className="flex flex-col gap-2 border-t border-stroke pt-3">
+            <p className="text-xs font-semibold text-fg2">{t('sectionExtraFields')}</p>
+            <p className="text-xs text-fg3">{t('hintExtraFields')}</p>
             {extraProps.map((ep, i) => {
               const candidateOptions = extraCandidates(i).map((c) => ({
                 value: c.name,
@@ -826,7 +826,7 @@ function WorkspaceModal({ workspace, onClose }) {
                     placeholder={t('placeholderSelectField')}
                     className="flex-1"
                   />
-                  <label className="flex items-center gap-1 text-xs text-zinc-400 shrink-0 cursor-pointer">
+                  <label className="flex items-center gap-1 text-xs text-fg2 shrink-0 cursor-pointer">
                     <input
                       type="checkbox"
                       checked={!!ep.required}
@@ -835,14 +835,14 @@ function WorkspaceModal({ workspace, onClose }) {
                           prev.map((p, j) => (j === i ? { ...p, required: e.target.checked } : p))
                         )
                       }
-                      className="accent-emerald-500"
+                      className="accent-accent"
                     />
                     {t('labelRequiredField')}
                   </label>
                   <button
                     onClick={() => setExtraProps((prev) => prev.filter((_, j) => j !== i))}
                     title={t('titleRemoveExtraField')}
-                    className="text-zinc-500 hover:text-red-400 shrink-0 flex items-center justify-center p-0.5"
+                    className="text-fg3 hover:text-danger shrink-0 flex items-center justify-center p-0.5"
                   >
                     <Dismiss20Regular className="w-4 h-4" />
                   </button>
@@ -852,7 +852,7 @@ function WorkspaceModal({ workspace, onClose }) {
             {extraProps.length < MAX_EXTRA_PROPS && (
               <button
                 onClick={() => setExtraProps((prev) => [...prev, { propName: '', defaultValue: null, required: false }])}
-                className="self-start px-3 py-1.5 rounded-md bg-zinc-700 hover:bg-zinc-600 text-xs"
+                className="self-start px-3 py-1.5 rounded-md bg-control hover:bg-control-hover active:bg-control-pressed border border-stroke text-xs"
               >
                 {t('btnAddExtraField')}
               </button>
@@ -863,24 +863,24 @@ function WorkspaceModal({ workspace, onClose }) {
 
 
         {/* Section E — Description */}
-        <div className="border-t border-zinc-700 pt-3">
-          <label className="flex items-center gap-2 text-xs text-zinc-300 cursor-pointer">
+        <div className="border-t border-stroke pt-3">
+          <label className="flex items-center gap-2 text-xs text-fg2 cursor-pointer">
             <input
               type="checkbox"
               checked={descriptionRequired}
               onChange={(e) => setDescriptionRequired(e.target.checked)}
-              className="accent-emerald-500"
+              className="accent-accent"
             />
             {t('labelDescriptionRequired')}
           </label>
-          <p className="text-xs text-zinc-500 mt-1">
+          <p className="text-xs text-fg3 mt-1">
             {descriptionRequired ? t('hintDescriptionRequired') : t('hintDescriptionOptional')}
           </p>
         </div>
 
         {/* Section F — Rounding */}
-        <div className="border-t border-zinc-700 pt-3">
-          <label className="block text-xs text-zinc-400 mb-1">{t('labelWorkspaceRounding')}</label>
+        <div className="border-t border-stroke pt-3">
+          <label className="block text-xs text-fg2 mb-1">{t('labelWorkspaceRounding')}</label>
           <SearchableSelect
             value={String(roundingMinutes)}
             onChange={(v) => setRoundingMinutes(Number(v))}
@@ -888,12 +888,12 @@ function WorkspaceModal({ workspace, onClose }) {
             allowClear={false}
             className="w-full"
           />
-          <p className="text-xs text-zinc-500 mt-1">{t('workspaceRoundingHint')}</p>
+          <p className="text-xs text-fg3 mt-1">{t('workspaceRoundingHint')}</p>
         </div>
 
         {/* Section G — Colour */}
-        <div className="border-t border-zinc-700 pt-3">
-          <label className="block text-xs text-zinc-400 mb-2">{t('labelWorkspaceColor')}</label>
+        <div className="border-t border-stroke pt-3">
+          <label className="block text-xs text-fg2 mb-2">{t('labelWorkspaceColor')}</label>
           <WorkspaceColorPicker value={color} onChange={setColor} />
         </div>
 
@@ -901,19 +901,19 @@ function WorkspaceModal({ workspace, onClose }) {
 
         {/* Section I — Buttons */}
         {!complete && (
-          <p className="text-xs text-zinc-500">{t('saveIncompleteHint')}</p>
+          <p className="text-xs text-fg3">{t('saveIncompleteHint')}</p>
         )}
         <div className="flex justify-end gap-2">
           <button
             onClick={onClose}
-            className="px-3 py-1.5 rounded-md bg-zinc-700 hover:bg-zinc-600 text-sm"
+            className="px-3 py-1.5 rounded-md bg-control hover:bg-control-hover active:bg-control-pressed border border-stroke text-sm"
           >
             {t('btnCancel')}
           </button>
           <button
             onClick={handleSave}
             disabled={!complete}
-            className="px-3 py-1.5 rounded-md bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-sm font-semibold"
+            className="px-3 py-1.5 rounded-md bg-accent hover:bg-accent-hover active:bg-accent-pressed text-on-accent disabled:opacity-50 text-sm font-semibold"
           >
             {t('btnSave')}
           </button>
@@ -926,9 +926,9 @@ function WorkspaceModal({ workspace, onClose }) {
 function Field({ label, hint, children }) {
   return (
     <div>
-      <label className="block text-xs text-zinc-400 mb-1">{label}</label>
+      <label className="block text-xs text-fg2 mb-1">{label}</label>
       {children}
-      {hint && <p className="text-xs text-zinc-600 mt-1">{hint}</p>}
+      {hint && <p className="text-xs text-fg3 mt-1">{hint}</p>}
     </div>
   );
 }
@@ -948,7 +948,7 @@ function PropSelect({ label, hint, loading, options, value, onChange }) {
         loading={loading}
         className="w-full"
       />
-      {empty && <p className="text-xs text-red-400 mt-1">{t('noPropertiesOfType')}</p>}
+      {empty && <p className="text-xs text-danger mt-1">{t('noPropertiesOfType')}</p>}
     </Field>
   );
 }
@@ -978,11 +978,11 @@ function WorkspaceColorPicker({ value, onChange }) {
           type="button"
           onClick={() => onChange('')}
           title={t('colorNone')}
-          className={`w-7 h-7 rounded-full border-2 bg-zinc-700 flex items-center justify-center text-xs transition-colors ${
-            !value ? 'border-emerald-500' : 'border-zinc-600 hover:border-zinc-400'
+          className={`w-7 h-7 rounded-full border-2 bg-control flex items-center justify-center text-xs transition-colors ${
+            !value ? 'border-accent' : 'border-stroke hover:border-stroke-strong'
           }`}
         >
-          {!value && <span className="text-zinc-300">✓</span>}
+          {!value && <span className="text-fg2">✓</span>}
         </button>
         {PRESET_PALETTE.map((hex) => {
           const { light, dark } = getWorkspaceColorVariants(hex);
@@ -1008,7 +1008,7 @@ function WorkspaceColorPicker({ value, onChange }) {
           value={customHex}
           onChange={(e) => setCustomHex(e.target.value)}
           placeholder="#RRGGBB"
-          className="flex-1 bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-xs font-mono"
+          className="flex-1 bg-control border border-stroke rounded px-2 py-1 text-xs font-mono"
           onKeyDown={(e) => e.key === 'Enter' && applyCustom()}
         />
         {customHex && (() => {
@@ -1018,7 +1018,7 @@ function WorkspaceColorPicker({ value, onChange }) {
           const variants = hex ? getWorkspaceColorVariants(hex) : null;
           return (
             <div
-              className="w-6 h-6 rounded-full border border-zinc-600 shrink-0"
+              className="w-6 h-6 rounded-full border border-stroke shrink-0"
               style={
                 variants
                   ? { background: `linear-gradient(to right, ${variants.light} 50%, ${variants.dark} 50%)` }
@@ -1031,7 +1031,7 @@ function WorkspaceColorPicker({ value, onChange }) {
           type="button"
           onClick={applyCustom}
           disabled={!customHex.trim()}
-          className="px-2 py-1 text-xs rounded bg-zinc-700 hover:bg-zinc-600 disabled:opacity-40"
+          className="px-2 py-1 text-xs rounded bg-control hover:bg-control-hover active:bg-control-pressed border border-stroke disabled:opacity-40"
         >
           {t('btnApplyColor')}
         </button>
