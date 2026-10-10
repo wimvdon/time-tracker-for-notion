@@ -190,7 +190,8 @@ function createWindow() {
     autoHideMenuBar: true,
     alwaysOnTop: store.get('alwaysOnTop'),
     show: !startHidden,
-    icon: assetPath('icon-256.png'),
+    // The .ico carries every size, so Windows picks a sharp one for the taskbar and title bar
+    icon: assetPath(process.platform === 'win32' ? 'icon.ico' : 'icon-256.png'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
       contextIsolation: true,
