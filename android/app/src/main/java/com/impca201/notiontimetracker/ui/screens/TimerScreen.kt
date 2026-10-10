@@ -1135,9 +1135,11 @@ private fun PresetChips(
     // SuggestionChip pads itself out to Material3's ~48dp minimum touch target, which
     // makes each chip's laid-out height much taller than its visible ~32dp content —
     // that invisible padding was stacking on top of the declared line spacing below,
-    // making wrapped rows look far apart. Disabling it here lets the chips (and the
-    // gap between wrapped lines) size to their actual visual content.
-    CompositionLocalProvider(LocalMinimumInteractiveComponentEnforcement provides false) {
+    // making wrapped rows look far apart. Setting the minimum to 0.dp here lets the
+    // chips (and the gap between wrapped lines) size to their actual visual content.
+    // (The older LocalMinimumInteractiveComponentEnforcement flag is deprecated and
+    // ignored since Material3 1.3, so it no longer has any effect.)
+    CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides 0.dp) {
         FlowRow(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
