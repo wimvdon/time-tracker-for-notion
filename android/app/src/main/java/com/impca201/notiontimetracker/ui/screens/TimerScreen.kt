@@ -130,7 +130,7 @@ fun TimerScreen(
                     OutlinedTextField(
                         value = presetNameInput,
                         onValueChange = { presetNameInput = it },
-                        label = { Text(stringResource(R.string.dialog_save_preset_name_optional)) },
+                        label = { Text(stringResource(R.string.dialog_save_preset_name) + " *") },
                         placeholder = { Text(stringResource(R.string.dialog_save_preset_placeholder)) },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
@@ -143,7 +143,8 @@ fun TimerScreen(
                         onSavePreset(presetNameInput.trim())
                         presetNameInput = ""
                         showSavePresetDialog = false
-                    }
+                    },
+                    enabled = presetNameInput.isNotBlank()
                 ) {
                     Text(stringResource(R.string.btn_save))
                 }
@@ -1147,8 +1148,9 @@ private fun PresetChips(
         ) {
             allPresets.forEach { (ws, preset) ->
                 val wsColor = workspaceAccentColor(ws.color)
-                val presetName = preset.name.trim()
-                val chipLabel = if (presetName.isBlank() || presetName == ws.name) "▶ ${ws.name}" else "▶ ${ws.name} – $presetName"
+                // Just the preset's title; presets saved before a title was
+                // required fall back to their workspace name, the label they had.
+                val chipLabel = "▶ ${preset.name.trim().ifBlank { ws.name }}"
                 SuggestionChip(
                     onClick = { onApplyPreset(ws.id, preset) },
                     // One line, ellipsized only when the chip would be wider than

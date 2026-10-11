@@ -346,11 +346,12 @@ export const useStore = create((set, get) => ({
   saveCurrentAsPreset: async (name) => {
     const state = get();
     const workspaceId = state.selectedWorkspaceId;
-    if (!workspaceId) return;
+    // The title is what the preset chip shows, so it's required.
+    if (!workspaceId || !name?.trim()) return;
     const workspace = state.workspaces.find((w) => w.id === workspaceId);
     const newPreset = {
       id: Math.random().toString(36).substring(2, 9),
-      name: name.trim() || '',
+      name: name.trim(),
       pageTitle: state.description.trim(),
       extraValues: { ...state.extraValues },
       showInShortcuts: false

@@ -1537,12 +1537,15 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
     }
 
     fun saveCurrentAsPreset(name: String) {
+        // The title is what the preset chip shows, so it's required.
+        val title = name.trim()
+        if (title.isBlank()) return
         val state = _uiState.value
         val workspaceId = state.selectedWorkspaceId ?: return
         if (state.workspaces.none { it.id == workspaceId }) return
         val newPreset = Preset(
             id = java.util.UUID.randomUUID().toString(),
-            name = name,
+            name = title,
             pageTitle = state.description,
             extraValues = state.extraValues
         )
