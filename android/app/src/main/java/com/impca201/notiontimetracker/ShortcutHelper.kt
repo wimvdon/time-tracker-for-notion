@@ -24,7 +24,7 @@ object ShortcutHelper {
                         putExtra(EXTRA_WORKSPACE_ID, ws.id)
                         putExtra(EXTRA_PRESET_ID, preset.id)
                     }
-                    val label = if (preset.name.isBlank() || preset.name == ws.name) ws.name else "${ws.name} – ${preset.name}"
+                    val label = preset.name
                     val builder = ShortcutInfoCompat.Builder(context, "preset_${ws.id}_${preset.id}")
                         .setShortLabel(label.take(25))
                         .setLongLabel(label.take(50))

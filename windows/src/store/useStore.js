@@ -3,6 +3,7 @@ import { computeStartTime, computeEndTime } from '../lib/rounding.js';
 import { toNotionDateTime, fallbackDescription, isFallbackDescription } from '../lib/format.js';
 import { t, setLocale } from '../lib/i18n.js';
 import { errorMessage } from '../lib/errors.js';
+import { withPresetTitles, needsPresetTitles } from '../lib/presets.js';
 import { WRITABLE_EXTRA_TYPES, emptyValueFor, buildPropertyValue, parsePropertyValue, coerceInputValue } from '../lib/notionValues.js';
 
 const api = window.notionAPI;
@@ -181,7 +182,7 @@ export const useStore = create((set, get) => ({
           : ws.roundingEnabled === false
           ? 0
           : 15;
-      return { ...ws, extraProps, roundingMinutes, presets: ws.presets || [] };
+      return withPresetTitles({ ...ws, extraProps, roundingMinutes });
     });
 
     const lastUsedWorkspaceId =
@@ -194,17 +195,19 @@ export const useStore = create((set, get) => ({
       rawWorkspaces.some(
         (ws) =>
           ws.roundingMinutes === undefined ||
-          (ws.extraProps || []).some((ep) => typeof ep === 'string')
+          (ws.extraProps || []).some((ep) => typeof ep === 'string') ||
+          needsPresetTitles(ws)
       );
     if (needsMigrationSave) {
-      api.saveSettings({
+      // The tray menu lists preset titles, so it's rebuilt once they're on disk.
+      Promise.resolve(api.saveSettings({
         workspaces,
         lastUsedWorkspaceId,
         activeTimer,
         projects: undefined,
         lastUsedProjectId: undefined,
         roundingEnabled: undefined,
-      });
+      })).then(() => api.notifySettingsChanged?.());
     }
 
     const activeLocale = settings.locale || 'system';
@@ -1445,7 +1448,7 @@ function buildSyncPayload(state, updatedAt) {
 
 /** Applies a fetched sync payload to local state and persists it. */
 function applySyncPayload(set, get, payload) {
-  const patch = { workspaces: payload.workspaces };
+  const patch = { workspaces: (payload.workspaces || []).map(withPresetTitles) };
   if (payload.theme !== undefined) patch.theme = payload.theme;
   if (payload.locale !== undefined) { setLocale(payload.locale); patch.locale = payload.locale; }
   if (payload.dateFormat !== undefined) patch.dateFormat = payload.dateFormat;

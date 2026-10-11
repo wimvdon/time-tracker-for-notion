@@ -3,7 +3,7 @@
 //   assets/icon.ico         – Windows app/installer icon, 16–256 px (PNG-in-ICO)
 //   assets/icon-256.png     – window icon on non-Windows platforms
 //   assets/tray-idle.png    – tray icon, idle (the same dial, in grey)
-//   assets/tray-running.png – tray icon, running (red dot)
+//   assets/tray-template.png – tray icon while a timer runs: black dial, tinted at runtime
 //   ../android/app/src/main/res/drawable/ic_launcher_*.xml – Android adaptive icon layers
 // Every size is rendered straight from the vectors, so small sizes stay crisp.
 // Run with: npm run icons
@@ -83,7 +83,6 @@ function encodeICO(images) {
 // keeps everything within a radius of 33 from the centre. Angles run clockwise from 12 o'clock.
 
 const WHITE = '#FAFAFA';
-const RED = '#E53935';
 const RED_TOP = '#F05252';
 const RED_BOTTOM = '#C62828';
 const ANDROID_BACKGROUND = '#FFFFFF';
@@ -273,11 +272,6 @@ function render(size, view, { shapes }) {
 
 const renderIcon = (size, shapes) => render(size, ICON_VIEW, { shapes });
 
-function drawDot(size, color) {
-  const mid = size / 2;
-  return render(size, { x: 0, y: 0, size }, { shapes: [{ type: 'circle', cx: mid, cy: mid, r: mid * 0.82, color }] });
-}
-
 // ---- Vector output (SVG + Android VectorDrawable) ----
 
 const n = (v) => +v.toFixed(2);
@@ -387,10 +381,13 @@ const icons = ICO_SIZES.map((size) => ({ size, png: renderIcon(size, ICON) }));
 fs.writeFileSync(path.join(assetsDir, 'icon.svg'), iconSVG(ICON));
 fs.writeFileSync(path.join(assetsDir, 'icon-256.png'), icons.at(-1).png);
 fs.writeFileSync(path.join(assetsDir, 'icon.ico'), encodeICO(icons));
-// Idle tray icon: the same dial in grey, so the coloured running dot stands out against it
+// Idle tray icon: the same dial in grey, so the coloured running icon stands out against it
 const TRAY_IDLE = ICON.map((s, i) => (i === 0 ? { ...s, color: ['#A1A1AA', '#71717A'] } : s));
 fs.writeFileSync(path.join(assetsDir, 'tray-idle.png'), renderIcon(32, TRAY_IDLE));
-fs.writeFileSync(path.join(assetsDir, 'tray-running.png'), drawDot(32, RED));
+// Running tray icon: the dial in black, which main.cjs tints with the running
+// timer's workspace colour (each pixel's grey level is how far it is toward white)
+const TRAY_TEMPLATE = ICON.map((s, i) => (i === 0 ? { ...s, color: '#000000' } : s));
+fs.writeFileSync(path.join(assetsDir, 'tray-template.png'), renderIcon(32, TRAY_TEMPLATE));
 
 const androidRes = path.join(__dirname, '..', '..', 'android', 'app', 'src', 'main', 'res', 'drawable');
 fs.writeFileSync(path.join(androidRes, 'ic_launcher_background.xml'), androidBackground);

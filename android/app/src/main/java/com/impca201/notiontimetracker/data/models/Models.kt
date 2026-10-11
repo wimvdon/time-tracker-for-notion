@@ -41,7 +41,19 @@ data class Workspace(
     val presets: List<Preset> = emptyList(),
     val color: String = "",
     val descriptionRequired: Boolean = false
-)
+) {
+    /** A preset's title is the only label its chip and launcher shortcut show,
+     *  so every preset needs one. Presets saved before the title was required
+     *  get their default description, or else this workspace's name (what their
+     *  chip showed before). The Windows app applies the same rule, so both
+     *  apps settle on the same titles for a synced preset. */
+    fun withPresetTitles(): Workspace {
+        if (presets.all { it.name.isNotBlank() && it.name == it.name.trim() }) return this
+        return copy(presets = presets.map { p ->
+            p.copy(name = p.name.trim().ifBlank { p.pageTitle.trim() }.ifBlank { this.name })
+        })
+    }
+}
 
 @Serializable
 data class ActiveTimer(

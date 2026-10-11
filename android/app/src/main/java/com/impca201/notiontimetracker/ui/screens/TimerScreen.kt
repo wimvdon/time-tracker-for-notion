@@ -1148,9 +1148,7 @@ private fun PresetChips(
         ) {
             allPresets.forEach { (ws, preset) ->
                 val wsColor = workspaceAccentColor(ws.color)
-                // Just the preset's title; presets saved before a title was
-                // required fall back to their workspace name, the label they had.
-                val chipLabel = "▶ ${preset.name.trim().ifBlank { ws.name }}"
+                val chipLabel = "▶ ${preset.name}"
                 SuggestionChip(
                     onClick = { onApplyPreset(ws.id, preset) },
                     // One line, ellipsized only when the chip would be wider than
@@ -1406,7 +1404,7 @@ private fun ManagePresetsDialog(
                     }
                 }
                 flatPresets.forEach { (ws, preset, indexInWorkspace) ->
-                    val label = if (preset.name.isBlank()) ws.name else "${ws.name} – ${preset.name}"
+                    val label = "${ws.name} – ${preset.name}"
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
