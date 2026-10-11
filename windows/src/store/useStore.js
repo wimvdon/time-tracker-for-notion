@@ -357,7 +357,6 @@ export const useStore = create((set, get) => ({
       name: name.trim(),
       pageTitle: state.description.trim(),
       extraValues: { ...state.extraValues },
-      showInShortcuts: false
     };
     const workspaces = state.workspaces.map((w) => {
       if (w.id === workspaceId) {
