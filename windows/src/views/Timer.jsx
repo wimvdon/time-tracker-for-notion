@@ -327,27 +327,26 @@ export default function Timer() {
           <div className="bg-dialog border border-surface-stroke rounded-lg shadow-dialog p-4 w-full flex flex-col gap-3">
             <h2 className="text-sm font-semibold">{t('dialogSavePresetTitle')}</h2>
             <p className="text-xs text-fg2">{t('dialogSavePresetBody')}</p>
-            <p className="text-xs text-fg2 italic">{t('dialogSavePresetOptional')}</p>
-            <div className="flex items-center w-full bg-control border border-stroke rounded-md px-3 py-2 text-xs focus-within:border-accent">
-              <span className="text-fg2 select-none mr-1 font-medium whitespace-nowrap truncate max-w-[55%] shrink-0">
-                {`${workspaces.find((w) => w.id === selectedWorkspaceId)?.name || ''} –`}
-              </span>
-              <input
-                type="text"
-                value={presetNameInput}
-                onChange={(e) => setPresetNameInput(e.target.value)}
-                placeholder={t('dialogSavePresetPlaceholder')}
-                className="w-full bg-transparent p-0 focus:outline-none placeholder-fg3"
-              />
-            </div>
+            <p className="text-xs text-fg2 italic">{t('dialogSavePresetRequired')}</p>
+            <input
+              type="text"
+              value={presetNameInput}
+              onChange={(e) => setPresetNameInput(e.target.value)}
+              placeholder={t('dialogSavePresetPlaceholder')}
+              required
+              autoFocus
+              className="w-full bg-control border border-stroke rounded-md px-3 py-2 text-xs focus:outline-none focus:border-accent placeholder-fg3"
+            />
             <div className="flex gap-2 mt-1">
               <button
                 onClick={async () => {
+                  if (!presetNameInput.trim()) return;
                   await saveCurrentAsPreset(presetNameInput);
                   setPresetNameInput('');
                   setShowSavePresetModal(false);
                 }}
-                className="flex-1 py-2 rounded-md bg-accent hover:bg-accent-hover active:bg-accent-pressed text-on-accent text-sm font-semibold"
+                disabled={!presetNameInput.trim()}
+                className="flex-1 py-2 rounded-md bg-accent hover:bg-accent-hover active:bg-accent-pressed text-on-accent text-sm font-semibold disabled:opacity-40 disabled:pointer-events-none"
               >
                 {t('btnSave')}
               </button>
@@ -850,12 +849,10 @@ function RunningTimerItem({ rt, isActive, onLoad, onStop, onDelete, onOpenUrl })
   );
 }
 
-/** "Workspace – Preset", or just the workspace name for an unnamed preset
- *  (or one named after its workspace). Same label as the Android chips and
- *  the tray menu. */
+/** The preset's own title, same as the Android chips. Presets saved before a
+ *  title was required fall back to their workspace name, the label they had. */
 function presetLabel(workspace, preset) {
-  const name = preset.name?.trim();
-  return name && name !== workspace.name ? `${workspace.name} – ${name}` : workspace.name;
+  return preset.name?.trim() || workspace.name;
 }
 
 /** Quick-start preset chips — shown when an API key is set and any workspace
@@ -875,9 +872,8 @@ function PresetChips({ workspaces, apiKey, onApplyPreset, onManageClick, classNa
             ? { borderColor: accent + '66', color: accent, backgroundColor: accent + '22' }
             : {};
           const label = presetLabel(w, preset);
-          // The label only truncates once the chip would overflow the row, so
-          // "Workspace – Preset" stays readable instead of being cut off at a
-          // fixed width (which chopped it right before the dash).
+          // The label only truncates once the chip would overflow the row,
+          // instead of being cut off at a fixed width.
           return (
             <button
               key={`${w.id}:${preset.id}`}
