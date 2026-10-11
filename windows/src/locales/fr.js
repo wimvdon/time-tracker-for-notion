@@ -191,7 +191,6 @@ export default {
   btnStopAndStartNew: 'Arrêter & démarrer nouveau',
   dialogSavePresetTitle: 'Enregistrer le préréglage',
   dialogSavePresetBody: 'Enregistrer la description et les champs actuels en tant que préréglage.',
-  dialogSavePresetRequired: "Le titre s'affiche sur la puce du préréglage et est obligatoire.",
   dialogSavePresetPlaceholder: 'Titre du préréglage (ex. Standup quotidien)',
   presetsManageTitle: 'Gérer les préréglages',
   tooltipPresetsShortcuts: 'Tous les préréglages sont ajoutés aux raccourcis de la barre des tâches.',

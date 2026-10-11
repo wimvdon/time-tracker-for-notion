@@ -191,7 +191,6 @@ export default {
   btnStopAndStartNew: 'Stoppen & neu starten',
   dialogSavePresetTitle: 'Vorlage speichern',
   dialogSavePresetBody: 'Aktuelle Beschreibung und ausgewählte Workspace/Felder als Vorlage speichern.',
-  dialogSavePresetRequired: 'Der Vorlagentitel wird auf dem Chip angezeigt und ist erforderlich.',
   dialogSavePresetPlaceholder: 'Vorlagentitel (z.B. Tägliches Standup)',
   presetsManageTitle: 'Vorlagen verwalten',
   tooltipPresetsShortcuts: 'Alle Vorlagen werden zu Tray-Verknüpfungen hinzugefügt.',

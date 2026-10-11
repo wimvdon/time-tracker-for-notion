@@ -187,7 +187,6 @@ export default {
   btnStopAndStartNew: 'Stoppen & nieuwe starten',
   dialogSavePresetTitle: 'Snelstarter opslaan',
   dialogSavePresetBody: 'Sla de huidige omschrijving en geselecteerde werkruimte/velden op als een snelstarter.',
-  dialogSavePresetRequired: 'De titel staat op de snelstarter-knop en is verplicht.',
   dialogSavePresetPlaceholder: 'Titel snelstarter (bijv. Dagelijkse stand-up)',
   presetsManageTitle: 'Snelstarters beheren',
   tooltipPresetsShortcuts: 'Alle snelstarters worden toegevoegd aan tray-snelkoppelingen.',

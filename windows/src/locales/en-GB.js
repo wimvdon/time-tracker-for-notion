@@ -191,7 +191,6 @@ export default {
   btnStopAndStartNew: 'Stop & start new',
   dialogSavePresetTitle: 'Save Preset',
   dialogSavePresetBody: 'Save the current description and selected workspace/fields as a preset.',
-  dialogSavePresetRequired: 'The title is shown on the preset chip and is required.',
   dialogSavePresetPlaceholder: 'Preset title (e.g. Daily Standup)',
   presetsManageTitle: 'Manage Presets',
   tooltipPresetsShortcuts: 'All presets are added to tray shortcuts.',
