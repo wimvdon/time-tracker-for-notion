@@ -222,45 +222,6 @@ fun SettingsScreen(
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
-            // --- Workspaces section ---
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(stringResource(R.string.label_workspaces), style = MaterialTheme.typography.titleSmall)
-            }
-
-            if (uiState.workspaces.isEmpty()) {
-                Text(
-                    stringResource(R.string.no_workspaces_yet),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    style = MaterialTheme.typography.bodyMedium
-                )
-            } else {
-                uiState.workspaces.forEachIndexed { index, workspace ->
-                    WorkspaceListItem(
-                        workspace = workspace,
-                        canMoveUp = index > 0,
-                        canMoveDown = index < uiState.workspaces.size - 1,
-                        timerRunning = uiState.timerRunning,
-                        onEdit = { onEditWorkspace(workspace) },
-                        onDelete = { onDeleteWorkspace(workspace.id) },
-                        onMoveUp = { onMoveUp(workspace.id) },
-                        onMoveDown = { onMoveDown(workspace.id) }
-                    )
-                }
-            }
-
-            OutlinedButton(
-                onClick = onAddWorkspace,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(stringResource(R.string.btn_add_workspace))
-            }
-
-            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-
             // --- Notion-page sync section ---
             var showCreateSync by remember { mutableStateOf(false) }
             var showLoadSync by remember { mutableStateOf(false) }
@@ -325,6 +286,45 @@ fun SettingsScreen(
                     onSearch = onSearchSyncPages,
                     onAttach = onLoadExistingSyncPage
                 )
+            }
+
+            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+
+            // --- Workspaces section ---
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(stringResource(R.string.label_workspaces), style = MaterialTheme.typography.titleSmall)
+            }
+
+            if (uiState.workspaces.isEmpty()) {
+                Text(
+                    stringResource(R.string.no_workspaces_yet),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            } else {
+                uiState.workspaces.forEachIndexed { index, workspace ->
+                    WorkspaceListItem(
+                        workspace = workspace,
+                        canMoveUp = index > 0,
+                        canMoveDown = index < uiState.workspaces.size - 1,
+                        timerRunning = uiState.timerRunning,
+                        onEdit = { onEditWorkspace(workspace) },
+                        onDelete = { onDeleteWorkspace(workspace.id) },
+                        onMoveUp = { onMoveUp(workspace.id) },
+                        onMoveDown = { onMoveDown(workspace.id) }
+                    )
+                }
+            }
+
+            OutlinedButton(
+                onClick = onAddWorkspace,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(stringResource(R.string.btn_add_workspace))
             }
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))

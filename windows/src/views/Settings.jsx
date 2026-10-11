@@ -144,6 +144,46 @@ export default function Settings() {
         </div>
       </div>
 
+      {/* Notion-page sync */}
+      <div>
+        <label className="block text-xs text-fg2 mb-1">{t('labelSync')}</label>
+        {syncPageId ? (
+          <div className="flex items-center justify-between bg-control border border-stroke rounded-md px-3 py-2 gap-2">
+            <span className="text-sm truncate flex items-center gap-1.5">
+              <ArrowClockwise20Regular className="w-4 h-4 shrink-0 text-success" />
+              {t('syncStatusConnected').replace('{title}', syncPageTitle || syncPageId)}
+            </span>
+            <button
+              onClick={disconnectSync}
+              className="text-xs text-fg3 hover:text-danger shrink-0"
+            >
+              {t('btnDisconnectSync')}
+            </button>
+          </div>
+        ) : (
+          <>
+            <p className="text-xs text-fg3 mb-2">{t('syncStatusNotConnected')}</p>
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => setShowCreateSync(true)}
+                disabled={!apiKey}
+                className="px-3 py-1.5 rounded-md bg-control hover:bg-control-hover active:bg-control-pressed border border-stroke disabled:opacity-50 text-sm flex items-center gap-1.5"
+              >
+                <ArrowClockwise20Regular className="w-4 h-4" />
+                {t('btnCreateSyncPage')}
+              </button>
+              <button
+                onClick={() => setShowLoadSync(true)}
+                disabled={!apiKey}
+                className="px-3 py-1.5 rounded-md bg-control hover:bg-control-hover active:bg-control-pressed border border-stroke disabled:opacity-50 text-sm"
+              >
+                {t('btnLoadExistingSync')}
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+
       <div>
         <label className="block text-xs text-fg2 mb-1">{t('labelWorkspaces')}</label>
         <div className="flex flex-col gap-1">
@@ -203,46 +243,6 @@ export default function Settings() {
             {t('btnAddWorkspace')}
           </button>
         </div>
-      </div>
-
-      {/* Notion-page sync */}
-      <div>
-        <label className="block text-xs text-fg2 mb-1">{t('labelSync')}</label>
-        {syncPageId ? (
-          <div className="flex items-center justify-between bg-control border border-stroke rounded-md px-3 py-2 gap-2">
-            <span className="text-sm truncate flex items-center gap-1.5">
-              <ArrowClockwise20Regular className="w-4 h-4 shrink-0 text-success" />
-              {t('syncStatusConnected').replace('{title}', syncPageTitle || syncPageId)}
-            </span>
-            <button
-              onClick={disconnectSync}
-              className="text-xs text-fg3 hover:text-danger shrink-0"
-            >
-              {t('btnDisconnectSync')}
-            </button>
-          </div>
-        ) : (
-          <>
-            <p className="text-xs text-fg3 mb-2">{t('syncStatusNotConnected')}</p>
-            <div className="flex flex-wrap gap-2">
-              <button
-                onClick={() => setShowCreateSync(true)}
-                disabled={!apiKey}
-                className="px-3 py-1.5 rounded-md bg-control hover:bg-control-hover active:bg-control-pressed border border-stroke disabled:opacity-50 text-sm flex items-center gap-1.5"
-              >
-                <ArrowClockwise20Regular className="w-4 h-4" />
-                {t('btnCreateSyncPage')}
-              </button>
-              <button
-                onClick={() => setShowLoadSync(true)}
-                disabled={!apiKey}
-                className="px-3 py-1.5 rounded-md bg-control hover:bg-control-hover active:bg-control-pressed border border-stroke disabled:opacity-50 text-sm"
-              >
-                {t('btnLoadExistingSync')}
-              </button>
-            </div>
-          </>
-        )}
       </div>
 
       <label className="flex items-center gap-2 text-sm cursor-pointer">
