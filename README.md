@@ -196,7 +196,7 @@ In this app, a *workspace* is one Time Entries database plus how you want to use
 3. Fill in any extra fields you added.
 4. Click **START**. The clock starts counting and a new row appears in your Notion database with status **In progress**.
 
-On Windows, the tray icon turns red (or your workspace colour) while a timer runs. On Android, a notification shows the running timer.
+On Windows, the stopwatch in the tray turns your workspace colour (red if it has none) while a timer runs. On Android, a notification shows the running timer.
 
 ### 7.2 While the timer runs
 
@@ -232,12 +232,12 @@ A *preset* remembers a workspace, a description and extra field values, and star
 
 1. On the timer screen, choose the workspace, type the description and fill in the extra fields you want the preset to remember.
 2. Click the bookmark button next to **START**. The **Save Preset** window opens.
-3. Optionally type a name, for example `Stand-up`. Without a name, the preset is shown with just the workspace name.
+3. Type a title, for example `Stand-up`. The title is what the preset button shows, so **Save** only works once you've typed one.
 4. Click **Save**.
 
 ### 8.2 Use a preset
 
-Your presets appear as buttons at the top of the timer screen, labelled *Workspace – Preset*, for example **Work – Stand-up**. A label too long for one line ends in "…"; on Windows, hold the mouse over it to see the full name.
+Your presets appear as buttons at the top of the timer screen, labelled with their title, for example **Stand-up**, in the colour of their workspace. A label too long for one line ends in "…"; on Windows, hold the mouse over it to see the full name.
 
 1. Click a preset button. The timer starts immediately with the preset's details.
 2. If a timer is already running, the app asks **Timer already running**. Click **Stop & start new** to stop the old one and start the preset, or **Cancel**.

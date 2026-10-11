@@ -191,7 +191,6 @@ export default {
   btnStopAndStartNew: 'Detener e iniciar nuevo',
   dialogSavePresetTitle: 'Guardar preajuste',
   dialogSavePresetBody: 'Guardar la descripción y campos actuales como preajuste.',
-  dialogSavePresetRequired: 'El título se muestra en el chip del preajuste y es obligatorio.',
   dialogSavePresetPlaceholder: 'Título del preajuste (ej. Standup diario)',
   presetsManageTitle: 'Gestionar preajustes',
   tooltipPresetsShortcuts: 'Todos los preajustes se agregarán a los accesos directos de la bandeja.',

@@ -191,7 +191,6 @@ export default {
   btnStopAndStartNew: 'Ferma e avvia nuovo',
   dialogSavePresetTitle: 'Salva preimpostazione',
   dialogSavePresetBody: 'Salva la descrizione e i campi correnti come preimpostazione.',
-  dialogSavePresetRequired: 'Il titolo viene mostrato sul chip della preimpostazione ed è obbligatorio.',
   dialogSavePresetPlaceholder: 'Titolo preimpostazione (es. Standup giornaliero)',
   presetsManageTitle: 'Gestisci preimpostazioni',
   tooltipPresetsShortcuts: 'Tutte le preimpostazioni vengono aggiunte alle scorciatoie della barra delle applicazioni.',

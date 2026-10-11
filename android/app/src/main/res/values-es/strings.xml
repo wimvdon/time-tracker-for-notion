@@ -188,7 +188,6 @@
     <string name="dialog_save_preset_title">Guardar preajuste</string>
     <string name="dialog_save_preset_body">Guardar la descripción y campos actuales como preajuste.</string>
     <string name="dialog_save_preset_placeholder">Título del preajuste (ej. Standup diario)</string>
-    <string name="dialog_save_preset_required">El título se muestra en el chip del preajuste y es obligatorio.</string>
     <string name="dialog_save_preset_name">Título del preajuste</string>
     <string name="presets_manage_title">Gestionar preajustes</string>
     <string name="tooltip_presets_shortcuts">Los preajustes superiores se usarán como accesos directos.</string>

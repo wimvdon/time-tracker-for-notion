@@ -327,7 +327,6 @@ export default function Timer() {
           <div className="bg-dialog border border-surface-stroke rounded-lg shadow-dialog p-4 w-full flex flex-col gap-3">
             <h2 className="text-sm font-semibold">{t('dialogSavePresetTitle')}</h2>
             <p className="text-xs text-fg2">{t('dialogSavePresetBody')}</p>
-            <p className="text-xs text-fg2 italic">{t('dialogSavePresetRequired')}</p>
             <input
               type="text"
               value={presetNameInput}
