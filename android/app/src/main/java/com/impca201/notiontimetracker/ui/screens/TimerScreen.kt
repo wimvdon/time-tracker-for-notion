@@ -111,8 +111,6 @@ fun TimerScreen(
 
     var showSavePresetDialog by remember { mutableStateOf(false) }
     var presetNameInput by remember { mutableStateOf("") }
-    val activeWorkspace = uiState.workspaces.firstOrNull { it.id == uiState.selectedWorkspaceId }
-    val activeWorkspaceName = activeWorkspace?.name ?: ""
     if (showSavePresetDialog) {
         AlertDialog(
             onDismissRequest = { showSavePresetDialog = false },
@@ -120,13 +118,14 @@ fun TimerScreen(
             text = {
                 Column {
                     Text(stringResource(R.string.dialog_save_preset_body))
-                    Spacer(Modifier.height(12.dp))
+                    Spacer(Modifier.height(8.dp))
                     Text(
-                        stringResource(R.string.dialog_save_preset_workspace, activeWorkspaceName),
-                        style = MaterialTheme.typography.labelLarge,
+                        stringResource(R.string.dialog_save_preset_required),
+                        style = MaterialTheme.typography.bodySmall,
+                        fontStyle = FontStyle.Italic,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    Spacer(Modifier.height(8.dp))
+                    Spacer(Modifier.height(12.dp))
                     OutlinedTextField(
                         value = presetNameInput,
                         onValueChange = { presetNameInput = it },
