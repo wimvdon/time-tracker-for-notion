@@ -396,7 +396,9 @@ GitHub builds both apps and attaches them to a release whenever you push a versi
 | `ANDROID_KEY_ALIAS` | The alias, for example `timetracker` |
 | `ANDROID_KEY_PASSWORD` | The key password (the same as the keystore password unless you set a different one) |
 
-**Every release:** push a tag that looks like `v1.2.0`:
+**Every release:** open **Actions > Release > Run workflow**, set **Release** to `patch` (1.0.1 to 1.0.2), `minor` (1.0.1 to 1.1.0) or `major` (1.0.1 to 2.0.0), and click **Run workflow**. It picks the next version after the latest tag, builds both apps and publishes the release with that tag.
+
+You can also push a tag that looks like `v1.2.0` yourself:
 
 ```
 git tag v1.2.0
@@ -405,7 +407,7 @@ git push origin v1.2.0
 
 The **Actions** tab shows the build. When it finishes, the **Releases** page has `Time Tracker for Notion Setup 1.2.0.exe` and `TimeTracker-1.2.0.apk`. The tag sets the version shown in both apps; the Android version code is `major × 10000 + minor × 100 + patch`, so each new tag must be higher than the last.
 
-To try a build without publishing, open **Actions > Release > Run workflow**. The files appear under **Artifacts** on that run. Without the signing secrets, that run makes a debug APK instead.
+To try a build without publishing, run the same workflow with **Release** left at `none`. The files appear under **Artifacts** on that run. Without the signing secrets, that run makes a debug APK instead.
 
 The Windows installer isn't code-signed, so Windows SmartScreen shows **Windows protected your PC** the first time. Click **More info > Run anyway**.
 
