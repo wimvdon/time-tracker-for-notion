@@ -378,6 +378,37 @@ android/app/src/main/
     └── values-{nl,fr,de,es,it}/           # Dutch, French, German, Spanish, Italian
 ```
 
+### 11.3 Publishing a release
+
+GitHub builds both apps and attaches them to a release whenever you push a version tag. The workflow is in `.github/workflows/release.yml`.
+
+**One time: give GitHub your Android signing key.** Android only updates an installed app when the new APK is signed with the same key, so every release must use the same keystore. Keep a backup of it; a lost key means users must uninstall before installing the next version.
+
+1. Create a keystore (skip if you already have one):
+   `keytool -genkeypair -v -keystore timetracker.jks -keyalg RSA -keysize 2048 -validity 10000 -alias timetracker`
+2. Turn it into text: on Windows PowerShell `[Convert]::ToBase64String([IO.File]::ReadAllBytes("timetracker.jks")) | Set-Clipboard`, on macOS or Linux `base64 -w0 timetracker.jks`.
+3. On GitHub, open the repository's **Settings > Secrets and variables > Actions** and add four repository secrets:
+
+| Secret | Value |
+|---|---|
+| `ANDROID_KEYSTORE_BASE64` | The text from step 2 |
+| `ANDROID_KEYSTORE_PASSWORD` | The keystore password |
+| `ANDROID_KEY_ALIAS` | The alias, for example `timetracker` |
+| `ANDROID_KEY_PASSWORD` | The key password (the same as the keystore password unless you set a different one) |
+
+**Every release:** push a tag that looks like `v1.2.0`:
+
+```
+git tag v1.2.0
+git push origin v1.2.0
+```
+
+The **Actions** tab shows the build. When it finishes, the **Releases** page has `Time Tracker for Notion Setup 1.2.0.exe` and `TimeTracker-1.2.0.apk`. The tag sets the version shown in both apps; the Android version code is `major × 10000 + minor × 100 + patch`, so each new tag must be higher than the last.
+
+To try a build without publishing, open **Actions > Release > Run workflow**. The files appear under **Artifacts** on that run. Without the signing secrets, that run makes a debug APK instead.
+
+The Windows installer isn't code-signed, so Windows SmartScreen shows **Windows protected your PC** the first time. Click **More info > Run anyway**.
+
 ---
 
 ## 12. Sources
