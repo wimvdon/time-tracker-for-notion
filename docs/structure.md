@@ -38,10 +38,12 @@ notion-time-tracker/
 │       │   └── i18n.js               Locale resolution and t()
 │       └── locales/                  en-GB, nl-BE, fr, de, es, it
 └── android/                          Android app (Gradle project root)
-    ├── build.gradle.kts              Plugin versions (AGP 8.7.3, Kotlin 2.1.0)
+    ├── build.gradle.kts              Plugin declarations (versions come from the catalog)
     ├── settings.gradle.kts
     ├── gradle.properties
-    ├── gradle/wrapper/               Gradle 8.11.1
+    ├── gradle/
+    │   ├── libs.versions.toml        Version catalog: AGP 8.7.3, Kotlin 2.1.0, all libraries
+    │   └── wrapper/                  Gradle 8.11.1
     ├── gradlew, gradlew.bat
     └── app/
         ├── build.gradle.kts          SDK levels, signing from env vars, versioning, dependencies

@@ -25,8 +25,7 @@ data class Preset(
     val id: String,
     val name: String,
     val pageTitle: String = "",
-    val extraValues: Map<String, String> = emptyMap(),
-    val showInShortcuts: Boolean = false
+    val extraValues: Map<String, String> = emptyMap()
 )
 
 @Serializable
