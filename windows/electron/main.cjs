@@ -5,7 +5,7 @@ const zlib = require('zlib');
 const Store = require('electron-store');
 const notion = require('./notionClient.cjs');
 
-// ---- Minimal PNG encoder (for colored tray icons) ----
+// ---- Minimal PNG encoder (for the coloured tray icon) ----
 
 const CRC_TABLE = (() => {
   const table = new Int32Array(256);
@@ -49,49 +49,37 @@ function encodePNG(width, height, rgba) {
   ]);
 }
 
-function drawColoredDot(size, [r, g, b]) {
-  const SS = 4;
-  const dim = size * SS;
-  const data = Buffer.alloc(dim * dim * 4);
-  const mid = dim / 2;
-  const radius = mid * 0.82;
-  for (let y = 0; y < dim; y++) {
-    for (let x = 0; x < dim; x++) {
-      const dist = Math.hypot(x + 0.5 - mid, y + 0.5 - mid);
-      const a = Math.min(1, Math.max(0, radius - dist + 0.5));
-      if (a <= 0) continue;
-      const i = (y * dim + x) * 4;
-      data[i] = r; data[i + 1] = g; data[i + 2] = b; data[i + 3] = Math.round(a * 255);
-    }
-  }
-  // Downsample SS:1
-  const out = Buffer.alloc(size * size * 4);
-  for (let y = 0; y < size; y++) {
-    for (let x = 0; x < size; x++) {
-      let pr = 0, pg = 0, pb = 0, pa = 0;
-      for (let sy = 0; sy < SS; sy++) {
-        for (let sx = 0; sx < SS; sx++) {
-          const i = ((y * SS + sy) * dim + x * SS + sx) * 4;
-          const alpha = data[i + 3];
-          pr += data[i] * alpha; pg += data[i + 1] * alpha; pb += data[i + 2] * alpha; pa += alpha;
-        }
-      }
-      const o = (y * size + x) * 4;
-      if (pa > 0) {
-        out[o] = Math.round(pr / pa); out[o + 1] = Math.round(pg / pa);
-        out[o + 2] = Math.round(pb / pa); out[o + 3] = Math.round(pa / (SS * SS));
-      }
-    }
-  }
-  return encodePNG(size, size, out);
-}
+// Default running colour when the workspace has none: the app icon's red.
+const DEFAULT_TIMER_COLOR = '#E53935';
 
+/** The tray icon while a timer runs: the app's stopwatch with its dial in the
+ *  running timer's workspace colour, shaded top to bottom like the app icon.
+ *  tray-template.png has a black dial and white hand; each pixel's grey level
+ *  says how far it sits toward white, so any colour can be painted in. */
 function makeColoredTrayIcon(hexColor) {
-  const r = parseInt(hexColor.slice(1, 3), 16);
-  const g = parseInt(hexColor.slice(3, 5), 16);
-  const b = parseInt(hexColor.slice(5, 7), 16);
-  if (isNaN(r) || isNaN(g) || isNaN(b)) return null;
-  return nativeImage.createFromBuffer(drawColoredDot(32, [r, g, b]));
+  const rgb = [1, 3, 5].map((i) => parseInt(hexColor.slice(i, i + 2), 16));
+  if (hexColor.length !== 7 || rgb.some(isNaN)) return null;
+  const template = nativeImage.createFromPath(assetPath('tray-template.png'));
+  if (template.isEmpty()) return null;
+  const { width, height } = template.getSize();
+  // Grey pixels read the same in BGRA and RGBA, so the bitmap's channel order
+  // doesn't matter here.
+  const src = template.toBitmap();
+  const mix = (from, to, t) => from.map((v, i) => v + (to[i] - v) * t);
+  const top = mix(rgb, [255, 255, 255], 0.2);
+  const bottom = mix(rgb, [0, 0, 0], 0.15);
+  const out = Buffer.alloc(width * height * 4);
+  for (let y = 0; y < height; y++) {
+    const dial = mix(top, bottom, y / (height - 1));
+    for (let x = 0; x < width; x++) {
+      const i = (y * width + x) * 4;
+      const toWhite = src[i + 1] / 255;
+      const [r, g, b] = mix(dial, [250, 250, 250], toWhite);
+      out[i] = Math.round(r); out[i + 1] = Math.round(g); out[i + 2] = Math.round(b);
+      out[i + 3] = src[i + 3];
+    }
+  }
+  return nativeImage.createFromBuffer(encodePNG(width, height, out));
 }
 
 // encryptionKey obfuscates the config file at rest (it is not a hard security
@@ -229,11 +217,11 @@ function createWindow() {
 
 function trayIcon() {
   if (!timerRunning) return nativeImage.createFromPath(assetPath('tray-idle.png'));
-  if (timerColor) {
-    const colored = makeColoredTrayIcon(timerColor);
-    if (colored) return colored;
-  }
-  return nativeImage.createFromPath(assetPath('tray-running.png'));
+  return (
+    (timerColor && makeColoredTrayIcon(timerColor)) ||
+    makeColoredTrayIcon(DEFAULT_TIMER_COLOR) ||
+    nativeImage.createFromPath(assetPath('tray-idle.png'))
+  );
 }
 
 function rebuildTrayMenu() {
@@ -261,10 +249,8 @@ function rebuildTrayMenu() {
   if (presetItems.length > 0) {
     items.push({ type: 'separator' });
     for (const { workspace, preset } of presetItems.slice(0, 10)) {
-      const name = preset.name?.trim();
-      const label = name && name !== workspace.name ? `${workspace.name} – ${name}` : workspace.name;
       items.push({
-        label: `▶ ${label}`,
+        label: `▶ ${preset.name}`,
         click: () => {
           showWindow();
           mainWindow.webContents.send('tray:apply-preset', { workspaceId: workspace.id, preset });

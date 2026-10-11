@@ -93,7 +93,7 @@ class SettingsRepository(private val context: Context) {
     val workspacesFlow: Flow<List<Workspace>> = context.dataStore.data.map { prefs ->
         val stored = prefs[WORKSPACES_KEY] ?: return@map emptyList()
         runCatching {
-            json.decodeFromString<List<Workspace>>(stored)
+            json.decodeFromString<List<Workspace>>(stored).map { it.withPresetTitles() }
         }.getOrDefault(emptyList())
     }
 
@@ -114,6 +114,7 @@ class SettingsRepository(private val context: Context) {
         context.dataStore.edit { prefs ->
             val current = prefs[WORKSPACES_KEY]
                 ?.let { runCatching { json.decodeFromString<List<Workspace>>(it) }.getOrNull() }
+                ?.map { it.withPresetTitles() }
                 ?: emptyList()
             updated = transform(current)
             prefs[WORKSPACES_KEY] = json.encodeToString(updated)

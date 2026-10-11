@@ -385,7 +385,7 @@ export default function Timer() {
                 return allPresets.map(({ ws, p, index, arr }) => (
                   <div key={p.id} className="flex items-center justify-between bg-control border border-stroke rounded px-2.5 py-1.5 text-xs">
                     <div className="flex flex-col min-w-0 flex-1 pr-2">
-                      <span className="font-semibold text-fg1 truncate">{p.name || ws.name}</span>
+                      <span className="font-semibold text-fg1 truncate">{p.name}</span>
                       <div className="flex items-center gap-1.5 mt-0.5">
                         {ws.color?.trim() && (
                           <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: getWorkspaceAccentColor(ws.color.trim(), isDarkTheme) }} />
@@ -849,12 +849,6 @@ function RunningTimerItem({ rt, isActive, onLoad, onStop, onDelete, onOpenUrl })
   );
 }
 
-/** The preset's own title, same as the Android chips. Presets saved before a
- *  title was required fall back to their workspace name, the label they had. */
-function presetLabel(workspace, preset) {
-  return preset.name?.trim() || workspace.name;
-}
-
 /** Quick-start preset chips — shown when an API key is set and any workspace
  *  has presets, in both the idle form and the running view. Clicking one while a timer is already
  *  running goes through `applyPreset`'s "already running" confirmation. */
@@ -871,7 +865,7 @@ function PresetChips({ workspaces, apiKey, onApplyPreset, onManageClick, classNa
           const chipStyle = accent
             ? { borderColor: accent + '66', color: accent, backgroundColor: accent + '22' }
             : {};
-          const label = presetLabel(w, preset);
+          const label = preset.name;
           // The label only truncates once the chip would overflow the row,
           // instead of being cut off at a fixed width.
           return (
