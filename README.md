@@ -26,7 +26,7 @@ Press **START** when you begin working and **STOP** when you're done. Time Track
 - For the phone app: an **Android** phone running Android 8 or newer.
 - About 30 minutes for the first setup. After that, starting a timer takes one click.
 
-There is no ready-made download yet. You build the app yourself from this project with a double-click; chapters 4 and 5 show how.
+Both apps are ready to download from this project's [Releases](https://github.com/impca201/notion-time-tracker/releases) page; chapters 4 and 5 show how.
 
 ---
 
@@ -86,35 +86,21 @@ If you want to sync settings between devices ([chapter 9](#9-use-the-same-settin
 
 Skip this chapter if you only want the Android app.
 
-### 4.1 Install Node.js (one time only)
+### 4.1 Download the installer
 
-Node.js is a free program the build script uses to put the app together. You need it once.
+1. Open the [latest release](https://github.com/impca201/notion-time-tracker/releases/latest) of this project on GitHub.
+2. Under **Assets**, click the file that ends in `.exe`, for example `Time.Tracker.for.Notion.Setup.1.0.1.exe`. It downloads to your **Downloads** folder.
+3. If your browser says the file isn't commonly downloaded, click **•••** (or the arrow) next to the warning and choose **Keep**.
 
-1. Go to [nodejs.org](https://nodejs.org) and click the download button marked **LTS**. LTS means the stable version.
-2. Open the downloaded file (it's in your **Downloads** folder and ends in `.msi`).
-3. Click **Next** on every screen, accept the licence, and click **Install**. Click **Yes** if Windows asks whether the program may make changes.
-4. Click **Finish**.
+### 4.2 Install the app
 
-### 4.2 Download this project
-
-1. At the top of this project's page on GitHub, click the green **Code** button.
-2. Click **Download ZIP**. A file called `notion-time-tracker-main.zip` appears in your **Downloads** folder.
-3. Open your **Downloads** folder, right-click the ZIP file and choose **Extract All…**, then click **Extract**. A folder called `notion-time-tracker-main` opens.
-
-### 4.3 Build the installer
-
-1. In the `notion-time-tracker-main` folder, open the `windows` folder.
-2. Double-click `build.bat`. A black window opens and shows its progress. The first time, this takes a few minutes because it downloads the parts the app is made of.
-3. Wait until the window says **Done! Check the release folder**, then press any key on your keyboard to close it.
-4. Go back to the `notion-time-tracker-main` folder. It now contains a folder called `release`. Inside is the installer, `Time Tracker for Notion Setup 1.0.0.exe`.
-
-### 4.4 Install the app
-
-1. Double-click `Time Tracker for Notion Setup 1.0.0.exe`.
-2. If a blue window says **Windows protected your PC**, click **More info**, then **Run anyway**. Windows shows this for every app that isn't signed by a known publisher. This one is built by you, so it's safe.
+1. Open your **Downloads** folder and double-click the installer.
+2. If a blue window says **Windows protected your PC**, click **More info**, then **Run anyway**. Windows shows this for every app that isn't signed by a known publisher.
 3. The app installs itself without further questions and opens on the **Settings** screen.
 
 The app runs as a small window that stays on top of your other windows. When you close it, it keeps running in the *system tray*: the row of small icons at the bottom-right of the taskbar, next to the clock (click the **^** arrow if you don't see it).
+
+To update the app later, download the installer of the newest release and run it again. Your settings are kept.
 
 Continue with [chapter 6](#6-connect-the-app-to-notion).
 
@@ -122,38 +108,22 @@ Continue with [chapter 6](#6-connect-the-app-to-notion).
 
 ## 5. Install on Android
 
-You build the phone app on a Windows PC and then copy it to your phone.
+### 5.1 Download the app
 
-### 5.1 Install Android Studio (one time only)
+1. On your phone, open the [latest release](https://github.com/impca201/notion-time-tracker/releases/latest) of this project in your browser.
+2. Under **Assets**, tap the file that ends in `.apk`, for example `TimeTracker-1.0.1.apk`. An *APK* is an Android app in a single file.
+3. If the browser warns that the file might be harmful, tap **Download anyway**.
 
-Android Studio is Google's free program for making Android apps. The build script uses the tools it installs.
+### 5.2 Install the app
 
-1. Go to [developer.android.com/studio](https://developer.android.com/studio) and click the download button. Accept the terms when asked.
-2. Open the downloaded file and click **Next** on every screen; the default choices are fine. Click **Install**, then **Finish**.
-3. Android Studio starts a setup wizard. Choose **Standard** and click **Next** until it starts downloading. This takes a few minutes (about 1.5 GB).
-4. When the **Welcome to Android Studio** screen appears, click **More Actions**, then **SDK Manager**.
-5. On the **SDK Platforms** tab, tick **Android 16** (API level 36). The app is built for this version of Android; it still runs on phones with older versions.
-6. Click **Apply**, then **OK**, and wait until the download finishes. Click **Finish**, then close Android Studio.
+1. Open the **Files** app (on Samsung phones: **My Files**), go to **Downloads** and tap the APK.
+2. The first time, Android says it isn't allowed to install apps from this source. Tap **Settings**, switch on **Allow from this source**, and go back.
+3. Tap **Install**. When it's done, tap **Open**.
+4. Allow notifications when asked. The app shows the running timer as a notification, so you can see and stop it without opening the app.
 
-### 5.2 Build the app
+To update the app later, repeat 5.1 and 5.2. Installing over the old version keeps your settings.
 
-1. Download and extract this project as described in [4.2](#42-download-this-project), if you haven't already.
-2. In the `notion-time-tracker-main` folder, open the `android` folder.
-3. Double-click `build.bat`. A black window opens. The first time takes several minutes.
-4. Wait until it says **Done! APK is located at: release\TimeTracker.apk**, then press any key to close the window. An *APK* is an Android app in a single file.
-5. The file is in the `release` folder inside `notion-time-tracker-main`.
-
-### 5.3 Put the app on your phone
-
-1. Connect your phone to the PC with a USB cable.
-2. On the phone, pull down the notification bar, tap the USB notification and choose **File transfer**. The phone now appears in File Explorer on your PC.
-3. Drag `TimeTracker.apk` from the `release` folder onto the phone's **Download** folder.
-4. On the phone, open the **Files** app (on Samsung phones: **My Files**), go to **Downloads** and tap `TimeTracker.apk`.
-5. The first time, Android says it isn't allowed to install apps from this source. Tap **Settings**, switch on **Allow from this source**, and go back.
-6. Tap **Install**. When it's done, tap **Open**.
-7. Allow notifications when asked. The app shows the running timer as a notification, so you can see and stop it without opening the app.
-
-To update the app later, repeat 5.2 and 5.3. Installing over the old version keeps your settings.
+> **Built the app yourself before?** A copy you built with the old `build.bat` is signed with a different key, so Android refuses to install the release over it (**App not installed**). Uninstall the old copy first, then install the release. Uninstalling removes the app's settings, so connect it to Notion again afterwards ([chapter 6](#6-connect-the-app-to-notion)).
 
 ---
 
@@ -286,8 +256,8 @@ From now on, a change on one device reaches the others within about a minute. If
 | **Fill in required fields before stopping.** | Fill in the fields marked in red, then click **STOP** again. |
 | **Page not found in Notion** | The entry was deleted in Notion. Click **Dismiss**. To keep it, restore the page from Notion's **Trash** in the sidebar. |
 | The Windows app seems closed but won't open again | It's still running in the system tray. Click the **^** arrow next to the clock, right-click the Time Tracker icon and choose **Open**. |
-| **Windows protected your PC** when installing | Click **More info**, then **Run anyway** ([4.4](#44-install-the-app)). |
-| **App not installed** on Android | Allow installing from your file manager ([5.3](#53-put-the-app-on-your-phone), step 5). Open the APK from the **Files** app, not from a browser. |
+| **Windows protected your PC** when installing | Click **More info**, then **Run anyway** ([4.2](#42-install-the-app)). |
+| **App not installed** on Android | Allow installing from your file manager ([5.2](#52-install-the-app), step 2). If you built the app yourself before, uninstall that copy first. Open the APK from the **Files** app, not from a browser. |
 | No notification on Android | On the phone, open **Settings** → **Apps** → **Time Tracker** → **Notifications** and switch them on. |
 | No preset shortcuts on Android | Press and hold the app icon. Shortcuts appear after you've created at least one preset and opened the app once. |
 
@@ -303,7 +273,7 @@ Built with Electron, React, Vite, Tailwind CSS and Zustand.
 
 To run it while you work on it:
 
-1. Install Node.js ([4.1](#41-install-nodejs-one-time-only)).
+1. Install the **LTS** version of [Node.js](https://nodejs.org).
 2. In File Explorer, open the project's `windows` folder.
 3. Right-click an empty spot in the folder and choose **Open in Terminal**. A terminal window opens, already pointing at this folder.
 4. Type `npm install` and press **Enter**. Wait until it finishes (the first time takes a minute).
@@ -315,7 +285,7 @@ Other commands, typed in the same terminal:
 |---|---|
 | `npm test` | Runs the unit tests (rounding, formatting, colours, Notion values, store). |
 | `npm run icons` | Regenerates the app and tray icons in `assets/` and the Android launcher icon, all from one vector design. |
-| `npm run dist` | Builds the installer, same as double-clicking `build.bat`. |
+| `npm run dist` | Builds the installer into the `release` folder next to the `windows` folder. |
 
 ```
 windows/
@@ -349,7 +319,9 @@ Built with Kotlin and Jetpack Compose. It mirrors the Windows app feature for fe
 | Background | Foreground service with an ongoing notification |
 | Min / target SDK | 26 (Android 8) / 36 (Android 16) |
 
-To work on it, open the `android` folder in Android Studio (**File** → **Open**, choose the `android` folder, click **OK**). If Android Studio says the project needs syncing, click **Sync Now**.
+To work on it, open the `android` folder in Android Studio (**File** → **Open**, choose the `android` folder, click **OK**). If Android Studio says the project needs syncing, click **Sync Now**. The app targets Android 16 (API level 36); install that SDK platform under **Tools** → **SDK Manager** if it's missing.
+
+To build a debug APK, choose **Build** → **Build APK(s)**, or run `gradlew.bat assembleDebug` (`./gradlew assembleDebug` on macOS or Linux) in the `android` folder. The APK lands in `android/app/build/outputs/apk/debug/`. Signed APKs come only from the release workflow ([11.3](#113-publishing-a-release)).
 
 ```
 android/app/src/main/
