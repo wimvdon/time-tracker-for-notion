@@ -188,7 +188,7 @@
     <string name="dialog_save_preset_title">Salva preimpostazione</string>
     <string name="dialog_save_preset_body">Salva la descrizione e i campi correnti come preimpostazione.</string>
     <string name="dialog_save_preset_placeholder">Titolo preimpostazione (es. Standup giornaliero)</string>
-    <string name="dialog_save_preset_workspace">Spazio di lavoro: %1$s</string>
+    <string name="dialog_save_preset_required">Il titolo viene mostrato sul chip della preimpostazione ed è obbligatorio.</string>
     <string name="dialog_save_preset_name">Titolo preimpostazione</string>
     <string name="presets_manage_title">Gestisci preimpostazioni</string>
     <string name="tooltip_presets_shortcuts">Le preimpostazioni in alto saranno usate per le scorciatoie di avvio.</string>
