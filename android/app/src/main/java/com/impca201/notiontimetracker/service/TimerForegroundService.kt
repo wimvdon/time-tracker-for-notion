@@ -282,17 +282,7 @@ class TimerForegroundService : Service() {
             }
         }
 
-        // Progress towards the end of the current rounding interval. This used
-        // to be skipped on Android 16 in favour of a Notification.ProgressStyle
-        // that was built but never attached to the notification, so that
-        // version ended up with no progress bar at all. With rounding off there
-        // is no interval to fill, so no bar is shown.
-        if (roundingMinutes > 0) {
-            val totalSecs = roundingMinutes * 60
-            val progress = ((elapsedSecs.toFloat() / totalSecs) * 100).toInt().coerceIn(0, 100)
-            builder.setProgress(100, progress, false)
-        }
-
+        // No progress bar: a timer has no target time, so there is nothing to fill.
         return builder.build()
     }
 
