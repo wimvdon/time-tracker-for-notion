@@ -12,7 +12,7 @@ No environment variables, database or backend are needed.
 
 ## Option A: install a release
 
-1. Open the [latest release](https://github.com/impca201/notion-time-tracker/releases/latest).
+1. Open the [latest release](https://github.com/impca201/time-tracker-for-notion/releases/latest).
 2. **Windows:** download the `.exe` and run it. It's a one-click per-user NSIS installer. SmartScreen warns because the installer isn't code-signed; choose **More info › Run anyway**.
 3. **Android:** download the `.apk` on the phone and open it from the **Files** app. Allow installing from that source when asked.
 4. Continue with [usage.md](usage.md).
@@ -24,8 +24,8 @@ An APK built locally is signed with a debug key. Android refuses to install a re
 ### 1. Clone the repo
 
 ```bash
-git clone https://github.com/impca201/notion-time-tracker.git
-cd notion-time-tracker
+git clone https://github.com/impca201/time-tracker-for-notion.git
+cd time-tracker-for-notion
 ```
 
 ### 2. Windows app

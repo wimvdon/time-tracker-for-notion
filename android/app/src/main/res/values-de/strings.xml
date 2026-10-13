@@ -12,20 +12,19 @@
     <string name="placeholder_loading">Laden…</string>
     <string name="btn_start">Start</string>
     <string name="btn_stop">Stopp</string>
-    <string name="btn_close">Schließen</string>
     <string name="label_start_time">Startzeit</string>
     <string name="label_end_time">Endzeit</string>
     <string name="hint_manual_end">Das Eintragen einer Endzeit stoppt den Timer.</string>
     <string name="toast_end_before_start">Die Endzeit muss nach der Startzeit liegen.</string>
     <string name="warn_no_api_key">Kein Notion-API-Schlüssel konfiguriert.</string>
     <string name="warn_no_api_key_link">Einstellungen öffnen</string>
-    <string name="warn_no_workspaces">Fügen Sie einen Workspace in den</string>
+    <string name="warn_no_workspaces">Füge einen Workspace in den</string>
     <string name="warn_no_workspaces_link">Einstellungen</string>
     <string name="warn_no_workspaces_suffix">hinzu, um zu starten.</string>
 
     <!-- Settings -->
     <string name="settings_title">Einstellungen</string>
-    <string name="first_launch_hint">Geben Sie Ihren Notion-API-Schlüssel und mindestens einen Workspace ein, um zu starten.</string>
+    <string name="first_launch_hint">Gib deinen Notion-API-Schlüssel und mindestens einen Workspace ein, um zu starten.</string>
     <string name="label_api_key">Notion-API-Schlüssel</string>
     <string name="placeholder_api_key">secret_… oder ntn_…</string>
     <string name="btn_show_key">Anzeigen</string>
@@ -36,7 +35,7 @@
     <string name="label_workspaces">Workspaces</string>
     <string name="no_workspaces_yet">Noch keine Workspaces.</string>
     <string name="title_delete_workspace">Workspace löschen</string>
-    <string name="title_delete_workspace_disabled">Stoppen Sie zuerst den Timer</string>
+    <string name="title_delete_workspace_disabled">Stoppe zuerst den Timer</string>
     <string name="title_move_up">Nach oben</string>
     <string name="title_move_down">Nach unten</string>
     <string name="btn_add_workspace">+ Workspace hinzufügen</string>
@@ -59,7 +58,7 @@
     <string name="loading_databases">Lade Datenbanken…</string>
     <string name="error_loading_databases">Datenbanken konnten nicht geladen werden</string>
     <string name="error_loading_schema">Datenbank-Eigenschaften konnten nicht geladen werden</string>
-    <string name="no_databases_found">Keine Datenbanken gefunden. Verknüpfen Sie Ihre Integration zuerst in Notion mit den entsprechenden Seiten.</string>
+    <string name="no_databases_found">Keine Datenbanken gefunden. Verknüpfe deine Integration zuerst in Notion mit den entsprechenden Seiten.</string>
     <string name="btn_retry">Wiederholen</string>
     <string name="label_time_entry_date_prop">Datumsbereichsfeld</string>
     <string name="hint_time_entry_date_prop">Speichert Start- und Endzeit.</string>
@@ -77,12 +76,12 @@
     <string name="title_remove_extra_field">Feld entfernen</string>
     <string name="placeholder_select_field">Feld auswählen…</string>
     <string name="label_required_field">Erforderlich</string>
-    <string name="toast_required_fields_missing">Bitte füllen Sie alle erforderlichen Felder aus, bevor Sie starten.</string>
-    <string name="toast_required_before_stopping">Erforderliche Felder ausfüllen, bevor Sie stoppen.</string>
+    <string name="toast_required_fields_missing">Fülle bitte alle erforderlichen Felder aus, bevor du startest.</string>
+    <string name="toast_required_before_stopping">Erforderliche Felder ausfüllen, bevor du stoppst.</string>
     <string name="label_description_required">Beschreibung erforderlich</string>
     <string name="hint_description_required">Ein Timer in diesem Arbeitsbereich kann ohne Beschreibung nicht gestoppt werden.</string>
     <string name="hint_description_optional">Ohne Eingabe erhält der Zeiteintrag sein Startdatum als Titel.</string>
-    <string name="toast_description_before_stopping">Beschreibung ausfüllen, bevor Sie stoppen.</string>
+    <string name="toast_description_before_stopping">Beschreibung ausfüllen, bevor du stoppst.</string>
     <string name="error_loading_extras">Zusatzfelder konnten nicht geladen werden</string>
     <string name="no_properties_of_type">Keine passenden Felder gefunden.</string>
     <string name="label_workspace_rounding">Zeitrungung</string>
@@ -95,7 +94,7 @@
     <string name="label_workspace_color">Workspace-Farbe</string>
     <string name="label_custom_color">Benutzerdefinierter Hex-Wert</string>
     <string name="btn_apply_color">Übernehmen</string>
-    <string name="save_incomplete_hint">Füllen Sie alle Felder aus, bevor Sie speichern.</string>
+    <string name="save_incomplete_hint">Fülle alle Felder aus, bevor du speicherst.</string>
     <string name="btn_cancel">Abbrechen</string>
     <string name="btn_save">Speichern</string>
 
@@ -130,15 +129,15 @@
     <string name="toast_delete_error">Eintrag konnte nicht gelöscht werden</string>
 
     <!-- Database integration hint -->
-    <string name="hint_database_integration">Stellen Sie sicher, dass diese Datenbank mit Ihrer Notion-Integration geteilt wird.</string>
+    <string name="hint_database_integration">Stelle sicher, dass diese Datenbank mit deiner Notion-Integration geteilt ist.</string>
 
     <!-- Theme -->
-    <string name="label_theme">Erscheinungsbild</string>
-    <string name="theme_auto">Systemstandard (Auto)</string>
+    <string name="label_theme">Darstellung</string>
+    <string name="theme_auto">System</string>
     <string name="theme_light">Hell</string>
     <string name="theme_dark">Dunkel</string>
-    <string name="label_dynamic_color">Dynamische Farbe</string>
-    <string name="dynamic_color_hint">Farben Ihres Hintergrundbildes verwenden.</string>
+    <string name="label_dynamic_color">Dynamische Farben</string>
+    <string name="dynamic_color_hint">Farben deines Hintergrundbilds statt des App-Rots verwenden</string>
 
     <!-- QR code import -->
     <string name="btn_scan_qr">QR-Code scannen, um zu importieren</string>
@@ -161,7 +160,7 @@
 
     <!-- Presets -->
     <string name="section_presets">Vorlagen (optional)</string>
-    <string name="hint_presets">Bis zu 5 Schnellstart-Vorlagen. Tippen Sie auf ein Vorlagen-Chip, um den Timer sofort zu starten.</string>
+    <string name="hint_presets">Bis zu 5 Schnellstart-Vorlagen. Tippe auf eine Vorlage, um den Timer sofort zu starten.</string>
     <string name="btn_add_preset">+ Vorlage hinzufügen</string>
     <string name="title_remove_preset">Vorlage entfernen</string>
     <string name="preset_name_placeholder">z.B. Morgen-Standup</string>
@@ -175,7 +174,7 @@
     <!-- Deleted page dialog -->
     <string name="deleted_page_title">Seite nicht in Notion gefunden</string>
     <string name="deleted_page_body">Der Eintrag konnte nicht gespeichert werden, da die Seite gelöscht wurde oder nicht mehr zugänglich ist.</string>
-    <string name="deleted_page_hint">Falls nötig, stellen Sie die Seite aus dem Notion-Papierkorb wieder her oder erstellen Sie sie manuell neu.</string>
+    <string name="deleted_page_hint">Falls nötig, stelle die Seite aus dem Notion-Papierkorb wieder her oder erstelle sie manuell neu.</string>
     <string name="deleted_page_confirm">Schließen</string>
     <string name="toast_update_error">Timer konnte nicht aktualisiert werden</string>
 
@@ -184,7 +183,7 @@
 
     <!-- Additional New Strings -->
     <string name="warn_already_running_title">Timer läuft bereits</string>
-    <string name="warn_already_running_body">Ein Timer läuft bereits. Möchten Sie ihn stoppen und den neuen starten, oder abbrechen?</string>
+    <string name="warn_already_running_body">Ein Timer läuft bereits. Möchtest du ihn stoppen und den neuen starten, oder abbrechen?</string>
     <string name="btn_stop_and_start_new">Stoppen &amp; neu starten</string>
     <string name="dialog_save_preset_title">Vorlage speichern</string>
     <string name="dialog_save_preset_body">Aktuelle Beschreibung und ausgewählte Workspace/Felder als Vorlage speichern.</string>
@@ -193,10 +192,10 @@
     <string name="presets_manage_title">Vorlagen verwalten</string>
     <string name="tooltip_presets_shortcuts">Die obersten Vorlagen werden für Launcher-Verknüpfungen verwendet.</string>
     <string name="dialog_unsaved_changes_title">Ungespeicherte Änderungen</string>
-    <string name="dialog_unsaved_changes_body">Sie haben ungespeicherte Änderungen. Möchten Sie diese vor dem Verlassen speichern?</string>
+    <string name="dialog_unsaved_changes_body">Du hast ungespeicherte Änderungen. Möchtest du sie vor dem Verlassen speichern?</string>
     <string name="btn_discard">Verwerfen</string>
     <string name="dialog_time_error_title">Endzeit liegt vor Startzeit</string>
-    <string name="dialog_time_error_body">Die Endzeit liegt vor der Startzeit. Wollten Sie den Timer am nächsten Tag stoppen?</string>
+    <string name="dialog_time_error_body">Die Endzeit liegt vor der Startzeit. Wolltest du den Timer am nächsten Tag stoppen?</string>
     <string name="btn_edit">Bearbeiten</string>
     <string name="btn_next_day">Nächster Tag</string>
 
@@ -234,7 +233,7 @@
     <string name="language_it">Italiano</string>
     <string name="error_extras_load_failed">Die Felder dieses Workspace konnten nicht aus Notion geladen werden. Die angezeigten Werte sind möglicherweise unvollständig.</string>
     <string name="error_running_timers_failed">Die laufenden Timer konnten nicht aus Notion geladen werden. Die Liste ist möglicherweise unvollständig.</string>
-    <string name="error_extras_missing_props">Einige konfigurierte Eigenschaften gibt es in dieser Datenbank nicht mehr. Prüfen Sie den Workspace in den Einstellungen.</string>
+    <string name="error_extras_missing_props">Einige konfigurierte Eigenschaften gibt es in dieser Datenbank nicht mehr. Prüfe den Workspace in den Einstellungen.</string>
     <string name="app_title">Time Tracker</string>
     <string name="title_save_preset">Als Vorlage speichern</string>
     <string name="title_manage_presets">Vorlagen verwalten</string>
@@ -248,4 +247,8 @@
     <string name="error_stop_failed">Timer konnte nicht gestoppt werden</string>
     <string name="error_delete_failed">Eintrag konnte nicht gelöscht werden</string>
     <string name="error_stop_from_notification_failed">Stoppen fehlgeschlagen — App öffnen und erneut versuchen</string>
+    <string name="section_expanded">Ausgeklappt</string>
+    <string name="section_collapsed">Eingeklappt</string>
+    <string name="label_theme_mode">Design</string>
+    <string name="sync_summary_not_connected">Nicht verbunden</string>
 </resources>

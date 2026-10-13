@@ -356,7 +356,7 @@ private fun IdleView(
                     Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                         Text(message, modifier = Modifier.weight(1f), color = MaterialTheme.colorScheme.onErrorContainer)
                         IconButton(onClick = onClearError) {
-                            Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.btn_close))
+                            Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.title_dismiss))
                         }
                     }
                 }

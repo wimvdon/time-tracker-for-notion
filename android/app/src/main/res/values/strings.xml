@@ -12,13 +12,12 @@
     <string name="placeholder_loading">Loading…</string>
     <string name="btn_start">Start</string>
     <string name="btn_stop">Stop</string>
-    <string name="btn_close">Dismiss</string>
     <string name="label_start_time">Start time</string>
     <string name="label_end_time">End time</string>
     <string name="hint_manual_end">Filling in an end time stops the timer.</string>
     <string name="toast_end_before_start">The end time must be after the start time.</string>
     <string name="warn_no_api_key">No Notion API key set.</string>
-    <string name="warn_no_api_key_link">Open Settings</string>
+    <string name="warn_no_api_key_link">Open settings</string>
     <string name="warn_no_workspaces">Add a workspace in</string>
     <string name="warn_no_workspaces_link">Settings</string>
     <string name="warn_no_workspaces_suffix">to get started.</string>
@@ -92,7 +91,7 @@
     <string name="rounding_15">Round to nearest 15 minutes</string>
     <string name="workspace_rounding_hint">Rounds start and stop times (including manual edits) to the nearest interval.</string>
     <string name="workspace_rounding_summary">Rounding: %1$d min</string>
-    <string name="label_workspace_color">Workspace colour</string>
+    <string name="label_workspace_color">Workspace color</string>
     <string name="label_custom_color">Custom hex</string>
     <string name="btn_apply_color">Apply</string>
     <string name="save_incomplete_hint">Fill in all fields before saving.</string>
@@ -134,11 +133,11 @@
 
     <!-- Theme -->
     <string name="label_theme">Appearance</string>
-    <string name="theme_auto">Follow device (Auto)</string>
+    <string name="theme_auto">System</string>
     <string name="theme_light">Light</string>
     <string name="theme_dark">Dark</string>
-    <string name="label_dynamic_color">Dynamic colour</string>
-    <string name="dynamic_color_hint">Use colours from your wallpaper.</string>
+    <string name="label_dynamic_color">Dynamic color</string>
+    <string name="dynamic_color_hint">Use colors from your wallpaper instead of the app’s red</string>
 
     <!-- QR code import -->
     <string name="btn_scan_qr">Scan QR code to import settings</string>
@@ -248,4 +247,8 @@
     <string name="error_stop_failed">Could not stop the timer</string>
     <string name="error_delete_failed">Could not delete the entry</string>
     <string name="error_stop_from_notification_failed">Stopping failed — open the app to try again</string>
+    <string name="section_expanded">Expanded</string>
+    <string name="section_collapsed">Collapsed</string>
+    <string name="label_theme_mode">Theme</string>
+    <string name="sync_summary_not_connected">Not connected</string>
 </resources>

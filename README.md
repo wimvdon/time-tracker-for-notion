@@ -26,7 +26,7 @@ Press **START** when you begin working and **STOP** when you're done. Time Track
 
 ## Quick start
 
-1. Download the installer (`.exe`) and/or the Android APK from the [latest release](https://github.com/impca201/notion-time-tracker/releases/latest).
+1. Download the installer (`.exe`) and/or the Android APK from the [latest release](https://github.com/impca201/time-tracker-for-notion/releases/latest).
 2. Create a Notion connection, copy its token, and connect it to the page that holds your Time Entries database.
 3. In the app: **Settings** › paste the key › **Test connection & save** › **+ Add workspace**, then press **START**.
 
@@ -35,8 +35,8 @@ Full walkthrough: [docs/usage.md](docs/usage.md).
 To run the desktop app from source:
 
 ```bash
-git clone https://github.com/impca201/notion-time-tracker.git
-cd notion-time-tracker/windows
+git clone https://github.com/impca201/time-tracker-for-notion.git
+cd time-tracker-for-notion/windows
 npm install
 npm run dev
 ```
@@ -60,7 +60,7 @@ Shared:
 
 ## Quick installation
 
-- **Use it:** download from [Releases](https://github.com/impca201/notion-time-tracker/releases) and install.
+- **Use it:** download from [Releases](https://github.com/impca201/time-tracker-for-notion/releases) and install.
 - **Develop on Windows:** Node.js LTS, then `cd windows && npm install && npm run dev`.
 - **Develop on Android:** open `android/` in Android Studio and run.
 
@@ -77,7 +77,7 @@ On Windows the API key and all HTTP calls stay in the Electron main process; the
 ## Project structure
 
 ```
-notion-time-tracker/
+time-tracker-for-notion/
 ├── .github/workflows/release.yml   Builds both apps, publishes GitHub Releases
 ├── windows/                        Electron + React desktop app
 │   ├── electron/                   Main process, preload bridge, Notion client

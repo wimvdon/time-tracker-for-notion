@@ -1,7 +1,7 @@
 # Project structure
 
 ```
-notion-time-tracker/
+time-tracker-for-notion/
 ├── .github/workflows/release.yml     Version → Windows installer + Android APK → GitHub Release
 ├── .gitignore                        Build outputs, release/, keystores
 ├── README.md
