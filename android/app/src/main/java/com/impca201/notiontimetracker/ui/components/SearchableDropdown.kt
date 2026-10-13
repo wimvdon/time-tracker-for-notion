@@ -24,7 +24,8 @@ fun SearchableDropdown(
     enabled: Boolean = true,
     searchable: Boolean = true,
     label: String? = null,
-    leadingIcon: (@Composable () -> Unit)? = null
+    leadingIcon: (@Composable () -> Unit)? = null,
+    optionLeadingIcon: (@Composable (NamedOption) -> Unit)? = null
 ) {
     var expanded by remember { mutableStateOf(false) }
     var query by remember { mutableStateOf("") }
@@ -134,6 +135,7 @@ fun SearchableDropdown(
                     DropdownMenuItem(
                         text = { Text(opt.name) },
                         onClick = { onSelect(opt); expanded = false; query = "" },
+                        leadingIcon = optionLeadingIcon?.let { icon -> { icon(opt) } },
                         contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding,
                         colors = MenuDefaults.itemColors(
                             textColor = if (opt.id == selected?.id)
