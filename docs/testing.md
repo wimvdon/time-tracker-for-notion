@@ -14,7 +14,7 @@ The tests import only pure modules and the Zustand store with a stubbed `window.
 
 CI (`.github/workflows/ci.yml`) runs `npm test` on every pull request and push to `main`, and the release workflow runs it again before building the installer. A failing test blocks the merge and the release.
 
-The Android app has no test sources. CI builds its debug and release APKs, so compile and R8 errors still fail the check.
+Android unit tests (`./gradlew testDebugUnitTest` in `android/`) cover the sync payload: round trips, the shapes the Windows app writes, rejecting non-sync pages, and the JSON helpers. CI runs them and then builds the debug and release APKs, so compile and R8 errors fail the check too.
 
 ## What is covered
 

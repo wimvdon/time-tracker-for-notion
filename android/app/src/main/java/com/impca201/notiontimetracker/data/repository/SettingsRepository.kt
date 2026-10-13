@@ -24,7 +24,7 @@ private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(na
 
 class SettingsRepository(private val context: Context) {
 
-    // kotlinx.serialization (not Gson): applies @Serializable defaults for missing
+    // Applies @Serializable defaults for missing
     // fields and ignores unknown keys, so workspaces saved by older versions
     // (e.g. before `color`/`presets` existed) deserialize without crashing.
     private val json = Json {

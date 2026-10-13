@@ -50,7 +50,7 @@ npm run dev
 | State | Zustand | ViewModel + `StateFlow` |
 | Shell / runtime | Electron 42 (tray, Mica, single instance) | Foreground service for the running timer |
 | Storage | electron-store (obfuscated JSON) | DataStore + EncryptedSharedPreferences |
-| HTTP | Node `fetch` in the main process | OkHttp + Gson |
+| HTTP | Node `fetch` in the main process | OkHttp + kotlinx.serialization |
 | Build | Vite 6, electron-builder (NSIS) | Gradle 8.11, AGP 8.7 |
 | Tests | `node:test` | — |
 

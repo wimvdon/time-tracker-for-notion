@@ -1,34 +1,50 @@
 package com.impca201.notiontimetracker.data.api
 
-import com.google.gson.JsonArray
-import com.google.gson.JsonElement
-import com.google.gson.JsonObject
-import com.google.gson.JsonPrimitive
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.booleanOrNull
 
 /**
  * Null-safe reads for Notion's JSON.
  *
- * Gson's own `getAsJsonObject`/`getAsJsonArray` cast the member without
- * checking it: they return null when the key is *absent*, but throw
- * ClassCastException when it is present and JSON `null`. Notion sends exactly
- * that for every empty property — `"date": null`, `"select": null`,
- * `"status": null` — and one of them used to abort the whole response it was
- * read from. A single running entry with an empty date threw before any of the
- * other entries were parsed, so the running-timer query failed as a whole and
- * the list stayed empty on startup and on every refresh. `asString` has the
- * same problem: on a `null` element it throws UnsupportedOperationException.
- *
- * These read "present, and of the kind asked for, or null" instead. The
- * desktop app gets this for free from JavaScript's `?.`.
+ * Notion sends JSON `null` for every empty property (`"date": null`,
+ * `"select": null`, `"status": null`), and kotlinx.serialization represents
+ * that as [JsonNull], which is itself a [JsonPrimitive]. These read "present,
+ * and of the kind asked for, or null", so an empty property never reads as
+ * the text "null" and never aborts the rest of the response.
  */
 internal fun JsonObject.objOrNull(name: String): JsonObject? = get(name) as? JsonObject
 
 internal fun JsonObject.arrayOrNull(name: String): JsonArray? = get(name) as? JsonArray
 
-internal fun JsonObject.stringOrNull(name: String): String? = (get(name) as? JsonPrimitive)?.asString
+internal fun JsonObject.stringOrNull(name: String): String? = get(name).contentOrNull()
 
 internal fun JsonObject.boolOrNull(name: String): Boolean? =
-    (get(name) as? JsonPrimitive)?.takeIf { it.isBoolean }?.asBoolean
+    (get(name) as? JsonPrimitive)?.takeIf { it !is JsonNull }?.booleanOrNull
 
 /** The element as an object, or null when it is `null`/a primitive/an array. */
 internal fun JsonElement.asObjectOrNull(): JsonObject? = this as? JsonObject
+
+/** A string, number or boolean as its text; null for `null`, objects and arrays. */
+internal fun JsonElement?.contentOrNull(): String? = (this as? JsonPrimitive)?.takeIf { it !is JsonNull }?.content
+
+/**
+ * A request body built from maps, lists and plain values as JSON. Nulls are
+ * kept: Notion reads an explicit `null` as "clear this" (`{"select": null}`
+ * empties a select, `{"end": null}` removes a date's end).
+ */
+internal fun Any?.toJsonElement(): JsonElement =
+    when (this) {
+        null -> JsonNull
+        is JsonElement -> this
+        is String -> JsonPrimitive(this)
+        is Number -> JsonPrimitive(this)
+        is Boolean -> JsonPrimitive(this)
+        is Map<*, *> -> JsonObject(entries.associate { (k, v) -> k.toString() to v.toJsonElement() })
+        is Iterable<*> -> JsonArray(map { it.toJsonElement() })
+        is Array<*> -> JsonArray(map { it.toJsonElement() })
+        else -> throw IllegalArgumentException("Cannot write ${this::class.java.simpleName} as JSON")
+    }

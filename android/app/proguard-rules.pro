@@ -1,6 +1,4 @@
-# Gson reads the sync payload (data.models.SyncPayload and the classes it holds) by reflection,
-# so keep the model classes with their field names and generic signatures.
-# Library consumer rules (AndroidX, Compose, OkHttp, Gson, kotlinx.serialization) apply automatically.
--keep class com.impca201.notiontimetracker.data.models.** { *; }
--keepattributes Signature
--keepattributes *Annotation*
+# API responses are read as kotlinx.serialization JsonElements and mapped by hand, and the stored
+# settings and sync payload use @Serializable classes whose generated serializers ship their own
+# keep rules. Library consumer rules (AndroidX, Compose, OkHttp, kotlinx.serialization) apply
+# automatically.

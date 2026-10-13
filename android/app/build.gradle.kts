@@ -99,6 +99,7 @@ dependencies {
     implementation(libs.androidx.compose.material.icons)
 
     implementation(libs.okhttp)
-    implementation(libs.gson)
     implementation(libs.kotlinx.serialization.json)
+
+    testImplementation(libs.junit)
 }

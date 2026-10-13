@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import com.impca201.notiontimetracker.NotionTimeTrackerApp
 import com.impca201.notiontimetracker.data.api.arrayOrNull
 import com.impca201.notiontimetracker.data.api.asObjectOrNull
+import com.impca201.notiontimetracker.data.api.boolOrNull
 import com.impca201.notiontimetracker.data.api.objOrNull
 import com.impca201.notiontimetracker.data.api.stringOrNull
 import com.impca201.notiontimetracker.data.models.*
@@ -1656,17 +1657,16 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
 
         /** Reverse of [buildPropertyValue]: reads a Notion page property's raw JSON
          *  value back into the string format used by extraValues/ExtraFieldInput. */
-        fun parsePropertyValue(prop: com.google.gson.JsonObject?, type: String): String {
+        fun parsePropertyValue(prop: kotlinx.serialization.json.JsonObject?, type: String): String {
             prop ?: return ""
             // Every read here goes through the null-safe accessors: an empty
-            // select/status/date arrives as JSON `null`, which Gson's own
-            // getAsJsonObject() throws a ClassCastException on rather than
-            // reading as "no value".
+            // select/status/date arrives as JSON `null` and has to read as
+            // "no value", not as the text "null".
             return when (type) {
                 "rich_text" -> prop.arrayOrNull("rich_text")
                     ?.joinToString("") { it.asObjectOrNull()?.stringOrNull("plain_text") ?: "" } ?: ""
                 "number" -> prop.stringOrNull("number") ?: ""
-                "checkbox" -> if (prop.get("checkbox")?.takeIf { !it.isJsonNull }?.asBoolean == true) "true" else "false"
+                "checkbox" -> if (prop.boolOrNull("checkbox") == true) "true" else "false"
                 "select" -> prop.objOrNull("select")?.stringOrNull("name") ?: ""
                 "status" -> prop.objOrNull("status")?.stringOrNull("name") ?: ""
                 "multi_select" -> prop.arrayOrNull("multi_select")
