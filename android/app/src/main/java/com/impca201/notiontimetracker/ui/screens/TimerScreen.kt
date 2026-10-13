@@ -50,17 +50,6 @@ import com.impca201.notiontimetracker.ui.theme.SkeletonBlock
 import com.impca201.notiontimetracker.ui.theme.SkeletonLine
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.expandHorizontally
-import androidx.compose.animation.shrinkHorizontally
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
-import androidx.compose.material.icons.outlined.History
-import androidx.compose.material.icons.outlined.Timer
-import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
-import androidx.compose.ui.input.nestedscroll.NestedScrollSource
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
@@ -266,21 +255,7 @@ fun TimerScreen(
     val activeTimerId = uiState.activeTimer?.notionPageId?.takeIf { uiState.running }
     val otherRunningCount = uiState.runningTimers.count { it.pageId != activeTimerId }
 
-    // Scrolling down hides the bar, scrolling up brings it back (as in Tracker for Simkl).
-    var barVisible by remember { mutableStateOf(true) }
-    val hideOnScroll = remember {
-        object : NestedScrollConnection {
-            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-                if (available.y < -6f) barVisible = false
-                if (available.y > 6f) barVisible = true
-                return Offset.Zero
-            }
-        }
-    }
-    // A screen that can't scroll could never bring a hidden bar back, so a switch always shows it.
-    LaunchedEffect(tab, uiState.running) { barVisible = true }
-
-    Box(Modifier.fillMaxSize().nestedScroll(hideOnScroll)) {
+    Box(Modifier.fillMaxSize()) {
         AnimatedContent(
             targetState = if (tab == HomeTab.Recent) HomeContent.Recent
             else if (uiState.running && uiState.activeTimer != null) HomeContent.Running
@@ -332,20 +307,16 @@ fun TimerScreen(
             }
         }
 
-        // Also hidden while typing, so it never sits on top of the field being edited.
-        AnimatedVisibility(
-            visible = barVisible && !WindowInsets.isImeVisible,
-            // M3 spatial spring for the movement, effects spring (no bounce) for the fade.
-            enter = slideInVertically(spring(dampingRatio = 0.9f, stiffness = Spring.StiffnessMediumLow)) { it } +
-                fadeIn(spring(stiffness = Spring.StiffnessMedium)),
-            exit = slideOutVertically(spring(dampingRatio = 1f, stiffness = Spring.StiffnessMedium)) { it } +
-                fadeOut(spring(stiffness = Spring.StiffnessMedium)),
-            modifier = Modifier.align(Alignment.BottomCenter)
-        ) {
+        // Hidden while typing, so it never sits on top of the field being edited.
+        if (!WindowInsets.isImeVisible) {
             HomeFloatingBar(
                 selected = tab,
-                onSelect = { tab = it; barVisible = true },
-                runningCount = otherRunningCount
+                onSelect = { tab = it },
+                runningCount = otherRunningCount,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .navigationBarsPadding()
+                    .padding(bottom = HomeBarBottomMargin)
             )
         }
     }
@@ -355,13 +326,17 @@ private enum class HomeTab { Timer, Recent }
 
 private enum class HomeContent { Idle, Running, Recent }
 
-/** Space a screen leaves free at its end so the last item can scroll clear of the floating bar. */
-private val HomeBarClearance: Dp = 96.dp
+private val HomeBarHeight: Dp = 64.dp
+private val HomeBarBottomMargin: Dp = 16.dp
+
+/** Space at the end of a scrolling screen so its last item can scroll clear of the floating bar. */
+private val HomeBarClearance: Dp = HomeBarHeight + HomeBarBottomMargin + 16.dp
 
 /**
- * The floating, pill-shaped bar that switches between the timer and the lists; the selected
- * destination expands to show its label. The same bar as Tracker for Simkl's navigation
- * (filled icon when selected, outlined otherwise), plus a badge on Recent counting timers
+ * The floating bar that switches between the timer and the lists. Built like Material 3
+ * Expressive's floating toolbar (a pill on Surface Container with a shadow, floating 16dp above
+ * the navigation bar) because that component is not yet stable in the Material library this app
+ * uses. The selected destination gets a Secondary Container pill. A badge on Recent counts timers
  * running elsewhere, since the timer screen no longer lists them.
  */
 @Composable
@@ -372,41 +347,42 @@ private fun HomeFloatingBar(
     modifier: Modifier = Modifier
 ) {
     Surface(
-        modifier = modifier.windowInsetsPadding(WindowInsets.navigationBars).padding(bottom = 16.dp),
+        modifier = modifier.height(HomeBarHeight),
         shape = CircleShape,
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-        tonalElevation = 3.dp,
-        shadowElevation = 8.dp
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+        shadowElevation = 6.dp,
+        tonalElevation = 3.dp
     ) {
         Row(
-            Modifier.padding(8.dp).height(52.dp).selectableGroup(),
+            modifier = Modifier
+                .padding(8.dp)
+                .selectableGroup(),
             horizontalArrangement = Arrangement.spacedBy(4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            HomeTab.entries.forEach { tab ->
-                val label = stringResource(if (tab == HomeTab.Timer) R.string.tab_timer else R.string.tab_recent)
-                val runningLabel = stringResource(R.string.running_timers_heading)
-                HomeBarItem(
-                    label = label,
-                    icon = tab.icon(tab == selected),
-                    selected = tab == selected,
-                    onClick = { onSelect(tab) },
-                    badge = runningCount.takeIf { tab == HomeTab.Recent && it > 0 }?.let { count ->
-                        {
-                            Badge(Modifier.semantics { contentDescription = "$runningLabel: $count" }) {
-                                Text(count.toString())
-                            }
+            HomeBarItem(
+                label = stringResource(R.string.tab_timer),
+                icon = Icons.Rounded.Timer,
+                selected = selected == HomeTab.Timer,
+                onClick = { onSelect(HomeTab.Timer) }
+            )
+            val runningLabel = stringResource(R.string.running_timers_heading)
+            HomeBarItem(
+                label = stringResource(R.string.tab_recent),
+                icon = Icons.Rounded.History,
+                selected = selected == HomeTab.Recent,
+                onClick = { onSelect(HomeTab.Recent) },
+                badge = runningCount.takeIf { it > 0 }?.let { count ->
+                    {
+                        Badge(Modifier.semantics { contentDescription = "$runningLabel: $count" }) {
+                            Text(count.toString())
                         }
                     }
-                )
-            }
+                }
+            )
         }
     }
-}
-
-private fun HomeTab.icon(selected: Boolean): ImageVector = when (this) {
-    HomeTab.Timer -> if (selected) Icons.Rounded.Timer else Icons.Outlined.Timer
-    HomeTab.Recent -> if (selected) Icons.Rounded.History else Icons.Outlined.History
 }
 
 @Composable
@@ -417,40 +393,31 @@ private fun HomeBarItem(
     onClick: () -> Unit,
     badge: (@Composable BoxScope.() -> Unit)? = null
 ) {
-    val background by animateColorAsState(
+    val container by animateColorAsState(
         if (selected) MaterialTheme.colorScheme.secondaryContainer else Color.Transparent,
-        animationSpec = spring(stiffness = Spring.StiffnessMedium),
-        label = "tabBackground"
+        Motion.fadeSpec(),
+        label = "home-bar-item"
     )
-    val content by animateColorAsState(
-        if (selected) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
-        animationSpec = spring(stiffness = Spring.StiffnessMedium),
-        label = "tabContent"
-    )
+    val content = if (selected) MaterialTheme.colorScheme.onSecondaryContainer
+    else MaterialTheme.colorScheme.onSurfaceVariant
     Row(
-        Modifier
+        modifier = Modifier
+            .height(48.dp)
             .clip(CircleShape)
-            .background(background)
-            .selectable(selected = selected, role = Role.Tab, onClick = onClick)
-            .height(52.dp)
-            .padding(horizontal = 16.dp),
+            .background(container)
+            .selectable(selected = selected, onClick = onClick, role = Role.Tab)
+            .padding(horizontal = 20.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // The selected tab shows its label, which TalkBack reads; don't read it twice.
-        val iconContent: @Composable () -> Unit = {
-            Icon(icon, contentDescription = if (selected) null else label, tint = content, modifier = Modifier.size(24.dp))
-        }
-        if (badge != null) BadgedBox(badge = badge) { iconContent() } else iconContent()
-        AnimatedVisibility(
-            visible = selected,
-            enter = expandHorizontally(spring(dampingRatio = 0.9f, stiffness = Spring.StiffnessMediumLow)) + fadeIn(spring(stiffness = Spring.StiffnessMedium)),
-            exit = shrinkHorizontally(spring(dampingRatio = 0.9f, stiffness = Spring.StiffnessMediumLow)) + fadeOut(spring(stiffness = Spring.StiffnessMedium))
-        ) {
-            Row {
-                Spacer(Modifier.width(8.dp))
-                Text(label, style = MaterialTheme.typography.labelLarge, color = content, maxLines = 1)
+        if (badge != null) {
+            BadgedBox(badge = badge) {
+                Icon(icon, contentDescription = null, tint = content)
             }
+        } else {
+            Icon(icon, contentDescription = null, tint = content)
         }
+        Spacer(Modifier.width(8.dp))
+        Text(label, style = MaterialTheme.typography.labelLarge, color = content)
     }
 }
 
