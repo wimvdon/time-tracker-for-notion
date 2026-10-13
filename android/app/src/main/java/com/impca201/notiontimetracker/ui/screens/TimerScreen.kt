@@ -49,6 +49,7 @@ import com.impca201.notiontimetracker.ui.theme.Motion
 import com.impca201.notiontimetracker.ui.theme.SkeletonBlock
 import com.impca201.notiontimetracker.ui.theme.SkeletonLine
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import com.impca201.notiontimetracker.ui.theme.rememberReducedMotion
 import com.impca201.notiontimetracker.ui.theme.workspaceAccentColor
@@ -379,8 +380,13 @@ private fun IdleView(
 
             Spacer(Modifier.height(4.dp))
 
-            FieldLabel(stringResource(R.string.label_workspace))
+            // Every field is a standard Material 3 field with its name as the field's own
+            // label: one height and one style, so the form reads as a group and Start below
+            // stays the one thing that stands out. The workspace carries its colour instead.
             val workspaceOptions = uiState.workspaces.map { NamedOption(it.id, it.name) }
+            val selectedWorkspaceColor = workspaceAccentColor(
+                uiState.workspaces.firstOrNull { it.id == uiState.selectedWorkspaceId }?.color
+            )
             SearchableDropdown(
                 options = workspaceOptions,
                 selected = workspaceOptions.firstOrNull { it.id == uiState.selectedWorkspaceId },
@@ -388,25 +394,27 @@ private fun IdleView(
                 onSelect = { it?.let { opt -> onWorkspaceSelect(opt.id) } },
                 modifier = Modifier.fillMaxWidth(),
                 searchable = workspaceOptions.size > 4,
-                enabled = uiState.workspaces.isNotEmpty()
+                enabled = uiState.workspaces.isNotEmpty(),
+                label = stringResource(R.string.label_workspace),
+                leadingIcon = selectedWorkspaceColor?.let { color ->
+                    { WorkspaceSwatch(color) }
+                }
             )
-
-
 
             // Like required extra fields, a required description is enforced when
             // the timer is stopped — starting stays a single tap.
             val descriptionRequired = uiState.workspaces
                 .firstOrNull { it.id == uiState.selectedWorkspaceId }?.descriptionRequired == true
-            FieldLabel(
-                stringResource(R.string.label_description) + if (descriptionRequired) " *" else ""
-            )
             OutlinedTextField(
                 value = uiState.description,
                 onValueChange = onDescriptionChange,
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
                 isError = descriptionRequired && uiState.description.isBlank(),
-                placeholder = { Text(stringResource(R.string.placeholder_description)) },
+                label = {
+                    Text(stringResource(R.string.placeholder_description) + if (descriptionRequired) " *" else "")
+                },
+                placeholder = { Text(stringResource(R.string.label_description)) },
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                 keyboardActions = KeyboardActions(onDone = { })
             )
@@ -489,8 +497,6 @@ private fun IdleView(
                     )
                 }
             }
-
-            Spacer(Modifier.height(8.dp))
 
             OtherRunningTimers(
                 timers = uiState.runningTimers,
@@ -726,8 +732,7 @@ private fun RunningView(
                         modifier = Modifier.weight(1f),
                         singleLine = true,
                         isError = workspace?.descriptionRequired == true && titleDraft.isBlank(),
-                        placeholder = { Text(stringResource(R.string.hint_timer_title), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f)) },
-                        textStyle = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onBackground),
+                        placeholder = { Text(stringResource(R.string.hint_timer_title), color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f)) },
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                         keyboardActions = KeyboardActions(onDone = { onQuickSaveDescription(titleDraft.trim()) }),
                         colors = OutlinedTextFieldDefaults.colors(
@@ -802,7 +807,6 @@ private fun RunningView(
                             enabled = false,
                             modifier = Modifier.fillMaxWidth(),
                             singleLine = true,
-                            textStyle = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onBackground),
                             trailingIcon = {
                                 Icon(Icons.Rounded.AccessTime, contentDescription = stringResource(R.string.title_select_start_time), tint = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f))
                             },
@@ -831,8 +835,7 @@ private fun RunningView(
                             enabled = false,
                             modifier = Modifier.fillMaxWidth(),
                             singleLine = true,
-                            placeholder = { Text(stringResource(R.string.hint_manual_end), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f)) },
-                            textStyle = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onBackground),
+                            placeholder = { Text(stringResource(R.string.hint_manual_end), color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f)) },
                             trailingIcon = {
                                 Icon(Icons.Rounded.AccessTime, contentDescription = stringResource(R.string.title_select_end_time), tint = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f))
                             },
@@ -865,9 +868,6 @@ private fun RunningView(
                         }
                     }
                 }
-
-
-                Spacer(Modifier.height(8.dp))
 
                 OtherRunningTimers(
                     timers = uiState.runningTimers,
@@ -930,22 +930,7 @@ private fun OtherRunningTimers(
         }
     }
 
-    HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            stringResource(R.string.running_timers_heading),
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.weight(1f)
-        )
-        if (loading) {
-            Spacer(Modifier.width(8.dp))
-            CircularProgressIndicator(modifier = Modifier.size(12.dp), strokeWidth = 2.dp)
-        }
-    }
+    SectionHeader(stringResource(R.string.running_timers_heading), loading = loading)
     error?.let { err ->
         Text(
             localisedMessage(err),
@@ -1039,22 +1024,7 @@ private fun RecentEntriesSection(
     val firstLoad = entries.isEmpty() && loading
     if (entries.isEmpty() && !firstLoad) return
 
-    HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            stringResource(R.string.recent_entries_heading),
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(vertical = 4.dp).weight(1f)
-        )
-        if (loading && !firstLoad) {
-            Spacer(Modifier.width(8.dp))
-            CircularProgressIndicator(modifier = Modifier.size(12.dp), strokeWidth = 2.dp)
-        }
-    }
+    SectionHeader(stringResource(R.string.recent_entries_heading), loading = loading && !firstLoad)
     if (firstLoad) {
         val loadingText = stringResource(R.string.placeholder_loading)
         Column(
@@ -1160,18 +1130,10 @@ private fun ExtraFieldsSkeleton(props: List<com.impca201.notiontimetracker.data.
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         props.forEach { prop ->
-            Column {
-                Text(
-                    text = prop.propName + if (prop.required) " *" else "",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
-                )
-                Spacer(Modifier.height(4.dp))
-                if (prop.type == "checkbox") {
-                    SkeletonBlock(height = 32.dp, modifier = Modifier.width(52.dp), shape = CircleShape)
-                } else {
-                    SkeletonBlock(height = 56.dp, shape = MaterialTheme.shapes.extraSmall)
-                }
+            if (prop.type == "checkbox") {
+                SkeletonBlock(height = 32.dp, modifier = Modifier.width(52.dp), shape = CircleShape)
+            } else {
+                SkeletonBlock(height = 56.dp, shape = MaterialTheme.shapes.extraSmall)
             }
         }
     }
@@ -1389,12 +1351,40 @@ private fun localisedMessage(raw: String): String {
 private fun isValidationMessage(raw: String): Boolean =
     raw.substringBefore('|') in setOf("required_fields_before_stopping", "description_before_stopping")
 
+/**
+ * Heads a list section (active timers, recent entries) in Title Medium. Space above it, not a
+ * divider, separates the section from what comes before: Material 3 keeps dividers for
+ * separating items inside a group, and the header already marks where the group starts.
+ */
 @Composable
-private fun FieldLabel(text: String) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.labelMedium,
-        color = MaterialTheme.colorScheme.onSurfaceVariant
+private fun SectionHeader(text: String, loading: Boolean) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 12.dp)
+            .semantics { heading() },
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text,
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.weight(1f)
+        )
+        if (loading) {
+            CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+        }
+    }
+}
+
+/** The selected workspace's colour as a dot at the start of the workspace field. */
+@Composable
+private fun WorkspaceSwatch(color: Color) {
+    Box(
+        Modifier
+            .size(12.dp)
+            .clip(CircleShape)
+            .background(color)
     )
 }
 

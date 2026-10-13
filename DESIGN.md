@@ -120,6 +120,11 @@ the other two repositories:
   timer starts, over the same slowly breathing glow as Snoozer's snoozing screen. No progress
   ring: a running timer has no target. Start and Stop are Material 3 Expressive medium buttons
   (56dp, Title Medium label, 24dp icon), round, tightening to 12dp corners while pressed.
+- The home screen's form uses standard outlined fields with the field's name as its own
+  floating label (no separate label line above), all one height, so Start is the one thing
+  that stands out. The workspace field shows the workspace colour as a dot at its start.
+- List sections (Active timers, Recent time entries) start with a Title Medium heading and
+  are set apart by space, not dividers.
 - Start is green and Stop is red whatever the theme or wallpaper colours (a workspace colour
   replaces the green), so their meaning never depends on Dynamic color.
 - The launcher icon comes from `windows/scripts/generate-icons.cjs` (`npm run icons`), which

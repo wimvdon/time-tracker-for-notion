@@ -22,7 +22,9 @@ fun SearchableDropdown(
     allowClear: Boolean = false,
     loading: Boolean = false,
     enabled: Boolean = true,
-    searchable: Boolean = true
+    searchable: Boolean = true,
+    label: String? = null,
+    leadingIcon: (@Composable () -> Unit)? = null
 ) {
     var expanded by remember { mutableStateOf(false) }
     var query by remember { mutableStateOf("") }
@@ -58,6 +60,8 @@ fun SearchableDropdown(
                 .fillMaxWidth(),
             readOnly = !searchable || !expanded,
             enabled = enabled && !loading,
+            label = label?.let { { Text(it) } },
+            leadingIcon = leadingIcon,
             placeholder = {
                 Text(
                     text = when {
