@@ -12,9 +12,9 @@ npm test            # node --test "src/**/*.test.js"
 
 The tests import only pure modules and the Zustand store with a stubbed `window.notionAPI`, so they run without Electron. On a fresh checkout, `npm install --ignore-scripts` is enough and skips downloading the Electron binary.
 
-CI runs `npm test` in the Windows job of `.github/workflows/release.yml` before building the installer. A failing test blocks the release.
+CI (`.github/workflows/ci.yml`) runs `npm test` on every pull request and push to `main`, and the release workflow runs it again before building the installer. A failing test blocks the merge and the release.
 
-The Android app has no test sources (`android/app/src/test` and `androidTest` don't exist), although the AndroidX test runner is configured in `app/build.gradle.kts`.
+The Android app has no test sources. CI builds its debug and release APKs, so compile and R8 errors still fail the check.
 
 ## What is covered
 

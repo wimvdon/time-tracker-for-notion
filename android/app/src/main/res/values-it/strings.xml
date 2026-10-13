@@ -4,18 +4,15 @@
 
     <!-- Timer — idle -->
     <string name="label_workspace">Spazio di lavoro</string>
-    <string name="label_project">Progetto</string>
     <string name="label_description">Lavorando a…</string>
     <string name="placeholder_description">Descrizione</string>
     <string name="placeholder_select_workspace">Seleziona spazio…</string>
-    <string name="placeholder_select_project">Seleziona progetto…</string>
     <string name="placeholder_loading">Caricamento…</string>
     <string name="btn_start">Avvia</string>
     <string name="btn_stop">Ferma</string>
     <string name="label_start_time">Ora di inizio</string>
     <string name="label_end_time">Ora di fine</string>
     <string name="hint_manual_end">Inserire un\'ora di fine arresta il timer.</string>
-    <string name="toast_end_before_start">L\'ora di fine deve essere successiva a quella di inizio.</string>
     <string name="warn_no_api_key">Chiave API Notion non configurata.</string>
     <string name="warn_no_api_key_link">Apri impostazioni</string>
     <string name="warn_no_workspaces">Aggiungi uno spazio nelle</string>
@@ -29,7 +26,7 @@
     <string name="placeholder_api_key">secret_… o ntn_…</string>
     <string name="btn_show_key">Mostra</string>
     <string name="btn_hide_key">Nascondi</string>
-    <string name="btn_test_and_save_key">Testa connessione &amp; salva</string>
+    <string name="btn_test_and_save_key">Testa connessione e salva</string>
     <string name="btn_testing_key">Verifica…</string>
     <string name="btn_remove_key">Rimuovi chiave</string>
     <string name="label_workspaces">Spazi di lavoro</string>
@@ -38,7 +35,7 @@
     <string name="title_delete_workspace_disabled">Arresta prima il timer</string>
     <string name="title_move_up">Sposta su</string>
     <string name="title_move_down">Sposta giù</string>
-    <string name="btn_add_workspace">+ Aggiungi spazio</string>
+    <string name="btn_add_workspace">Aggiungi spazio</string>
 
     <!-- Workspace modal -->
     <string name="modal_title_add_workspace">Aggiungi spazio</string>
@@ -46,8 +43,6 @@
     <string name="label_workspace_name">Nome</string>
     <string name="placeholder_workspace_name">Il mio spazio di lavoro</string>
     <string name="label_time_entries_db">Database registrazioni tempo</string>
-    <string name="hint_time_entries_db">Le registrazioni vengono create qui. Richiesto: uno di tipo intervallo di date, uno di stato e, idealmente, una relazione per i progetti.</string>
-    <string name="label_projects_db">Database progetti</string>
     <string name="placeholder_select_database">Seleziona database…</string>
     <string name="placeholder_select">Seleziona…</string>
     <string name="placeholder_search">Cerca…</string>
@@ -55,24 +50,16 @@
     <string name="dropdown_none">– Nessuno –</string>
     <string name="btn_clear">Cancella</string>
     <string name="btn_refresh_databases">Aggiorna</string>
-    <string name="loading_databases">Caricamento database…</string>
-    <string name="error_loading_databases">Impossibile caricare i database</string>
-    <string name="error_loading_schema">Impossibile caricare le proprietà del database</string>
     <string name="no_databases_found">Nessun database trovato. Collega la tua integrazione Notion alle pagine corrispondenti.</string>
     <string name="btn_retry">Riprova</string>
     <string name="label_time_entry_date_prop">Campo intervallo di date</string>
-    <string name="hint_time_entry_date_prop">Memorizza l\'ora di inizio e di fine.</string>
     <string name="label_time_entry_status_prop">Campo di stato</string>
-    <string name="hint_time_entry_status_prop">Indica se il timer è attivo o completato.</string>
     <string name="label_time_entry_status_running">Opzione stato \"In corso\"</string>
-    <string name="hint_time_entry_status_running">L\'opzione che indica una registrazione come in corso.</string>
     <string name="label_time_entry_status_done">Opzione stato \"Completato\"</string>
-    <string name="hint_time_entry_status_done">L\'opzione che indica una registrazione come completata.</string>
-    <string name="label_relation_prop">Campo relazione (progetti)</string>
     <string name="loading_properties">Caricamento…</string>
     <string name="section_extra_fields">Campi aggiuntivi (opzionale)</string>
     <string name="hint_extra_fields">Fino a cinque campi aggiuntivi del database delle registrazioni, da compilare manualmente nel timer.</string>
-    <string name="btn_add_extra_field">+ Aggiungi campo</string>
+    <string name="btn_add_extra_field">Aggiungi campo</string>
     <string name="title_remove_extra_field">Rimuovi campo</string>
     <string name="placeholder_select_field">Seleziona campo…</string>
     <string name="label_required_field">Richiesto</string>
@@ -82,8 +69,6 @@
     <string name="hint_description_required">Un timer di questo spazio non può essere fermato senza descrizione.</string>
     <string name="hint_description_optional">Se lasciata vuota, la registrazione riceve come titolo la data di inizio.</string>
     <string name="toast_description_before_stopping">Compila una descrizione prima di fermare il timer.</string>
-    <string name="error_loading_extras">Impossibile caricare i campi aggiuntivi</string>
-    <string name="no_properties_of_type">Nessun campo compatibile trovato.</string>
     <string name="label_workspace_rounding">Arrotondamento tempo</string>
     <string name="rounding_off">Nessun arrotondamento</string>
     <string name="rounding_5">Arrotonda ai 5 minuti più vicini</string>
@@ -101,10 +86,8 @@
     <!-- Toasts / errors -->
     <string name="toast_api_key_saved">La chiave API funziona ed è stata salvata.</string>
     <string name="toast_api_key_removed">Chiave API rimossa.</string>
-    <string name="toast_connection_failed">Connessione fallita</string>
     <string name="toast_workspace_added">Spazio di lavoro \"%1$s\" aggiunto.</string>
     <string name="toast_workspace_saved">Spazio di lavoro \"%1$s\" salvato.</string>
-    <string name="toast_projects_error">Impossibile caricare i progetti</string>
     <string name="toast_start_error">Impossibile avviare il timer</string>
     <string name="toast_stop_error">Impossibile arrestare il timer</string>
     <string name="toast_stop_retry">Riprova</string>
@@ -114,8 +97,6 @@
 
     <!-- Running timers list -->
     <string name="running_timers_heading">Timer attivi</string>
-    <string name="stop_running_timer">Arresta timer</string>
-    <string name="refresh_running_timers">Aggiorna timer attivi</string>
     <string name="start_new_timer">Avvia nuovo timer</string>
 
     <!-- Recent entries -->
@@ -139,19 +120,13 @@
     <string name="label_dynamic_color">Colori dinamici</string>
     <string name="dynamic_color_hint">Usa i colori dello sfondo invece del rosso dell\'app</string>
 
-    <!-- QR code import -->
-    <string name="btn_scan_qr">Scansiona codice QR per importare</string>
-    <string name="btn_add_workspace_qr">Aggiungi spazio via codice QR</string>
-
     <!-- Refresh -->
     <string name="btn_refresh_all">Aggiorna</string>
 
     <!-- Edit running timer -->
     <string name="hint_timer_title">Titolo del timer…</string>
-    <string name="btn_edit_timer">Modifica</string>
     <string name="title_edit_timer">Modifica timer</string>
     <string name="btn_save_changes">Salva</string>
-    <string name="hint_edit_timer_saving">Salvataggio…</string>
 
     <!-- Notification -->
     <string name="notification_channel_name">Timer</string>
@@ -159,14 +134,7 @@
     <string name="notification_action_stop">Arresta</string>
 
     <!-- Presets -->
-    <string name="section_presets">Preimpostazioni (opzionale)</string>
-    <string name="hint_presets">Fino a 5 preimpostazioni. Tocca un chip per avviare il timer immediatamente.</string>
-    <string name="btn_add_preset">+ Aggiungi preimpostazione</string>
     <string name="title_remove_preset">Rimuovi preimpostazione</string>
-    <string name="preset_name_placeholder">es. Standup mattutino</string>
-    <string name="label_preset_title">Titolo predefinito</string>
-    <string name="preset_title_placeholder">Titolo predefinito opzionale…</string>
-    <string name="label_show_in_shortcuts">Mostra nelle scorciatoie di avvio</string>
 
     <!-- Timer stopped elsewhere -->
     <string name="timer_stopped_elsewhere">Il timer è stato fermato su un altro dispositivo.</string>
@@ -177,9 +145,6 @@
     <string name="deleted_page_hint">Se necessario, ripristina la pagina dal cestino di Notion o ricreala manualmente.</string>
     <string name="deleted_page_confirm">Chiudi</string>
     <string name="toast_update_error">Impossibile aggiornare il timer</string>
-
-    <!-- Per-workspace QR -->
-    <string name="btn_workspace_qr">Esporta spazio via QR</string>
 
     <!-- Additional New Strings -->
     <string name="warn_already_running_title">Timer già attivo</string>
@@ -243,9 +208,6 @@
     <string name="title_move_preset_down">Sposta preimpostazione giù</string>
     <string name="title_info">Informazioni</string>
     <string name="error_no_api_key">Nessuna chiave API Notion configurata.</string>
-    <string name="error_start_failed">Impossibile avviare il timer</string>
-    <string name="error_stop_failed">Impossibile fermare il timer</string>
-    <string name="error_delete_failed">Impossibile eliminare la voce</string>
     <string name="error_stop_from_notification_failed">Arresto non riuscito: apri l\'app per riprovare</string>
     <string name="section_expanded">Espanso</string>
     <string name="section_collapsed">Compresso</string>

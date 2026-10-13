@@ -78,7 +78,7 @@ On Windows the API key and all HTTP calls stay in the Electron main process; the
 
 ```
 time-tracker-for-notion/
-├── .github/workflows/release.yml   Builds both apps, publishes GitHub Releases
+├── .github/workflows/             CI for pull requests; release builds both apps
 ├── windows/                        Electron + React desktop app
 │   ├── electron/                   Main process, preload bridge, Notion client
 │   ├── src/                        React UI, Zustand store, pure helpers + tests

@@ -1,7 +1,6 @@
 package com.impca201.notiontimetracker.viewmodel
 
 import android.app.Application
-import android.content.Context
 import android.content.Intent
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -61,7 +60,6 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
         val workspaces: List<Workspace> = emptyList(),
         val selectedWorkspaceId: String? = null,
         val projects: List<NamedOption> = emptyList(),
-        val projectsLoading: Boolean = false,
         val selectedProjectId: String? = null,
         val description: String = "",
         val extraFieldDefs: List<ExtraFieldDef> = emptyList(),
@@ -450,7 +448,6 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
     }
 
     fun clearError() = _uiState.update { it.copy(error = null) }
-    fun clearStopError() = _uiState.update { it.copy(stopError = null) }
     fun clearInfoToast() = _uiState.update { it.copy(infoToast = null) }
 
     fun openEditTimer() = _uiState.update { it.copy(editTimerOpen = true) }

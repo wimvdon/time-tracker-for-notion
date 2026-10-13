@@ -18,12 +18,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
-import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.impca201.notiontimetracker.data.models.ThemeMode
 import com.impca201.notiontimetracker.service.TimerForegroundService
 import com.impca201.notiontimetracker.ui.screens.SettingsScreen
 import com.impca201.notiontimetracker.ui.screens.TimerScreen
@@ -61,7 +59,6 @@ class MainActivity : ComponentActivity() {
     ) { /* permission result handled silently */ }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        installSplashScreen()
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
@@ -227,9 +224,6 @@ private fun AppNavigation(
                 onExtraPropNameChange = settingsViewModel::setExtraPropName,
                 onExtraPropRequiredChange = settingsViewModel::setExtraPropRequired,
                 onExtraPropDefaultChange = settingsViewModel::setExtraPropDefault,
-                onAddPreset = settingsViewModel::addPreset,
-                onRemovePreset = settingsViewModel::removePreset,
-                onUpdatePreset = settingsViewModel::updatePreset,
                 onThemeModeChange = settingsViewModel::setThemeMode,
                 onDynamicColorChange = settingsViewModel::setDynamicColor,
                 onSnackbarDismiss = settingsViewModel::clearSnackbar,

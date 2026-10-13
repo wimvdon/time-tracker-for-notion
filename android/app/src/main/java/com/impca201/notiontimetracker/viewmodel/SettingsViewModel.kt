@@ -378,24 +378,6 @@ class SettingsViewModel(private val app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun addPreset() {
-        val current = _editState.value ?: return
-        if (current.presets.size >= 5) return
-        _editState.update { it?.copy(presets = it.presets + Preset(id = UUID.randomUUID().toString(), name = "")) }
-    }
-
-    fun removePreset(index: Int) {
-        _editState.update { it?.copy(presets = it.presets.toMutableList().also { l -> if (index < l.size) l.removeAt(index) }) }
-    }
-
-    fun updatePreset(index: Int, preset: Preset) {
-        _editState.update { state ->
-            state?.copy(presets = state.presets.toMutableList().also { list ->
-                if (index < list.size) list[index] = preset
-            })
-        }
-    }
-
     fun saveWorkspace() {
         val edit = _editState.value ?: return
         if (!isEditValid(edit)) { _editState.update { it?.copy(saveError = "incomplete") }; return }
@@ -475,12 +457,6 @@ class SettingsViewModel(private val app: Application) : AndroidViewModel(app) {
             edit.timeEntryStatusRunning == edit.timeEntryStatusDone
         ) return false
         return true
-    }
-
-    fun isPresetValid(preset: Preset, extraProps: List<ExtraProp>): Boolean {
-        if (preset.name.isBlank()) return true
-        val required = extraProps.filter { it.required && it.propName.isNotBlank() }
-        return required.all { ep -> !preset.extraValues[ep.propName].isNullOrBlank() }
     }
 
     private suspend fun saveWorkspaces(list: List<Workspace>) {

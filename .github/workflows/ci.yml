@@ -1,0 +1,53 @@
+name: CI
+
+# The Windows app's tests and build, and the Android debug APK plus a release build so R8
+# problems show up before a release. Runs once per pull request push, and on main after a merge.
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: windows
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: windows/package-lock.json
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+
+  android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: android
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          # Tags, so the debug build is versioned from the latest release (git describe).
+          fetch-depth: 0
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: gradle/actions/setup-gradle@v5
+      - name: Build debug and release APKs
+        run: ./gradlew assembleDebug assembleRelease
+      - uses: actions/upload-artifact@v7
+        with:
+          name: time-tracker-debug-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk

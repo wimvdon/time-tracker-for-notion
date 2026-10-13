@@ -1,8 +1,31 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
 }
+
+// Release signing: the GitHub release workflow writes keystore.properties (never committed)
+// from the repository secrets before building:
+//   storeFile=/path/to/release.jks
+//   storePassword=...
+//   keyAlias=...
+//   keyPassword=...
+val keystoreProperties =
+    Properties().apply {
+        val file = rootProject.file("keystore.properties")
+        if (file.exists()) file.inputStream().use { load(it) }
+    }
+
+/** The checkout described from the latest v* tag, or "0.0.0-dev" without tags or git. */
+fun gitVersion(): String =
+    runCatching {
+        providers.exec {
+            commandLine("git", "describe", "--tags", "--match", "v[0-9]*", "--dirty")
+            isIgnoreExitValue = true
+        }.standardOutput.asText.get().trim().removePrefix("v")
+    }.getOrNull()?.ifBlank { null } ?: "0.0.0-dev"
 
 android {
     namespace = "com.impca201.notiontimetracker"
@@ -12,36 +35,33 @@ android {
         applicationId = "com.impca201.notiontimetracker"
         minSdk = 26
         targetSdk = 37
-        // The release workflow passes these from the git tag; local builds keep 1 / 1.0.
-        versionCode = (findProperty("versionCode") as String?)?.toInt() ?: 1
-        versionName = (findProperty("versionName") as String?) ?: "1.0"
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        // Releases: the release workflow passes -PversionName (from the tag) and -PversionCode
+        // (major * 10000 + minor * 100 + patch). Every other build describes its checkout instead
+        // (e.g. "1.0.0-3-gabc1234"), so a development build never looks like a release.
+        versionCode = providers.gradleProperty("versionCode").map(String::toInt).getOrElse(1)
+        versionName = providers.gradleProperty("versionName").getOrElse(gitVersion())
     }
 
-    // Release signing comes from environment variables set by the release workflow.
-    // Without them, the release build stays unsigned and local debug builds are unaffected.
-    val releaseKeystore = System.getenv("ANDROID_KEYSTORE_PATH")
     signingConfigs {
-        if (releaseKeystore != null) {
+        if (keystoreProperties.isNotEmpty()) {
             create("release") {
-                storeFile = file(releaseKeystore)
-                storePassword = System.getenv("ANDROID_KEYSTORE_PASSWORD")
-                keyAlias = System.getenv("ANDROID_KEY_ALIAS")
-                keyPassword = System.getenv("ANDROID_KEY_PASSWORD")
+                storeFile = file(keystoreProperties.getProperty("storeFile"))
+                storePassword = keystoreProperties.getProperty("storePassword")
+                keyAlias = keystoreProperties.getProperty("keyAlias")
+                keyPassword = keystoreProperties.getProperty("keyPassword")
             }
         }
     }
 
     buildTypes {
         release {
-            if (releaseKeystore != null) {
-                signingConfig = signingConfigs.getByName("release")
-            }
             isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
+                "proguard-rules.pro",
             )
+            signingConfigs.findByName("release")?.let { signingConfig = it }
         }
     }
 
@@ -53,33 +73,32 @@ android {
     buildFeatures {
         compose = true
     }
+
+    androidResources {
+        localeFilters += listOf("en", "nl", "fr", "de", "es", "it")
+    }
+
+    dependenciesInfo {
+        // Not needed outside Google Play; keeps the APK free of an encrypted dependency blob.
+        includeInApk = false
+    }
 }
 
 dependencies {
-    implementation(platform(libs.androidx.compose.bom))
-    implementation(libs.androidx.compose.ui)
-    implementation(libs.androidx.compose.ui.graphics)
-    implementation(libs.androidx.compose.ui.tooling.preview)
-    implementation(libs.androidx.compose.material3)
-    implementation(libs.androidx.compose.material.icons.extended)
-
     implementation(libs.androidx.core.ktx)
-    implementation(libs.androidx.core.splashscreen)
-    implementation(libs.androidx.lifecycle.runtime.ktx)
-    implementation(libs.androidx.lifecycle.viewmodel.compose)
-    implementation(libs.androidx.lifecycle.viewmodel.ktx)
     implementation(libs.androidx.activity.compose)
+    implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.navigation.compose)
-
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.androidx.security.crypto)
 
+    implementation(platform(libs.androidx.compose.bom))
+    implementation(libs.androidx.compose.ui)
+    implementation(libs.androidx.compose.ui.graphics)
+    implementation(libs.androidx.compose.material3)
+    implementation(libs.androidx.compose.material.icons)
+
     implementation(libs.okhttp)
     implementation(libs.gson)
-
-    implementation(libs.kotlinx.coroutines.android)
     implementation(libs.kotlinx.serialization.json)
-
-    debugImplementation(libs.androidx.compose.ui.tooling)
-    debugImplementation(libs.androidx.compose.ui.test.manifest)
 }

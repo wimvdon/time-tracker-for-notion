@@ -4,18 +4,15 @@
 
     <!-- Timer — idle -->
     <string name="label_workspace">Workspace</string>
-    <string name="label_project">Project</string>
     <string name="label_description">Working on…</string>
     <string name="placeholder_description">Description</string>
     <string name="placeholder_select_workspace">Select workspace…</string>
-    <string name="placeholder_select_project">Select project…</string>
     <string name="placeholder_loading">Loading…</string>
     <string name="btn_start">Start</string>
     <string name="btn_stop">Stop</string>
     <string name="label_start_time">Start time</string>
     <string name="label_end_time">End time</string>
     <string name="hint_manual_end">Filling in an end time stops the timer.</string>
-    <string name="toast_end_before_start">The end time must be after the start time.</string>
     <string name="warn_no_api_key">No Notion API key set.</string>
     <string name="warn_no_api_key_link">Open settings</string>
     <string name="warn_no_workspaces">Add a workspace in</string>
@@ -29,7 +26,7 @@
     <string name="placeholder_api_key">secret_… or ntn_…</string>
     <string name="btn_show_key">Show</string>
     <string name="btn_hide_key">Hide</string>
-    <string name="btn_test_and_save_key">Test connection &amp; save</string>
+    <string name="btn_test_and_save_key">Test connection and save</string>
     <string name="btn_testing_key">Testing…</string>
     <string name="btn_remove_key">Remove key</string>
     <string name="label_workspaces">Workspaces</string>
@@ -38,16 +35,14 @@
     <string name="title_delete_workspace_disabled">Stop the timer first</string>
     <string name="title_move_up">Move up</string>
     <string name="title_move_down">Move down</string>
-    <string name="btn_add_workspace">+ Add workspace</string>
+    <string name="btn_add_workspace">Add workspace</string>
 
     <!-- Workspace modal -->
-    <string name="modal_title_add_workspace">Add Workspace</string>
-    <string name="modal_title_edit_workspace">Edit Workspace</string>
+    <string name="modal_title_add_workspace">Add workspace</string>
+    <string name="modal_title_edit_workspace">Edit workspace</string>
     <string name="label_workspace_name">Name</string>
     <string name="placeholder_workspace_name">My workspace</string>
     <string name="label_time_entries_db">Time Entries database</string>
-    <string name="hint_time_entries_db">Time entries are created here. Required: one date-range field, one status field, and ideally one relation field linking to a projects database.</string>
-    <string name="label_projects_db">Projects database</string>
     <string name="placeholder_select_database">Select database…</string>
     <string name="placeholder_select">Select…</string>
     <string name="placeholder_search">Search…</string>
@@ -55,24 +50,16 @@
     <string name="dropdown_none">– None –</string>
     <string name="btn_clear">Clear</string>
     <string name="btn_refresh_databases">Refresh</string>
-    <string name="loading_databases">Loading databases…</string>
-    <string name="error_loading_databases">Could not load databases</string>
-    <string name="error_loading_schema">Could not load database properties</string>
     <string name="no_databases_found">No databases found. Connect your integration to the relevant Notion pages first.</string>
     <string name="btn_retry">Retry</string>
     <string name="label_time_entry_date_prop">Date range field</string>
-    <string name="hint_time_entry_date_prop">Stores the start and end time.</string>
     <string name="label_time_entry_status_prop">Status field</string>
-    <string name="hint_time_entry_status_prop">Tracks whether the timer is running or completed.</string>
     <string name="label_time_entry_status_running">Running status option</string>
-    <string name="hint_time_entry_status_running">The option that marks a time entry as in progress.</string>
     <string name="label_time_entry_status_done">Completed status option</string>
-    <string name="hint_time_entry_status_done">The option that marks a time entry as finished.</string>
-    <string name="label_relation_prop">Relation field (projects)</string>
     <string name="loading_properties">Loading…</string>
     <string name="section_extra_fields">Extra fields (optional)</string>
     <string name="hint_extra_fields">Up to five additional fields from the Time Entries database, filled in manually in the timer.</string>
-    <string name="btn_add_extra_field">+ Add field</string>
+    <string name="btn_add_extra_field">Add field</string>
     <string name="title_remove_extra_field">Remove field</string>
     <string name="placeholder_select_field">Select field…</string>
     <string name="label_required_field">Required</string>
@@ -82,8 +69,6 @@
     <string name="hint_description_required">A timer in this workspace cannot be stopped without a description.</string>
     <string name="hint_description_optional">Left empty, the time entry is titled with its start date.</string>
     <string name="toast_description_before_stopping">Fill in a description before stopping.</string>
-    <string name="error_loading_extras">Could not load extra fields</string>
-    <string name="no_properties_of_type">No suitable field found in this database.</string>
     <string name="label_workspace_rounding">Time rounding</string>
     <string name="rounding_off">No rounding</string>
     <string name="rounding_5">Round to nearest 5 minutes</string>
@@ -101,10 +86,8 @@
     <!-- Toasts / errors -->
     <string name="toast_api_key_saved">API key works and was saved.</string>
     <string name="toast_api_key_removed">API key removed.</string>
-    <string name="toast_connection_failed">Connection failed</string>
     <string name="toast_workspace_added">Workspace \"%1$s\" added.</string>
     <string name="toast_workspace_saved">Workspace \"%1$s\" saved.</string>
-    <string name="toast_projects_error">Could not load projects</string>
     <string name="toast_start_error">Could not start timer</string>
     <string name="toast_stop_error">Could not stop timer</string>
     <string name="toast_stop_retry">Retry</string>
@@ -114,8 +97,6 @@
 
     <!-- Running timers list -->
     <string name="running_timers_heading">Active timers</string>
-    <string name="stop_running_timer">Stop timer</string>
-    <string name="refresh_running_timers">Refresh running timers</string>
     <string name="start_new_timer">Start new timer</string>
 
     <!-- Recent entries -->
@@ -139,19 +120,13 @@
     <string name="label_dynamic_color">Dynamic color</string>
     <string name="dynamic_color_hint">Use colors from your wallpaper instead of the app’s red</string>
 
-    <!-- QR code import -->
-    <string name="btn_scan_qr">Scan QR code to import settings</string>
-    <string name="btn_add_workspace_qr">Add workspace via QR code</string>
-
     <!-- Refresh -->
     <string name="btn_refresh_all">Refresh</string>
 
     <!-- Edit running timer -->
     <string name="hint_timer_title">Timer title…</string>
-    <string name="btn_edit_timer">Edit</string>
     <string name="title_edit_timer">Edit timer</string>
     <string name="btn_save_changes">Save</string>
-    <string name="hint_edit_timer_saving">Saving…</string>
 
     <!-- Notification -->
     <string name="notification_channel_name">Timer</string>
@@ -159,14 +134,7 @@
     <string name="notification_action_stop">Stop</string>
 
     <!-- Presets -->
-    <string name="section_presets">Presets (optional)</string>
-    <string name="hint_presets">Up to 5 quick-start configurations. Tap a preset to start the timer immediately.</string>
-    <string name="btn_add_preset">+ Add preset</string>
     <string name="title_remove_preset">Remove preset</string>
-    <string name="preset_name_placeholder">e.g. Morning standup</string>
-    <string name="label_preset_title">Default title</string>
-    <string name="preset_title_placeholder">Optional default title…</string>
-    <string name="label_show_in_shortcuts">Show in launcher shortcuts</string>
 
     <!-- Timer stopped elsewhere -->
     <string name="timer_stopped_elsewhere">Timer was stopped on another device.</string>
@@ -178,20 +146,17 @@
     <string name="deleted_page_confirm">Dismiss</string>
     <string name="toast_update_error">Could not update timer</string>
 
-    <!-- Per-workspace QR -->
-    <string name="btn_workspace_qr">Export workspace QR</string>
-
     <!-- Additional New Strings -->
     <string name="warn_already_running_title">Timer already running</string>
     <string name="warn_already_running_body">A timer is already running. Stop it and start the new one, or cancel?</string>
-    <string name="btn_stop_and_start_new">Stop &amp; start new</string>
-    <string name="dialog_save_preset_title">Save Preset</string>
+    <string name="btn_stop_and_start_new">Stop and start new</string>
+    <string name="dialog_save_preset_title">Save preset</string>
     <string name="dialog_save_preset_body">Save the current description and selected workspace/fields as a preset.</string>
     <string name="dialog_save_preset_placeholder">Preset title (e.g. Daily Standup)</string>
     <string name="dialog_save_preset_name">Preset title</string>
-    <string name="presets_manage_title">Manage Presets</string>
+    <string name="presets_manage_title">Manage presets</string>
     <string name="tooltip_presets_shortcuts">Top presets will be used for launcher shortcuts.</string>
-    <string name="dialog_unsaved_changes_title">Unsaved Changes</string>
+    <string name="dialog_unsaved_changes_title">Unsaved changes</string>
     <string name="dialog_unsaved_changes_body">You have unsaved changes. Would you like to save them before leaving?</string>
     <string name="btn_discard">Discard</string>
     <string name="dialog_time_error_title">End time is before start time</string>
@@ -243,9 +208,6 @@
     <string name="title_move_preset_down">Move preset down</string>
     <string name="title_info">Information</string>
     <string name="error_no_api_key">No Notion API key set.</string>
-    <string name="error_start_failed">Could not start the timer</string>
-    <string name="error_stop_failed">Could not stop the timer</string>
-    <string name="error_delete_failed">Could not delete the entry</string>
     <string name="error_stop_from_notification_failed">Stopping failed — open the app to try again</string>
     <string name="section_expanded">Expanded</string>
     <string name="section_collapsed">Collapsed</string>

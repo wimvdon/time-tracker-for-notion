@@ -1,14 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- Window theme only; all UI is drawn with Compose Material 3. -->
     <style name="Theme.NotionTimeTracker" parent="android:Theme.Material.Light.NoActionBar">
         <item name="android:windowBackground">@color/window_background</item>
-    </style>
-
-    <!-- Launch theme: the red dial from the launcher icon on a plain background,
-         swapped for Theme.NotionTimeTracker by installSplashScreen() -->
-    <style name="Theme.NotionTimeTracker.Starting" parent="Theme.SplashScreen">
-        <item name="windowSplashScreenBackground">@color/window_background</item>
-        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
-        <item name="postSplashScreenTheme">@style/Theme.NotionTimeTracker</item>
     </style>
 </resources>

@@ -13,8 +13,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import com.impca201.notiontimetracker.R
-import com.impca201.notiontimetracker.data.models.ExtraFieldDef
-import com.impca201.notiontimetracker.data.models.NamedOption
 import com.impca201.notiontimetracker.viewmodel.TimerViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
