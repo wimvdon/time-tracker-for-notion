@@ -30,7 +30,14 @@ import com.impca201.notiontimetracker.data.models.ThemeMode
 import com.impca201.notiontimetracker.data.models.Workspace
 import androidx.activity.compose.BackHandler
 import com.impca201.notiontimetracker.ui.components.WorkspaceModal
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import com.impca201.notiontimetracker.ui.theme.AppShapes
+import com.impca201.notiontimetracker.ui.theme.AppearanceSettings
+import com.impca201.notiontimetracker.ui.theme.CollapsibleSection
+import com.impca201.notiontimetracker.ui.theme.SettingsFooter
+import com.impca201.notiontimetracker.ui.theme.SettingsScaffold
+import com.impca201.notiontimetracker.ui.theme.SwitchSetting
+import com.impca201.notiontimetracker.ui.theme.rememberAppVersion
 import com.impca201.notiontimetracker.ui.theme.dynamicColorSupported
 import com.impca201.notiontimetracker.viewmodel.SettingsViewModel
 import com.impca201.notiontimetracker.ui.components.SearchableDropdown
@@ -137,29 +144,74 @@ fun SettingsScreen(
         return
     }
 
-    Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) },
-        topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.settings_title)) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = stringResource(R.string.btn_back))
-                    }
-                }
-            )
+    // Both sync dialogs close themselves once the sync page id changes (success);
+    // on failure uiState.syncError is shown and the dialog stays open.
+    var showCreateSync by remember { mutableStateOf(false) }
+    var showLoadSync by remember { mutableStateOf(false) }
+    LaunchedEffect(uiState.syncPageId) {
+        if (uiState.syncPageId != null) {
+            showCreateSync = false
+            showLoadSync = false
         }
-    ) { padding ->
-        val scrollState = rememberScrollState()
-        Column(
-            modifier = Modifier
-                .padding(padding)
-                .padding(horizontal = 16.dp)
-                .verticalScroll(scrollState),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            if (uiState.workspaces.isEmpty()) {
-                Spacer(Modifier.height(4.dp))
+    }
+    if (showCreateSync) {
+        CreateSyncDialog(
+            syncing = uiState.syncing,
+            error = uiState.syncError,
+            onDismiss = { showCreateSync = false },
+            onSearch = onSearchSyncPages,
+            onCreate = onCreateSyncPage
+        )
+    }
+    if (showLoadSync) {
+        LoadSyncDialog(
+            syncing = uiState.syncing,
+            error = uiState.syncError,
+            onDismiss = { showLoadSync = false },
+            onSearch = onSearchSyncPages,
+            onAttach = onLoadExistingSyncPage
+        )
+    }
+
+    val themeOptions = listOf(
+        ThemeMode.AUTO to stringResource(R.string.theme_auto),
+        ThemeMode.LIGHT to stringResource(R.string.theme_light),
+        ThemeMode.DARK to stringResource(R.string.theme_dark),
+    )
+    val languageOptions = listOf(
+        NamedOption("system", stringResource(R.string.language_system)),
+        NamedOption("en", stringResource(R.string.language_en)),
+        NamedOption("nl", stringResource(R.string.language_nl)),
+        NamedOption("fr", stringResource(R.string.language_fr)),
+        NamedOption("de", stringResource(R.string.language_de)),
+        NamedOption("es", stringResource(R.string.language_es)),
+        NamedOption("it", stringResource(R.string.language_it))
+    )
+    // A locale pulled in from the Windows app arrives as a full tag ("en-GB", "nl-BE"), so the
+    // option is matched on the language subtag — otherwise the picker reads "System" while the
+    // app is actually rendering that language.
+    val localeLanguage = uiState.locale.lowercase().substringBefore('-').substringBefore('_')
+    val selectedLanguage = languageOptions.firstOrNull { it.id == localeLanguage } ?: languageOptions.first()
+    val dateFormatOptions = listOf(
+        NamedOption("DD/MM/YYYY", "DD/MM/YYYY"),
+        NamedOption("MM/DD/YYYY", "MM/DD/YYYY"),
+        NamedOption("YYYY-MM-DD", "YYYY-MM-DD")
+    )
+    val selectedDateFormat = dateFormatOptions.firstOrNull { it.id == uiState.dateFormat } ?: dateFormatOptions.first()
+    val timeFormatOptions = listOf(
+        NamedOption("24h", "24h"),
+        NamedOption("12h", "12h")
+    )
+    val selectedTimeFormat = timeFormatOptions.firstOrNull { it.id == uiState.timeFormat } ?: timeFormatOptions.first()
+
+    SettingsScaffold(
+        title = stringResource(R.string.settings_title),
+        backLabel = stringResource(R.string.btn_back),
+        onBack = onBack,
+        snackbarHost = { SnackbarHost(snackbarHostState) }
+    ) {
+        if (uiState.workspaces.isEmpty()) {
+            item(key = "first-launch") {
                 Surface(shape = AppShapes.Group, color = MaterialTheme.colorScheme.secondaryContainer) {
                     Row(
                         modifier = Modifier.padding(16.dp),
@@ -170,10 +222,17 @@ fun SettingsScreen(
                     }
                 }
             }
+        }
 
-            // --- API Key section ---
-            SectionHeader(stringResource(R.string.label_api_key))
-            SettingsGroup {
+        // --- Connection: API key and sync ---
+        item(key = "api-key") {
+            CollapsibleSection(
+                key = "api-key",
+                title = stringResource(R.string.label_api_key),
+                summary = uiState.savedApiKey.takeIf { it.isNotBlank() }?.let { "••••" + it.takeLast(4) },
+                icon = rememberVectorPainter(Icons.Rounded.Key),
+                initiallyExpanded = uiState.savedApiKey.isBlank()
+            ) {
                 OutlinedTextField(
                     value = uiState.apiKey,
                     onValueChange = onApiKeyChange,
@@ -192,11 +251,9 @@ fun SettingsScreen(
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
                     keyboardActions = KeyboardActions(onDone = { onTestAndSave() })
                 )
-
                 uiState.keyTestError?.let { err ->
                     Text(err, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                 }
-
                 Button(
                     onClick = onTestAndSave,
                     enabled = !uiState.testingKey && uiState.apiKey.isNotBlank(),
@@ -210,7 +267,6 @@ fun SettingsScreen(
                         Text(stringResource(R.string.btn_test_and_save_key))
                     }
                 }
-
                 // Removing is its own action, offered only while a key is actually stored.
                 if (uiState.savedApiKey.isNotBlank()) {
                     TextButton(
@@ -218,43 +274,32 @@ fun SettingsScreen(
                         enabled = !uiState.testingKey,
                         modifier = Modifier.align(Alignment.End)
                     ) {
-                        Text(
-                            stringResource(R.string.btn_remove_key),
-                            color = MaterialTheme.colorScheme.error
-                        )
+                        Text(stringResource(R.string.btn_remove_key), color = MaterialTheme.colorScheme.error)
                     }
                 }
             }
+        }
 
-            // --- Notion-page sync section ---
-            var showCreateSync by remember { mutableStateOf(false) }
-            var showLoadSync by remember { mutableStateOf(false) }
-
-            SectionHeader(stringResource(R.string.label_sync))
-            SettingsGroup {
+        item(key = "sync") {
+            CollapsibleSection(
+                key = "sync",
+                title = stringResource(R.string.label_sync),
+                summary = if (uiState.syncPageId != null) {
+                    stringResource(R.string.sync_status_connected, uiState.syncPageTitle.ifBlank { uiState.syncPageId!! })
+                } else {
+                    stringResource(R.string.sync_summary_not_connected)
+                },
+                icon = rememberVectorPainter(Icons.Rounded.Sync)
+            ) {
                 if (uiState.syncPageId != null) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            stringResource(
-                                R.string.sync_status_connected,
-                                uiState.syncPageTitle.ifBlank { uiState.syncPageId!! }
-                            ),
-                            modifier = Modifier.weight(1f),
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                        TextButton(onClick = onDisconnectSync) {
-                            Text(stringResource(R.string.btn_disconnect_sync))
-                        }
+                    TextButton(onClick = onDisconnectSync) {
+                        Text(stringResource(R.string.btn_disconnect_sync))
                     }
                 } else {
                     Text(
                         stringResource(R.string.sync_status_not_connected),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        style = MaterialTheme.typography.bodySmall
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         OutlinedButton(onClick = { showCreateSync = true }, enabled = uiState.apiKey.isNotBlank()) {
@@ -266,44 +311,18 @@ fun SettingsScreen(
                     }
                 }
             }
+        }
 
-            // Both dialogs close themselves once the sync page id changes (success);
-            // on failure uiState.syncError is shown and the dialog stays open.
-            LaunchedEffect(uiState.syncPageId) {
-                if (uiState.syncPageId != null) {
-                    showCreateSync = false
-                    showLoadSync = false
-                }
-            }
-            if (showCreateSync) {
-                CreateSyncDialog(
-                    syncing = uiState.syncing,
-                    error = uiState.syncError,
-                    onDismiss = { showCreateSync = false },
-                    onSearch = onSearchSyncPages,
-                    onCreate = onCreateSyncPage
-                )
-            }
-            if (showLoadSync) {
-                LoadSyncDialog(
-                    syncing = uiState.syncing,
-                    error = uiState.syncError,
-                    onDismiss = { showLoadSync = false },
-                    onSearch = onSearchSyncPages,
-                    onAttach = onLoadExistingSyncPage
-                )
-            }
-
-            // --- Workspaces section ---
-            SectionHeader(stringResource(R.string.label_workspaces))
-
-            if (uiState.workspaces.isEmpty()) {
-                Text(
-                    stringResource(R.string.no_workspaces_yet),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    style = MaterialTheme.typography.bodyMedium
-                )
-            } else {
+        // --- App features ---
+        item(key = "workspaces") {
+            CollapsibleSection(
+                key = "workspaces",
+                title = stringResource(R.string.label_workspaces),
+                summary = uiState.workspaces.takeIf { it.isNotEmpty() }?.joinToString(", ") { it.name }
+                    ?: stringResource(R.string.no_workspaces_yet),
+                icon = rememberVectorPainter(Icons.Rounded.Folder),
+                initiallyExpanded = uiState.workspaces.isEmpty()
+            ) {
                 uiState.workspaces.forEachIndexed { index, workspace ->
                     WorkspaceListItem(
                         workspace = workspace,
@@ -316,63 +335,62 @@ fun SettingsScreen(
                         onMoveDown = { onMoveDown(workspace.id) }
                     )
                 }
-            }
-
-            OutlinedButton(
-                onClick = onAddWorkspace,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(stringResource(R.string.btn_add_workspace))
-            }
-
-            // --- Theme section ---
-            SectionHeader(stringResource(R.string.label_theme))
-            SettingsGroup {
-                ThemePicker(selected = uiState.themeMode, onSelect = onThemeModeChange)
-                if (dynamicColorSupported) {
-                    SettingSwitchRow(
-                        label = stringResource(R.string.label_dynamic_color),
-                        supporting = stringResource(R.string.dynamic_color_hint),
-                        checked = uiState.dynamicColor,
-                        onCheckedChange = onDynamicColorChange
-                    )
+                OutlinedButton(onClick = onAddWorkspace, modifier = Modifier.fillMaxWidth()) {
+                    Text(stringResource(R.string.btn_add_workspace))
                 }
             }
+        }
 
-            // --- Notion entry actions section ---
-            SectionHeader(stringResource(R.string.label_notion_actions))
-            SettingsGroup {
-                SettingSwitchRow(
-                    label = stringResource(R.string.label_show_notion_link),
+        item(key = "notion-actions") {
+            CollapsibleSection(
+                key = "notion-actions",
+                title = stringResource(R.string.label_notion_actions),
+                icon = rememberVectorPainter(Icons.Rounded.Link)
+            ) {
+                SwitchSetting(
+                    title = stringResource(R.string.label_show_notion_link),
+                    summary = null,
                     checked = uiState.showNotionLink,
                     onCheckedChange = onShowNotionLinkChange
                 )
-                SettingSwitchRow(
-                    label = stringResource(R.string.label_show_archive_action),
+                SwitchSetting(
+                    title = stringResource(R.string.label_show_archive_action),
+                    summary = null,
                     checked = uiState.showArchiveAction,
                     onCheckedChange = onShowArchiveActionChange
                 )
             }
+        }
 
-            // --- Formats & Locale section ---
-            SectionHeader(stringResource(R.string.label_language))
-            SettingsGroup {
-                val languageOptions = listOf(
-                    NamedOption("system", stringResource(R.string.language_system)),
-                    NamedOption("en", stringResource(R.string.language_en)),
-                    NamedOption("nl", stringResource(R.string.language_nl)),
-                    NamedOption("fr", stringResource(R.string.language_fr)),
-                    NamedOption("de", stringResource(R.string.language_de)),
-                    NamedOption("es", stringResource(R.string.language_es)),
-                    NamedOption("it", stringResource(R.string.language_it))
+        // --- Appearance, then language and formats ---
+        item(key = "appearance") {
+            CollapsibleSection(
+                key = "appearance",
+                title = stringResource(R.string.label_theme),
+                summary = themeOptions.first { it.first == uiState.themeMode }.second,
+                icon = rememberVectorPainter(Icons.Rounded.Palette)
+            ) {
+                AppearanceSettings(
+                    themeLabel = stringResource(R.string.label_theme_mode),
+                    themeOptions = themeOptions.map { it.second },
+                    selectedTheme = themeOptions.indexOfFirst { it.first == uiState.themeMode },
+                    onThemeSelect = { onThemeModeChange(themeOptions[it].first) },
+                    dynamicColorTitle = stringResource(R.string.label_dynamic_color),
+                    dynamicColorSummary = stringResource(R.string.dynamic_color_hint),
+                    dynamicColor = uiState.dynamicColor,
+                    onDynamicColorChange = onDynamicColorChange,
+                    dynamicColorSupported = dynamicColorSupported
                 )
-                // A locale pulled in from the Windows app arrives as a full tag
-                // ("en-GB", "nl-BE"), so the option is matched on the language
-                // subtag — otherwise the picker reads "System" while the app is
-                // actually rendering that language.
-                val localeLanguage = uiState.locale.lowercase().substringBefore('-').substringBefore('_')
-                val selectedLanguage = languageOptions.firstOrNull { it.id == localeLanguage }
-                    ?: languageOptions.first()
+            }
+        }
+
+        item(key = "language") {
+            CollapsibleSection(
+                key = "language",
+                title = stringResource(R.string.label_language),
+                summary = "${selectedLanguage.name} · ${selectedDateFormat.name} · ${selectedTimeFormat.name}",
+                icon = rememberVectorPainter(Icons.Rounded.Language)
+            ) {
                 SearchableDropdown(
                     options = languageOptions,
                     selected = selectedLanguage,
@@ -381,14 +399,7 @@ fun SettingsScreen(
                     searchable = false,
                     modifier = Modifier.fillMaxWidth()
                 )
-
                 Text(stringResource(R.string.label_date_format), style = MaterialTheme.typography.labelLarge)
-                val dateFormatOptions = listOf(
-                    NamedOption("DD/MM/YYYY", "DD/MM/YYYY"),
-                    NamedOption("MM/DD/YYYY", "MM/DD/YYYY"),
-                    NamedOption("YYYY-MM-DD", "YYYY-MM-DD")
-                )
-                val selectedDateFormat = dateFormatOptions.firstOrNull { it.id == uiState.dateFormat } ?: dateFormatOptions.first()
                 SearchableDropdown(
                     options = dateFormatOptions,
                     selected = selectedDateFormat,
@@ -397,13 +408,7 @@ fun SettingsScreen(
                     searchable = false,
                     modifier = Modifier.fillMaxWidth()
                 )
-
                 Text(stringResource(R.string.label_time_format), style = MaterialTheme.typography.labelLarge)
-                val timeFormatOptions = listOf(
-                    NamedOption("24h", "24h"),
-                    NamedOption("12h", "12h")
-                )
-                val selectedTimeFormat = timeFormatOptions.firstOrNull { it.id == uiState.timeFormat } ?: timeFormatOptions.first()
                 SearchableDropdown(
                     options = timeFormatOptions,
                     selected = selectedTimeFormat,
@@ -413,84 +418,10 @@ fun SettingsScreen(
                     modifier = Modifier.fillMaxWidth()
                 )
             }
-
-            Spacer(Modifier.height(16.dp))
         }
-    }
-}
 
-/** A section title above a [SettingsGroup], as in the sibling apps' settings. */
-@Composable
-private fun SectionHeader(title: String) {
-    Text(
-        title,
-        style = MaterialTheme.typography.titleSmall,
-        color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier
-            .padding(start = 8.dp, end = 8.dp, top = 16.dp, bottom = 0.dp)
-            .semantics { heading() }
-    )
-}
-
-/** Settings that belong together, on one rounded surface. */
-@Composable
-private fun SettingsGroup(content: @Composable ColumnScope.() -> Unit) {
-    Surface(
-        shape = AppShapes.Group,
-        color = MaterialTheme.colorScheme.surfaceContainerLow,
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            content = content
-        )
-    }
-}
-
-/** A setting with a switch. The whole row is one accessible switch. */
-@Composable
-private fun SettingSwitchRow(
-    label: String,
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit,
-    supporting: String? = null
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .toggleable(value = checked, role = Role.Switch, onValueChange = onCheckedChange),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(label, style = MaterialTheme.typography.bodyLarge)
-            if (supporting != null) {
-                Text(
-                    supporting,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
-        Switch(checked = checked, onCheckedChange = null)
-    }
-}
-
-@Composable
-private fun ThemePicker(selected: ThemeMode, onSelect: (ThemeMode) -> Unit) {
-    val options = listOf(
-        ThemeMode.AUTO to R.string.theme_auto,
-        ThemeMode.LIGHT to R.string.theme_light,
-        ThemeMode.DARK to R.string.theme_dark,
-    )
-    SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
-        options.forEachIndexed { index, (mode, labelRes) ->
-            SegmentedButton(
-                selected = selected == mode,
-                onClick = { onSelect(mode) },
-                shape = SegmentedButtonDefaults.itemShape(index, options.size)
-            ) { Text(stringResource(labelRes)) }
+        item(key = "footer") {
+            SettingsFooter("${stringResource(R.string.app_name)} ${rememberAppVersion()}")
         }
     }
 }
@@ -508,7 +439,7 @@ private fun WorkspaceListItem(
 ) {
     Card(
         shape = AppShapes.Item,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
         modifier = Modifier.fillMaxWidth()
     ) {
         Row(

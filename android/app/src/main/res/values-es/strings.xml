@@ -247,4 +247,8 @@
     <string name="error_stop_failed">No se pudo detener el temporizador</string>
     <string name="error_delete_failed">No se pudo eliminar la entrada</string>
     <string name="error_stop_from_notification_failed">Error al detener: abra la aplicación para reintentar</string>
+    <string name="section_expanded">Desplegado</string>
+    <string name="section_collapsed">Contraído</string>
+    <string name="label_theme_mode">Tema</string>
+    <string name="sync_summary_not_connected">No conectado</string>
 </resources>

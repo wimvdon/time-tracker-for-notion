@@ -247,4 +247,8 @@
     <string name="error_stop_failed">Impossibile fermare il timer</string>
     <string name="error_delete_failed">Impossibile eliminare la voce</string>
     <string name="error_stop_from_notification_failed">Arresto non riuscito: apri l\'app per riprovare</string>
+    <string name="section_expanded">Espanso</string>
+    <string name="section_collapsed">Compresso</string>
+    <string name="label_theme_mode">Tema</string>
+    <string name="sync_summary_not_connected">Non connesso</string>
 </resources>

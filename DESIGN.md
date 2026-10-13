@@ -38,8 +38,25 @@ the "This app" section; change the rules in all three together.
 - Cards and grouped surfaces use the `surfaceContainer*` roles.
 - Components keep Material's shape scale (`MaterialTheme.shapes`). App-level containers use
   `AppShapes`: `Group` (24dp) for grouped settings and banners, `Item` (20dp) for rows in a list.
-- Settings: a section title in `titleSmall` / primary above a `Group` surface on
-  `surfaceContainerLow`; switches span the whole row; single choices use segmented buttons.
+
+## Settings screen
+
+Built from `ui/theme/SettingsKit.kt`, so every app's settings look and behave the same:
+
+- `SettingsScaffold`: a large top app bar ("Settings") that collapses on scroll, with a back
+  button, over a list of sections.
+- Every section is a `CollapsibleSection` card: icon, title and the current value as summary;
+  tap to expand. Sections start collapsed, except one the user still has to fill in (no API key
+  or workspace yet).
+- Inside a section: `SwitchSetting` rows (the whole row is the switch), segmented buttons for a
+  single choice, `CollapsibleSubsection` for longer instructions.
+- Sections in this order, leaving out what an app does not have:
+  1. Connection (account, API key, sync)
+  2. The app's own features
+  3. Shortcuts and integrations
+  4. Appearance (`AppearanceSettings`: Theme, then Dynamic color)
+  5. Language and formats
+  6. `SettingsFooter`: app name and version, plus links such as data sources
 
 ## Motion
 
@@ -73,12 +90,15 @@ English, Dutch, German, French, Spanish and Italian).
 
 ## Shared design kit
 
-These files are identical in the three apps apart from their package line. Copy a change to
+These files are identical in the three apps apart from their package (and `R` import) lines. Copy a change to
 the other two repositories:
 
 - `ui/theme/Motion.kt`: motion tokens, the shared-axis transition and `rememberReducedMotion()`.
 - `ui/theme/Shapes.kt`: `AppShapes`.
 - `ui/theme/SystemBars.kt`: `SystemBarsFollowTheme()`.
+- `ui/theme/SettingsKit.kt`: the settings screen components above. It also needs
+  `drawable/ic_arrow_back`, `drawable/ic_expand_more` and the strings `section_expanded` and
+  `section_collapsed`.
 
 ## This app
 

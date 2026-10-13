@@ -247,4 +247,8 @@
     <string name="error_stop_failed">Impossible d\'arrêter le minuteur</string>
     <string name="error_delete_failed">Impossible de supprimer l\'entrée</string>
     <string name="error_stop_from_notification_failed">Échec de l\'arrêt — ouvrez l\'application pour réessayer</string>
+    <string name="section_expanded">Développé</string>
+    <string name="section_collapsed">Réduit</string>
+    <string name="label_theme_mode">Thème</string>
+    <string name="sync_summary_not_connected">Non connecté</string>
 </resources>

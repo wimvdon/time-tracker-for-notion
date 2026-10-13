@@ -247,4 +247,8 @@
     <string name="error_stop_failed">Could not stop the timer</string>
     <string name="error_delete_failed">Could not delete the entry</string>
     <string name="error_stop_from_notification_failed">Stopping failed — open the app to try again</string>
+    <string name="section_expanded">Expanded</string>
+    <string name="section_collapsed">Collapsed</string>
+    <string name="label_theme_mode">Theme</string>
+    <string name="sync_summary_not_connected">Not connected</string>
 </resources>
