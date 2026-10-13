@@ -101,6 +101,9 @@
 
     <!-- Recent entries -->
     <string name="recent_entries_heading">Saisies de temps récentes</string>
+    <string name="tab_timer">Minuteur</string>
+    <string name="tab_recent">Récents</string>
+    <string name="recent_empty">Aucune saisie de temps pour l’instant</string>
     <string name="title_delete_entry">Supprimer</string>
     <string name="title_open_in_notion">Ouvrir dans Notion</string>
     <string name="title_start_from_entry">Démarrer un nouveau chronomètre avec ces informations</string>

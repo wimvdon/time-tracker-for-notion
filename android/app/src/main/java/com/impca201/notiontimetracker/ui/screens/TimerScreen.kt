@@ -50,6 +50,11 @@ import com.impca201.notiontimetracker.ui.theme.SkeletonBlock
 import com.impca201.notiontimetracker.ui.theme.SkeletonLine
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.Role
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.activity.compose.BackHandler
 import androidx.compose.ui.semantics.semantics
 import com.impca201.notiontimetracker.ui.theme.rememberReducedMotion
 import com.impca201.notiontimetracker.ui.theme.workspaceAccentColor
@@ -77,6 +82,7 @@ import com.impca201.notiontimetracker.viewmodel.TimerViewModel
 import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun TimerScreen(
     uiState: TimerViewModel.UiState,
@@ -242,52 +248,252 @@ fun TimerScreen(
         return
     }
 
-    AnimatedContent(
-        targetState = uiState.running && uiState.activeTimer != null,
-        transitionSpec = {
-            fadeIn(Motion.fadeSpec(delayMillis = 90)) togetherWith fadeOut(Motion.fadeSpec(durationMillis = 90))
-        },
-        label = "timer-state"
-    ) { running ->
-        if (running) {
-            RunningView(
-                uiState = uiState,
-                onStop = onStop,
-                onUpdateStartTime = onUpdateStartTime,
-                onNavigateToSettings = onNavigateToSettings,
-                onRetryStop = onRetryStop,
-                onLoadRunningTimer = onLoadRunningTimer,
-                onStopOtherRunningTimer = onStopOtherRunningTimer,
-                onPlusButtonClicked = onPlusButtonClicked,
-                onRefreshAll = onRefreshAll,
-                onQuickSaveDescription = onQuickSaveDescription,
-                onUpdateTimerDetails = onUpdateTimerDetails,
-                onConfirmDelete = onConfirmDelete,
-                onOpenUrl = onOpenUrl,
-                onApplyPreset = onApplyPreset,
-                onStartFromRecentEntry = onStartFromRecentEntry,
-                onManagePresetsClick = { showManagePresetsDialog = true }
+    // Two destinations behind a floating bar: the timer itself, and the lists (active timers,
+    // recent entries) that used to sit under it. Back from Recent returns to the timer.
+    var tab by rememberSaveable { mutableStateOf(HomeTab.Timer) }
+    BackHandler(enabled = tab != HomeTab.Timer) { tab = HomeTab.Timer }
+    val activeTimerId = uiState.activeTimer?.notionPageId?.takeIf { uiState.running }
+    val otherRunningCount = uiState.runningTimers.count { it.pageId != activeTimerId }
+
+    Box(Modifier.fillMaxSize()) {
+        AnimatedContent(
+            targetState = if (tab == HomeTab.Recent) HomeContent.Recent
+            else if (uiState.running && uiState.activeTimer != null) HomeContent.Running
+            else HomeContent.Idle,
+            transitionSpec = {
+                fadeIn(Motion.fadeSpec(delayMillis = 90)) togetherWith fadeOut(Motion.fadeSpec(durationMillis = 90))
+            },
+            label = "home-content"
+        ) { content ->
+            when (content) {
+                HomeContent.Running -> RunningView(
+                    uiState = uiState,
+                    onStop = onStop,
+                    onUpdateStartTime = onUpdateStartTime,
+                    onNavigateToSettings = onNavigateToSettings,
+                    onRetryStop = onRetryStop,
+                    onPlusButtonClicked = onPlusButtonClicked,
+                    onRefreshAll = onRefreshAll,
+                    onQuickSaveDescription = onQuickSaveDescription,
+                    onUpdateTimerDetails = onUpdateTimerDetails,
+                    onApplyPreset = onApplyPreset,
+                    onManagePresetsClick = { showManagePresetsDialog = true }
+                )
+                HomeContent.Idle -> IdleView(
+                    uiState = uiState,
+                    onWorkspaceSelect = onWorkspaceSelect,
+                    onDescriptionChange = onDescriptionChange,
+                    onExtraValueChange = onExtraValueChange,
+                    onStart = onStart,
+                    onNavigateToSettings = onNavigateToSettings,
+                    onClearError = onClearError,
+                    onRefreshAll = onRefreshAll,
+                    onApplyPreset = onApplyPreset,
+                    onSavePresetClick = { showSavePresetDialog = true },
+                    onManagePresetsClick = { showManagePresetsDialog = true }
+                )
+                HomeContent.Recent -> RecentView(
+                    uiState = uiState,
+                    activePageId = activeTimerId,
+                    onNavigateToSettings = onNavigateToSettings,
+                    onRefreshAll = onRefreshAll,
+                    // Picking up a timer or starting one from an entry shows it on the timer.
+                    onLoadRunningTimer = { onLoadRunningTimer(it); tab = HomeTab.Timer },
+                    onStopOtherRunningTimer = onStopOtherRunningTimer,
+                    onConfirmDelete = onConfirmDelete,
+                    onOpenUrl = onOpenUrl,
+                    onStartFromRecentEntry = { onStartFromRecentEntry(it); tab = HomeTab.Timer }
+                )
+            }
+        }
+
+        // Hidden while typing, so it never sits on top of the field being edited.
+        if (!WindowInsets.isImeVisible) {
+            HomeFloatingBar(
+                selected = tab,
+                onSelect = { tab = it },
+                runningCount = otherRunningCount,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .navigationBarsPadding()
+                    .padding(bottom = HomeBarBottomMargin)
             )
+        }
+    }
+}
+
+private enum class HomeTab { Timer, Recent }
+
+private enum class HomeContent { Idle, Running, Recent }
+
+private val HomeBarHeight: Dp = 64.dp
+private val HomeBarBottomMargin: Dp = 16.dp
+
+/** Space at the end of a scrolling screen so its last item can scroll clear of the floating bar. */
+private val HomeBarClearance: Dp = HomeBarHeight + HomeBarBottomMargin + 16.dp
+
+/**
+ * The floating bar that switches between the timer and the lists. Built like Material 3
+ * Expressive's floating toolbar (a pill on Surface Container with a shadow, floating 16dp above
+ * the navigation bar) because that component is not yet stable in the Material library this app
+ * uses. The selected destination gets a Secondary Container pill. A badge on Recent counts timers
+ * running elsewhere, since the timer screen no longer lists them.
+ */
+@Composable
+private fun HomeFloatingBar(
+    selected: HomeTab,
+    onSelect: (HomeTab) -> Unit,
+    runningCount: Int,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier.height(HomeBarHeight),
+        shape = CircleShape,
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+        shadowElevation = 6.dp,
+        tonalElevation = 3.dp
+    ) {
+        Row(
+            modifier = Modifier
+                .padding(8.dp)
+                .selectableGroup(),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            HomeBarItem(
+                label = stringResource(R.string.tab_timer),
+                icon = Icons.Rounded.Timer,
+                selected = selected == HomeTab.Timer,
+                onClick = { onSelect(HomeTab.Timer) }
+            )
+            val runningLabel = stringResource(R.string.running_timers_heading)
+            HomeBarItem(
+                label = stringResource(R.string.tab_recent),
+                icon = Icons.Rounded.History,
+                selected = selected == HomeTab.Recent,
+                onClick = { onSelect(HomeTab.Recent) },
+                badge = runningCount.takeIf { it > 0 }?.let { count ->
+                    {
+                        Badge(Modifier.semantics { contentDescription = "$runningLabel: $count" }) {
+                            Text(count.toString())
+                        }
+                    }
+                }
+            )
+        }
+    }
+}
+
+@Composable
+private fun HomeBarItem(
+    label: String,
+    icon: ImageVector,
+    selected: Boolean,
+    onClick: () -> Unit,
+    badge: (@Composable BoxScope.() -> Unit)? = null
+) {
+    val container by animateColorAsState(
+        if (selected) MaterialTheme.colorScheme.secondaryContainer else Color.Transparent,
+        Motion.fadeSpec(),
+        label = "home-bar-item"
+    )
+    val content = if (selected) MaterialTheme.colorScheme.onSecondaryContainer
+    else MaterialTheme.colorScheme.onSurfaceVariant
+    Row(
+        modifier = Modifier
+            .height(48.dp)
+            .clip(CircleShape)
+            .background(container)
+            .selectable(selected = selected, onClick = onClick, role = Role.Tab)
+            .padding(horizontal = 20.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        if (badge != null) {
+            BadgedBox(badge = badge) {
+                Icon(icon, contentDescription = null, tint = content)
+            }
         } else {
-            IdleView(
-                uiState = uiState,
-                onWorkspaceSelect = onWorkspaceSelect,
-                onProjectSelect = onProjectSelect,
-                onDescriptionChange = onDescriptionChange,
-                onExtraValueChange = onExtraValueChange,
-                onStart = onStart,
-                onNavigateToSettings = onNavigateToSettings,
-                onClearError = onClearError,
-                onLoadRunningTimer = onLoadRunningTimer,
-                onStopOtherRunningTimer = onStopOtherRunningTimer,
-                onRefreshAll = onRefreshAll,
-                onConfirmDelete = onConfirmDelete,
+            Icon(icon, contentDescription = null, tint = content)
+        }
+        Spacer(Modifier.width(8.dp))
+        Text(label, style = MaterialTheme.typography.labelLarge, color = content)
+    }
+}
+
+/** The lists that used to sit under the timer: timers running anywhere, then recent entries. */
+@Composable
+private fun RecentView(
+    uiState: TimerViewModel.UiState,
+    activePageId: String?,
+    onNavigateToSettings: () -> Unit,
+    onRefreshAll: () -> Unit,
+    onLoadRunningTimer: (RunningTimerInfo) -> Unit,
+    onStopOtherRunningTimer: (RunningTimerInfo) -> Unit,
+    onConfirmDelete: (String, String, Boolean) -> Unit,
+    onOpenUrl: (String) -> Unit,
+    onStartFromRecentEntry: (RecentEntryInfo) -> Unit
+) {
+    Scaffold(
+        contentColor = MaterialTheme.colorScheme.onBackground,
+        topBar = {
+            TimerTopBar(title = stringResource(R.string.tab_recent)) {
+                RefreshIconButton(
+                    loading = uiState.runningTimersLoading || uiState.recentEntriesLoading,
+                    onClick = onRefreshAll
+                )
+                IconButton(onClick = onNavigateToSettings) {
+                    Icon(Icons.Rounded.Settings, contentDescription = stringResource(R.string.title_settings))
+                }
+            }
+        }
+    ) { padding ->
+        Column(
+            modifier = Modifier
+                .padding(padding)
+                .padding(horizontal = 16.dp)
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            OtherRunningTimers(
+                timers = uiState.runningTimers,
+                loading = uiState.runningTimersLoading,
+                error = uiState.runningTimersError,
+                activePageId = activePageId,
+                onLoad = onLoadRunningTimer,
+                onStop = onStopOtherRunningTimer,
+                onDelete = { rt -> onConfirmDelete(rt.pageId, rt.title, true) },
                 onOpenUrl = onOpenUrl,
-                onApplyPreset = onApplyPreset,
-                onStartFromRecentEntry = onStartFromRecentEntry,
-                onSavePresetClick = { showSavePresetDialog = true },
-                onManagePresetsClick = { showManagePresetsDialog = true }
+                showNotionLink = uiState.showNotionLink,
+                showArchiveAction = uiState.showArchiveAction
             )
+
+            RecentEntriesSection(
+                entries = uiState.recentEntries,
+                loading = uiState.recentEntriesLoading,
+                workspaces = uiState.workspaces,
+                onDelete = { re -> onConfirmDelete(re.pageId, re.title, false) },
+                onOpenUrl = onOpenUrl,
+                onPlay = onStartFromRecentEntry,
+                dateFormat = uiState.dateFormat,
+                timeFormat = uiState.timeFormat,
+                showNotionLink = uiState.showNotionLink,
+                showArchiveAction = uiState.showArchiveAction
+            )
+
+            if (uiState.recentEntries.isEmpty() && !uiState.recentEntriesLoading &&
+                uiState.runningTimers.isEmpty() && uiState.runningTimersError == null
+            ) {
+                Text(
+                    stringResource(R.string.recent_empty),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.fillMaxWidth().padding(top = 48.dp),
+                    textAlign = TextAlign.Center
+                )
+            }
+
+            Spacer(Modifier.height(HomeBarClearance))
         }
     }
 }
@@ -297,19 +503,13 @@ fun TimerScreen(
 private fun IdleView(
     uiState: TimerViewModel.UiState,
     onWorkspaceSelect: (String) -> Unit,
-    onProjectSelect: (String?) -> Unit,
     onDescriptionChange: (String) -> Unit,
     onExtraValueChange: (String, String) -> Unit,
     onStart: () -> Unit,
     onNavigateToSettings: () -> Unit,
     onClearError: () -> Unit,
-    onLoadRunningTimer: (RunningTimerInfo) -> Unit,
-    onStopOtherRunningTimer: (RunningTimerInfo) -> Unit,
     onRefreshAll: () -> Unit,
-    onConfirmDelete: (String, String, Boolean) -> Unit,
-    onOpenUrl: (String) -> Unit,
     onApplyPreset: (String, Preset) -> Unit = { _, _ -> },
-    onStartFromRecentEntry: (RecentEntryInfo) -> Unit = {},
     onSavePresetClick: () -> Unit,
     onManagePresetsClick: () -> Unit
 ) {
@@ -506,33 +706,7 @@ private fun IdleView(
                 }
             }
 
-            OtherRunningTimers(
-                timers = uiState.runningTimers,
-                loading = uiState.runningTimersLoading,
-                error = uiState.runningTimersError,
-                activePageId = null,
-                onLoad = onLoadRunningTimer,
-                onStop = onStopOtherRunningTimer,
-                onDelete = { rt -> onConfirmDelete(rt.pageId, rt.title, true) },
-                onOpenUrl = onOpenUrl,
-                showNotionLink = uiState.showNotionLink,
-                showArchiveAction = uiState.showArchiveAction
-            )
-
-            RecentEntriesSection(
-                entries = uiState.recentEntries,
-                loading = uiState.recentEntriesLoading,
-                workspaces = uiState.workspaces,
-                onDelete = { re -> onConfirmDelete(re.pageId, re.title, false) },
-                onOpenUrl = onOpenUrl,
-                onPlay = onStartFromRecentEntry,
-                dateFormat = uiState.dateFormat,
-                timeFormat = uiState.timeFormat,
-                showNotionLink = uiState.showNotionLink,
-                showArchiveAction = uiState.showArchiveAction
-            )
-
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(HomeBarClearance))
         }
     }
 }
@@ -544,16 +718,11 @@ private fun RunningView(
     onUpdateStartTime: (String) -> Unit,
     onNavigateToSettings: () -> Unit,
     onRetryStop: () -> Unit,
-    onLoadRunningTimer: (RunningTimerInfo) -> Unit,
-    onStopOtherRunningTimer: (RunningTimerInfo) -> Unit,
     onPlusButtonClicked: () -> Unit,
     onRefreshAll: () -> Unit,
     onQuickSaveDescription: (String) -> Unit = {},
     onUpdateTimerDetails: (String?, String, Map<String, String>) -> Unit,
-    onConfirmDelete: (String, String, Boolean) -> Unit,
-    onOpenUrl: (String) -> Unit,
     onApplyPreset: (String, Preset) -> Unit = { _, _ -> },
-    onStartFromRecentEntry: (RecentEntryInfo) -> Unit = {},
     onManagePresetsClick: () -> Unit = {}
 ) {
     val timer = uiState.activeTimer ?: return
@@ -877,33 +1046,7 @@ private fun RunningView(
                     }
                 }
 
-                OtherRunningTimers(
-                    timers = uiState.runningTimers,
-                    loading = uiState.runningTimersLoading,
-                    error = uiState.runningTimersError,
-                    activePageId = uiState.activeTimer?.notionPageId,
-                    onLoad = onLoadRunningTimer,
-                    onStop = onStopOtherRunningTimer,
-                    onDelete = { rt -> onConfirmDelete(rt.pageId, rt.title, true) },
-                    onOpenUrl = onOpenUrl,
-                    showNotionLink = uiState.showNotionLink,
-                    showArchiveAction = uiState.showArchiveAction
-                )
-
-                RecentEntriesSection(
-                    entries = uiState.recentEntries,
-                    loading = uiState.recentEntriesLoading,
-                    workspaces = uiState.workspaces,
-                    onDelete = { re -> onConfirmDelete(re.pageId, re.title, false) },
-                    onOpenUrl = onOpenUrl,
-                    onPlay = onStartFromRecentEntry,
-                    dateFormat = uiState.dateFormat,
-                    timeFormat = uiState.timeFormat,
-                    showNotionLink = uiState.showNotionLink,
-                    showArchiveAction = uiState.showArchiveAction
-                )
-
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(HomeBarClearance))
             }
         }
     }
@@ -1219,9 +1362,12 @@ private fun PresetChips(
  *  Transparent, so a running timer's tinted background runs up behind it. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun TimerTopBar(actions: @Composable RowScope.() -> Unit) {
+private fun TimerTopBar(
+    title: String = stringResource(R.string.app_title),
+    actions: @Composable RowScope.() -> Unit
+) {
     TopAppBar(
-        title = { Text(stringResource(R.string.app_title)) },
+        title = { Text(title) },
         actions = actions,
         colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
     )

@@ -89,7 +89,9 @@ Also possible:
 - **Windows:** tray icon › right-click › **Stop timer**.
 - **Android:** **Stop** in the notification, even with the app closed.
 
-### Lists on the timer screen
+### Active timers and recent entries
+
+On Windows these lists sit under the timer. On Android they have their own **Recent** screen: switch with the floating bar at the bottom (**Timer** / **Recent**). A number on **Recent** counts timers running elsewhere.
 
 - **Active timers:** entries running in Notion, e.g. started on your phone. Click one to continue it on this device.
 - **Recent time entries:** the last finished entries. ▶ starts a new timer with the same details.
