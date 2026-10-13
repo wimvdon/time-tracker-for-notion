@@ -89,7 +89,7 @@ Stored shapes are migrated when read:
 
 Older settings files, and sync payloads written by an older app on another device, load without a migration step. This was chosen over versioned migrations because the same data arrives from two apps that may be on different versions.
 
-Android uses **kotlinx.serialization** for stored settings (default values for missing fields) and **Gson** for Notion responses. Notion request bodies use Gson with `serializeNulls()`, because Notion reads an explicit `null` as "clear this field".
+Android uses **kotlinx.serialization** for everything: stored settings and the sync payload as `@Serializable` classes (default values for missing fields), and Notion responses as `JsonElement` trees read through null-safe helpers. Notion request bodies keep their `null`s, because Notion reads an explicit `null` as "clear this field".
 
 ## Desktop details
 

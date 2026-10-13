@@ -74,6 +74,7 @@ data class NamedOption(val id: String, val name: String)
  * Excludes the API key and per-device toggles (dynamic color on Android,
  * always-on-top/start-with-Windows on the desktop app).
  */
+@Serializable
 data class SyncPayload(
     val updatedAt: String,
     val workspaces: List<Workspace> = emptyList(),

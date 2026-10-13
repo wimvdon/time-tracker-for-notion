@@ -51,7 +51,7 @@ time-tracker-for-notion/
     ├── gradlew, gradlew.bat
     └── app/
         ├── build.gradle.kts          SDK levels, signing from keystore.properties, versioning, dependencies
-        ├── proguard-rules.pro        Keep rules for the Gson sync models
+        ├── proguard-rules.pro        Notes on R8 (no extra keep rules needed)
         └── src/main/
             ├── AndroidManifest.xml
             ├── java/com/impca201/notiontimetracker/
@@ -60,7 +60,7 @@ time-tracker-for-notion/
             │   ├── ShortcutHelper.kt         Preset launcher shortcuts
             │   ├── LocaleHelper.kt           In-app language override
             │   ├── data/
-            │   │   ├── api/                  NotionClient (HTTP), NotionJson (JSON helpers)
+            │   │   ├── api/                  NotionClient (HTTP), NotionJson (JSON helpers), SyncPayloadJson (sync payload)
             │   │   ├── models/Models.kt      Workspace, PropertyMap, Preset, ActiveTimer, SyncPayload, …
             │   │   └── repository/           SettingsRepository, NotionRepository, SettingsSyncer
             │   ├── service/

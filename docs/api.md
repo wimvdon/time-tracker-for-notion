@@ -103,7 +103,7 @@ A Notion page containing a `code` block (language `json`). The JSON is split int
 Rules both apps follow:
 
 - **Validity:** `updatedAt` (ISO string) and `workspaces` (array) are required; anything else makes the block "not a sync page".
-- **Optional fields:** a missing optional field leaves the local value untouched. Android therefore keeps `null`s out of the payload (it encodes it with plain Gson).
+- **Optional fields:** a missing optional field leaves the local value untouched. Android therefore keeps `null`s out of the payload (`explicitNulls = false` in `SyncPayloadJson.kt`).
 - **Locale tags differ per app:** Windows writes `en-GB` and `nl-BE`, Android writes `en` and `nl`. Both map any tag by its language subtag.
 - **Preset values:** each app normalizes the other's value shapes when reading them.
 - **Never included:** the API key and device-only settings.

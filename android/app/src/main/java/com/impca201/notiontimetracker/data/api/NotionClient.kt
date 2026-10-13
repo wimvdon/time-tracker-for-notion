@@ -1,11 +1,12 @@
 package com.impca201.notiontimetracker.data.api
 
-import com.google.gson.Gson
-import com.google.gson.JsonObject
 import com.impca201.notiontimetracker.data.models.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonObject
 import okhttp3.*
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -16,17 +17,6 @@ import kotlin.coroutines.suspendCoroutine
 class NotionClient {
     private val BASE_URL = "https://api.notion.com/v1"
     private val NOTION_VERSION = "2022-06-28"
-    private val gson = Gson()
-
-    /**
-     * Request bodies are serialised with nulls kept. Notion reads an explicit
-     * `null` as "clear this" — `{"select": null}` empties a select, `{"end":
-     * null}` removes a date's end — and Gson's default of dropping null map
-     * entries turned those into `{}`, which Notion ignores. The plain [gson]
-     * above still encodes the sync payload, where an absent key and a null one
-     * have to stay distinguishable for the desktop app reading it back.
-     */
-    private val requestGson = com.google.gson.GsonBuilder().serializeNulls().create()
 
     private val JSON = "application/json".toMediaType()
     private val httpClient = OkHttpClient.Builder().build()
@@ -50,7 +40,7 @@ class NotionClient {
         if (apiKey.isBlank()) throw Exception("No Notion API key configured. Add one in Settings.")
 
         val reqBody = when {
-            body != null -> requestGson.toJson(body).toRequestBody(JSON)
+            body != null -> body.toJsonElement().toString().toRequestBody(JSON)
             method != "GET" -> "{}".toRequestBody(JSON)
             else -> null
         }
@@ -66,9 +56,9 @@ class NotionClient {
         var lastError = Exception("Notion API error")
         repeat(maxAttempts) { attempt ->
             val response = httpClient.newCall(request).await()
-            val responseBody = response.body?.string() ?: "{}"
-            val data = runCatching { gson.fromJson(responseBody, JsonObject::class.java) }
-                .getOrDefault(JsonObject())
+            val responseBody = response.use { it.body.string() }
+            val data = runCatching { Json.parseToJsonElement(responseBody).jsonObject }
+                .getOrDefault(JsonObject(emptyMap()))
 
             if (response.isSuccessful) return@withContext data
 
@@ -100,7 +90,7 @@ class NotionClient {
                 put("filter", mapOf("value" to "database", "property" to "object"))
                 put("sort", mapOf("direction" to "descending", "timestamp" to "last_edited_time"))
                 put("page_size", 100)
-                if (cursor != null) put("start_cursor", cursor!!)
+                if (cursor != null) put("start_cursor", cursor)
             }
             val data = fetch(apiKey, "POST", "/search", body)
             data.arrayOrNull("results")?.forEach { el ->
@@ -121,7 +111,7 @@ class NotionClient {
     suspend fun getDatabaseSchema(apiKey: String, dbId: String): Map<String, SchemaProperty> {
         val data = fetch(apiKey, "GET", "/databases/$dbId")
         val props = data.objOrNull("properties") ?: return emptyMap()
-        return props.entrySet().mapNotNull { (name, el) ->
+        return props.mapNotNull { (name, el) ->
             val prop = el.asObjectOrNull() ?: return@mapNotNull null
             val type = prop.stringOrNull("type") ?: "rich_text"
             fun optionsOf(holder: String): List<StatusOption> =
@@ -144,8 +134,8 @@ class NotionClient {
 
     /** The plain text of a page's title property, or "Untitled" when it has none. */
     private fun titleOf(properties: JsonObject, fallback: String = "(Untitled)"): String =
-        properties.entrySet()
-            .mapNotNull { it.value.asObjectOrNull() }
+        properties.values
+            .mapNotNull { it.asObjectOrNull() }
             .firstOrNull { it.stringOrNull("type") == "title" }
             ?.arrayOrNull("title")
             ?.joinToString("") { it.asObjectOrNull()?.stringOrNull("plain_text") ?: "" }
@@ -159,7 +149,7 @@ class NotionClient {
             val body = buildMap<String, Any> {
                 put("page_size", 100)
                 put("sorts", listOf(mapOf("timestamp" to "last_edited_time", "direction" to "descending")))
-                if (cursor != null) put("start_cursor", cursor!!)
+                if (cursor != null) put("start_cursor", cursor)
             }
             val data = fetch(apiKey, "POST", "/databases/$dbId/query", body)
             data.arrayOrNull("results")?.forEach { el ->
@@ -250,7 +240,7 @@ class NotionClient {
                     put("sorts", listOf(mapOf("property" to dateProp, "direction" to "descending")))
                 }
                 put("page_size", 100)
-                if (cursor != null) put("start_cursor", cursor!!)
+                if (cursor != null) put("start_cursor", cursor)
             }
             val data = fetch(apiKey, "POST", "/databases/$dbId/query", body)
             data.arrayOrNull("results")?.forEach { el ->
@@ -312,7 +302,7 @@ class NotionClient {
      *  values (e.g. connected project) when loading an already-running timer. */
     suspend fun fetchPageProperties(apiKey: String, pageId: String): JsonObject {
         val data = fetch(apiKey, "GET", "/pages/$pageId")
-        return data.objOrNull("properties") ?: JsonObject()
+        return data.objOrNull("properties") ?: JsonObject(emptyMap())
     }
 
     suspend fun deletePage(apiKey: String, pageId: String) {
@@ -340,8 +330,8 @@ class NotionClient {
 
     // ---- Settings sync (stores a JSON blob in a code block on a Notion page) ----
 
-    private fun encodeSyncPayload(payload: SyncPayload): List<Map<String, Any>> {
-        val json = gson.toJson(payload)
+    private fun syncPayloadRichText(payload: SyncPayload): List<Map<String, Any>> {
+        val json = encodeSyncPayload(payload)
         val chunks = json.chunked(2000).ifEmpty { listOf("") }
         return chunks.map { mapOf("type" to "text", "text" to mapOf("content" to it)) }
     }
@@ -358,7 +348,7 @@ class NotionClient {
                 put("filter", mapOf("value" to "page", "property" to "object"))
                 put("sort", mapOf("direction" to "descending", "timestamp" to "last_edited_time"))
                 put("page_size", 100)
-                if (cursor != null) put("start_cursor", cursor!!)
+                if (cursor != null) put("start_cursor", cursor)
             }
             val data = fetch(apiKey, "POST", "/search", body)
             data.arrayOrNull("results")?.forEach { el ->
@@ -391,7 +381,7 @@ class NotionClient {
                 mapOf(
                     "object" to "block",
                     "type" to "code",
-                    "code" to mapOf("language" to "json", "rich_text" to encodeSyncPayload(payload))
+                    "code" to mapOf("language" to "json", "rich_text" to syncPayloadRichText(payload))
                 )
             )
         )
@@ -418,91 +408,16 @@ class NotionClient {
                     ?: rtObj.objOrNull("text")?.stringOrNull("content")
                     ?: ""
             }
-            val payload = runCatching {
-                val tree = com.google.gson.JsonParser.parseString(json).asJsonObject
-                normalizePresetValues(tree)
-                gson.fromJson(tree, SyncPayload::class.java)
-            }.getOrNull()
-            if (payload != null && payload.workspaces != null && !payload.updatedAt.isNullOrBlank()) {
-                return SyncFetchResult(blockId, sanitizeSyncPayload(payload))
-            }
+            val payload = decodeSyncPayload(json) ?: continue
+            return SyncFetchResult(blockId, payload)
         }
         return null
     }
 
-    /**
-     * The desktop app stores a preset's extra values in its own input shapes —
-     * a multi-select as an array of names, a checkbox as a boolean — where this
-     * app keeps every value as a string. Gson cannot read an array into a
-     * String, so one such preset made the whole payload undecodable: the sync
-     * page read as "not a sync page" and syncing stopped on this device.
-     * Values are flattened to this app's string format before decoding.
-     */
-    private fun normalizePresetValues(root: JsonObject) {
-        root.arrayOrNull("workspaces")?.forEach { wsEl ->
-            wsEl.asObjectOrNull()?.arrayOrNull("presets")?.forEach { presetEl ->
-                val values = presetEl.asObjectOrNull()?.objOrNull("extraValues") ?: return@forEach
-                for ((key, value) in values.entrySet().toList()) {
-                    val flat = when {
-                        value == null || value.isJsonNull -> ""
-                        value.isJsonArray -> value.asJsonArray
-                            .mapNotNull { (it as? com.google.gson.JsonPrimitive)?.asString }
-                            .joinToString(",")
-                        value.isJsonPrimitive -> value.asString
-                        else -> ""
-                    }
-                    values.addProperty(key, flat)
-                }
-            }
-        }
-    }
-
-    /**
-     * Gson decodes via reflection and bypasses Kotlin's null-safety: any field
-     * missing from the incoming JSON — e.g. `extraProps[].type`, which the
-     * Windows app never writes since it derives that from the live Notion
-     * schema instead of storing it — becomes `null` at runtime despite the
-     * non-nullable Kotlin type. Left alone, that null crashes later when
-     * kotlinx.serialization re-persists it locally (it enforces non-null for
-     * real). Normalize everything to safe defaults right after decoding so
-     * cross-platform/older payloads can never carry that null further.
-     */
-    private fun sanitizeSyncPayload(payload: SyncPayload): SyncPayload =
-        payload.copy(workspaces = payload.workspaces.map { ws ->
-            ws.copy(
-                id = ws.id ?: java.util.UUID.randomUUID().toString(),
-                name = ws.name ?: "",
-                timeEntriesDbId = ws.timeEntriesDbId ?: "",
-                projectsDbId = ws.projectsDbId ?: "",
-                color = ws.color ?: "",
-                propertyMap = (ws.propertyMap ?: PropertyMap()).let { pm ->
-                    pm.copy(
-                        timeEntryTitleProp = pm.timeEntryTitleProp ?: "",
-                        timeEntryDateProp = pm.timeEntryDateProp ?: "",
-                        timeEntryStatusProp = pm.timeEntryStatusProp ?: "",
-                        timeEntryStatusRunning = pm.timeEntryStatusRunning ?: "",
-                        timeEntryRelationProp = pm.timeEntryRelationProp ?: "",
-                        timeEntryStatusDone = pm.timeEntryStatusDone ?: ""
-                    )
-                },
-                extraProps = (ws.extraProps ?: emptyList()).map { ep ->
-                    ep.copy(propName = ep.propName ?: "", type = ep.type ?: "rich_text")
-                },
-                presets = (ws.presets ?: emptyList()).map { p ->
-                    p.copy(
-                        id = p.id ?: java.util.UUID.randomUUID().toString(),
-                        name = p.name ?: "",
-                        pageTitle = p.pageTitle ?: "",
-                        extraValues = (p.extraValues ?: emptyMap()).mapValues { it.value ?: "" }
-                    )
-                }
-            )
-        })
-
     /** Overwrites the sync code block in place with a fresh payload. */
     suspend fun updateSyncBlock(apiKey: String, blockId: String, payload: SyncPayload) {
         fetch(apiKey, "PATCH", "/blocks/$blockId", mapOf(
-            "code" to mapOf("language" to "json", "rich_text" to encodeSyncPayload(payload))
+            "code" to mapOf("language" to "json", "rich_text" to syncPayloadRichText(payload))
         ))
     }
 }
