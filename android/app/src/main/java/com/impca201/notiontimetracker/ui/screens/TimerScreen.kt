@@ -50,6 +50,17 @@ import com.impca201.notiontimetracker.ui.theme.SkeletonBlock
 import com.impca201.notiontimetracker.ui.theme.SkeletonLine
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.stateDescription
+import com.impca201.notiontimetracker.ui.theme.AppShapes
 import androidx.compose.ui.semantics.semantics
 import com.impca201.notiontimetracker.ui.theme.rememberReducedMotion
 import com.impca201.notiontimetracker.ui.theme.workspaceAccentColor
@@ -689,14 +700,23 @@ private fun RunningView(
                 }
             }
         ) { padding ->
+          BoxWithConstraints(Modifier.padding(padding)) {
+            // The timer part fills the screen, so the lists start below it with only their first
+            // heading peeking in: the timer gets the screen to itself, the lists a scroll away.
+            val timerAreaMinHeight = (maxHeight - ListsPeek).coerceAtLeast(0.dp)
             Column(
                 modifier = Modifier
-                    .padding(padding)
                     .padding(horizontal = 16.dp)
                     .verticalScroll(scrollState),
-                horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
+              Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = timerAreaMinHeight),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+              ) {
 
                 PresetChips(
                     workspaces = uiState.workspaces,
@@ -828,54 +848,69 @@ private fun RunningView(
                     }
                 }
 
-                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                    Text(
-                        stringResource(R.string.label_end_time),
-                        style = MaterialTheme.typography.labelMedium,
-                        modifier = Modifier.width(100.dp),
-                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
-                    )
-                    Box(modifier = Modifier.weight(1f)) {
-                        OutlinedTextField(
-                            value = endTimeInput,
-                            onValueChange = { },
-                            readOnly = true,
-                            enabled = false,
-                            modifier = Modifier.fillMaxWidth(),
-                            singleLine = true,
-                            placeholder = { Text(stringResource(R.string.hint_manual_end), color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f)) },
-                            trailingIcon = {
-                                Icon(Icons.Rounded.AccessTime, contentDescription = stringResource(R.string.title_select_end_time), tint = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f))
-                            },
-                            colors = OutlinedTextFieldDefaults.colors(
-                                disabledTextColor = MaterialTheme.colorScheme.onBackground,
-                                disabledBorderColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.3f),
-                                disabledTrailingIconColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
-                            )
-                        )
-                        Box(modifier = Modifier.matchParentSize().clickable { showEndTimePicker() })
-                    }
+                // End time and the extra fields are needed only now and then, so they wait in a
+                // collapsed section. It starts open while a required field is still empty, and
+                // opens when stopping is refused because one is.
+                val requiredBlank = uiState.extraFieldDefs.any { it.required && localExtras[it.propName].isNullOrBlank() }
+                var detailsExpanded by rememberSaveable(timer.notionPageId) {
+                    mutableStateOf(requiredBlank || endTimeInput.isNotBlank())
                 }
-
-                if (uiState.extraFieldDefs.isNotEmpty()) {
-                    Spacer(Modifier.height(4.dp))
-                    Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        uiState.extraFieldDefs.forEach { def ->
-                            ExtraFieldInput(
-                                fieldDef = def,
-                                value = localExtras[def.propName] ?: "",
-                                onValueChange = { value ->
-                                    localExtras = localExtras + (def.propName to value)
-                                    pendingSave = true
+                // The fields load after the timer starts, so check again once they arrive.
+                LaunchedEffect(requiredBlank) {
+                    if (requiredBlank) detailsExpanded = true
+                }
+                LaunchedEffect(uiState.stopError) {
+                    if (uiState.stopError?.let { isValidationMessage(it) } == true) detailsExpanded = true
+                }
+                val endLabel = stringResource(R.string.label_end_time)
+                TimerDetailsSection(
+                    expanded = detailsExpanded,
+                    onToggle = { detailsExpanded = !detailsExpanded },
+                    summary = (listOf(if (endTimeInput.isNotBlank()) "$endLabel $endTimeInput" else endLabel) +
+                        uiState.extraFieldDefs.map { it.propName }).joinToString(" · ")
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                        Text(
+                            stringResource(R.string.label_end_time),
+                            style = MaterialTheme.typography.labelMedium,
+                            modifier = Modifier.width(100.dp),
+                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
+                        )
+                        Box(modifier = Modifier.weight(1f)) {
+                            OutlinedTextField(
+                                value = endTimeInput,
+                                onValueChange = { },
+                                readOnly = true,
+                                enabled = false,
+                                modifier = Modifier.fillMaxWidth(),
+                                singleLine = true,
+                                placeholder = { Text(stringResource(R.string.hint_manual_end), color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f)) },
+                                trailingIcon = {
+                                    Icon(Icons.Rounded.AccessTime, contentDescription = stringResource(R.string.title_select_end_time), tint = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f))
                                 },
-                                modifier = Modifier.fillMaxWidth()
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    disabledTextColor = MaterialTheme.colorScheme.onBackground,
+                                    disabledBorderColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.3f),
+                                    disabledTrailingIconColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
+                                )
                             )
+                            Box(modifier = Modifier.matchParentSize().clickable { showEndTimePicker() })
                         }
                     }
+
+                    uiState.extraFieldDefs.forEach { def ->
+                        ExtraFieldInput(
+                            fieldDef = def,
+                            value = localExtras[def.propName] ?: "",
+                            onValueChange = { value ->
+                                localExtras = localExtras + (def.propName to value)
+                                pendingSave = true
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
                 }
+              }
 
                 OtherRunningTimers(
                     timers = uiState.runningTimers,
@@ -905,6 +940,77 @@ private fun RunningView(
 
                 Spacer(Modifier.height(16.dp))
             }
+          }
+        }
+    }
+}
+
+/** How much of the lists shows under a running timer before scrolling: their first heading. */
+private val ListsPeek: Dp = 56.dp
+
+/**
+ * The running timer's less-used fields (end time, extra fields) behind a header that expands
+ * and collapses them, styled like the settings sections (`CollapsibleSection`): a Group-shaped
+ * card, Title Medium title, what is inside as the summary, a turning chevron. Its open state
+ * is held by the caller so a refused stop can open it.
+ */
+@Composable
+private fun TimerDetailsSection(
+    expanded: Boolean,
+    onToggle: () -> Unit,
+    summary: String,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    val animate = !rememberReducedMotion()
+    val chevronRotation by animateFloatAsState(if (expanded) 180f else 0f, label = "details-chevron")
+    val stateText = stringResource(if (expanded) R.string.section_expanded else R.string.section_collapsed)
+    Card(
+        shape = AppShapes.Group,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(role = Role.Button, onClick = onToggle)
+                .semantics { stateDescription = stateText }
+                .padding(horizontal = 20.dp, vertical = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Icon(Icons.Rounded.Tune, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+            Column(Modifier.weight(1f)) {
+                Text(
+                    stringResource(R.string.section_timer_details),
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.semantics { heading() }
+                )
+                if (!expanded) {
+                    Text(
+                        summary,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+            Icon(
+                painter = painterResource(R.drawable.ic_expand_more),
+                contentDescription = null,
+                modifier = Modifier.rotate(chevronRotation)
+            )
+        }
+        AnimatedVisibility(
+            visible = expanded,
+            enter = if (animate) fadeIn() + expandVertically() else EnterTransition.None,
+            exit = if (animate) fadeOut() + shrinkVertically() else ExitTransition.None
+        ) {
+            Column(
+                modifier = Modifier.padding(start = 20.dp, end = 20.dp, bottom = 20.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                content = content
+            )
         }
     }
 }

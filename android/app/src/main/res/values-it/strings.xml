@@ -101,6 +101,7 @@
 
     <!-- Recent entries -->
     <string name="recent_entries_heading">Registrazioni recenti</string>
+    <string name="section_timer_details">Dettagli</string>
     <string name="title_delete_entry">Elimina</string>
     <string name="title_open_in_notion">Apri in Notion</string>
     <string name="title_start_from_entry">Avvia un nuovo timer con questi dati</string>

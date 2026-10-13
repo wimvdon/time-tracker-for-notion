@@ -81,6 +81,8 @@ A Notion row appears with the running status. On Windows the tray stopwatch turn
 | Change **Start time** | Start corrected, e.g. if you forgot to press START |
 | Fill **End time** | Stops the timer at that time |
 
+On Android, **End time** and the extra fields sit under **Details** below the start time; tap it to open them. It opens by itself while a required field is still empty. The active and recent lists start below the timer: scroll down to reach them.
+
 ### Stop
 
 Press **STOP**. Unsaved edits are flushed first. The row gets its end time and the *done* status. With rounding, start and end are rounded to the nearest step and the entry lasts at least one step.

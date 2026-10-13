@@ -101,6 +101,7 @@
 
     <!-- Recent entries -->
     <string name="recent_entries_heading">Saisies de temps récentes</string>
+    <string name="section_timer_details">Détails</string>
     <string name="title_delete_entry">Supprimer</string>
     <string name="title_open_in_notion">Ouvrir dans Notion</string>
     <string name="title_start_from_entry">Démarrer un nouveau chronomètre avec ces informations</string>
