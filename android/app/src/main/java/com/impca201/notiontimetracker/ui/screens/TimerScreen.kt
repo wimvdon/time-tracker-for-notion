@@ -46,6 +46,10 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.res.stringResource
 import com.impca201.notiontimetracker.ui.components.parseWorkspaceColor
 import com.impca201.notiontimetracker.ui.theme.Motion
+import com.impca201.notiontimetracker.ui.theme.SkeletonBlock
+import com.impca201.notiontimetracker.ui.theme.SkeletonLine
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import com.impca201.notiontimetracker.ui.theme.rememberReducedMotion
 import com.impca201.notiontimetracker.ui.theme.workspaceAccentColor
 import com.impca201.notiontimetracker.ui.theme.workspaceSolidFillColor
@@ -408,13 +412,9 @@ private fun IdleView(
             )
 
             if (uiState.extrasLoading) {
-                Spacer(Modifier.height(8.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    CircularProgressIndicator(modifier = Modifier.size(24.dp))
-                }
+                ExtraFieldsSkeleton(
+                    uiState.workspaces.firstOrNull { it.id == uiState.selectedWorkspaceId }?.extraProps.orEmpty()
+                )
             }
 
             uiState.extraFieldDefs.forEach { def ->
@@ -1035,7 +1035,9 @@ private fun RecentEntriesSection(
     showNotionLink: Boolean = true,
     showArchiveAction: Boolean = true
 ) {
-    if (entries.isEmpty()) return
+    // The first load shows placeholder cards; a refresh keeps the list and shows the spinner.
+    val firstLoad = entries.isEmpty() && loading
+    if (entries.isEmpty() && !firstLoad) return
 
     HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
     Row(
@@ -1048,9 +1050,18 @@ private fun RecentEntriesSection(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(vertical = 4.dp).weight(1f)
         )
-        if (loading) {
+        if (loading && !firstLoad) {
             Spacer(Modifier.width(8.dp))
             CircularProgressIndicator(modifier = Modifier.size(12.dp), strokeWidth = 2.dp)
+        }
+    }
+    if (firstLoad) {
+        val loadingText = stringResource(R.string.placeholder_loading)
+        Column(
+            modifier = Modifier.semantics(mergeDescendants = true) { contentDescription = loadingText },
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            repeat(3) { RecentEntrySkeleton() }
         }
     }
     entries.forEach { re ->
@@ -1111,6 +1122,55 @@ private fun RecentEntriesSection(
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
+                }
+            }
+        }
+    }
+}
+
+/** Stands in for a recent-entry card (title, workspace, time range) while the list loads. */
+@Composable
+private fun RecentEntrySkeleton() {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            SkeletonLine(Modifier.fillMaxWidth(0.6f), height = 16.dp)
+            SkeletonLine(Modifier.fillMaxWidth(0.35f), height = 12.dp)
+            SkeletonLine(Modifier.fillMaxWidth(0.5f), height = 12.dp)
+        }
+    }
+}
+
+/**
+ * The selected workspace's extra fields while their options load from Notion: the real labels
+ * over placeholder fields, so the form doesn't jump when the inputs arrive.
+ */
+@Composable
+private fun ExtraFieldsSkeleton(props: List<com.impca201.notiontimetracker.data.models.ExtraProp>) {
+    val loadingText = stringResource(R.string.placeholder_loading)
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .semantics(mergeDescendants = true) { contentDescription = loadingText },
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        props.forEach { prop ->
+            Column {
+                Text(
+                    text = prop.propName + if (prop.required) " *" else "",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
+                )
+                Spacer(Modifier.height(4.dp))
+                if (prop.type == "checkbox") {
+                    SkeletonBlock(height = 32.dp, modifier = Modifier.width(52.dp), shape = CircleShape)
+                } else {
+                    SkeletonBlock(height = 56.dp, shape = MaterialTheme.shapes.extraSmall)
                 }
             }
         }

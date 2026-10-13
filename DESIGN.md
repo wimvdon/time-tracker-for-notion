@@ -66,6 +66,16 @@ Built from `ui/theme/SettingsKit.kt`, so every app's settings look and behave th
 - Decorative animation is skipped when the user turned animations off
   (`rememberReducedMotion()`).
 
+## Loading
+
+- Content that loads over the network shows placeholders while it loads for the first time
+  (`ui/theme/Skeleton.kt`), shaped like what will appear: poster tiles, list rows, form fields,
+  lines of text. A soft highlight sweeps across them; with animations off they stay still.
+- Screen readers read the placeholders out as one "Loading…" element.
+- A refresh keeps the content on screen and shows pull-to-refresh or a small progress
+  indicator instead; a busy button shows a spinner in place of its icon.
+- An app with nothing to load (Snoozer) leaves `Skeleton.kt` out.
+
 ## Wording
 
 Shared settings and actions use the same words in every app and language (strings are kept in
@@ -96,6 +106,8 @@ the other two repositories:
 - `ui/theme/Motion.kt`: motion tokens, the shared-axis transition and `rememberReducedMotion()`.
 - `ui/theme/Shapes.kt`: `AppShapes`.
 - `ui/theme/SystemBars.kt`: `SystemBarsFollowTheme()`.
+- `ui/theme/Skeleton.kt`: loading placeholders (`Modifier.skeleton()`, `SkeletonLine`,
+  `SkeletonBlock`).
 - `ui/theme/SettingsKit.kt`: the settings screen components above. It also needs
   `drawable/ic_arrow_back`, `drawable/ic_expand_more` and the strings `section_expanded` and
   `section_collapsed`.
