@@ -5,7 +5,7 @@ buildscript {
     }
     dependencies {
         // AGP 9 compiles Kotlin itself (built-in Kotlin) and ships with an older Kotlin Gradle
-        // plugin. Pin it to the same version as the Compose compiler plugin.
+        // plugin. Pin it to the same version as the Compose and serialization compiler plugins.
         classpath(libs.kotlin.gradle.plugin)
     }
 }

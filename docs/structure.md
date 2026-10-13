@@ -2,7 +2,11 @@
 
 ```
 time-tracker-for-notion/
-├── .github/workflows/release.yml     Version → Windows installer + Android APK → GitHub Release
+├── .github/
+│   ├── scripts/restore_keystore.py   Turns the keystore secret back into a .jks
+│   └── workflows/
+│       ├── ci.yml                    Tests and builds every pull request and push to main
+│       └── release.yml               Version → Windows installer + Android APK → GitHub Release
 ├── .gitignore                        Build outputs, release/, keystores
 ├── README.md
 ├── docs/
@@ -42,12 +46,12 @@ time-tracker-for-notion/
     ├── settings.gradle.kts
     ├── gradle.properties
     ├── gradle/
-    │   ├── libs.versions.toml        Version catalog: AGP 8.7.3, Kotlin 2.1.0, all libraries
-    │   └── wrapper/                  Gradle 8.11.1
+    │   ├── libs.versions.toml        Version catalog: AGP 9.4, Kotlin 2.4, all libraries
+    │   └── wrapper/                  Gradle 9.8.1
     ├── gradlew, gradlew.bat
     └── app/
-        ├── build.gradle.kts          SDK levels, signing from env vars, versioning, dependencies
-        ├── proguard-rules.pro        Keep rules for Gson/serialization models
+        ├── build.gradle.kts          SDK levels, signing from keystore.properties, versioning, dependencies
+        ├── proguard-rules.pro        Keep rules for the Gson sync models
         └── src/main/
             ├── AndroidManifest.xml
             ├── java/com/impca201/notiontimetracker/
@@ -64,7 +68,7 @@ time-tracker-for-notion/
             │   ├── ui/
             │   │   ├── screens/              TimerScreen, SettingsScreen
             │   │   ├── components/           WorkspaceModal, EditTimerModal, ExtraFieldInput, SearchableDropdown
-            │   │   └── theme/                Material 3 theme, typography, workspace colours
+            │   │   └── theme/                Material 3 theme, workspace colours, shared design kit (Motion, Shapes, SystemBars, SettingsKit)
             │   └── viewmodel/                TimerViewModel, SettingsViewModel
             └── res/
                 ├── drawable/, mipmap-anydpi-v26/   Generated launcher icon layers

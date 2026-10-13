@@ -3,15 +3,14 @@ name: Release
 # Push a tag like v1.2.0 to build both apps and publish them as a GitHub Release.
 # "Run workflow" on the Actions tab with "Release" set to patch, minor or major
 # picks the next version after the latest v* tag, builds both apps and publishes
-# that release (creating the tag). With "Release" left at none, or on a pull
-# request that changes this file, it only builds downloadable artifacts.
+# that release (creating the tag). With "Release" left at none it only builds
+# downloadable artifacts. (Pull requests are checked by the CI workflow.)
+# Signing needs four repository secrets: ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD,
+# ANDROID_KEY_ALIAS and ANDROID_KEY_PASSWORD.
 on:
   push:
     tags:
       - "v*"
-  pull_request:
-    paths:
-      - .github/workflows/release.yml
   workflow_dispatch:
     inputs:
       bump:
@@ -31,7 +30,7 @@ jobs:
       code: ${{ steps.v.outputs.code }}
       publish: ${{ steps.v.outputs.publish }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
       - id: v
@@ -60,9 +59,12 @@ jobs:
             echo "Latest tag ${latest:-none}, releasing v$name"
             publish=true
           else
-            name="1.0.0"
+            # Not a release: the latest release plus "-dev" and the commit, e.g. 1.0.0-dev+abc1234.
+            latest=$(git tag --list 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -n1)
+            latest=${latest#v}
+            name="${latest:-0.0.0}-dev+$(git rev-parse --short HEAD)"
           fi
-          if [[ ! "$name" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+          if [[ ! "${name%%-*}" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
             echo "::error::Tag must look like v1.2.3, got '$GITHUB_REF_NAME'"
             exit 1
           fi
@@ -78,8 +80,8 @@ jobs:
       run:
         working-directory: windows
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
         with:
           node-version: 22
           cache: npm
@@ -88,7 +90,7 @@ jobs:
       - run: npm version "${{ needs.version.outputs.name }}" --no-git-tag-version --allow-same-version
       - run: npm test
       - run: npm run dist -- --publish never
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: windows
           path: release/*.exe
@@ -97,37 +99,50 @@ jobs:
   android:
     needs: version
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     defaults:
       run:
         working-directory: android
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: 21
       - uses: gradle/actions/setup-gradle@v5
-      - name: Decode signing key
+      - name: Restore the signing key
+        working-directory: .
         env:
-          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
           PUBLISH: ${{ needs.version.outputs.publish }}
         run: |
-          if [ -n "$ANDROID_KEYSTORE_BASE64" ]; then
-            echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/release.jks"
-            echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/release.jks" >> "$GITHUB_ENV"
-            echo "BUILD_TYPE=release" >> "$GITHUB_ENV"
-          elif [ "$PUBLISH" = "true" ]; then
-            echo "::error::The ANDROID_KEYSTORE_BASE64 secret is missing. See 'Publishing a release' in the README."
-            exit 1
-          else
+          if [ -z "$KEYSTORE_BASE64" ] || [ -z "$KEYSTORE_PASSWORD" ] || [ -z "$KEY_ALIAS" ] || [ -z "$KEY_PASSWORD" ]; then
+            if [ "$PUBLISH" = "true" ]; then
+              echo "::error::Add the ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS and ANDROID_KEY_PASSWORD secrets first (see the README)."
+              exit 1
+            fi
             echo "::warning::No signing key secrets, so this run builds a debug APK instead."
             echo "BUILD_TYPE=debug" >> "$GITHUB_ENV"
+            exit 0
           fi
+          # Written to a file so the secret never appears on a command line.
+          printf '%s' "$KEYSTORE_BASE64" > "$RUNNER_TEMP/keystore.b64"
+          python3 .github/scripts/restore_keystore.py "$RUNNER_TEMP/keystore.b64" "$RUNNER_TEMP/release.jks"
+          if ! keytool -list -keystore "$RUNNER_TEMP/release.jks" -storepass "$KEYSTORE_PASSWORD" -alias "$KEY_ALIAS" > /dev/null 2>&1; then
+            echo "::error::The key could not be opened: check ANDROID_KEYSTORE_PASSWORD and ANDROID_KEY_ALIAS (and that ANDROID_KEYSTORE_BASE64 is the whole .jks file)."
+            exit 1
+          fi
+          {
+            echo "storeFile=$RUNNER_TEMP/release.jks"
+            echo "storePassword=$KEYSTORE_PASSWORD"
+            echo "keyAlias=$KEY_ALIAS"
+            echo "keyPassword=$KEY_PASSWORD"
+          } > android/keystore.properties
+          echo "BUILD_TYPE=release" >> "$GITHUB_ENV"
       - name: Build APK
-        env:
-          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           task="assemble${BUILD_TYPE^}"
           ./gradlew "$task" \
@@ -135,7 +150,10 @@ jobs:
             -PversionCode=${{ needs.version.outputs.code }}
           cp "app/build/outputs/apk/$BUILD_TYPE/app-$BUILD_TYPE.apk" \
             "$RUNNER_TEMP/TimeTracker-${{ needs.version.outputs.name }}.apk"
-      - uses: actions/upload-artifact@v4
+      - name: Remove the signing key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/release.jks" "$RUNNER_TEMP/keystore.b64" keystore.properties
+      - uses: actions/upload-artifact@v7
         with:
           name: android
           path: ${{ runner.temp }}/TimeTracker-*.apk
@@ -148,7 +166,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           path: dist
           merge-multiple: true
@@ -156,5 +174,6 @@ jobs:
         with:
           tag_name: v${{ needs.version.outputs.name }}
           target_commitish: ${{ github.sha }}
+          name: Time Tracker for Notion ${{ needs.version.outputs.name }}
           files: dist/*
           generate_release_notes: true

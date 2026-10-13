@@ -81,14 +81,16 @@ Use `gradlew.bat` on Windows. Android Studio writes `local.properties` with the 
 
 ## Release builds (CI)
 
-`.github/workflows/release.yml` builds both apps on tag pushes (`v*`), on **Run workflow**, and on PRs that change the workflow.
+`.github/workflows/ci.yml` checks every pull request and every push to `main`: the Windows tests and build, and the Android debug and release builds.
+
+`.github/workflows/release.yml` builds both apps on tag pushes (`v*`) and on **Run workflow**.
 
 - **Version:** taken from the tag, or bumped from the latest tag (`patch`, `minor`, `major`). `none` builds without publishing. The Android version code is `major × 10000 + minor × 100 + patch`.
 - **Windows job:** `npm ci`, sets the package version, `npm test`, `npm run dist -- --publish never`.
-- **Android job:** decodes the keystore secret and runs `assemble{Release|Debug}` with `-PversionName` and `-PversionCode`. It builds debug when the secrets are missing and nothing is published.
+- **Android job:** restores the keystore from the secrets (`.github/scripts/restore_keystore.py`), checks it opens, writes `android/keystore.properties` and runs `assemble{Release|Debug}` with `-PversionName` and `-PversionCode`. It builds debug when the secrets are missing and nothing is published.
 - **Release job:** attaches `Time Tracker for Notion Setup x.y.z.exe` and `TimeTracker-x.y.z.apk` to the GitHub Release.
 
-Repository secrets for signing (the Android build reads them as environment variables):
+Repository secrets for signing:
 
 | Secret | Value |
 |---|---|
