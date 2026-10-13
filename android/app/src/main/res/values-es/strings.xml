@@ -10,8 +10,9 @@
     <string name="placeholder_select_workspace">Seleccionar espacio…</string>
     <string name="placeholder_select_project">Seleccionar proyecto…</string>
     <string name="placeholder_loading">Cargando…</string>
-    <string name="btn_start">INICIAR</string>
-    <string name="btn_stop">DETENER</string>
+    <string name="btn_start">Iniciar</string>
+    <string name="btn_stop">Detener</string>
+    <string name="btn_close">Cerrar</string>
     <string name="label_start_time">Hora de inicio</string>
     <string name="label_end_time">Hora de fin</string>
     <string name="hint_manual_end">Rellenar una hora de fin detiene el temporizador.</string>

@@ -10,8 +10,9 @@
     <string name="placeholder_select_workspace">Workspace auswählen…</string>
     <string name="placeholder_select_project">Projekt auswählen…</string>
     <string name="placeholder_loading">Laden…</string>
-    <string name="btn_start">START</string>
-    <string name="btn_stop">STOPP</string>
+    <string name="btn_start">Start</string>
+    <string name="btn_stop">Stopp</string>
+    <string name="btn_close">Schließen</string>
     <string name="label_start_time">Startzeit</string>
     <string name="label_end_time">Endzeit</string>
     <string name="hint_manual_end">Das Eintragen einer Endzeit stoppt den Timer.</string>

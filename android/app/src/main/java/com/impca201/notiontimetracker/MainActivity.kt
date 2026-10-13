@@ -15,6 +15,8 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.ViewModelProvider
@@ -25,6 +27,7 @@ import com.impca201.notiontimetracker.data.models.ThemeMode
 import com.impca201.notiontimetracker.service.TimerForegroundService
 import com.impca201.notiontimetracker.ui.screens.SettingsScreen
 import com.impca201.notiontimetracker.ui.screens.TimerScreen
+import com.impca201.notiontimetracker.ui.theme.Motion
 import com.impca201.notiontimetracker.ui.theme.NotionTimeTrackerTheme
 import com.impca201.notiontimetracker.viewmodel.SettingsViewModel
 import com.impca201.notiontimetracker.viewmodel.TimerViewModel
@@ -137,7 +140,16 @@ private fun AppNavigation(
         settingsViewModel.setTimerRunning(timerState.running)
     }
 
-    NavHost(navController = navController, startDestination = "timer") {
+    // Material 3 shared-axis X: Settings comes in from the right and leaves the same way.
+    val axisOffset = with(LocalDensity.current) { 30.dp.roundToPx() }
+    NavHost(
+        navController = navController,
+        startDestination = "timer",
+        enterTransition = { Motion.sharedAxisX(forward = true, offsetPx = axisOffset).targetContentEnter },
+        exitTransition = { Motion.sharedAxisX(forward = true, offsetPx = axisOffset).initialContentExit },
+        popEnterTransition = { Motion.sharedAxisX(forward = false, offsetPx = axisOffset).targetContentEnter },
+        popExitTransition = { Motion.sharedAxisX(forward = false, offsetPx = axisOffset).initialContentExit }
+    ) {
         composable("timer") {
             TimerScreen(
                 uiState = timerState,

@@ -1,6 +1,16 @@
 package com.impca201.notiontimetracker.ui.screens
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.tween
@@ -14,7 +24,8 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.rounded.*
+import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -25,13 +36,17 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.res.stringResource
 import com.impca201.notiontimetracker.ui.components.parseWorkspaceColor
+import com.impca201.notiontimetracker.ui.theme.Motion
+import com.impca201.notiontimetracker.ui.theme.rememberReducedMotion
 import com.impca201.notiontimetracker.ui.theme.workspaceAccentColor
 import com.impca201.notiontimetracker.ui.theme.workspaceSolidFillColor
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -40,7 +55,6 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.impca201.notiontimetracker.R
 import com.impca201.notiontimetracker.data.models.NamedOption
 import com.impca201.notiontimetracker.data.models.Preset
@@ -220,45 +234,53 @@ fun TimerScreen(
         return
     }
 
-    if (uiState.running && uiState.activeTimer != null) {
-        RunningView(
-            uiState = uiState,
-            onStop = onStop,
-            onUpdateStartTime = onUpdateStartTime,
-            onNavigateToSettings = onNavigateToSettings,
-            onRetryStop = onRetryStop,
-            onLoadRunningTimer = onLoadRunningTimer,
-            onStopOtherRunningTimer = onStopOtherRunningTimer,
-            onPlusButtonClicked = onPlusButtonClicked,
-            onRefreshAll = onRefreshAll,
-            onQuickSaveDescription = onQuickSaveDescription,
-            onUpdateTimerDetails = onUpdateTimerDetails,
-            onConfirmDelete = onConfirmDelete,
-            onOpenUrl = onOpenUrl,
-            onApplyPreset = onApplyPreset,
-            onStartFromRecentEntry = onStartFromRecentEntry,
-            onManagePresetsClick = { showManagePresetsDialog = true }
-        )
-    } else {
-        IdleView(
-            uiState = uiState,
-            onWorkspaceSelect = onWorkspaceSelect,
-            onProjectSelect = onProjectSelect,
-            onDescriptionChange = onDescriptionChange,
-            onExtraValueChange = onExtraValueChange,
-            onStart = onStart,
-            onNavigateToSettings = onNavigateToSettings,
-            onClearError = onClearError,
-            onLoadRunningTimer = onLoadRunningTimer,
-            onStopOtherRunningTimer = onStopOtherRunningTimer,
-            onRefreshAll = onRefreshAll,
-            onConfirmDelete = onConfirmDelete,
-            onOpenUrl = onOpenUrl,
-            onApplyPreset = onApplyPreset,
-            onStartFromRecentEntry = onStartFromRecentEntry,
-            onSavePresetClick = { showSavePresetDialog = true },
-            onManagePresetsClick = { showManagePresetsDialog = true }
-        )
+    AnimatedContent(
+        targetState = uiState.running && uiState.activeTimer != null,
+        transitionSpec = {
+            fadeIn(Motion.fadeSpec(delayMillis = 90)) togetherWith fadeOut(Motion.fadeSpec(durationMillis = 90))
+        },
+        label = "timer-state"
+    ) { running ->
+        if (running) {
+            RunningView(
+                uiState = uiState,
+                onStop = onStop,
+                onUpdateStartTime = onUpdateStartTime,
+                onNavigateToSettings = onNavigateToSettings,
+                onRetryStop = onRetryStop,
+                onLoadRunningTimer = onLoadRunningTimer,
+                onStopOtherRunningTimer = onStopOtherRunningTimer,
+                onPlusButtonClicked = onPlusButtonClicked,
+                onRefreshAll = onRefreshAll,
+                onQuickSaveDescription = onQuickSaveDescription,
+                onUpdateTimerDetails = onUpdateTimerDetails,
+                onConfirmDelete = onConfirmDelete,
+                onOpenUrl = onOpenUrl,
+                onApplyPreset = onApplyPreset,
+                onStartFromRecentEntry = onStartFromRecentEntry,
+                onManagePresetsClick = { showManagePresetsDialog = true }
+            )
+        } else {
+            IdleView(
+                uiState = uiState,
+                onWorkspaceSelect = onWorkspaceSelect,
+                onProjectSelect = onProjectSelect,
+                onDescriptionChange = onDescriptionChange,
+                onExtraValueChange = onExtraValueChange,
+                onStart = onStart,
+                onNavigateToSettings = onNavigateToSettings,
+                onClearError = onClearError,
+                onLoadRunningTimer = onLoadRunningTimer,
+                onStopOtherRunningTimer = onStopOtherRunningTimer,
+                onRefreshAll = onRefreshAll,
+                onConfirmDelete = onConfirmDelete,
+                onOpenUrl = onOpenUrl,
+                onApplyPreset = onApplyPreset,
+                onStartFromRecentEntry = onStartFromRecentEntry,
+                onSavePresetClick = { showSavePresetDialog = true },
+                onManagePresetsClick = { showManagePresetsDialog = true }
+            )
+        }
     }
 }
 
@@ -288,27 +310,13 @@ private fun IdleView(
     Scaffold(
         contentColor = MaterialTheme.colorScheme.onBackground,
         topBar = {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .statusBarsPadding()
-                    .padding(horizontal = 16.dp, vertical = 4.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = stringResource(R.string.app_title),
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
+            TimerTopBar {
+                RefreshIconButton(
+                    loading = uiState.runningTimersLoading || uiState.recentEntriesLoading,
+                    onClick = onRefreshAll
                 )
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    RefreshIconButton(
-                        loading = uiState.runningTimersLoading || uiState.recentEntriesLoading,
-                        onClick = onRefreshAll
-                    )
-                    IconButton(onClick = onNavigateToSettings) {
-                        Icon(Icons.Default.Settings, contentDescription = stringResource(R.string.title_settings))
-                    }
+                IconButton(onClick = onNavigateToSettings) {
+                    Icon(Icons.Rounded.Settings, contentDescription = stringResource(R.string.title_settings))
                 }
             }
         }
@@ -347,7 +355,9 @@ private fun IdleView(
                 Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)) {
                     Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                         Text(message, modifier = Modifier.weight(1f), color = MaterialTheme.colorScheme.onErrorContainer)
-                        TextButton(onClick = onClearError) { Text("×") }
+                        IconButton(onClick = onClearError) {
+                            Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.btn_close))
+                        }
                     }
                 }
             }
@@ -454,32 +464,23 @@ private fun IdleView(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Button(
+                TimerActionButton(
+                    label = stringResource(R.string.btn_start),
+                    icon = Icons.Rounded.PlayArrow,
                     onClick = onStart,
                     enabled = canStart,
-                    modifier = Modifier.weight(1f).height(56.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = buttonColor,
-                        contentColor = onButtonColor
-                    )
-                ) {
-                    if (uiState.isStarting) {
-                        CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 3.dp, color = onButtonColor)
-                    } else {
-                        Text(
-                            stringResource(R.string.btn_start),
-                            fontSize = 18.sp,
-                            color = onButtonColor
-                        )
-                    }
-                }
+                    loading = uiState.isStarting,
+                    containerColor = buttonColor,
+                    contentColor = onButtonColor,
+                    modifier = Modifier.weight(1f)
+                )
                 IconButton(
                     onClick = onSavePresetClick,
                     enabled = canStart,
-                    modifier = Modifier.size(56.dp)
+                    modifier = Modifier.size(TimerActionButtonHeight)
                 ) {
                     Icon(
-                        imageVector = Icons.Default.BookmarkBorder,
+                        imageVector = Icons.Rounded.BookmarkBorder,
                         contentDescription = stringResource(R.string.title_save_preset),
                         tint = if (canStart) buttonColor else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
                     )
@@ -630,48 +631,28 @@ private fun RunningView(
 
     val workspaceColor = workspace?.color?.ifBlank { null }?.let { parseWorkspaceColor(it) }
     val workspaceAccent = workspaceAccentColor(workspace?.color)
-    val scaffoldBg = if (workspaceColor != null) {
-        val bg = MaterialTheme.colorScheme.background
-        val alpha = 0.20f
-        Color(
-            red = workspaceColor.red * alpha + bg.red * (1f - alpha),
-            green = workspaceColor.green * alpha + bg.green * (1f - alpha),
-            blue = workspaceColor.blue * alpha + bg.blue * (1f - alpha),
-            alpha = 1f
-        )
-    } else {
-        MaterialTheme.colorScheme.background
-    }
+    // A running timer tints the screen: the workspace colour, or the app's own red.
+    val scaffoldBg = lerp(
+        MaterialTheme.colorScheme.background,
+        workspaceColor ?: MaterialTheme.colorScheme.primaryContainer,
+        if (workspaceColor != null) 0.20f else 0.45f
+    )
     val scrollState = rememberScrollState()
 
     Scaffold(
         containerColor = scaffoldBg,
         contentColor = MaterialTheme.colorScheme.onBackground,
         topBar = {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .statusBarsPadding()
-                    .padding(horizontal = 16.dp, vertical = 4.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = stringResource(R.string.app_title),
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
+            TimerTopBar {
+                IconButton(onClick = onPlusButtonClicked) {
+                    Icon(Icons.Rounded.Add, contentDescription = stringResource(R.string.start_new_timer))
+                }
+                RefreshIconButton(
+                    loading = uiState.runningTimersLoading || uiState.recentEntriesLoading,
+                    onClick = onRefreshAll
                 )
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = onPlusButtonClicked) {
-                        Icon(Icons.Default.Add, contentDescription = stringResource(R.string.start_new_timer))
-                    }
-                    RefreshIconButton(
-                        loading = uiState.runningTimersLoading || uiState.recentEntriesLoading,
-                        onClick = onRefreshAll
-                    )
-                    IconButton(onClick = onNavigateToSettings) {
-                        Icon(Icons.Default.Settings, contentDescription = stringResource(R.string.title_settings))
-                    }
+                IconButton(onClick = onNavigateToSettings) {
+                    Icon(Icons.Rounded.Settings, contentDescription = stringResource(R.string.title_settings))
                 }
             }
         }
@@ -741,7 +722,7 @@ private fun RunningView(
                 if (isTitleDirty) {
                     IconButton(onClick = { onQuickSaveDescription(titleDraft.trim()) }, modifier = Modifier.size(36.dp)) {
                         Icon(
-                            Icons.Default.Check,
+                            Icons.Rounded.Check,
                             contentDescription = stringResource(R.string.btn_save_changes),
                             modifier = Modifier.size(18.dp),
                             tint = MaterialTheme.colorScheme.primary
@@ -752,13 +733,11 @@ private fun RunningView(
 
             Spacer(Modifier.height(8.dp))
 
+            // Tabular figures keep the digits from shifting as they tick.
             Text(
                 formatElapsed(uiState.elapsedSeconds),
-                style = MaterialTheme.typography.displayMedium.copy(
-                    fontFamily = FontFamily.Monospace,
-                    fontSize = 48.sp
-                ),
-                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.displayLarge.copy(fontFeatureSettings = "tnum"),
+                color = workspaceAccent ?: MaterialTheme.colorScheme.primary,
                 textAlign = TextAlign.Center
             )
 
@@ -779,7 +758,7 @@ private fun RunningView(
                         singleLine = true,
                         textStyle = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onBackground),
                         trailingIcon = {
-                            Icon(Icons.Default.AccessTime, contentDescription = stringResource(R.string.title_select_start_time), tint = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f))
+                            Icon(Icons.Rounded.AccessTime, contentDescription = stringResource(R.string.title_select_start_time), tint = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f))
                         },
                         colors = OutlinedTextFieldDefaults.colors(
                             disabledTextColor = MaterialTheme.colorScheme.onBackground,
@@ -809,7 +788,7 @@ private fun RunningView(
                         placeholder = { Text(stringResource(R.string.hint_manual_end), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f)) },
                         textStyle = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onBackground),
                         trailingIcon = {
-                            Icon(Icons.Default.AccessTime, contentDescription = stringResource(R.string.title_select_end_time), tint = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f))
+                            Icon(Icons.Rounded.AccessTime, contentDescription = stringResource(R.string.title_select_end_time), tint = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f))
                         },
                         colors = OutlinedTextFieldDefaults.colors(
                             disabledTextColor = MaterialTheme.colorScheme.onBackground,
@@ -853,18 +832,16 @@ private fun RunningView(
                 }
             }
 
-            Button(
+            TimerActionButton(
+                label = stringResource(R.string.btn_stop),
+                icon = Icons.Rounded.Stop,
                 onClick = handleStopClick,
                 enabled = !uiState.isStopping,
-                modifier = Modifier.fillMaxWidth().height(56.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
-            ) {
-                if (uiState.isStopping) {
-                    CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 3.dp, color = MaterialTheme.colorScheme.onError)
-                } else {
-                    Text(stringResource(R.string.btn_stop), fontSize = 18.sp, color = MaterialTheme.colorScheme.onError)
-                }
-            }
+                loading = uiState.isStopping,
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary,
+                modifier = Modifier.fillMaxWidth()
+            )
 
             Spacer(Modifier.height(8.dp))
 
@@ -962,8 +939,8 @@ private fun OtherRunningTimers(
                 .fillMaxWidth()
                 .then(if (!isActive) Modifier.clickable { onLoad(rt) } else Modifier),
             colors = CardDefaults.cardColors(
-                containerColor = if (isActive) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-                else MaterialTheme.colorScheme.surfaceVariant
+                containerColor = if (isActive) MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.5f)
+                else MaterialTheme.colorScheme.surfaceContainerHigh
             )
         ) {
             Row(
@@ -981,14 +958,14 @@ private fun OtherRunningTimers(
                     )
                     Text(
                         elapsedStr,
-                        style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+                        style = MaterialTheme.typography.bodySmall.copy(fontFeatureSettings = "tnum"),
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
                 if (!isActive) {
                     IconButton(onClick = { onStop(rt) }, modifier = Modifier.size(36.dp)) {
                         Icon(
-                            Icons.Default.Stop,
+                            Icons.Rounded.Stop,
                             contentDescription = stringResource(R.string.btn_stop),
                             modifier = Modifier.size(18.dp),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
@@ -998,7 +975,7 @@ private fun OtherRunningTimers(
                 if (showNotionLink && rt.url.isNotBlank()) {
                     IconButton(onClick = { onOpenUrl(rt.url) }, modifier = Modifier.size(36.dp)) {
                         Icon(
-                            Icons.Default.OpenInNew,
+                            Icons.AutoMirrored.Rounded.OpenInNew,
                             contentDescription = stringResource(R.string.title_open_in_notion),
                             modifier = Modifier.size(18.dp),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
@@ -1008,7 +985,7 @@ private fun OtherRunningTimers(
                 if (showArchiveAction) {
                     IconButton(onClick = { onDelete(rt) }, modifier = Modifier.size(36.dp)) {
                         Icon(
-                            Icons.Default.Delete,
+                            Icons.Rounded.Delete,
                             contentDescription = stringResource(R.string.title_delete_entry),
                             modifier = Modifier.size(18.dp),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
@@ -1054,7 +1031,7 @@ private fun RecentEntriesSection(
     entries.forEach { re ->
         val timeRange = formatRecentRange(re.startISO, re.endISO, dateFormat, timeFormat == "12h")
         val wsAccent = workspaceAccentColor(workspaces.firstOrNull { it.id == re.workspaceId }?.color)
-        val cardContainerColor = wsAccent?.copy(alpha = 0.15f) ?: MaterialTheme.colorScheme.surfaceVariant
+        val cardContainerColor = wsAccent?.copy(alpha = 0.15f) ?: MaterialTheme.colorScheme.surfaceContainerHigh
 
         Card(
             modifier = Modifier.fillMaxWidth(),
@@ -1076,7 +1053,7 @@ private fun RecentEntriesSection(
                     )
                     Text(
                         timeRange,
-                        style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+                        style = MaterialTheme.typography.bodySmall.copy(fontFeatureSettings = "tnum"),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
@@ -1084,7 +1061,7 @@ private fun RecentEntriesSection(
                 }
                 IconButton(onClick = { onPlay(re) }, modifier = Modifier.size(36.dp)) {
                     Icon(
-                        Icons.Default.PlayArrow,
+                        Icons.Rounded.PlayArrow,
                         contentDescription = stringResource(R.string.title_start_from_entry),
                         modifier = Modifier.size(18.dp),
                         tint = wsAccent ?: MaterialTheme.colorScheme.onSurfaceVariant
@@ -1093,7 +1070,7 @@ private fun RecentEntriesSection(
                 if (showNotionLink && re.url.isNotBlank()) {
                     IconButton(onClick = { onOpenUrl(re.url) }, modifier = Modifier.size(36.dp)) {
                         Icon(
-                            Icons.Default.OpenInNew,
+                            Icons.AutoMirrored.Rounded.OpenInNew,
                             contentDescription = stringResource(R.string.title_open_in_notion),
                             modifier = Modifier.size(18.dp),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
@@ -1103,7 +1080,7 @@ private fun RecentEntriesSection(
                 if (showArchiveAction) {
                     IconButton(onClick = { onDelete(re) }, modifier = Modifier.size(36.dp)) {
                         Icon(
-                            Icons.Default.Delete,
+                            Icons.Rounded.Delete,
                             contentDescription = stringResource(R.string.title_delete_entry),
                             modifier = Modifier.size(18.dp),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
@@ -1173,12 +1150,69 @@ private fun PresetChips(
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    Icons.Default.Edit,
+                    Icons.Rounded.Edit,
                     contentDescription = stringResource(R.string.title_manage_presets),
                     modifier = Modifier.size(16.dp),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
+        }
+    }
+}
+
+/** The app's top bar: the title in Material 3's default (regular) style, actions on the right.
+ *  Transparent, so a running timer's tinted background runs up behind it. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun TimerTopBar(actions: @Composable RowScope.() -> Unit) {
+    TopAppBar(
+        title = { Text(stringResource(R.string.app_title)) },
+        actions = actions,
+        colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
+    )
+}
+
+private val TimerActionButtonHeight: Dp = 64.dp
+
+/**
+ * The large Start / Stop button. A full pill that squares off a little while pressed (Material 3
+ * Expressive shape morph); its colour follows the workspace, so switching workspaces animates it.
+ */
+@Composable
+private fun TimerActionButton(
+    label: String,
+    icon: ImageVector,
+    onClick: () -> Unit,
+    enabled: Boolean,
+    loading: Boolean,
+    containerColor: Color,
+    contentColor: Color,
+    modifier: Modifier = Modifier
+) {
+    val animate = !rememberReducedMotion()
+    val interactionSource = remember { MutableInteractionSource() }
+    val pressed by interactionSource.collectIsPressedAsState()
+    val corner by animateDpAsState(
+        targetValue = if (pressed && animate) 16.dp else TimerActionButtonHeight / 2,
+        animationSpec = spring(dampingRatio = 0.6f, stiffness = 800f),
+        label = "timer-button-corner"
+    )
+    val container by animateColorAsState(containerColor, Motion.fadeSpec(), label = "timer-button-color")
+    Button(
+        onClick = onClick,
+        enabled = enabled,
+        modifier = modifier.height(TimerActionButtonHeight),
+        shape = RoundedCornerShape(corner),
+        interactionSource = interactionSource,
+        colors = ButtonDefaults.buttonColors(containerColor = container, contentColor = contentColor),
+        contentPadding = PaddingValues(horizontal = 24.dp)
+    ) {
+        if (loading) {
+            CircularProgressIndicator(modifier = Modifier.size(28.dp), strokeWidth = 3.dp, color = contentColor)
+        } else {
+            Icon(icon, contentDescription = null, modifier = Modifier.size(28.dp))
+            Spacer(Modifier.width(12.dp))
+            Text(label, style = MaterialTheme.typography.titleLarge)
         }
     }
 }
@@ -1218,7 +1252,7 @@ private fun RefreshIconButton(loading: Boolean, onClick: () -> Unit) {
     }
     IconButton(onClick = onClick) {
         Icon(
-            Icons.Default.Refresh,
+            Icons.Rounded.Refresh,
             contentDescription = stringResource(R.string.btn_refresh_all),
             modifier = Modifier.rotate(rotation.value)
         )
@@ -1381,7 +1415,7 @@ private fun ManagePresetsDialog(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Icon(Icons.Default.Info, contentDescription = stringResource(R.string.title_info), tint = MaterialTheme.colorScheme.onSecondaryContainer)
+                        Icon(Icons.Rounded.Info, contentDescription = stringResource(R.string.title_info), tint = MaterialTheme.colorScheme.onSecondaryContainer)
                         Text(
                             text = stringResource(R.string.tooltip_presets_shortcuts),
                             style = MaterialTheme.typography.bodySmall,
@@ -1399,7 +1433,7 @@ private fun ManagePresetsDialog(
                     val label = "${ws.name} – ${preset.name}"
                     Card(
                         modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)
                     ) {
                         Row(
                             modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
@@ -1415,20 +1449,20 @@ private fun ManagePresetsDialog(
                                 enabled = indexInWorkspace > 0,
                                 modifier = Modifier.size(32.dp)
                             ) {
-                                Icon(Icons.Default.ArrowUpward, contentDescription = stringResource(R.string.title_move_preset_up), modifier = Modifier.size(16.dp))
+                                Icon(Icons.Rounded.ArrowUpward, contentDescription = stringResource(R.string.title_move_preset_up), modifier = Modifier.size(16.dp))
                             }
                             IconButton(
                                 onClick = { onMovePresetDown(ws.id, preset.id) },
                                 enabled = indexInWorkspace < ws.presets.size - 1,
                                 modifier = Modifier.size(32.dp)
                             ) {
-                                Icon(Icons.Default.ArrowDownward, contentDescription = stringResource(R.string.title_move_preset_down), modifier = Modifier.size(16.dp))
+                                Icon(Icons.Rounded.ArrowDownward, contentDescription = stringResource(R.string.title_move_preset_down), modifier = Modifier.size(16.dp))
                             }
                             IconButton(
                                 onClick = { onDeletePreset(ws.id, preset.id) },
                                 modifier = Modifier.size(32.dp)
                             ) {
-                                Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.title_remove_preset), modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.error)
+                                Icon(Icons.Rounded.Delete, contentDescription = stringResource(R.string.title_remove_preset), modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.error)
                             }
                         }
                     }

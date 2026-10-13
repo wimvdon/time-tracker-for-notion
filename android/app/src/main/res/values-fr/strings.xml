@@ -10,8 +10,9 @@
     <string name="placeholder_select_workspace">Sélectionner l\'espace…</string>
     <string name="placeholder_select_project">Sélectionner le projet…</string>
     <string name="placeholder_loading">Chargement…</string>
-    <string name="btn_start">DÉMARRER</string>
-    <string name="btn_stop">ARRÊTER</string>
+    <string name="btn_start">Démarrer</string>
+    <string name="btn_stop">Arrêter</string>
+    <string name="btn_close">Fermer</string>
     <string name="label_start_time">Heure de début</string>
     <string name="label_end_time">Heure de fin</string>
     <string name="hint_manual_end">Remplir une heure de fin arrête le minuteur.</string>

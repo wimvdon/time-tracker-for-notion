@@ -14,8 +14,8 @@ import androidx.core.graphics.ColorUtils
 // saturated colors like yellow so dark they read as brown).
 
 private const val MIN_CONTRAST = 3.0
-private const val LIGHT_BG_LUMINANCE = 1.0 // light theme background (white/zinc-50)
-private const val DARK_BG_LUMINANCE = 0.014 // dark theme background (zinc-900)
+private const val LIGHT_BG_LUMINANCE = 1.0 // white: a little stricter than the light background (#FFF8F7)
+private const val DARK_BG_LUMINANCE = 0.0065 // dark theme background (#181211)
 
 // Max luminance a color can have and still hit MIN_CONTRAST against a white
 // background (also covers white text/icons drawn on top of a solid fill of

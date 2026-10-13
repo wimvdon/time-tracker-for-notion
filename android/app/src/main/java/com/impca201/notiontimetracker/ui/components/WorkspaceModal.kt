@@ -10,9 +10,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -139,7 +139,7 @@ fun WorkspaceModal(
                 },
                 navigationIcon = {
                     IconButton(onClick = handleDismissRequest) {
-                        Icon(Icons.Default.Close, contentDescription = stringResource(R.string.btn_cancel))
+                        Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.btn_cancel))
                     }
                 },
                 actions = {
@@ -395,7 +395,7 @@ private fun ExtraPropRow(
     onDefaultChange: (String?) -> Unit,
     onRemove: () -> Unit
 ) {
-    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
+    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)) {
         Column(modifier = Modifier.padding(12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 SearchableDropdown(
@@ -407,7 +407,7 @@ private fun ExtraPropRow(
                 )
                 Spacer(Modifier.width(8.dp))
                 IconButton(onClick = onRemove) {
-                    Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.title_remove_extra_field))
+                    Icon(Icons.Rounded.Delete, contentDescription = stringResource(R.string.title_remove_extra_field))
                 }
             }
 
@@ -479,7 +479,7 @@ private fun ColorPicker(selected: String, onSelect: (String) -> Unit) {
                     .clickable { onSelect("") },
                 contentAlignment = Alignment.Center
             ) {
-                if (noneSelected) Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp))
+                if (noneSelected) Icon(Icons.Rounded.Check, contentDescription = null, modifier = Modifier.size(16.dp))
             }
             PRESET_PALETTE.forEach { hex ->
                 val color = parseWorkspaceColor(hex) ?: return@forEach
@@ -493,7 +493,7 @@ private fun ColorPicker(selected: String, onSelect: (String) -> Unit) {
                         .clickable { onSelect(hex); customHex = "" },
                     contentAlignment = Alignment.Center
                 ) {
-                    if (isSelected) Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp), tint = Color.White)
+                    if (isSelected) Icon(Icons.Rounded.Check, contentDescription = null, modifier = Modifier.size(16.dp), tint = Color.White)
                 }
             }
         }
