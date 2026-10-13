@@ -51,16 +51,6 @@ export function setLocale(locale) {
   }
 }
 
-/** The locale setting as chosen in Settings ('system' included). */
-export function getSelectedLocale() {
-  return activeLocale;
-}
-
-/** The bundled locale actually in use ('system' already resolved). */
-export function getActiveLocale() {
-  return resolvedLocaleStr;
-}
-
 export function t(key) {
   const strings = locales[resolvedLocaleStr] || enGB;
   return strings[key] ?? enGB[key] ?? key;

@@ -20,11 +20,6 @@ export function toNotionDateTime(date) {
   );
 }
 
-/** "11/06/2026" — used for the fallback page title. */
-export function formatDateDDMMYYYY(date) {
-  return `${pad(date.getDate())}/${pad(date.getMonth() + 1)}/${date.getFullYear()}`;
-}
-
 /** Every date format offered in Settings. */
 export const DATE_FORMATS = ['DD/MM/YYYY', 'MM/DD/YYYY', 'YYYY-MM-DD'];
 
