@@ -150,13 +150,21 @@ jobs:
             -PversionCode=${{ needs.version.outputs.code }}
           cp "app/build/outputs/apk/$BUILD_TYPE/app-$BUILD_TYPE.apk" \
             "$RUNNER_TEMP/TimeTracker-${{ needs.version.outputs.name }}.apk"
+          # R8's map from the shortened names back to the real ones, so a crash from this build
+          # can be read (Android Studio: Build > Analyze Stack Trace, or the retrace tool).
+          if [ "$BUILD_TYPE" = release ]; then
+            cp app/build/outputs/mapping/release/mapping.txt \
+              "$RUNNER_TEMP/TimeTracker-${{ needs.version.outputs.name }}-mapping.txt"
+          fi
       - name: Remove the signing key
         if: always()
         run: rm -f "$RUNNER_TEMP/release.jks" "$RUNNER_TEMP/keystore.b64" keystore.properties
       - uses: actions/upload-artifact@v7
         with:
           name: android
-          path: ${{ runner.temp }}/TimeTracker-*.apk
+          path: |
+            ${{ runner.temp }}/TimeTracker-*.apk
+            ${{ runner.temp }}/TimeTracker-*-mapping.txt
           if-no-files-found: error
 
   release:

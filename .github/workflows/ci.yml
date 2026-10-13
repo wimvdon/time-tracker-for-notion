@@ -1,11 +1,10 @@
 name: CI
 
 # The Windows app's tests and build, and the Android debug APK plus a release build so R8
-# problems show up before a release. Runs once per pull request push, and on main after a merge.
+# problems show up before a release. Runs once per pull request push; a merge to main isn't
+# built again, as the release workflow builds what you test.
 on:
   pull_request:
-  push:
-    branches: [main]
   workflow_dispatch:
 
 permissions:
