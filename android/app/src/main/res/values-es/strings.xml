@@ -12,20 +12,19 @@
     <string name="placeholder_loading">Cargando…</string>
     <string name="btn_start">Iniciar</string>
     <string name="btn_stop">Detener</string>
-    <string name="btn_close">Cerrar</string>
     <string name="label_start_time">Hora de inicio</string>
     <string name="label_end_time">Hora de fin</string>
     <string name="hint_manual_end">Rellenar una hora de fin detiene el temporizador.</string>
     <string name="toast_end_before_start">La hora de fin debe ser posterior a la de inicio.</string>
     <string name="warn_no_api_key">Clave API de Notion no configurada.</string>
-    <string name="warn_no_api_key_link">Abrir Ajustes</string>
-    <string name="warn_no_workspaces">Añada un espacio en los</string>
+    <string name="warn_no_api_key_link">Abrir ajustes</string>
+    <string name="warn_no_workspaces">Añade un espacio en los</string>
     <string name="warn_no_workspaces_link">Ajustes</string>
     <string name="warn_no_workspaces_suffix">para comenzar.</string>
 
     <!-- Settings -->
     <string name="settings_title">Ajustes</string>
-    <string name="first_launch_hint">Introduzca su clave API de Notion y al menos un espacio de trabajo para comenzar.</string>
+    <string name="first_launch_hint">Introduce tu clave API de Notion y al menos un espacio de trabajo para empezar.</string>
     <string name="label_api_key">Clave API de Notion</string>
     <string name="placeholder_api_key">secret_… o ntn_…</string>
     <string name="btn_show_key">Mostrar</string>
@@ -36,7 +35,7 @@
     <string name="label_workspaces">Espacios de trabajo</string>
     <string name="no_workspaces_yet">No hay espacios de trabajo aún.</string>
     <string name="title_delete_workspace">Eliminar espacio</string>
-    <string name="title_delete_workspace_disabled">Detenga el temporizador primero</string>
+    <string name="title_delete_workspace_disabled">Detén primero el temporizador</string>
     <string name="title_move_up">Subir</string>
     <string name="title_move_down">Bajar</string>
     <string name="btn_add_workspace">+ Añadir espacio</string>
@@ -54,12 +53,12 @@
     <string name="placeholder_search">Buscar…</string>
     <string name="search_no_results">Sin resultados</string>
     <string name="dropdown_none">– Ninguno –</string>
-    <string name="btn_clear">Limpiar</string>
+    <string name="btn_clear">Borrar</string>
     <string name="btn_refresh_databases">Actualizar</string>
     <string name="loading_databases">Cargando bases de datos…</string>
     <string name="error_loading_databases">No se pudieron cargar las bases de datos</string>
     <string name="error_loading_schema">No se pudieron cargar las propiedades de la base</string>
-    <string name="no_databases_found">No se encontraron bases de datos. Conecte su integración a las páginas correspondientes en Notion.</string>
+    <string name="no_databases_found">No se encontraron bases de datos. Conecta tu integración a las páginas correspondientes en Notion.</string>
     <string name="btn_retry">Reintentar</string>
     <string name="label_time_entry_date_prop">Campo de rango de fechas</string>
     <string name="hint_time_entry_date_prop">Almacena la hora de inicio y fin.</string>
@@ -77,12 +76,12 @@
     <string name="title_remove_extra_field">Eliminar campo</string>
     <string name="placeholder_select_field">Seleccionar campo…</string>
     <string name="label_required_field">Requerido</string>
-    <string name="toast_required_fields_missing">Por favor, rellene todos los campos requeridos antes de comenzar.</string>
-    <string name="toast_required_before_stopping">Rellene los campos requeridos antes de detener.</string>
+    <string name="toast_required_fields_missing">Rellena todos los campos obligatorios antes de empezar.</string>
+    <string name="toast_required_before_stopping">Rellena los campos obligatorios antes de detener.</string>
     <string name="label_description_required">Descripción obligatoria</string>
     <string name="hint_description_required">Un temporizador de este espacio no se puede detener sin descripción.</string>
     <string name="hint_description_optional">Si se deja vacía, el registro recibe su fecha de inicio como título.</string>
-    <string name="toast_description_before_stopping">Rellene una descripción antes de detener.</string>
+    <string name="toast_description_before_stopping">Rellena una descripción antes de detener.</string>
     <string name="error_loading_extras">No se pudieron cargar los campos adicionales</string>
     <string name="no_properties_of_type">No se encontraron campos compatibles.</string>
     <string name="label_workspace_rounding">Redondeo de tiempo</string>
@@ -95,7 +94,7 @@
     <string name="label_workspace_color">Color del espacio</string>
     <string name="label_custom_color">Hex personalizado</string>
     <string name="btn_apply_color">Aplicar</string>
-    <string name="save_incomplete_hint">Rellene todos los campos antes de guardar.</string>
+    <string name="save_incomplete_hint">Rellena todos los campos antes de guardar.</string>
     <string name="btn_cancel">Cancelar</string>
     <string name="btn_save">Guardar</string>
 
@@ -109,8 +108,8 @@
     <string name="toast_start_error">No se pudo iniciar el temporizador</string>
     <string name="toast_stop_error">No se pudo detener el temporizador</string>
     <string name="toast_stop_retry">Reintentar</string>
-    <string name="title_dismiss">Descartar</string>
-    <string name="btn_back">Volver</string>
+    <string name="title_dismiss">Cerrar</string>
+    <string name="btn_back">Atrás</string>
     <string name="title_settings">Ajustes</string>
 
     <!-- Running timers list -->
@@ -130,15 +129,15 @@
     <string name="toast_delete_error">No se pudo eliminar la entrada</string>
 
     <!-- Database integration hint -->
-    <string name="hint_database_integration">Asegúrese de compartir esta base de datos con su integración de Notion.</string>
+    <string name="hint_database_integration">Asegúrate de compartir esta base de datos con tu integración de Notion.</string>
 
     <!-- Theme -->
     <string name="label_theme">Apariencia</string>
-    <string name="theme_auto">Usar la del sistema (Auto)</string>
+    <string name="theme_auto">Sistema</string>
     <string name="theme_light">Claro</string>
     <string name="theme_dark">Oscuro</string>
     <string name="label_dynamic_color">Color dinámico</string>
-    <string name="dynamic_color_hint">Usar colores de su fondo de pantalla.</string>
+    <string name="dynamic_color_hint">Usar los colores del fondo de pantalla en lugar del rojo de la app</string>
 
     <!-- QR code import -->
     <string name="btn_scan_qr">Escanear código QR para importar</string>
@@ -161,7 +160,7 @@
 
     <!-- Presets -->
     <string name="section_presets">Preajustes (opcional)</string>
-    <string name="hint_presets">Hasta 5 preajustes. Toque un chip para iniciar el temporizador inmediatamente.</string>
+    <string name="hint_presets">Hasta 5 preajustes. Toca uno para iniciar el temporizador al momento.</string>
     <string name="btn_add_preset">+ Añadir preajuste</string>
     <string name="title_remove_preset">Eliminar preajuste</string>
     <string name="preset_name_placeholder">ej. Standup matinal</string>
@@ -176,7 +175,7 @@
     <string name="deleted_page_title">Página no encontrada en Notion</string>
     <string name="deleted_page_body">La entrada no pudo guardarse porque la página fue eliminada o ya no es accesible.</string>
     <string name="deleted_page_hint">Si es necesario, restaure la página desde la papelera de Notion o recréela manualmente.</string>
-    <string name="deleted_page_confirm">Descartar</string>
+    <string name="deleted_page_confirm">Cerrar</string>
     <string name="toast_update_error">No se pudo actualizar el temporizador</string>
 
     <!-- Per-workspace QR -->
@@ -184,7 +183,7 @@
 
     <!-- Additional New Strings -->
     <string name="warn_already_running_title">Temporizador activo</string>
-    <string name="warn_already_running_body">Ya hay un temporizador activo. ¿Desea detenerlo y comenzar el nuevo, o cancelar?</string>
+    <string name="warn_already_running_body">Ya hay un temporizador activo. ¿Quieres detenerlo y empezar el nuevo, o cancelar?</string>
     <string name="btn_stop_and_start_new">Detener e iniciar nuevo</string>
     <string name="dialog_save_preset_title">Guardar preajuste</string>
     <string name="dialog_save_preset_body">Guardar la descripción y campos actuales como preajuste.</string>
@@ -193,10 +192,10 @@
     <string name="presets_manage_title">Gestionar preajustes</string>
     <string name="tooltip_presets_shortcuts">Los preajustes superiores se usarán como accesos directos.</string>
     <string name="dialog_unsaved_changes_title">Cambios sin guardar</string>
-    <string name="dialog_unsaved_changes_body">Tiene cambios sin guardar. ¿Desea guardarlos antes de salir?</string>
+    <string name="dialog_unsaved_changes_body">Tienes cambios sin guardar. ¿Quieres guardarlos antes de salir?</string>
     <string name="btn_discard">Descartar</string>
     <string name="dialog_time_error_title">La hora de fin es anterior al inicio</string>
-    <string name="dialog_time_error_body">La hora de fin ocurre antes de la hora de inicio. ¿Desea detener el temporizador al día siguiente?</string>
+    <string name="dialog_time_error_body">La hora de fin es anterior a la de inicio. ¿Querías detener el temporizador al día siguiente?</string>
     <string name="btn_edit">Editar</string>
     <string name="btn_next_day">Día siguiente</string>
 
@@ -234,7 +233,7 @@
     <string name="language_it">Italiano</string>
     <string name="error_extras_load_failed">No se pudieron cargar los campos de este espacio desde Notion. Los valores mostrados pueden estar incompletos.</string>
     <string name="error_running_timers_failed">No se pudieron cargar los temporizadores en curso desde Notion. La lista puede estar incompleta.</string>
-    <string name="error_extras_missing_props">Algunas propiedades configuradas ya no existen en esta base de datos. Revise el espacio en Ajustes.</string>
+    <string name="error_extras_missing_props">Algunas propiedades configuradas ya no existen en esta base de datos. Revisa el espacio en Ajustes.</string>
     <string name="app_title">Time Tracker</string>
     <string name="title_save_preset">Guardar como preajuste</string>
     <string name="title_manage_presets">Gestionar preajustes</string>

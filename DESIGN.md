@@ -49,6 +49,28 @@ the "This app" section; change the rules in all three together.
 - Decorative animation is skipped when the user turned animations off
   (`rememberReducedMotion()`).
 
+## Wording
+
+Shared settings and actions use the same words in every app and language (strings are kept in
+English, Dutch, German, French, Spanish and Italian).
+
+| Meaning | en | nl | de | fr | es | it |
+| --- | --- | --- | --- | --- | --- | --- |
+| Theme: follow the device | System | Systeem | System | Système | Sistema | Sistema |
+| Theme: light / dark | Light / Dark | Licht / Donker | Hell / Dunkel | Clair / Sombre | Claro / Oscuro | Chiaro / Scuro |
+| Settings section | Appearance | Weergave | Darstellung | Apparence | Apariencia | Aspetto |
+| Wallpaper colours | Dynamic color | Dynamische kleuren | Dynamische Farben | Couleurs dynamiques | Color dinámico | Colori dinamici |
+| Back | Back | Terug | Zurück | Retour | Atrás | Indietro |
+| Cancel / Save | Cancel / Save | Annuleren / Opslaan | Abbrechen / Speichern | Annuler / Enregistrer | Cancelar / Guardar | Annulla / Salva |
+| Clear | Clear | Wissen | Löschen | Effacer | Borrar | Cancella |
+| Retry | Retry | Opnieuw proberen | Wiederholen | Réessayer | Reintentar | Riprova |
+
+- Prefer the shortest clear wording ("System", not "Follow device (Auto)").
+- American spelling in English ("color").
+- Address the user informally in Dutch, German, Spanish and Italian (je, du, tú, tu) and with
+  "vous" in French.
+- Labels and buttons in sentence case.
+
 ## Shared design kit
 
 These files are identical in the three apps apart from their package line. Copy a change to

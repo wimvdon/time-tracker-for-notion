@@ -12,13 +12,12 @@
     <string name="placeholder_loading">Chargement…</string>
     <string name="btn_start">Démarrer</string>
     <string name="btn_stop">Arrêter</string>
-    <string name="btn_close">Fermer</string>
     <string name="label_start_time">Heure de début</string>
     <string name="label_end_time">Heure de fin</string>
     <string name="hint_manual_end">Remplir une heure de fin arrête le minuteur.</string>
     <string name="toast_end_before_start">L\'heure de fin doit être après l\'heure de début.</string>
     <string name="warn_no_api_key">Aucune clé API Notion configurée.</string>
-    <string name="warn_no_api_key_link">Ouvrir les Paramètres</string>
+    <string name="warn_no_api_key_link">Ouvrir les paramètres</string>
     <string name="warn_no_workspaces">Ajoutez un espace dans les</string>
     <string name="warn_no_workspaces_link">Paramètres</string>
     <string name="warn_no_workspaces_suffix">pour commencer.</string>
@@ -134,11 +133,11 @@
 
     <!-- Theme -->
     <string name="label_theme">Apparence</string>
-    <string name="theme_auto">Suivre le système (Auto)</string>
+    <string name="theme_auto">Système</string>
     <string name="theme_light">Clair</string>
     <string name="theme_dark">Sombre</string>
-    <string name="label_dynamic_color">Couleur dynamique</string>
-    <string name="dynamic_color_hint">Utiliser les couleurs de votre fond d\'écran.</string>
+    <string name="label_dynamic_color">Couleurs dynamiques</string>
+    <string name="dynamic_color_hint">Utiliser les couleurs du fond d\'écran au lieu du rouge de l\'app</string>
 
     <!-- QR code import -->
     <string name="btn_scan_qr">Scanner le QR code pour importer</string>

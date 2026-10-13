@@ -118,17 +118,13 @@ const ICON = [
   { ...PIVOT, color: WHITE },
 ];
 // Android 13+ themed icon: the launcher tints this single-colour layer. Like the sibling apps'
-// themed icons it is the solid shape with the detail cut out: the dial, minus the hand and the
-// elapsed time. The holes must not overlap (even-odd), so the hand is one teardrop outline and
-// the elapsed time a band that stops short of the pivot and the hand.
+// themed icons it is the solid shape with the detail cut out, kept simple: the dial minus the
+// hand and its pivot, drawn as one teardrop outline for the even-odd cut-out.
 const MONOCHROME = [
   {
     type: 'cutout',
     base: { type: 'circle', ...FACE, r: DIAL_RADIUS },
-    holes: [
-      { type: 'band', ...FACE, r: ELAPSED.r, inner: 10, from: 0, to: 108 },
-      { type: 'hand', ...FACE, r: 5, x2: HAND_END[0], y2: HAND_END[1], tipR: 3.25 },
-    ],
+    holes: [{ type: 'hand', ...FACE, r: 5, x2: HAND_END[0], y2: HAND_END[1], tipR: 3.25 }],
     color: '#FFFFFF',
   },
 ];
@@ -335,16 +331,6 @@ function vectorPath(s) {
       return {
         d: `M${pt(s.cx, s.cy, s.r, 1)}A${s.r},${s.r} 0 1,1 ${pt(s.cx, s.cy, s.r, -1)}` +
           `L${pt(s.x2, s.y2, s.tipR, -1)}A${s.tipR},${s.tipR} 0 1,1 ${pt(s.x2, s.y2, s.tipR, 1)}z`,
-      };
-    }
-    case 'band': {
-      // A ring segment between radius `inner` and `r`, clockwise from `from` to `to` degrees
-      const [o0, o1] = [polar(s.cx, s.cy, s.r, s.from), polar(s.cx, s.cy, s.r, s.to)];
-      const [i0, i1] = [polar(s.cx, s.cy, s.inner, s.from), polar(s.cx, s.cy, s.inner, s.to)];
-      const large = s.to - s.from > 180 ? 1 : 0;
-      return {
-        d: `M${n(o0[0])},${n(o0[1])}A${s.r},${s.r} 0 ${large},1 ${n(o1[0])},${n(o1[1])}` +
-          `L${n(i1[0])},${n(i1[1])}A${s.inner},${s.inner} 0 ${large},0 ${n(i0[0])},${n(i0[1])}z`,
       };
     }
     case 'cutout':

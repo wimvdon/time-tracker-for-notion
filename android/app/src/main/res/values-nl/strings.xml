@@ -12,13 +12,12 @@
     <string name="placeholder_loading">Laden…</string>
     <string name="btn_start">Start</string>
     <string name="btn_stop">Stop</string>
-    <string name="btn_close">Sluiten</string>
     <string name="label_start_time">Starttijd</string>
     <string name="label_end_time">Eindtijd</string>
     <string name="hint_manual_end">Een eindtijd invullen stopt de timer.</string>
     <string name="toast_end_before_start">De eindtijd moet na de starttijd liggen.</string>
     <string name="warn_no_api_key">Geen Notion API-sleutel ingesteld.</string>
-    <string name="warn_no_api_key_link">Open Instellingen</string>
+    <string name="warn_no_api_key_link">Instellingen openen</string>
     <string name="warn_no_workspaces">Voeg een werkruimte toe in</string>
     <string name="warn_no_workspaces_link">Instellingen</string>
     <string name="warn_no_workspaces_suffix">om te beginnen.</string>
@@ -96,7 +95,7 @@
     <string name="label_custom_color">Aangepaste hex</string>
     <string name="btn_apply_color">Toepassen</string>
     <string name="save_incomplete_hint">Vul alle velden in voor je kan opslaan.</string>
-    <string name="btn_cancel">Annuleer</string>
+    <string name="btn_cancel">Annuleren</string>
     <string name="btn_save">Opslaan</string>
 
     <!-- Toasts / errors -->
@@ -134,11 +133,11 @@
 
     <!-- Theme -->
     <string name="label_theme">Weergave</string>
-    <string name="theme_auto">Automatisch (systeeminstelling)</string>
+    <string name="theme_auto">Systeem</string>
     <string name="theme_light">Licht</string>
     <string name="theme_dark">Donker</string>
     <string name="label_dynamic_color">Dynamische kleuren</string>
-    <string name="dynamic_color_hint">Gebruik kleuren van je achtergrond.</string>
+    <string name="dynamic_color_hint">Kleuren van je achtergrond gebruiken in plaats van het rood van de app</string>
 
     <!-- QR code import -->
     <string name="btn_scan_qr">QR-code scannen om instellingen te importeren</string>
