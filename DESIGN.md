@@ -124,12 +124,10 @@ the other two repositories:
   floating label (no separate label line above), all one height, so Start is the one thing
   that stands out. The workspace field shows the workspace colour as a dot at its start, and
   each workspace in its menu has the same dot.
-- The home screen has two destinations, Timer and Recent (active timers and recent entries),
-  switched with Tracker for Simkl's floating pill navigation bar: the selected tab expands to
-  show its label, filled icon when selected and outlined otherwise, hidden while scrolling down.
-  Recent shows a badge with the number of timers running elsewhere. The bar also hides while
-  the keyboard is open; back on Recent returns to Timer. Picking up or starting a timer from
-  Recent switches to Timer. Windows keeps the lists under the timer.
+- The running timer keeps the description, the timer, Stop and the start time on top. End time
+  and the extra fields sit in a collapsed "Details" card (styled like the settings sections),
+  open while a required field is empty or when stopping is refused for one. The timer part
+  fills the screen, so the lists start below it with their first heading peeking in.
 - List sections (Active timers, Recent time entries) start with a Title Medium heading and
   are set apart by space, not dividers.
 - Start is green and Stop is red whatever the theme or wallpaper colours (a workspace colour

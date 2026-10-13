@@ -51,21 +51,16 @@ import com.impca201.notiontimetracker.ui.theme.SkeletonLine
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.expandHorizontally
-import androidx.compose.animation.shrinkHorizontally
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
-import androidx.compose.material.icons.outlined.History
-import androidx.compose.material.icons.outlined.Timer
-import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
-import androidx.compose.ui.input.nestedscroll.NestedScrollSource
-import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.semantics.Role
-import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.activity.compose.BackHandler
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.stateDescription
+import com.impca201.notiontimetracker.ui.theme.AppShapes
 import androidx.compose.ui.semantics.semantics
 import com.impca201.notiontimetracker.ui.theme.rememberReducedMotion
 import com.impca201.notiontimetracker.ui.theme.workspaceAccentColor
@@ -93,7 +88,6 @@ import com.impca201.notiontimetracker.viewmodel.TimerViewModel
 import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun TimerScreen(
     uiState: TimerViewModel.UiState,
@@ -259,274 +253,52 @@ fun TimerScreen(
         return
     }
 
-    // Two destinations behind a floating bar: the timer itself, and the lists (active timers,
-    // recent entries) that used to sit under it. Back from Recent returns to the timer.
-    var tab by rememberSaveable { mutableStateOf(HomeTab.Timer) }
-    BackHandler(enabled = tab != HomeTab.Timer) { tab = HomeTab.Timer }
-    val activeTimerId = uiState.activeTimer?.notionPageId?.takeIf { uiState.running }
-    val otherRunningCount = uiState.runningTimers.count { it.pageId != activeTimerId }
-
-    // Scrolling down hides the bar, scrolling up brings it back (as in Tracker for Simkl).
-    var barVisible by remember { mutableStateOf(true) }
-    val hideOnScroll = remember {
-        object : NestedScrollConnection {
-            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-                if (available.y < -6f) barVisible = false
-                if (available.y > 6f) barVisible = true
-                return Offset.Zero
-            }
-        }
-    }
-    // A screen that can't scroll could never bring a hidden bar back, so a switch always shows it.
-    LaunchedEffect(tab, uiState.running) { barVisible = true }
-
-    Box(Modifier.fillMaxSize().nestedScroll(hideOnScroll)) {
-        AnimatedContent(
-            targetState = if (tab == HomeTab.Recent) HomeContent.Recent
-            else if (uiState.running && uiState.activeTimer != null) HomeContent.Running
-            else HomeContent.Idle,
-            transitionSpec = {
-                fadeIn(Motion.fadeSpec(delayMillis = 90)) togetherWith fadeOut(Motion.fadeSpec(durationMillis = 90))
-            },
-            label = "home-content"
-        ) { content ->
-            when (content) {
-                HomeContent.Running -> RunningView(
-                    uiState = uiState,
-                    onStop = onStop,
-                    onUpdateStartTime = onUpdateStartTime,
-                    onNavigateToSettings = onNavigateToSettings,
-                    onRetryStop = onRetryStop,
-                    onPlusButtonClicked = onPlusButtonClicked,
-                    onRefreshAll = onRefreshAll,
-                    onQuickSaveDescription = onQuickSaveDescription,
-                    onUpdateTimerDetails = onUpdateTimerDetails,
-                    onApplyPreset = onApplyPreset,
-                    onManagePresetsClick = { showManagePresetsDialog = true }
-                )
-                HomeContent.Idle -> IdleView(
-                    uiState = uiState,
-                    onWorkspaceSelect = onWorkspaceSelect,
-                    onDescriptionChange = onDescriptionChange,
-                    onExtraValueChange = onExtraValueChange,
-                    onStart = onStart,
-                    onNavigateToSettings = onNavigateToSettings,
-                    onClearError = onClearError,
-                    onRefreshAll = onRefreshAll,
-                    onApplyPreset = onApplyPreset,
-                    onSavePresetClick = { showSavePresetDialog = true },
-                    onManagePresetsClick = { showManagePresetsDialog = true }
-                )
-                HomeContent.Recent -> RecentView(
-                    uiState = uiState,
-                    activePageId = activeTimerId,
-                    onNavigateToSettings = onNavigateToSettings,
-                    onRefreshAll = onRefreshAll,
-                    // Picking up a timer or starting one from an entry shows it on the timer.
-                    onLoadRunningTimer = { onLoadRunningTimer(it); tab = HomeTab.Timer },
-                    onStopOtherRunningTimer = onStopOtherRunningTimer,
-                    onConfirmDelete = onConfirmDelete,
-                    onOpenUrl = onOpenUrl,
-                    onStartFromRecentEntry = { onStartFromRecentEntry(it); tab = HomeTab.Timer }
-                )
-            }
-        }
-
-        // Also hidden while typing, so it never sits on top of the field being edited.
-        AnimatedVisibility(
-            visible = barVisible && !WindowInsets.isImeVisible,
-            // M3 spatial spring for the movement, effects spring (no bounce) for the fade.
-            enter = slideInVertically(spring(dampingRatio = 0.9f, stiffness = Spring.StiffnessMediumLow)) { it } +
-                fadeIn(spring(stiffness = Spring.StiffnessMedium)),
-            exit = slideOutVertically(spring(dampingRatio = 1f, stiffness = Spring.StiffnessMedium)) { it } +
-                fadeOut(spring(stiffness = Spring.StiffnessMedium)),
-            modifier = Modifier.align(Alignment.BottomCenter)
-        ) {
-            HomeFloatingBar(
-                selected = tab,
-                onSelect = { tab = it; barVisible = true },
-                runningCount = otherRunningCount
-            )
-        }
-    }
-}
-
-private enum class HomeTab { Timer, Recent }
-
-private enum class HomeContent { Idle, Running, Recent }
-
-/** Space a screen leaves free at its end so the last item can scroll clear of the floating bar. */
-private val HomeBarClearance: Dp = 96.dp
-
-/**
- * The floating, pill-shaped bar that switches between the timer and the lists; the selected
- * destination expands to show its label. The same bar as Tracker for Simkl's navigation
- * (filled icon when selected, outlined otherwise), plus a badge on Recent counting timers
- * running elsewhere, since the timer screen no longer lists them.
- */
-@Composable
-private fun HomeFloatingBar(
-    selected: HomeTab,
-    onSelect: (HomeTab) -> Unit,
-    runningCount: Int,
-    modifier: Modifier = Modifier
-) {
-    Surface(
-        modifier = modifier.windowInsetsPadding(WindowInsets.navigationBars).padding(bottom = 16.dp),
-        shape = CircleShape,
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-        tonalElevation = 3.dp,
-        shadowElevation = 8.dp
-    ) {
-        Row(
-            Modifier.padding(8.dp).height(52.dp).selectableGroup(),
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            HomeTab.entries.forEach { tab ->
-                val label = stringResource(if (tab == HomeTab.Timer) R.string.tab_timer else R.string.tab_recent)
-                val runningLabel = stringResource(R.string.running_timers_heading)
-                HomeBarItem(
-                    label = label,
-                    icon = tab.icon(tab == selected),
-                    selected = tab == selected,
-                    onClick = { onSelect(tab) },
-                    badge = runningCount.takeIf { tab == HomeTab.Recent && it > 0 }?.let { count ->
-                        {
-                            Badge(Modifier.semantics { contentDescription = "$runningLabel: $count" }) {
-                                Text(count.toString())
-                            }
-                        }
-                    }
-                )
-            }
-        }
-    }
-}
-
-private fun HomeTab.icon(selected: Boolean): ImageVector = when (this) {
-    HomeTab.Timer -> if (selected) Icons.Rounded.Timer else Icons.Outlined.Timer
-    HomeTab.Recent -> if (selected) Icons.Rounded.History else Icons.Outlined.History
-}
-
-@Composable
-private fun HomeBarItem(
-    label: String,
-    icon: ImageVector,
-    selected: Boolean,
-    onClick: () -> Unit,
-    badge: (@Composable BoxScope.() -> Unit)? = null
-) {
-    val background by animateColorAsState(
-        if (selected) MaterialTheme.colorScheme.secondaryContainer else Color.Transparent,
-        animationSpec = spring(stiffness = Spring.StiffnessMedium),
-        label = "tabBackground"
-    )
-    val content by animateColorAsState(
-        if (selected) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
-        animationSpec = spring(stiffness = Spring.StiffnessMedium),
-        label = "tabContent"
-    )
-    Row(
-        Modifier
-            .clip(CircleShape)
-            .background(background)
-            .selectable(selected = selected, role = Role.Tab, onClick = onClick)
-            .height(52.dp)
-            .padding(horizontal = 16.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        // The selected tab shows its label, which TalkBack reads; don't read it twice.
-        val iconContent: @Composable () -> Unit = {
-            Icon(icon, contentDescription = if (selected) null else label, tint = content, modifier = Modifier.size(24.dp))
-        }
-        if (badge != null) BadgedBox(badge = badge) { iconContent() } else iconContent()
-        AnimatedVisibility(
-            visible = selected,
-            enter = expandHorizontally(spring(dampingRatio = 0.9f, stiffness = Spring.StiffnessMediumLow)) + fadeIn(spring(stiffness = Spring.StiffnessMedium)),
-            exit = shrinkHorizontally(spring(dampingRatio = 0.9f, stiffness = Spring.StiffnessMediumLow)) + fadeOut(spring(stiffness = Spring.StiffnessMedium))
-        ) {
-            Row {
-                Spacer(Modifier.width(8.dp))
-                Text(label, style = MaterialTheme.typography.labelLarge, color = content, maxLines = 1)
-            }
-        }
-    }
-}
-
-/** The lists that used to sit under the timer: timers running anywhere, then recent entries. */
-@Composable
-private fun RecentView(
-    uiState: TimerViewModel.UiState,
-    activePageId: String?,
-    onNavigateToSettings: () -> Unit,
-    onRefreshAll: () -> Unit,
-    onLoadRunningTimer: (RunningTimerInfo) -> Unit,
-    onStopOtherRunningTimer: (RunningTimerInfo) -> Unit,
-    onConfirmDelete: (String, String, Boolean) -> Unit,
-    onOpenUrl: (String) -> Unit,
-    onStartFromRecentEntry: (RecentEntryInfo) -> Unit
-) {
-    Scaffold(
-        contentColor = MaterialTheme.colorScheme.onBackground,
-        topBar = {
-            TimerTopBar(title = stringResource(R.string.tab_recent)) {
-                RefreshIconButton(
-                    loading = uiState.runningTimersLoading || uiState.recentEntriesLoading,
-                    onClick = onRefreshAll
-                )
-                IconButton(onClick = onNavigateToSettings) {
-                    Icon(Icons.Rounded.Settings, contentDescription = stringResource(R.string.title_settings))
-                }
-            }
-        }
-    ) { padding ->
-        Column(
-            modifier = Modifier
-                .padding(padding)
-                .padding(horizontal = 16.dp)
-                .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            OtherRunningTimers(
-                timers = uiState.runningTimers,
-                loading = uiState.runningTimersLoading,
-                error = uiState.runningTimersError,
-                activePageId = activePageId,
-                onLoad = onLoadRunningTimer,
-                onStop = onStopOtherRunningTimer,
-                onDelete = { rt -> onConfirmDelete(rt.pageId, rt.title, true) },
+    AnimatedContent(
+        targetState = uiState.running && uiState.activeTimer != null,
+        transitionSpec = {
+            fadeIn(Motion.fadeSpec(delayMillis = 90)) togetherWith fadeOut(Motion.fadeSpec(durationMillis = 90))
+        },
+        label = "timer-state"
+    ) { running ->
+        if (running) {
+            RunningView(
+                uiState = uiState,
+                onStop = onStop,
+                onUpdateStartTime = onUpdateStartTime,
+                onNavigateToSettings = onNavigateToSettings,
+                onRetryStop = onRetryStop,
+                onLoadRunningTimer = onLoadRunningTimer,
+                onStopOtherRunningTimer = onStopOtherRunningTimer,
+                onPlusButtonClicked = onPlusButtonClicked,
+                onRefreshAll = onRefreshAll,
+                onQuickSaveDescription = onQuickSaveDescription,
+                onUpdateTimerDetails = onUpdateTimerDetails,
+                onConfirmDelete = onConfirmDelete,
                 onOpenUrl = onOpenUrl,
-                showNotionLink = uiState.showNotionLink,
-                showArchiveAction = uiState.showArchiveAction
+                onApplyPreset = onApplyPreset,
+                onStartFromRecentEntry = onStartFromRecentEntry,
+                onManagePresetsClick = { showManagePresetsDialog = true }
             )
-
-            RecentEntriesSection(
-                entries = uiState.recentEntries,
-                loading = uiState.recentEntriesLoading,
-                workspaces = uiState.workspaces,
-                onDelete = { re -> onConfirmDelete(re.pageId, re.title, false) },
+        } else {
+            IdleView(
+                uiState = uiState,
+                onWorkspaceSelect = onWorkspaceSelect,
+                onProjectSelect = onProjectSelect,
+                onDescriptionChange = onDescriptionChange,
+                onExtraValueChange = onExtraValueChange,
+                onStart = onStart,
+                onNavigateToSettings = onNavigateToSettings,
+                onClearError = onClearError,
+                onLoadRunningTimer = onLoadRunningTimer,
+                onStopOtherRunningTimer = onStopOtherRunningTimer,
+                onRefreshAll = onRefreshAll,
+                onConfirmDelete = onConfirmDelete,
                 onOpenUrl = onOpenUrl,
-                onPlay = onStartFromRecentEntry,
-                dateFormat = uiState.dateFormat,
-                timeFormat = uiState.timeFormat,
-                showNotionLink = uiState.showNotionLink,
-                showArchiveAction = uiState.showArchiveAction
+                onApplyPreset = onApplyPreset,
+                onStartFromRecentEntry = onStartFromRecentEntry,
+                onSavePresetClick = { showSavePresetDialog = true },
+                onManagePresetsClick = { showManagePresetsDialog = true }
             )
-
-            if (uiState.recentEntries.isEmpty() && !uiState.recentEntriesLoading &&
-                uiState.runningTimers.isEmpty() && uiState.runningTimersError == null
-            ) {
-                Text(
-                    stringResource(R.string.recent_empty),
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.fillMaxWidth().padding(top = 48.dp),
-                    textAlign = TextAlign.Center
-                )
-            }
-
-            Spacer(Modifier.height(HomeBarClearance))
         }
     }
 }
@@ -536,13 +308,19 @@ private fun RecentView(
 private fun IdleView(
     uiState: TimerViewModel.UiState,
     onWorkspaceSelect: (String) -> Unit,
+    onProjectSelect: (String?) -> Unit,
     onDescriptionChange: (String) -> Unit,
     onExtraValueChange: (String, String) -> Unit,
     onStart: () -> Unit,
     onNavigateToSettings: () -> Unit,
     onClearError: () -> Unit,
+    onLoadRunningTimer: (RunningTimerInfo) -> Unit,
+    onStopOtherRunningTimer: (RunningTimerInfo) -> Unit,
     onRefreshAll: () -> Unit,
+    onConfirmDelete: (String, String, Boolean) -> Unit,
+    onOpenUrl: (String) -> Unit,
     onApplyPreset: (String, Preset) -> Unit = { _, _ -> },
+    onStartFromRecentEntry: (RecentEntryInfo) -> Unit = {},
     onSavePresetClick: () -> Unit,
     onManagePresetsClick: () -> Unit
 ) {
@@ -739,7 +517,33 @@ private fun IdleView(
                 }
             }
 
-            Spacer(Modifier.height(HomeBarClearance))
+            OtherRunningTimers(
+                timers = uiState.runningTimers,
+                loading = uiState.runningTimersLoading,
+                error = uiState.runningTimersError,
+                activePageId = null,
+                onLoad = onLoadRunningTimer,
+                onStop = onStopOtherRunningTimer,
+                onDelete = { rt -> onConfirmDelete(rt.pageId, rt.title, true) },
+                onOpenUrl = onOpenUrl,
+                showNotionLink = uiState.showNotionLink,
+                showArchiveAction = uiState.showArchiveAction
+            )
+
+            RecentEntriesSection(
+                entries = uiState.recentEntries,
+                loading = uiState.recentEntriesLoading,
+                workspaces = uiState.workspaces,
+                onDelete = { re -> onConfirmDelete(re.pageId, re.title, false) },
+                onOpenUrl = onOpenUrl,
+                onPlay = onStartFromRecentEntry,
+                dateFormat = uiState.dateFormat,
+                timeFormat = uiState.timeFormat,
+                showNotionLink = uiState.showNotionLink,
+                showArchiveAction = uiState.showArchiveAction
+            )
+
+            Spacer(Modifier.height(16.dp))
         }
     }
 }
@@ -751,11 +555,16 @@ private fun RunningView(
     onUpdateStartTime: (String) -> Unit,
     onNavigateToSettings: () -> Unit,
     onRetryStop: () -> Unit,
+    onLoadRunningTimer: (RunningTimerInfo) -> Unit,
+    onStopOtherRunningTimer: (RunningTimerInfo) -> Unit,
     onPlusButtonClicked: () -> Unit,
     onRefreshAll: () -> Unit,
     onQuickSaveDescription: (String) -> Unit = {},
     onUpdateTimerDetails: (String?, String, Map<String, String>) -> Unit,
+    onConfirmDelete: (String, String, Boolean) -> Unit,
+    onOpenUrl: (String) -> Unit,
     onApplyPreset: (String, Preset) -> Unit = { _, _ -> },
+    onStartFromRecentEntry: (RecentEntryInfo) -> Unit = {},
     onManagePresetsClick: () -> Unit = {}
 ) {
     val timer = uiState.activeTimer ?: return
@@ -891,14 +700,23 @@ private fun RunningView(
                 }
             }
         ) { padding ->
+          BoxWithConstraints(Modifier.padding(padding)) {
+            // The timer part fills the screen, so the lists start below it with only their first
+            // heading peeking in: the timer gets the screen to itself, the lists a scroll away.
+            val timerAreaMinHeight = (maxHeight - ListsPeek).coerceAtLeast(0.dp)
             Column(
                 modifier = Modifier
-                    .padding(padding)
                     .padding(horizontal = 16.dp)
                     .verticalScroll(scrollState),
-                horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
+              Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = timerAreaMinHeight),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+              ) {
 
                 PresetChips(
                     workspaces = uiState.workspaces,
@@ -1030,57 +848,169 @@ private fun RunningView(
                     }
                 }
 
-                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                    Text(
-                        stringResource(R.string.label_end_time),
-                        style = MaterialTheme.typography.labelMedium,
-                        modifier = Modifier.width(100.dp),
-                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
-                    )
-                    Box(modifier = Modifier.weight(1f)) {
-                        OutlinedTextField(
-                            value = endTimeInput,
-                            onValueChange = { },
-                            readOnly = true,
-                            enabled = false,
-                            modifier = Modifier.fillMaxWidth(),
-                            singleLine = true,
-                            placeholder = { Text(stringResource(R.string.hint_manual_end), color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f)) },
-                            trailingIcon = {
-                                Icon(Icons.Rounded.AccessTime, contentDescription = stringResource(R.string.title_select_end_time), tint = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f))
-                            },
-                            colors = OutlinedTextFieldDefaults.colors(
-                                disabledTextColor = MaterialTheme.colorScheme.onBackground,
-                                disabledBorderColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.3f),
-                                disabledTrailingIconColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
-                            )
-                        )
-                        Box(modifier = Modifier.matchParentSize().clickable { showEndTimePicker() })
-                    }
+                // End time and the extra fields are needed only now and then, so they wait in a
+                // collapsed section. It starts open while a required field is still empty, and
+                // opens when stopping is refused because one is.
+                val requiredBlank = uiState.extraFieldDefs.any { it.required && localExtras[it.propName].isNullOrBlank() }
+                var detailsExpanded by rememberSaveable(timer.notionPageId) {
+                    mutableStateOf(requiredBlank || endTimeInput.isNotBlank())
                 }
-
-                if (uiState.extraFieldDefs.isNotEmpty()) {
-                    Spacer(Modifier.height(4.dp))
-                    Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        uiState.extraFieldDefs.forEach { def ->
-                            ExtraFieldInput(
-                                fieldDef = def,
-                                value = localExtras[def.propName] ?: "",
-                                onValueChange = { value ->
-                                    localExtras = localExtras + (def.propName to value)
-                                    pendingSave = true
+                // The fields load after the timer starts, so check again once they arrive.
+                LaunchedEffect(requiredBlank) {
+                    if (requiredBlank) detailsExpanded = true
+                }
+                LaunchedEffect(uiState.stopError) {
+                    if (uiState.stopError?.let { isValidationMessage(it) } == true) detailsExpanded = true
+                }
+                val endLabel = stringResource(R.string.label_end_time)
+                TimerDetailsSection(
+                    expanded = detailsExpanded,
+                    onToggle = { detailsExpanded = !detailsExpanded },
+                    summary = (listOf(if (endTimeInput.isNotBlank()) "$endLabel $endTimeInput" else endLabel) +
+                        uiState.extraFieldDefs.map { it.propName }).joinToString(" · ")
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                        Text(
+                            stringResource(R.string.label_end_time),
+                            style = MaterialTheme.typography.labelMedium,
+                            modifier = Modifier.width(100.dp),
+                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
+                        )
+                        Box(modifier = Modifier.weight(1f)) {
+                            OutlinedTextField(
+                                value = endTimeInput,
+                                onValueChange = { },
+                                readOnly = true,
+                                enabled = false,
+                                modifier = Modifier.fillMaxWidth(),
+                                singleLine = true,
+                                placeholder = { Text(stringResource(R.string.hint_manual_end), color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f)) },
+                                trailingIcon = {
+                                    Icon(Icons.Rounded.AccessTime, contentDescription = stringResource(R.string.title_select_end_time), tint = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f))
                                 },
-                                modifier = Modifier.fillMaxWidth()
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    disabledTextColor = MaterialTheme.colorScheme.onBackground,
+                                    disabledBorderColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.3f),
+                                    disabledTrailingIconColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
+                                )
                             )
+                            Box(modifier = Modifier.matchParentSize().clickable { showEndTimePicker() })
                         }
                     }
-                }
 
-                Spacer(Modifier.height(HomeBarClearance))
+                    uiState.extraFieldDefs.forEach { def ->
+                        ExtraFieldInput(
+                            fieldDef = def,
+                            value = localExtras[def.propName] ?: "",
+                            onValueChange = { value ->
+                                localExtras = localExtras + (def.propName to value)
+                                pendingSave = true
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                }
+              }
+
+                OtherRunningTimers(
+                    timers = uiState.runningTimers,
+                    loading = uiState.runningTimersLoading,
+                    error = uiState.runningTimersError,
+                    activePageId = uiState.activeTimer?.notionPageId,
+                    onLoad = onLoadRunningTimer,
+                    onStop = onStopOtherRunningTimer,
+                    onDelete = { rt -> onConfirmDelete(rt.pageId, rt.title, true) },
+                    onOpenUrl = onOpenUrl,
+                    showNotionLink = uiState.showNotionLink,
+                    showArchiveAction = uiState.showArchiveAction
+                )
+
+                RecentEntriesSection(
+                    entries = uiState.recentEntries,
+                    loading = uiState.recentEntriesLoading,
+                    workspaces = uiState.workspaces,
+                    onDelete = { re -> onConfirmDelete(re.pageId, re.title, false) },
+                    onOpenUrl = onOpenUrl,
+                    onPlay = onStartFromRecentEntry,
+                    dateFormat = uiState.dateFormat,
+                    timeFormat = uiState.timeFormat,
+                    showNotionLink = uiState.showNotionLink,
+                    showArchiveAction = uiState.showArchiveAction
+                )
+
+                Spacer(Modifier.height(16.dp))
             }
+          }
+        }
+    }
+}
+
+/** How much of the lists shows under a running timer before scrolling: their first heading. */
+private val ListsPeek: Dp = 56.dp
+
+/**
+ * The running timer's less-used fields (end time, extra fields) behind a header that expands
+ * and collapses them, styled like the settings sections (`CollapsibleSection`): a Group-shaped
+ * card, Title Medium title, what is inside as the summary, a turning chevron. Its open state
+ * is held by the caller so a refused stop can open it.
+ */
+@Composable
+private fun TimerDetailsSection(
+    expanded: Boolean,
+    onToggle: () -> Unit,
+    summary: String,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    val animate = !rememberReducedMotion()
+    val chevronRotation by animateFloatAsState(if (expanded) 180f else 0f, label = "details-chevron")
+    val stateText = stringResource(if (expanded) R.string.section_expanded else R.string.section_collapsed)
+    Card(
+        shape = AppShapes.Group,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(role = Role.Button, onClick = onToggle)
+                .semantics { stateDescription = stateText }
+                .padding(horizontal = 20.dp, vertical = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Icon(Icons.Rounded.Tune, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+            Column(Modifier.weight(1f)) {
+                Text(
+                    stringResource(R.string.section_timer_details),
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.semantics { heading() }
+                )
+                if (!expanded) {
+                    Text(
+                        summary,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+            Icon(
+                painter = painterResource(R.drawable.ic_expand_more),
+                contentDescription = null,
+                modifier = Modifier.rotate(chevronRotation)
+            )
+        }
+        AnimatedVisibility(
+            visible = expanded,
+            enter = if (animate) fadeIn() + expandVertically() else EnterTransition.None,
+            exit = if (animate) fadeOut() + shrinkVertically() else ExitTransition.None
+        ) {
+            Column(
+                modifier = Modifier.padding(start = 20.dp, end = 20.dp, bottom = 20.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                content = content
+            )
         }
     }
 }
@@ -1395,12 +1325,9 @@ private fun PresetChips(
  *  Transparent, so a running timer's tinted background runs up behind it. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun TimerTopBar(
-    title: String = stringResource(R.string.app_title),
-    actions: @Composable RowScope.() -> Unit
-) {
+private fun TimerTopBar(actions: @Composable RowScope.() -> Unit) {
     TopAppBar(
-        title = { Text(title) },
+        title = { Text(stringResource(R.string.app_title)) },
         actions = actions,
         colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
     )
