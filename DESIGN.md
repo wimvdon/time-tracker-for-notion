@@ -122,7 +122,8 @@ the other two repositories:
   (56dp, Title Medium label, 24dp icon), round, tightening to 12dp corners while pressed.
 - The home screen's form uses standard outlined fields with the field's name as its own
   floating label (no separate label line above), all one height, so Start is the one thing
-  that stands out. The workspace field shows the workspace colour as a dot at its start.
+  that stands out. The workspace field shows the workspace colour as a dot at its start, and
+  each workspace in its menu has the same dot.
 - List sections (Active timers, Recent time entries) start with a Title Medium heading and
   are set apart by space, not dividers.
 - Start is green and Stop is red whatever the theme or wallpaper colours (a workspace colour

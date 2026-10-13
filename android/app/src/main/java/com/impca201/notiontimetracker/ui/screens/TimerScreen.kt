@@ -398,7 +398,15 @@ private fun IdleView(
                 label = stringResource(R.string.label_workspace),
                 leadingIcon = selectedWorkspaceColor?.let { color ->
                     { WorkspaceSwatch(color) }
-                }
+                },
+                // The same dots in the menu. Workspaces without a colour get an empty slot
+                // so the names stay lined up.
+                optionLeadingIcon = if (uiState.workspaces.any { workspaceAccentColor(it.color) != null }) {
+                    { opt ->
+                        val color = workspaceAccentColor(uiState.workspaces.firstOrNull { it.id == opt.id }?.color)
+                        WorkspaceSwatch(color ?: Color.Transparent)
+                    }
+                } else null
             )
 
             // Like required extra fields, a required description is enforced when
