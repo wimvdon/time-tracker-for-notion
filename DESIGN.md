@@ -104,9 +104,10 @@ the other two repositories:
 
 - Seed `#F04438` (red), green tertiary (`#16A34A`) for Start when a workspace has no colour.
 - Signature element: the running timer. The elapsed time sits on a slowly turning nine-lobed
-  cookie shape (the Material 3 Expressive shape Snoozer's toggle uses), inside a ring that fills
-  over each minute; it springs in when a timer starts. The large pill Start / Stop buttons
-  square off while pressed.
+  cookie shape (the Material 3 Expressive shape Snoozer's toggle uses) that springs in when a
+  timer starts, over the same slowly breathing glow as Snoozer's snoozing screen. No progress
+  ring: a running timer has no target. Start and Stop are Material 3 Expressive medium buttons
+  (56dp, Title Medium label, 24dp icon), round, tightening to 12dp corners while pressed.
 - Start is green and Stop is red whatever the theme or wallpaper colours (a workspace colour
   replaces the green), so their meaning never depends on Dynamic color.
 - The launcher icon comes from `windows/scripts/generate-icons.cjs` (`npm run icons`), which

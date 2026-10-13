@@ -6,10 +6,8 @@ import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -18,14 +16,11 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.graphics.Shape
-import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.asComposePath
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Density
@@ -66,15 +61,13 @@ private object CookieShape : Shape {
 }
 
 /**
- * The running timer: the elapsed time on a slowly turning cookie shape, inside a ring that fills
- * over each minute. It springs in when a timer starts. With animations switched off on the
- * device, it stands still and the ring jumps instead of sweeping.
+ * The running timer: the elapsed time on a slowly turning cookie shape that springs in when a
+ * timer starts. There is no progress ring: a running timer has no target to progress towards.
+ * With animations switched off on the device, the shape stands still.
  */
 @Composable
 fun TimerHero(
     elapsedText: String,
-    elapsedSeconds: Long,
-    accent: Color,
     container: Color,
     contentColor: Color,
     modifier: Modifier = Modifier,
@@ -95,50 +88,19 @@ fun TimerHero(
         }
     }
 
-    // Fraction of the current minute; sweeps smoothly to each new second, restarts at the minute.
-    val ring = remember { Animatable((elapsedSeconds % 60) / 60f) }
-    LaunchedEffect(elapsedSeconds, animate) {
-        val target = (elapsedSeconds % 60) / 60f
-        if (target < ring.value || !animate) ring.snapTo(target) else ring.animateTo(target, tween(900, easing = LinearEasing))
-    }
-
     Box(
         modifier =
             modifier
-                .size(288.dp)
+                .size(272.dp)
                 .graphicsLayer {
                     scaleX = appear.value
                     scaleY = appear.value
                 },
         contentAlignment = Alignment.Center,
     ) {
-        Canvas(Modifier.matchParentSize()) {
-            val stroke = 8.dp.toPx()
-            val inset = stroke / 2
-            val arcSize = Size(size.width - stroke, size.height - stroke)
-            drawArc(
-                color = accent.copy(alpha = 0.18f),
-                startAngle = 0f,
-                sweepAngle = 360f,
-                useCenter = false,
-                topLeft = Offset(inset, inset),
-                size = arcSize,
-                style = Stroke(stroke),
-            )
-            drawArc(
-                color = accent,
-                startAngle = -90f,
-                sweepAngle = ring.value * 360f,
-                useCenter = false,
-                topLeft = Offset(inset, inset),
-                size = arcSize,
-                style = Stroke(stroke, cap = StrokeCap.Round),
-            )
-        }
         Box(
             Modifier
                 .matchParentSize()
-                .padding(22.dp)
                 .graphicsLayer { rotationZ = rotation.value }
                 .background(container, CookieShape),
         )

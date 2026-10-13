@@ -37,6 +37,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.res.stringResource
@@ -62,6 +66,7 @@ import com.impca201.notiontimetracker.data.models.RunningTimerInfo
 import com.impca201.notiontimetracker.ui.components.EditTimerModal
 import com.impca201.notiontimetracker.ui.components.ExtraFieldInput
 import com.impca201.notiontimetracker.ui.components.SearchableDropdown
+import com.impca201.notiontimetracker.ui.components.RunningGlow
 import com.impca201.notiontimetracker.ui.components.TimerHero
 import com.impca201.notiontimetracker.viewmodel.TimerViewModel
 import java.time.OffsetDateTime
@@ -636,247 +641,262 @@ private fun RunningView(
         if (workspaceColor != null) 0.20f else 0.45f
     )
     val scrollState = rememberScrollState()
+    var heroCenter by remember { mutableStateOf<Offset?>(null) }
+    var screenOrigin by remember { mutableStateOf(Offset.Zero) }
 
-    Scaffold(
-        containerColor = scaffoldBg,
-        contentColor = MaterialTheme.colorScheme.onBackground,
-        topBar = {
-            TimerTopBar {
-                IconButton(onClick = onPlusButtonClicked) {
-                    Icon(Icons.Rounded.Add, contentDescription = stringResource(R.string.start_new_timer))
-                }
-                RefreshIconButton(
-                    loading = uiState.runningTimersLoading || uiState.recentEntriesLoading,
-                    onClick = onRefreshAll
-                )
-                IconButton(onClick = onNavigateToSettings) {
-                    Icon(Icons.Rounded.Settings, contentDescription = stringResource(R.string.title_settings))
-                }
-            }
-        }
-    ) { padding ->
-        Column(
-            modifier = Modifier
-                .padding(padding)
-                .padding(horizontal = 16.dp)
-                .verticalScroll(scrollState),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-
-            PresetChips(
-                workspaces = uiState.workspaces,
-                apiKey = uiState.apiKey,
-                onApplyPreset = onApplyPreset,
-                onManageClick = onManagePresetsClick
-            )
-
-            Spacer(Modifier.height(4.dp))
-
-            Text(
-                workspace?.name ?: "",
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
-            )
-
-            var localProjectId by remember(timer.notionPageId) { mutableStateOf(uiState.selectedProjectId) }
-            var localExtras by remember(timer.notionPageId) { mutableStateOf(uiState.extraValues) }
-            var pendingSave by remember(timer.notionPageId) { mutableStateOf(false) }
-            LaunchedEffect(uiState.extraFieldDefs, uiState.selectedProjectId, uiState.extraValues, timer.notionPageId) {
-                // A refresh from Notion must not overwrite an edit that has not been
-                // saved yet (the save is debounced by 600 ms, the auto-refresh runs
-                // every 60 s — without this the value snapped back while typing).
-                if (pendingSave) return@LaunchedEffect
-                localProjectId = uiState.selectedProjectId
-                localExtras = uiState.extraValues
-            }
-            LaunchedEffect(localProjectId, localExtras, pendingSave) {
-                if (!pendingSave) return@LaunchedEffect
-                kotlinx.coroutines.delay(600)
-                onUpdateTimerDetails(localProjectId, timer.description, localExtras)
-                pendingSave = false
-            }
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                OutlinedTextField(
-                    value = titleDraft,
-                    onValueChange = { titleDraft = it },
-                    modifier = Modifier.weight(1f),
-                    singleLine = true,
-                    isError = workspace?.descriptionRequired == true && titleDraft.isBlank(),
-                    placeholder = { Text(stringResource(R.string.hint_timer_title), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f)) },
-                    textStyle = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onBackground),
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                    keyboardActions = KeyboardActions(onDone = { onQuickSaveDescription(titleDraft.trim()) }),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = MaterialTheme.colorScheme.onBackground,
-                        unfocusedTextColor = MaterialTheme.colorScheme.onBackground,
-                        focusedBorderColor = workspaceAccent ?: MaterialTheme.colorScheme.primary,
-                        unfocusedBorderColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.3f)
+    Box(
+        Modifier
+            .fillMaxSize()
+            .background(scaffoldBg)
+            .onGloballyPositioned { screenOrigin = it.positionInRoot() }
+    ) {
+        RunningGlow(
+            primary = workspaceAccent ?: MaterialTheme.colorScheme.primary,
+            secondary = MaterialTheme.colorScheme.tertiary,
+            center = heroCenter?.minus(screenOrigin),
+            animate = !rememberReducedMotion(),
+            modifier = Modifier.matchParentSize()
+        )
+        Scaffold(
+            containerColor = Color.Transparent,
+            contentColor = MaterialTheme.colorScheme.onBackground,
+            topBar = {
+                TimerTopBar {
+                    IconButton(onClick = onPlusButtonClicked) {
+                        Icon(Icons.Rounded.Add, contentDescription = stringResource(R.string.start_new_timer))
+                    }
+                    RefreshIconButton(
+                        loading = uiState.runningTimersLoading || uiState.recentEntriesLoading,
+                        onClick = onRefreshAll
                     )
-                )
-                if (isTitleDirty) {
-                    IconButton(onClick = { onQuickSaveDescription(titleDraft.trim()) }, modifier = Modifier.size(36.dp)) {
-                        Icon(
-                            Icons.Rounded.Check,
-                            contentDescription = stringResource(R.string.btn_save_changes),
-                            modifier = Modifier.size(18.dp),
-                            tint = MaterialTheme.colorScheme.primary
-                        )
+                    IconButton(onClick = onNavigateToSettings) {
+                        Icon(Icons.Rounded.Settings, contentDescription = stringResource(R.string.title_settings))
                     }
                 }
             }
+        ) { padding ->
+            Column(
+                modifier = Modifier
+                    .padding(padding)
+                    .padding(horizontal = 16.dp)
+                    .verticalScroll(scrollState),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
 
-            Spacer(Modifier.height(8.dp))
+                PresetChips(
+                    workspaces = uiState.workspaces,
+                    apiKey = uiState.apiKey,
+                    onApplyPreset = onApplyPreset,
+                    onManageClick = onManagePresetsClick
+                )
 
-            TimerHero(
-                elapsedText = formatElapsed(uiState.elapsedSeconds),
-                elapsedSeconds = uiState.elapsedSeconds,
-                accent = workspaceAccent ?: MaterialTheme.colorScheme.primary,
-                container = lerp(
-                    MaterialTheme.colorScheme.surfaceContainerHighest,
-                    workspaceColor ?: MaterialTheme.colorScheme.primaryContainer,
-                    if (workspaceColor != null) 0.35f else 0.6f
-                ),
-                contentColor = MaterialTheme.colorScheme.onSurface
-            )
+                Spacer(Modifier.height(4.dp))
 
-            uiState.stopError?.let { err ->
-                val errMsg = localisedMessage(err)
-                Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)) {
-                    Row(modifier = Modifier.padding(12.dp)) {
-                        Text(errMsg, modifier = Modifier.weight(1f), color = MaterialTheme.colorScheme.onErrorContainer)
-                        if (!isValidationMessage(err)) {
-                            TextButton(onClick = onRetryStop) { Text(stringResource(R.string.toast_stop_retry)) }
+                Text(
+                    workspace?.name ?: "",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
+                )
+
+                var localProjectId by remember(timer.notionPageId) { mutableStateOf(uiState.selectedProjectId) }
+                var localExtras by remember(timer.notionPageId) { mutableStateOf(uiState.extraValues) }
+                var pendingSave by remember(timer.notionPageId) { mutableStateOf(false) }
+                LaunchedEffect(uiState.extraFieldDefs, uiState.selectedProjectId, uiState.extraValues, timer.notionPageId) {
+                    // A refresh from Notion must not overwrite an edit that has not been
+                    // saved yet (the save is debounced by 600 ms, the auto-refresh runs
+                    // every 60 s — without this the value snapped back while typing).
+                    if (pendingSave) return@LaunchedEffect
+                    localProjectId = uiState.selectedProjectId
+                    localExtras = uiState.extraValues
+                }
+                LaunchedEffect(localProjectId, localExtras, pendingSave) {
+                    if (!pendingSave) return@LaunchedEffect
+                    kotlinx.coroutines.delay(600)
+                    onUpdateTimerDetails(localProjectId, timer.description, localExtras)
+                    pendingSave = false
+                }
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    OutlinedTextField(
+                        value = titleDraft,
+                        onValueChange = { titleDraft = it },
+                        modifier = Modifier.weight(1f),
+                        singleLine = true,
+                        isError = workspace?.descriptionRequired == true && titleDraft.isBlank(),
+                        placeholder = { Text(stringResource(R.string.hint_timer_title), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f)) },
+                        textStyle = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onBackground),
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                        keyboardActions = KeyboardActions(onDone = { onQuickSaveDescription(titleDraft.trim()) }),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = MaterialTheme.colorScheme.onBackground,
+                            unfocusedTextColor = MaterialTheme.colorScheme.onBackground,
+                            focusedBorderColor = workspaceAccent ?: MaterialTheme.colorScheme.primary,
+                            unfocusedBorderColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.3f)
+                        )
+                    )
+                    if (isTitleDirty) {
+                        IconButton(onClick = { onQuickSaveDescription(titleDraft.trim()) }, modifier = Modifier.size(36.dp)) {
+                            Icon(
+                                Icons.Rounded.Check,
+                                contentDescription = stringResource(R.string.btn_save_changes),
+                                modifier = Modifier.size(18.dp),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
                         }
                     }
                 }
-            }
 
-            TimerActionButton(
-                label = stringResource(R.string.btn_stop),
-                icon = Icons.Rounded.Stop,
-                onClick = handleStopClick,
-                enabled = !uiState.isStopping,
-                loading = uiState.isStopping,
-                containerColor = TimerColors.Stop,
-                contentColor = TimerColors.OnAction,
-                modifier = Modifier.fillMaxWidth()
-            )
+                Spacer(Modifier.height(8.dp))
 
-            Spacer(Modifier.height(4.dp))
-
-            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                Text(
-                    stringResource(R.string.label_start_time),
-                    style = MaterialTheme.typography.labelMedium,
-                    modifier = Modifier.width(100.dp),
-                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
+                TimerHero(
+                    elapsedText = formatElapsed(uiState.elapsedSeconds),
+                    modifier = Modifier.onGloballyPositioned { heroCenter = it.boundsInRoot().center },
+                    container = lerp(
+                        MaterialTheme.colorScheme.surfaceContainerHighest,
+                        workspaceColor ?: MaterialTheme.colorScheme.primaryContainer,
+                        if (workspaceColor != null) 0.35f else 0.6f
+                    ),
+                    contentColor = MaterialTheme.colorScheme.onSurface
                 )
-                Box(modifier = Modifier.weight(1f)) {
-                    OutlinedTextField(
-                        value = startTimeInput,
-                        onValueChange = { },
-                        readOnly = true,
-                        enabled = false,
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true,
-                        textStyle = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onBackground),
-                        trailingIcon = {
-                            Icon(Icons.Rounded.AccessTime, contentDescription = stringResource(R.string.title_select_start_time), tint = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f))
-                        },
-                        colors = OutlinedTextFieldDefaults.colors(
-                            disabledTextColor = MaterialTheme.colorScheme.onBackground,
-                            disabledBorderColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.3f),
-                            disabledTrailingIconColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
-                        )
-                    )
-                    Box(modifier = Modifier.matchParentSize().clickable { showStartTimePicker() })
-                }
-            }
 
-            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                Text(
-                    stringResource(R.string.label_end_time),
-                    style = MaterialTheme.typography.labelMedium,
-                    modifier = Modifier.width(100.dp),
-                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
-                )
-                Box(modifier = Modifier.weight(1f)) {
-                    OutlinedTextField(
-                        value = endTimeInput,
-                        onValueChange = { },
-                        readOnly = true,
-                        enabled = false,
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true,
-                        placeholder = { Text(stringResource(R.string.hint_manual_end), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f)) },
-                        textStyle = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onBackground),
-                        trailingIcon = {
-                            Icon(Icons.Rounded.AccessTime, contentDescription = stringResource(R.string.title_select_end_time), tint = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f))
-                        },
-                        colors = OutlinedTextFieldDefaults.colors(
-                            disabledTextColor = MaterialTheme.colorScheme.onBackground,
-                            disabledBorderColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.3f),
-                            disabledTrailingIconColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
-                        )
-                    )
-                    Box(modifier = Modifier.matchParentSize().clickable { showEndTimePicker() })
-                }
-            }
-
-            if (uiState.extraFieldDefs.isNotEmpty()) {
-                Spacer(Modifier.height(4.dp))
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    uiState.extraFieldDefs.forEach { def ->
-                        ExtraFieldInput(
-                            fieldDef = def,
-                            value = localExtras[def.propName] ?: "",
-                            onValueChange = { value ->
-                                localExtras = localExtras + (def.propName to value)
-                                pendingSave = true
-                            },
-                            modifier = Modifier.fillMaxWidth()
-                        )
+                uiState.stopError?.let { err ->
+                    val errMsg = localisedMessage(err)
+                    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)) {
+                        Row(modifier = Modifier.padding(12.dp)) {
+                            Text(errMsg, modifier = Modifier.weight(1f), color = MaterialTheme.colorScheme.onErrorContainer)
+                            if (!isValidationMessage(err)) {
+                                TextButton(onClick = onRetryStop) { Text(stringResource(R.string.toast_stop_retry)) }
+                            }
+                        }
                     }
                 }
+
+                TimerActionButton(
+                    label = stringResource(R.string.btn_stop),
+                    icon = Icons.Rounded.Stop,
+                    onClick = handleStopClick,
+                    enabled = !uiState.isStopping,
+                    loading = uiState.isStopping,
+                    containerColor = TimerColors.Stop,
+                    contentColor = TimerColors.OnAction,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(Modifier.height(4.dp))
+
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        stringResource(R.string.label_start_time),
+                        style = MaterialTheme.typography.labelMedium,
+                        modifier = Modifier.width(100.dp),
+                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
+                    )
+                    Box(modifier = Modifier.weight(1f)) {
+                        OutlinedTextField(
+                            value = startTimeInput,
+                            onValueChange = { },
+                            readOnly = true,
+                            enabled = false,
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true,
+                            textStyle = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onBackground),
+                            trailingIcon = {
+                                Icon(Icons.Rounded.AccessTime, contentDescription = stringResource(R.string.title_select_start_time), tint = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f))
+                            },
+                            colors = OutlinedTextFieldDefaults.colors(
+                                disabledTextColor = MaterialTheme.colorScheme.onBackground,
+                                disabledBorderColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.3f),
+                                disabledTrailingIconColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
+                            )
+                        )
+                        Box(modifier = Modifier.matchParentSize().clickable { showStartTimePicker() })
+                    }
+                }
+
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        stringResource(R.string.label_end_time),
+                        style = MaterialTheme.typography.labelMedium,
+                        modifier = Modifier.width(100.dp),
+                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
+                    )
+                    Box(modifier = Modifier.weight(1f)) {
+                        OutlinedTextField(
+                            value = endTimeInput,
+                            onValueChange = { },
+                            readOnly = true,
+                            enabled = false,
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true,
+                            placeholder = { Text(stringResource(R.string.hint_manual_end), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f)) },
+                            textStyle = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onBackground),
+                            trailingIcon = {
+                                Icon(Icons.Rounded.AccessTime, contentDescription = stringResource(R.string.title_select_end_time), tint = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f))
+                            },
+                            colors = OutlinedTextFieldDefaults.colors(
+                                disabledTextColor = MaterialTheme.colorScheme.onBackground,
+                                disabledBorderColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.3f),
+                                disabledTrailingIconColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
+                            )
+                        )
+                        Box(modifier = Modifier.matchParentSize().clickable { showEndTimePicker() })
+                    }
+                }
+
+                if (uiState.extraFieldDefs.isNotEmpty()) {
+                    Spacer(Modifier.height(4.dp))
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        uiState.extraFieldDefs.forEach { def ->
+                            ExtraFieldInput(
+                                fieldDef = def,
+                                value = localExtras[def.propName] ?: "",
+                                onValueChange = { value ->
+                                    localExtras = localExtras + (def.propName to value)
+                                    pendingSave = true
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                    }
+                }
+
+
+                Spacer(Modifier.height(8.dp))
+
+                OtherRunningTimers(
+                    timers = uiState.runningTimers,
+                    loading = uiState.runningTimersLoading,
+                    error = uiState.runningTimersError,
+                    activePageId = uiState.activeTimer?.notionPageId,
+                    onLoad = onLoadRunningTimer,
+                    onStop = onStopOtherRunningTimer,
+                    onDelete = { rt -> onConfirmDelete(rt.pageId, rt.title, true) },
+                    onOpenUrl = onOpenUrl,
+                    showNotionLink = uiState.showNotionLink,
+                    showArchiveAction = uiState.showArchiveAction
+                )
+
+                RecentEntriesSection(
+                    entries = uiState.recentEntries,
+                    loading = uiState.recentEntriesLoading,
+                    workspaces = uiState.workspaces,
+                    onDelete = { re -> onConfirmDelete(re.pageId, re.title, false) },
+                    onOpenUrl = onOpenUrl,
+                    onPlay = onStartFromRecentEntry,
+                    dateFormat = uiState.dateFormat,
+                    timeFormat = uiState.timeFormat,
+                    showNotionLink = uiState.showNotionLink,
+                    showArchiveAction = uiState.showArchiveAction
+                )
+
+                Spacer(Modifier.height(16.dp))
             }
-
-
-            Spacer(Modifier.height(8.dp))
-
-            OtherRunningTimers(
-                timers = uiState.runningTimers,
-                loading = uiState.runningTimersLoading,
-                error = uiState.runningTimersError,
-                activePageId = uiState.activeTimer?.notionPageId,
-                onLoad = onLoadRunningTimer,
-                onStop = onStopOtherRunningTimer,
-                onDelete = { rt -> onConfirmDelete(rt.pageId, rt.title, true) },
-                onOpenUrl = onOpenUrl,
-                showNotionLink = uiState.showNotionLink,
-                showArchiveAction = uiState.showArchiveAction
-            )
-
-            RecentEntriesSection(
-                entries = uiState.recentEntries,
-                loading = uiState.recentEntriesLoading,
-                workspaces = uiState.workspaces,
-                onDelete = { re -> onConfirmDelete(re.pageId, re.title, false) },
-                onOpenUrl = onOpenUrl,
-                onPlay = onStartFromRecentEntry,
-                dateFormat = uiState.dateFormat,
-                timeFormat = uiState.timeFormat,
-                showNotionLink = uiState.showNotionLink,
-                showArchiveAction = uiState.showArchiveAction
-            )
-
-            Spacer(Modifier.height(16.dp))
         }
     }
 }
@@ -1177,7 +1197,7 @@ private fun TimerTopBar(actions: @Composable RowScope.() -> Unit) {
     )
 }
 
-private val TimerActionButtonHeight: Dp = 72.dp
+private val TimerActionButtonHeight: Dp = 56.dp
 
 /**
  * Start and Stop keep their meaning whatever the theme or wallpaper colours: green and red, with
@@ -1190,8 +1210,9 @@ private object TimerColors {
 }
 
 /**
- * The large Start / Stop button. A full pill that squares off a little while pressed (Material 3
- * Expressive shape morph); its colour follows the workspace, so switching workspaces animates it.
+ * The Start / Stop button, sized as a Material 3 Expressive medium button: 56dp high, a Title
+ * Medium label, 24dp icon. Fully round, tightening to 12dp corners while pressed (the Expressive
+ * shape morph); its colour follows the workspace, so switching workspaces animates it.
  */
 @Composable
 private fun TimerActionButton(
@@ -1208,7 +1229,7 @@ private fun TimerActionButton(
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
     val corner by animateDpAsState(
-        targetValue = if (pressed && animate) 20.dp else TimerActionButtonHeight / 2,
+        targetValue = if (pressed && animate) 12.dp else TimerActionButtonHeight / 2,
         animationSpec = spring(dampingRatio = 0.6f, stiffness = 800f),
         label = "timer-button-corner"
     )
@@ -1223,11 +1244,11 @@ private fun TimerActionButton(
         contentPadding = PaddingValues(horizontal = 24.dp)
     ) {
         if (loading) {
-            CircularProgressIndicator(modifier = Modifier.size(28.dp), strokeWidth = 3.dp, color = contentColor)
+            CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 3.dp, color = contentColor)
         } else {
-            Icon(icon, contentDescription = null, modifier = Modifier.size(28.dp))
-            Spacer(Modifier.width(12.dp))
-            Text(label, style = MaterialTheme.typography.titleLarge)
+            Icon(icon, contentDescription = null, modifier = Modifier.size(24.dp))
+            Spacer(Modifier.width(8.dp))
+            Text(label, style = MaterialTheme.typography.titleMedium)
         }
     }
 }
