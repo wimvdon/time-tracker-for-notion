@@ -1,11 +1,8 @@
 package com.impca201.notiontimetracker.ui.screens
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.*
 import androidx.compose.material.icons.rounded.*
@@ -21,9 +18,6 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.impca201.notiontimetracker.R
 import com.impca201.notiontimetracker.data.models.ThemeMode
@@ -76,9 +70,6 @@ fun SettingsScreen(
     onExtraPropNameChange: (Int, String) -> Unit,
     onExtraPropRequiredChange: (Int, Boolean) -> Unit,
     onExtraPropDefaultChange: (Int, String?) -> Unit,
-    onAddPreset: () -> Unit = {},
-    onRemovePreset: (Int) -> Unit = {},
-    onUpdatePreset: (Int, com.impca201.notiontimetracker.data.models.Preset) -> Unit = { _, _ -> },
     onThemeModeChange: (ThemeMode) -> Unit,
     onDynamicColorChange: (Boolean) -> Unit,
     onSnackbarDismiss: () -> Unit,
@@ -136,9 +127,6 @@ fun SettingsScreen(
             onExtraPropNameChange = onExtraPropNameChange,
             onExtraPropRequiredChange = onExtraPropRequiredChange,
             onExtraPropDefaultChange = onExtraPropDefaultChange,
-            onAddPreset = onAddPreset,
-            onRemovePreset = onRemovePreset,
-            onUpdatePreset = onUpdatePreset,
             isValid = isEditValid
         )
         return
@@ -336,6 +324,8 @@ fun SettingsScreen(
                     )
                 }
                 OutlinedButton(onClick = onAddWorkspace, modifier = Modifier.fillMaxWidth()) {
+                    Icon(Icons.Rounded.Add, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
+                    Spacer(Modifier.width(ButtonDefaults.IconSpacing))
                     Text(stringResource(R.string.btn_add_workspace))
                 }
             }
@@ -345,6 +335,10 @@ fun SettingsScreen(
             CollapsibleSection(
                 key = "notion-actions",
                 title = stringResource(R.string.label_notion_actions),
+                summary = listOfNotNull(
+                    stringResource(R.string.title_open_in_notion).takeIf { uiState.showNotionLink },
+                    stringResource(R.string.confirm_delete_confirm).takeIf { uiState.showArchiveAction }
+                ).joinToString(", ").ifEmpty { null },
                 icon = rememberVectorPainter(Icons.Rounded.Link)
             ) {
                 SwitchSetting(

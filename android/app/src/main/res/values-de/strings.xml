@@ -4,18 +4,15 @@
 
     <!-- Timer — idle -->
     <string name="label_workspace">Workspace</string>
-    <string name="label_project">Projekt</string>
     <string name="label_description">Arbeite an…</string>
     <string name="placeholder_description">Beschreibung</string>
     <string name="placeholder_select_workspace">Workspace auswählen…</string>
-    <string name="placeholder_select_project">Projekt auswählen…</string>
     <string name="placeholder_loading">Laden…</string>
     <string name="btn_start">Start</string>
     <string name="btn_stop">Stopp</string>
     <string name="label_start_time">Startzeit</string>
     <string name="label_end_time">Endzeit</string>
     <string name="hint_manual_end">Das Eintragen einer Endzeit stoppt den Timer.</string>
-    <string name="toast_end_before_start">Die Endzeit muss nach der Startzeit liegen.</string>
     <string name="warn_no_api_key">Kein Notion-API-Schlüssel konfiguriert.</string>
     <string name="warn_no_api_key_link">Einstellungen öffnen</string>
     <string name="warn_no_workspaces">Füge einen Workspace in den</string>
@@ -29,7 +26,7 @@
     <string name="placeholder_api_key">secret_… oder ntn_…</string>
     <string name="btn_show_key">Anzeigen</string>
     <string name="btn_hide_key">Ausblenden</string>
-    <string name="btn_test_and_save_key">Verbindung testen &amp; speichern</string>
+    <string name="btn_test_and_save_key">Verbindung testen und speichern</string>
     <string name="btn_testing_key">Testen…</string>
     <string name="btn_remove_key">Schlüssel entfernen</string>
     <string name="label_workspaces">Workspaces</string>
@@ -38,7 +35,7 @@
     <string name="title_delete_workspace_disabled">Stoppe zuerst den Timer</string>
     <string name="title_move_up">Nach oben</string>
     <string name="title_move_down">Nach unten</string>
-    <string name="btn_add_workspace">+ Workspace hinzufügen</string>
+    <string name="btn_add_workspace">Workspace hinzufügen</string>
 
     <!-- Workspace modal -->
     <string name="modal_title_add_workspace">Workspace hinzufügen</string>
@@ -46,8 +43,6 @@
     <string name="label_workspace_name">Name</string>
     <string name="placeholder_workspace_name">Mein Arbeitsbereich</string>
     <string name="label_time_entries_db">Zeiteinträge-Datenbank</string>
-    <string name="hint_time_entries_db">Zeiteinträge werden hier erstellt. Erforderlich: ein Datumsbereichsfeld, ein Statusfeld und idealerweise ein Verknüpfungsfeld zu einer Projektdatenbank.</string>
-    <string name="label_projects_db">Projektdatenbank</string>
     <string name="placeholder_select_database">Datenbank auswählen…</string>
     <string name="placeholder_select">Auswählen…</string>
     <string name="placeholder_search">Suchen…</string>
@@ -55,24 +50,16 @@
     <string name="dropdown_none">– Keine –</string>
     <string name="btn_clear">Löschen</string>
     <string name="btn_refresh_databases">Aktualisieren</string>
-    <string name="loading_databases">Lade Datenbanken…</string>
-    <string name="error_loading_databases">Datenbanken konnten nicht geladen werden</string>
-    <string name="error_loading_schema">Datenbank-Eigenschaften konnten nicht geladen werden</string>
     <string name="no_databases_found">Keine Datenbanken gefunden. Verknüpfe deine Integration zuerst in Notion mit den entsprechenden Seiten.</string>
     <string name="btn_retry">Wiederholen</string>
     <string name="label_time_entry_date_prop">Datumsbereichsfeld</string>
-    <string name="hint_time_entry_date_prop">Speichert Start- und Endzeit.</string>
     <string name="label_time_entry_status_prop">Statusfeld</string>
-    <string name="hint_time_entry_status_prop">Verfolgt, ob der Timer läuft oder abgeschlossen ist.</string>
     <string name="label_time_entry_status_running">Status-Option für \"Laufend\"</string>
-    <string name="hint_time_entry_status_running">Die Option, die einen Zeiteintrag als in Bearbeitung markiert.</string>
     <string name="label_time_entry_status_done">Status-Option für \"Abgeschlossen\"</string>
-    <string name="hint_time_entry_status_done">Die Option, die einen Zeiteintrag als abgeschlossen markiert.</string>
-    <string name="label_relation_prop">Verknüpfungsfeld (Projekte)</string>
     <string name="loading_properties">Lade…</string>
     <string name="section_extra_fields">Zusatzfelder (optional)</string>
     <string name="hint_extra_fields">Bis zu fünf zusätzliche Felder aus der Zeiteinträge-Datenbank, die manuell im Timer ausgefüllt werden.</string>
-    <string name="btn_add_extra_field">+ Feld hinzufügen</string>
+    <string name="btn_add_extra_field">Feld hinzufügen</string>
     <string name="title_remove_extra_field">Feld entfernen</string>
     <string name="placeholder_select_field">Feld auswählen…</string>
     <string name="label_required_field">Erforderlich</string>
@@ -82,8 +69,6 @@
     <string name="hint_description_required">Ein Timer in diesem Arbeitsbereich kann ohne Beschreibung nicht gestoppt werden.</string>
     <string name="hint_description_optional">Ohne Eingabe erhält der Zeiteintrag sein Startdatum als Titel.</string>
     <string name="toast_description_before_stopping">Beschreibung ausfüllen, bevor du stoppst.</string>
-    <string name="error_loading_extras">Zusatzfelder konnten nicht geladen werden</string>
-    <string name="no_properties_of_type">Keine passenden Felder gefunden.</string>
     <string name="label_workspace_rounding">Zeitrungung</string>
     <string name="rounding_off">Keine Rundung</string>
     <string name="rounding_5">Auf die nächsten 5 Minuten runden</string>
@@ -101,10 +86,8 @@
     <!-- Toasts / errors -->
     <string name="toast_api_key_saved">API-Schlüssel funktioniert und wurde gespeichert.</string>
     <string name="toast_api_key_removed">API-Schlüssel entfernt.</string>
-    <string name="toast_connection_failed">Verbindung fehlgeschlagen</string>
     <string name="toast_workspace_added">Workspace \"%1$s\" hinzugefügt.</string>
     <string name="toast_workspace_saved">Workspace \"%1$s\" gespeichert.</string>
-    <string name="toast_projects_error">Projekte konnten nicht geladen werden</string>
     <string name="toast_start_error">Timer konnte nicht gestartet werden</string>
     <string name="toast_stop_error">Timer konnte nicht gestoppt werden</string>
     <string name="toast_stop_retry">Wiederholen</string>
@@ -114,8 +97,6 @@
 
     <!-- Running timers list -->
     <string name="running_timers_heading">Aktive Timer</string>
-    <string name="stop_running_timer">Timer stoppen</string>
-    <string name="refresh_running_timers">Laufende Timer aktualisieren</string>
     <string name="start_new_timer">Neuen Timer starten</string>
 
     <!-- Recent entries -->
@@ -139,19 +120,13 @@
     <string name="label_dynamic_color">Dynamische Farben</string>
     <string name="dynamic_color_hint">Farben deines Hintergrundbilds statt des App-Rots verwenden</string>
 
-    <!-- QR code import -->
-    <string name="btn_scan_qr">QR-Code scannen, um zu importieren</string>
-    <string name="btn_add_workspace_qr">Workspace via QR-Code hinzufügen</string>
-
     <!-- Refresh -->
     <string name="btn_refresh_all">Aktualisieren</string>
 
     <!-- Edit running timer -->
     <string name="hint_timer_title">Timer-Titel…</string>
-    <string name="btn_edit_timer">Bearbeiten</string>
     <string name="title_edit_timer">Timer bearbeiten</string>
     <string name="btn_save_changes">Speichern</string>
-    <string name="hint_edit_timer_saving">Speichern…</string>
 
     <!-- Notification -->
     <string name="notification_channel_name">Timer</string>
@@ -159,14 +134,7 @@
     <string name="notification_action_stop">Stoppen</string>
 
     <!-- Presets -->
-    <string name="section_presets">Vorlagen (optional)</string>
-    <string name="hint_presets">Bis zu 5 Schnellstart-Vorlagen. Tippe auf eine Vorlage, um den Timer sofort zu starten.</string>
-    <string name="btn_add_preset">+ Vorlage hinzufügen</string>
     <string name="title_remove_preset">Vorlage entfernen</string>
-    <string name="preset_name_placeholder">z.B. Morgen-Standup</string>
-    <string name="label_preset_title">Standardtitel</string>
-    <string name="preset_title_placeholder">Optionaler Standardtitel…</string>
-    <string name="label_show_in_shortcuts">In Launcher-Verknüpfungen anzeigen</string>
 
     <!-- Timer stopped elsewhere -->
     <string name="timer_stopped_elsewhere">Der Timer wurde auf einem anderen Gerät gestoppt.</string>
@@ -178,13 +146,10 @@
     <string name="deleted_page_confirm">Schließen</string>
     <string name="toast_update_error">Timer konnte nicht aktualisiert werden</string>
 
-    <!-- Per-workspace QR -->
-    <string name="btn_workspace_qr">Workspace-QR exportieren</string>
-
     <!-- Additional New Strings -->
     <string name="warn_already_running_title">Timer läuft bereits</string>
     <string name="warn_already_running_body">Ein Timer läuft bereits. Möchtest du ihn stoppen und den neuen starten, oder abbrechen?</string>
-    <string name="btn_stop_and_start_new">Stoppen &amp; neu starten</string>
+    <string name="btn_stop_and_start_new">Stoppen und neu starten</string>
     <string name="dialog_save_preset_title">Vorlage speichern</string>
     <string name="dialog_save_preset_body">Aktuelle Beschreibung und ausgewählte Workspace/Felder als Vorlage speichern.</string>
     <string name="dialog_save_preset_placeholder">Vorlagentitel (z.B. Tägliches Standup)</string>
@@ -243,9 +208,6 @@
     <string name="title_move_preset_down">Vorlage nach unten</string>
     <string name="title_info">Information</string>
     <string name="error_no_api_key">Kein Notion-API-Schlüssel hinterlegt.</string>
-    <string name="error_start_failed">Timer konnte nicht gestartet werden</string>
-    <string name="error_stop_failed">Timer konnte nicht gestoppt werden</string>
-    <string name="error_delete_failed">Eintrag konnte nicht gelöscht werden</string>
     <string name="error_stop_from_notification_failed">Stoppen fehlgeschlagen — App öffnen und erneut versuchen</string>
     <string name="section_expanded">Ausgeklappt</string>
     <string name="section_collapsed">Eingeklappt</string>

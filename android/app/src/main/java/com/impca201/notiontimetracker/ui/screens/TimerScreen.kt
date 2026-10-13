@@ -47,7 +47,6 @@ import com.impca201.notiontimetracker.ui.theme.workspaceAccentColor
 import com.impca201.notiontimetracker.ui.theme.workspaceSolidFillColor
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
@@ -64,9 +63,7 @@ import com.impca201.notiontimetracker.ui.components.EditTimerModal
 import com.impca201.notiontimetracker.ui.components.ExtraFieldInput
 import com.impca201.notiontimetracker.ui.components.SearchableDropdown
 import com.impca201.notiontimetracker.viewmodel.TimerViewModel
-import java.time.Instant
 import java.time.OffsetDateTime
-import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 @Composable
@@ -1324,22 +1321,6 @@ private fun formatHHMM(iso: String, is12h: Boolean = false): String = runCatchin
         "%02d:%02d".format(odt.hour, odt.minute)
     }
 }.getOrDefault("")
-
-private fun formatHHMMMs(ms: Long, is12h: Boolean = false): String {
-    val inst = Instant.ofEpochMilli(ms).atZone(ZoneId.systemDefault())
-    if (is12h) {
-        val hr = inst.hour
-        val ampm = if (hr >= 12) "PM" else "AM"
-        val h12 = when {
-            hr == 0 -> 12
-            hr > 12 -> hr - 12
-            else -> hr
-        }
-        return "%d:%02d %s".format(h12, inst.minute, ampm)
-    } else {
-        return "%02d:%02d".format(inst.hour, inst.minute)
-    }
-}
 
 private fun parseHHMMToISO(hhMM: String, referenceISO: String): String? = runCatching {
     val clean = hhMM.trim().uppercase()

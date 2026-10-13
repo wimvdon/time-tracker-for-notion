@@ -10,6 +10,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Delete
@@ -24,7 +25,6 @@ import androidx.compose.ui.unit.dp
 import com.impca201.notiontimetracker.R
 import com.impca201.notiontimetracker.data.models.ExtraProp
 import com.impca201.notiontimetracker.data.models.NamedOption
-import com.impca201.notiontimetracker.data.models.Preset
 import com.impca201.notiontimetracker.data.models.READ_ONLY_TYPES
 import com.impca201.notiontimetracker.data.models.SchemaProperty
 import com.impca201.notiontimetracker.data.models.WRITABLE_EXTRA_TYPES
@@ -52,9 +52,6 @@ fun WorkspaceModal(
     onExtraPropNameChange: (Int, String) -> Unit,
     onExtraPropRequiredChange: (Int, Boolean) -> Unit,
     onExtraPropDefaultChange: (Int, String?) -> Unit,
-    onAddPreset: () -> Unit = {},
-    onRemovePreset: (Int) -> Unit = {},
-    onUpdatePreset: (Int, Preset) -> Unit = { _, _ -> },
     isValid: Boolean
 ) {
     val scrollState = rememberScrollState()
@@ -268,6 +265,8 @@ fun WorkspaceModal(
 
             if (state.extraProps.size < 5) {
                 TextButton(onClick = onAddExtraProp) {
+                    Icon(Icons.Rounded.Add, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
+                    Spacer(Modifier.width(ButtonDefaults.IconSpacing))
                     Text(stringResource(R.string.btn_add_extra_field))
                 }
             }

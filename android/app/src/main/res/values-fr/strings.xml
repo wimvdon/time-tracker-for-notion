@@ -4,18 +4,15 @@
 
     <!-- Timer — idle -->
     <string name="label_workspace">Espace de travail</string>
-    <string name="label_project">Projet</string>
     <string name="label_description">Travaille sur…</string>
     <string name="placeholder_description">Description</string>
     <string name="placeholder_select_workspace">Sélectionner l\'espace…</string>
-    <string name="placeholder_select_project">Sélectionner le projet…</string>
     <string name="placeholder_loading">Chargement…</string>
     <string name="btn_start">Démarrer</string>
     <string name="btn_stop">Arrêter</string>
     <string name="label_start_time">Heure de début</string>
     <string name="label_end_time">Heure de fin</string>
     <string name="hint_manual_end">Remplir une heure de fin arrête le minuteur.</string>
-    <string name="toast_end_before_start">L\'heure de fin doit être après l\'heure de début.</string>
     <string name="warn_no_api_key">Aucune clé API Notion configurée.</string>
     <string name="warn_no_api_key_link">Ouvrir les paramètres</string>
     <string name="warn_no_workspaces">Ajoutez un espace dans les</string>
@@ -29,7 +26,7 @@
     <string name="placeholder_api_key">secret_… ou ntn_…</string>
     <string name="btn_show_key">Afficher</string>
     <string name="btn_hide_key">Masquer</string>
-    <string name="btn_test_and_save_key">Tester la connexion &amp; enregistrer</string>
+    <string name="btn_test_and_save_key">Tester la connexion et enregistrer</string>
     <string name="btn_testing_key">Test…</string>
     <string name="btn_remove_key">Supprimer la clé</string>
     <string name="label_workspaces">Espaces de travail</string>
@@ -38,7 +35,7 @@
     <string name="title_delete_workspace_disabled">Arrêtez le minuteur d\'abord</string>
     <string name="title_move_up">Monter</string>
     <string name="title_move_down">Descendre</string>
-    <string name="btn_add_workspace">+ Ajouter un espace</string>
+    <string name="btn_add_workspace">Ajouter un espace</string>
 
     <!-- Workspace modal -->
     <string name="modal_title_add_workspace">Ajouter un espace</string>
@@ -46,8 +43,6 @@
     <string name="label_workspace_name">Nom</string>
     <string name="placeholder_workspace_name">Mon espace de travail</string>
     <string name="label_time_entries_db">Base de données des saisies de temps</string>
-    <string name="hint_time_entries_db">Les saisies de temps sont créées ici. Champs requis : un champ de type plage de dates, un champ de statut, et idéalement une relation vers une base de projets.</string>
-    <string name="label_projects_db">Base de données des projets</string>
     <string name="placeholder_select_database">Sélectionner la base…</string>
     <string name="placeholder_select">Sélectionner…</string>
     <string name="placeholder_search">Rechercher…</string>
@@ -55,24 +50,16 @@
     <string name="dropdown_none">– Aucun –</string>
     <string name="btn_clear">Effacer</string>
     <string name="btn_refresh_databases">Actualiser</string>
-    <string name="loading_databases">Chargement des bases de données…</string>
-    <string name="error_loading_databases">Impossible de charger les bases de données</string>
-    <string name="error_loading_schema">Impossible de charger les propriétés de la base</string>
     <string name="no_databases_found">Aucune base trouvée. Connectez d\'abord votre intégration aux pages Notion correspondantes.</string>
     <string name="btn_retry">Réessayer</string>
     <string name="label_time_entry_date_prop">Champ de plage de dates</string>
-    <string name="hint_time_entry_date_prop">Stocke les heures de début et de fin.</string>
     <string name="label_time_entry_status_prop">Champ de statut</string>
-    <string name="hint_time_entry_status_prop">Indique si le minuteur est en cours ou terminé.</string>
     <string name="label_time_entry_status_running">Option de statut \"En cours\"</string>
-    <string name="hint_time_entry_status_running">L\'option qui marque une saisie comme en cours.</string>
     <string name="label_time_entry_status_done">Option de statut \"Terminé\"</string>
-    <string name="hint_time_entry_status_done">L\'option qui marque une saisie comme terminée.</string>
-    <string name="label_relation_prop">Relation de projet (projets)</string>
     <string name="loading_properties">Chargement…</string>
     <string name="section_extra_fields">Champs supplémentaires (facultatif)</string>
     <string name="hint_extra_fields">Jusqu\'à cinq champs supplémentaires de la base des saisies de temps, à remplir manuellement dans le minuteur.</string>
-    <string name="btn_add_extra_field">+ Ajouter un champ</string>
+    <string name="btn_add_extra_field">Ajouter un champ</string>
     <string name="title_remove_extra_field">Supprimer le champ</string>
     <string name="placeholder_select_field">Sélectionner le champ…</string>
     <string name="label_required_field">Requis</string>
@@ -82,8 +69,6 @@
     <string name="hint_description_required">Un minuteur de cet espace ne peut pas être arrêté sans description.</string>
     <string name="hint_description_optional">Laissée vide, la saisie de temps prend sa date de début comme titre.</string>
     <string name="toast_description_before_stopping">Remplissez une description avant d\'arrêter.</string>
-    <string name="error_loading_extras">Impossible de charger les champs supplémentaires</string>
-    <string name="no_properties_of_type">Aucun champ correspondant trouvé.</string>
     <string name="label_workspace_rounding">Arrondi du temps</string>
     <string name="rounding_off">Pas d\'arrondi</string>
     <string name="rounding_5">Arrondir aux 5 minutes les plus proches</string>
@@ -101,10 +86,8 @@
     <!-- Toasts / errors -->
     <string name="toast_api_key_saved">La clé API fonctionne et a été enregistrée.</string>
     <string name="toast_api_key_removed">Clé API supprimée.</string>
-    <string name="toast_connection_failed">La connexion a échoué</string>
     <string name="toast_workspace_added">Espace de travail \"%1$s\" ajouté.</string>
     <string name="toast_workspace_saved">Espace de travail \"%1$s\" enregistré.</string>
-    <string name="toast_projects_error">Impossible de charger les projets</string>
     <string name="toast_start_error">Impossible de démarrer le minuteur</string>
     <string name="toast_stop_error">Impossible d\'arrêter le minuteur</string>
     <string name="toast_stop_retry">Réessayer</string>
@@ -114,8 +97,6 @@
 
     <!-- Running timers list -->
     <string name="running_timers_heading">Minuteurs actifs</string>
-    <string name="stop_running_timer">Arrêter le minuteur</string>
-    <string name="refresh_running_timers">Actualiser les minuteurs en cours</string>
     <string name="start_new_timer">Démarrer un nouveau minuteur</string>
 
     <!-- Recent entries -->
@@ -139,19 +120,13 @@
     <string name="label_dynamic_color">Couleurs dynamiques</string>
     <string name="dynamic_color_hint">Utiliser les couleurs du fond d\'écran au lieu du rouge de l\'app</string>
 
-    <!-- QR code import -->
-    <string name="btn_scan_qr">Scanner le QR code pour importer</string>
-    <string name="btn_add_workspace_qr">Ajouter un espace via QR code</string>
-
     <!-- Refresh -->
     <string name="btn_refresh_all">Actualiser</string>
 
     <!-- Edit running timer -->
     <string name="hint_timer_title">Titre du minuteur…</string>
-    <string name="btn_edit_timer">Modifier</string>
     <string name="title_edit_timer">Modifier le minuteur</string>
     <string name="btn_save_changes">Enregistrer</string>
-    <string name="hint_edit_timer_saving">Enregistrement…</string>
 
     <!-- Notification -->
     <string name="notification_channel_name">Minuteur</string>
@@ -159,14 +134,7 @@
     <string name="notification_action_stop">Arrêter</string>
 
     <!-- Presets -->
-    <string name="section_presets">Préréglages (facultatif)</string>
-    <string name="hint_presets">Jusqu\'à 5 préréglages. Cliquez sur un préréglage pour démarrer immédiatement.</string>
-    <string name="btn_add_preset">+ Ajouter un préréglage</string>
     <string name="title_remove_preset">Supprimer le préréglage</string>
-    <string name="preset_name_placeholder">ex. Standup du matin</string>
-    <string name="label_preset_title">Titre par défaut</string>
-    <string name="preset_title_placeholder">Titre par défaut facultatif…</string>
-    <string name="label_show_in_shortcuts">Afficher dans les raccourcis du lanceur</string>
 
     <!-- Timer stopped elsewhere -->
     <string name="timer_stopped_elsewhere">Le minuteur a été arrêté sur un autre appareil.</string>
@@ -178,13 +146,10 @@
     <string name="deleted_page_confirm">Fermer</string>
     <string name="toast_update_error">Impossible de mettre à jour le minuteur</string>
 
-    <!-- Per-workspace QR -->
-    <string name="btn_workspace_qr">Exporter l\'espace en QR</string>
-
     <!-- Additional New Strings -->
     <string name="warn_already_running_title">Minuteur déjà en cours</string>
     <string name="warn_already_running_body">Un minuteur est déjà en cours. Voulez-vous l\'arrêter et démarrer le nouveau, ou annuler ?</string>
-    <string name="btn_stop_and_start_new">Arrêter &amp; démarrer nouveau</string>
+    <string name="btn_stop_and_start_new">Arrêter et démarrer un nouveau</string>
     <string name="dialog_save_preset_title">Enregistrer le préréglage</string>
     <string name="dialog_save_preset_body">Enregistrer la description et les champs actuels en tant que préréglage.</string>
     <string name="dialog_save_preset_placeholder">Titre du préréglage (ex. Standup quotidien)</string>
@@ -243,9 +208,6 @@
     <string name="title_move_preset_down">Déplacer le préréglage vers le bas</string>
     <string name="title_info">Informations</string>
     <string name="error_no_api_key">Aucune clé API Notion configurée.</string>
-    <string name="error_start_failed">Impossible de démarrer le minuteur</string>
-    <string name="error_stop_failed">Impossible d\'arrêter le minuteur</string>
-    <string name="error_delete_failed">Impossible de supprimer l\'entrée</string>
     <string name="error_stop_from_notification_failed">Échec de l\'arrêt — ouvrez l\'application pour réessayer</string>
     <string name="section_expanded">Développé</string>
     <string name="section_collapsed">Réduit</string>
