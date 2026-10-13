@@ -66,7 +66,7 @@ A *workspace* is one Time Entries database plus how you use it. Add several to t
 ### Start
 
 1. Choose a **Workspace**.
-2. Type in **Working on…**. Leave it empty to title the entry with today's date.
+2. Type what you are working on (the **Working on…** field on Windows, **Description** on Android). Leave it empty to title the entry with today's date.
 3. Fill in extra fields.
 4. Press **START**.
 

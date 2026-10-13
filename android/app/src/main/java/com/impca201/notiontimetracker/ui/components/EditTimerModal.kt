@@ -68,18 +68,16 @@ fun EditTimerModal(
 
             val descriptionRequired = uiState.workspaces
                 .firstOrNull { it.id == timer.workspaceId }?.descriptionRequired == true
-            Text(
-                stringResource(R.string.label_description) + if (descriptionRequired) " *" else "",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
             OutlinedTextField(
                 value = description,
                 onValueChange = { description = it; dirty = true },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
                 isError = descriptionRequired && description.isBlank(),
-                placeholder = { Text(stringResource(R.string.placeholder_description)) },
+                label = {
+                    Text(stringResource(R.string.placeholder_description) + if (descriptionRequired) " *" else "")
+                },
+                placeholder = { Text(stringResource(R.string.label_description)) },
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done)
             )
 
