@@ -105,7 +105,7 @@ fun TimerHero(
     Box(
         modifier =
             modifier
-                .size(264.dp)
+                .size(288.dp)
                 .graphicsLayer {
                     scaleX = appear.value
                     scaleY = appear.value
