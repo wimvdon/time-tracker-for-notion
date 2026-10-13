@@ -37,6 +37,9 @@ jobs:
         working-directory: android
     steps:
       - uses: actions/checkout@v6
+        with:
+          # Tags, so the debug build is versioned from the latest release (git describe).
+          fetch-depth: 0
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
