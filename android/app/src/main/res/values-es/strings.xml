@@ -101,9 +101,6 @@
 
     <!-- Recent entries -->
     <string name="recent_entries_heading">Entradas de tiempo recientes</string>
-    <string name="tab_timer">Temporizador</string>
-    <string name="tab_recent">Recientes</string>
-    <string name="recent_empty">Todavía no hay entradas de tiempo</string>
     <string name="title_delete_entry">Eliminar</string>
     <string name="title_open_in_notion">Abrir en Notion</string>
     <string name="title_start_from_entry">Iniciar un nuevo temporizador con estos datos</string>
