@@ -2,7 +2,7 @@ package com.impca201.notiontimetracker.ui.components
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.rounded.Clear
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -54,7 +54,7 @@ fun SearchableDropdown(
             },
             onValueChange = { if (expanded && searchable) query = it },
             modifier = Modifier
-                .menuAnchor(MenuAnchorType.PrimaryEditable)
+                .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable)
                 .fillMaxWidth(),
             readOnly = !searchable || !expanded,
             enabled = enabled && !loading,
@@ -75,7 +75,7 @@ fun SearchableDropdown(
                             modifier = Modifier.size(36.dp)
                         ) {
                             Icon(
-                                imageVector = Icons.Default.Clear,
+                                imageVector = Icons.Rounded.Clear,
                                 contentDescription = stringResource(R.string.btn_clear),
                                 modifier = Modifier.size(16.dp)
                             )

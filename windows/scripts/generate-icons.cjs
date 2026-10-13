@@ -83,9 +83,11 @@ function encodeICO(images) {
 // keeps everything within a radius of 33 from the centre. Angles run clockwise from 12 o'clock.
 
 const WHITE = '#FAFAFA';
-const RED_TOP = '#F05252';
-const RED_BOTTOM = '#C62828';
 const ANDROID_BACKGROUND = '#FFFFFF';
+
+// A linear gradient over a shape: colour stops as [offset, colour] along the line from → to,
+// in grid units. Used as a shape's `color` instead of a plain colour.
+const linear = (stops, from, to) => ({ stops, from, to });
 
 const polar = (cx, cy, r, deg) => {
   const a = ((deg - 90) * Math.PI) / 180;
@@ -102,9 +104,15 @@ const PIVOT = { type: 'circle', ...FACE, r: 4.2 };
 const ELAPSED = { type: 'wedge', ...FACE, r: 20, from: 0, to: 135 };
 
 // A filled red dial: it reads on light and dark surfaces alike, so one icon works everywhere.
-// The dial is shaded top to bottom; `color` as [top, bottom] is a vertical gradient over the shape.
+// Like the sibling apps' icons, the dial runs a diagonal gradient through neighbouring hues:
+// orange → red → rose, top left to bottom right.
+const DIAL_GRADIENT = linear(
+  [[0, '#FF8A3D'], [0.55, '#F04438'], [1, '#C81E5A']],
+  [FACE.cx - 21, FACE.cy - 23],
+  [FACE.cx + 21, FACE.cy + 23],
+);
 const ICON = [
-  { type: 'circle', ...FACE, r: DIAL_RADIUS, color: [RED_TOP, RED_BOTTOM] },
+  { type: 'circle', ...FACE, r: DIAL_RADIUS, color: DIAL_GRADIENT },
   { ...ELAPSED, color: WHITE, alpha: 0.35 },
   { ...HAND, color: WHITE },
   { ...PIVOT, color: WHITE },
@@ -183,16 +191,25 @@ function distanceFn(s) {
 
 const hexRGB = (hex) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
 
-// Gradients only run over circles (the stopwatch body), top to bottom
-function colorFn(s, gridY) {
-  if (!Array.isArray(s.color)) {
+const isGradient = (color) => typeof color === 'object';
+
+function colorFn(s, gridX, gridY) {
+  if (!isGradient(s.color)) {
     const rgb = hexRGB(s.color);
     return () => rgb;
   }
-  const [top, bottom] = s.color.map(hexRGB);
+  const { stops, from, to } = s.color;
+  const rgbStops = stops.map(([offset, hex]) => [offset, hexRGB(hex)]);
+  const [dx, dy] = [to[0] - from[0], to[1] - from[1]];
+  const lengthSq = dx * dx + dy * dy;
   return (x, y) => {
-    const t = Math.max(0, Math.min(1, (gridY(y) - (s.cy - s.r)) / (2 * s.r)));
-    return top.map((v, i) => v + (bottom[i] - v) * t);
+    const t = Math.max(0, Math.min(1, ((gridX(x) - from[0]) * dx + (gridY(y) - from[1]) * dy) / lengthSq));
+    let i = 1;
+    while (i < rgbStops.length - 1 && t > rgbStops[i][0]) i++;
+    const [o0, c0] = rgbStops[i - 1];
+    const [o1, c1] = rgbStops[i];
+    const u = o1 > o0 ? Math.max(0, Math.min(1, (t - o0) / (o1 - o0))) : 0;
+    return c0.map((v, k) => v + (c1[k] - v) * u);
   };
 }
 
@@ -265,7 +282,7 @@ function render(size, view, { shapes }) {
   for (const s of shapes) {
     const d = distanceFn(s);
     const alpha = s.alpha ?? 1;
-    c.paint((x, y) => Math.min(1, 0.5 - d(toGrid(x, view.x), toGrid(y, view.y)) * k) * alpha, colorFn(s, (y) => toGrid(y, view.y)));
+    c.paint((x, y) => Math.min(1, 0.5 - d(toGrid(x, view.x), toGrid(y, view.y)) * k) * alpha, colorFn(s, (x) => toGrid(x, view.x), (y) => toGrid(y, view.y)));
   }
   return encodePNG(size, size, downsample(c, SS));
 }
@@ -313,11 +330,11 @@ function svgShape(s, i) {
   if (p.stroke) {
     return `<path d="${p.d}" fill="none" stroke="${s.color}" stroke-width="${p.width}"${p.cap ? ` stroke-linecap="${p.cap}"` : ''}${alpha}/>`;
   }
-  if (!Array.isArray(s.color)) return `<path d="${p.d}" fill="${s.color}"${alpha}/>`;
-  const [top, bottom] = s.color;
-  return `<linearGradient id="g${i}" x1="0" y1="${s.cy - s.r}" x2="0" y2="${s.cy + s.r}" gradientUnits="userSpaceOnUse">` +
-    `<stop offset="0" stop-color="${top}"/><stop offset="1" stop-color="${bottom}"/></linearGradient>` +
-    `<path d="${p.d}" fill="url(#g${i})"${alpha}/>`;
+  if (!isGradient(s.color)) return `<path d="${p.d}" fill="${s.color}"${alpha}/>`;
+  const { stops, from, to } = s.color;
+  return `<linearGradient id="g${i}" x1="${from[0]}" y1="${from[1]}" x2="${to[0]}" y2="${to[1]}" gradientUnits="userSpaceOnUse">` +
+    stops.map(([offset, color]) => `<stop offset="${offset}" stop-color="${color}"/>`).join('') +
+    `</linearGradient><path d="${p.d}" fill="url(#g${i})"${alpha}/>`;
 }
 
 function iconSVG(shapes) {
@@ -332,21 +349,22 @@ function vectorDrawable(shapes) {
     const p = vectorPath(s);
     const attrs = p.stroke
       ? [`android:strokeColor="${s.color}"`, `android:strokeWidth="${p.width}"`, ...(p.cap ? [`android:strokeLineCap="${p.cap}"`] : [])]
-      : Array.isArray(s.color) ? [] : [`android:fillColor="${s.color}"`];
+      : isGradient(s.color) ? [] : [`android:fillColor="${s.color}"`];
     if (s.alpha != null) attrs.push(`android:${p.stroke ? 'strokeAlpha' : 'fillAlpha'}="${s.alpha}"`);
     attrs.push(`android:pathData="${p.d}"`);
-    if (!Array.isArray(s.color)) return `    <path\n        ${attrs.join('\n        ')}/>`;
-    const [top, bottom] = s.color;
+    if (!isGradient(s.color)) return `    <path\n        ${attrs.join('\n        ')}/>`;
+    const { stops, from, to } = s.color;
+    const items = stops.map(([offset, color]) => `                <item android:offset="${offset}" android:color="${color}"/>`);
     return `    <path\n        ${attrs.join('\n        ')}>
         <aapt:attr name="android:fillColor">
             <gradient
                 android:type="linear"
-                android:startX="0"
-                android:startY="${s.cy - s.r}"
-                android:endX="0"
-                android:endY="${s.cy + s.r}"
-                android:startColor="${top}"
-                android:endColor="${bottom}"/>
+                android:startX="${from[0]}"
+                android:startY="${from[1]}"
+                android:endX="${to[0]}"
+                android:endY="${to[1]}">
+${items.join('\n')}
+            </gradient>
         </aapt:attr>
     </path>`;
   });
@@ -382,7 +400,9 @@ fs.writeFileSync(path.join(assetsDir, 'icon.svg'), iconSVG(ICON));
 fs.writeFileSync(path.join(assetsDir, 'icon-256.png'), icons.at(-1).png);
 fs.writeFileSync(path.join(assetsDir, 'icon.ico'), encodeICO(icons));
 // Idle tray icon: the same dial in grey, so the coloured running icon stands out against it
-const TRAY_IDLE = ICON.map((s, i) => (i === 0 ? { ...s, color: ['#A1A1AA', '#71717A'] } : s));
+const TRAY_IDLE = ICON.map((s, i) =>
+  i === 0 ? { ...s, color: linear([[0, '#A1A1AA'], [1, '#71717A']], [FACE.cx, FACE.cy - DIAL_RADIUS], [FACE.cx, FACE.cy + DIAL_RADIUS]) } : s,
+);
 fs.writeFileSync(path.join(assetsDir, 'tray-idle.png'), renderIcon(32, TRAY_IDLE));
 // Running tray icon: the dial in black, which main.cjs tints with the running
 // timer's workspace colour (each pixel's grey level is how far it is toward white)
