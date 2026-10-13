@@ -62,6 +62,7 @@ import com.impca201.notiontimetracker.data.models.RunningTimerInfo
 import com.impca201.notiontimetracker.ui.components.EditTimerModal
 import com.impca201.notiontimetracker.ui.components.ExtraFieldInput
 import com.impca201.notiontimetracker.ui.components.SearchableDropdown
+import com.impca201.notiontimetracker.ui.components.TimerHero
 import com.impca201.notiontimetracker.viewmodel.TimerViewModel
 import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
@@ -453,8 +454,8 @@ private fun IdleView(
 
             val selectedWorkspace = uiState.workspaces.firstOrNull { it.id == uiState.selectedWorkspaceId }
             val startWorkspaceColor = workspaceSolidFillColor(selectedWorkspace?.color)
-            val buttonColor = startWorkspaceColor ?: MaterialTheme.colorScheme.tertiary
-            val onButtonColor = if (startWorkspaceColor != null) Color.White else MaterialTheme.colorScheme.onTertiary
+            val buttonColor = startWorkspaceColor ?: TimerColors.Start
+            val onButtonColor = TimerColors.OnAction
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -730,13 +731,42 @@ private fun RunningView(
 
             Spacer(Modifier.height(8.dp))
 
-            // Tabular figures keep the digits from shifting as they tick.
-            Text(
-                formatElapsed(uiState.elapsedSeconds),
-                style = MaterialTheme.typography.displayLarge.copy(fontFeatureSettings = "tnum"),
-                color = workspaceAccent ?: MaterialTheme.colorScheme.primary,
-                textAlign = TextAlign.Center
+            TimerHero(
+                elapsedText = formatElapsed(uiState.elapsedSeconds),
+                elapsedSeconds = uiState.elapsedSeconds,
+                accent = workspaceAccent ?: MaterialTheme.colorScheme.primary,
+                container = lerp(
+                    MaterialTheme.colorScheme.surfaceContainerHighest,
+                    workspaceColor ?: MaterialTheme.colorScheme.primaryContainer,
+                    if (workspaceColor != null) 0.35f else 0.6f
+                ),
+                contentColor = MaterialTheme.colorScheme.onSurface
             )
+
+            uiState.stopError?.let { err ->
+                val errMsg = localisedMessage(err)
+                Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)) {
+                    Row(modifier = Modifier.padding(12.dp)) {
+                        Text(errMsg, modifier = Modifier.weight(1f), color = MaterialTheme.colorScheme.onErrorContainer)
+                        if (!isValidationMessage(err)) {
+                            TextButton(onClick = onRetryStop) { Text(stringResource(R.string.toast_stop_retry)) }
+                        }
+                    }
+                }
+            }
+
+            TimerActionButton(
+                label = stringResource(R.string.btn_stop),
+                icon = Icons.Rounded.Stop,
+                onClick = handleStopClick,
+                enabled = !uiState.isStopping,
+                loading = uiState.isStopping,
+                containerColor = TimerColors.Stop,
+                contentColor = TimerColors.OnAction,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(Modifier.height(4.dp))
 
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                 Text(
@@ -817,28 +847,6 @@ private fun RunningView(
                 }
             }
 
-            uiState.stopError?.let { err ->
-                val errMsg = localisedMessage(err)
-                Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)) {
-                    Row(modifier = Modifier.padding(12.dp)) {
-                        Text(errMsg, modifier = Modifier.weight(1f), color = MaterialTheme.colorScheme.onErrorContainer)
-                        if (!isValidationMessage(err)) {
-                            TextButton(onClick = onRetryStop) { Text(stringResource(R.string.toast_stop_retry)) }
-                        }
-                    }
-                }
-            }
-
-            TimerActionButton(
-                label = stringResource(R.string.btn_stop),
-                icon = Icons.Rounded.Stop,
-                onClick = handleStopClick,
-                enabled = !uiState.isStopping,
-                loading = uiState.isStopping,
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary,
-                modifier = Modifier.fillMaxWidth()
-            )
 
             Spacer(Modifier.height(8.dp))
 
@@ -1169,7 +1177,17 @@ private fun TimerTopBar(actions: @Composable RowScope.() -> Unit) {
     )
 }
 
-private val TimerActionButtonHeight: Dp = 64.dp
+private val TimerActionButtonHeight: Dp = 72.dp
+
+/**
+ * Start and Stop keep their meaning whatever the theme or wallpaper colours: green and red, with
+ * white labels (a workspace colour, when set, replaces the green).
+ */
+private object TimerColors {
+    val Start = Color(0xFF1E8E3E)
+    val Stop = Color(0xFFD93025)
+    val OnAction = Color.White
+}
 
 /**
  * The large Start / Stop button. A full pill that squares off a little while pressed (Material 3
@@ -1190,7 +1208,7 @@ private fun TimerActionButton(
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
     val corner by animateDpAsState(
-        targetValue = if (pressed && animate) 16.dp else TimerActionButtonHeight / 2,
+        targetValue = if (pressed && animate) 20.dp else TimerActionButtonHeight / 2,
         animationSpec = spring(dampingRatio = 0.6f, stiffness = 800f),
         label = "timer-button-corner"
     )

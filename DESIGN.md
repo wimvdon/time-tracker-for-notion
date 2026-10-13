@@ -103,8 +103,12 @@ the other two repositories:
 ## This app
 
 - Seed `#F04438` (red), green tertiary (`#16A34A`) for Start when a workspace has no colour.
-- Signature element: the large pill Start / Stop button. It morphs while pressed, takes the
-  workspace colour, and a running timer tints the whole screen.
+- Signature element: the running timer. The elapsed time sits on a slowly turning nine-lobed
+  cookie shape (the Material 3 Expressive shape Snoozer's toggle uses), inside a ring that fills
+  over each minute; it springs in when a timer starts. The large pill Start / Stop buttons
+  square off while pressed.
+- Start is green and Stop is red whatever the theme or wallpaper colours (a workspace colour
+  replaces the green), so their meaning never depends on Dynamic color.
 - The launcher icon comes from `windows/scripts/generate-icons.cjs` (`npm run icons`), which
   also draws the Windows icons. Edit the artwork there, not the generated XML.
 - The Windows app is not covered by this file.
