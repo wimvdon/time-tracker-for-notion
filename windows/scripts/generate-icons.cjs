@@ -119,12 +119,12 @@ const ICON = [
 ];
 // Android 13+ themed icon: the launcher tints this single-colour layer. Like the sibling apps'
 // themed icons it is the solid shape with the detail cut out, kept simple: the dial minus the
-// hand and its pivot, drawn as one teardrop outline for the even-odd cut-out.
+// hand, the same hand and pivot as in the coloured icon, as one outline for the even-odd cut-out.
 const MONOCHROME = [
   {
     type: 'cutout',
     base: { type: 'circle', ...FACE, r: DIAL_RADIUS },
-    holes: [{ type: 'hand', ...FACE, r: 5, x2: HAND_END[0], y2: HAND_END[1], tipR: 3.25 }],
+    holes: [{ type: 'hand', ...FACE, r: PIVOT.r, x2: HAND_END[0], y2: HAND_END[1], tipR: HAND.width / 2 }],
     color: '#FFFFFF',
   },
 ];
@@ -324,13 +324,17 @@ function vectorPath(s) {
       return { d: `M${s.cx},${s.cy}L${n(x0)},${n(y0)}A${s.r},${s.r} 0 ${large},1 ${n(x1)},${n(y1)}z` };
     }
     case 'hand': {
-      // The pivot circle tapering to the rounded tip, as one closed outline
+      // The outline of the coloured icon's hand: the pivot circle (radius r) joined to a bar of
+      // half-width tipR with a rounded tip, as one closed path for the even-odd cut-out
       const len = Math.hypot(s.x2 - s.cx, s.y2 - s.cy);
-      const [px, py] = [-(s.y2 - s.cy) / len, (s.x2 - s.cx) / len];
-      const pt = (x, y, r, sign) => `${n(x + sign * r * px)},${n(y + sign * r * py)}`;
+      const [ux, uy] = [(s.x2 - s.cx) / len, (s.y2 - s.cy) / len];
+      const [px, py] = [-uy, ux];
+      const d0 = Math.sqrt(s.r * s.r - s.tipR * s.tipR); // where the bar leaves the pivot circle
+      const at = (x, y, along, side) => `${n(x + along * ux + side * px)},${n(y + along * uy + side * py)}`;
       return {
-        d: `M${pt(s.cx, s.cy, s.r, 1)}A${s.r},${s.r} 0 1,1 ${pt(s.cx, s.cy, s.r, -1)}` +
-          `L${pt(s.x2, s.y2, s.tipR, -1)}A${s.tipR},${s.tipR} 0 1,1 ${pt(s.x2, s.y2, s.tipR, 1)}z`,
+        d: `M${at(s.cx, s.cy, d0, s.tipR)}L${at(s.x2, s.y2, 0, s.tipR)}` +
+          `A${s.tipR},${s.tipR} 0 0,0 ${at(s.x2, s.y2, 0, -s.tipR)}` +
+          `L${at(s.cx, s.cy, d0, -s.tipR)}A${s.r},${s.r} 0 1,0 ${at(s.cx, s.cy, d0, s.tipR)}z`,
       };
     }
     case 'cutout':
