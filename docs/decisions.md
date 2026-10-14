@@ -1,5 +1,9 @@
 # Technical decisions
 
+## Back to GitHub Releases instead of Google Play (2026-10-14)
+
+The owner chose to publish through GitHub Releases again, as before the Google Play entry below. One GitHub Release with the `vX.Y.Z` tag again holds the Windows installer and the signed Android APK; the Play upload job, the AAB and the `PLAY_SERVICE_ACCOUNT_JSON` secret are no longer used. The Android signing key stays the one already in the GitHub secrets, so phones that installed a GitHub APK keep updating. Trade-off: the repository is public, so anyone can download the installer and the APK. Rejected: keeping Play internal testing for Android and run artifacts for Windows (manual downloads, no update notice, and a Play developer account to maintain).
+
 ## Shared design rules have their master copy in the template (2026-10-14)
 
 `DESIGN.md` was kept identical in the three sibling apps by hand, with no single place to start a change, and the copies had drifted (Snoozer was missing the Loading section; the Tracker for Simkl icon row was out of date in two apps). The android-app template (`wimvdon/android-app`) now holds the master copy; each app keeps a full copy so Claude sessions can read the rules without opening another repository, and only its "This app" section is its own. Rejected: keeping the file only in the template (sessions in an app would have to fetch it every time) and a shared library for the design kit (a new dependency and more setup than three small apps need). The design kit files (`ui/theme/`) stay in the apps.

@@ -1,24 +1,20 @@
-# Builds both apps. A release uploads the Android app bundle (AAB) to Google Play's internal
-# testing track and keeps the Windows installer as a file of the run; then it creates the tag.
-# No GitHub Release and no public APK or installer: the repository is public (docs/decisions.md).
-# Follows the windows-electron-app and android-app templates.
+# Builds both apps and publishes them as one GitHub Release (the Windows installer and the
+# signed Android APK), following the windows-electron-app and android-app templates.
 #
 # How to start it:
 #   - Actions tab -> Release -> Run workflow -> choose "patch", "minor" or "major".
-#     The next version is computed from the latest vX.Y.Z tag; after both apps are built and
-#     tested and Play accepted the bundle, the tag is created.
-#   - Choose "none" to only build downloadable files (a Dev installer, an APK and an AAB): no
-#     upload, no tag. The APK and AAB have versionCode 1, so they cannot update an installed app.
+#     The next version is computed from the latest vX.Y.Z tag, the tag is created and the
+#     release is published.
+#   - Choose "none" to only build downloadable files (a Dev installer and an APK): no tag, no release.
 #   - Or push a tag yourself: git tag v1.2.3 && git push origin v1.2.3
 #
-# It refuses to publish when: not on main, the tag already exists, the new version is not
-# higher than the previous one, or nothing changed since the previous release. The Windows
+# It refuses to publish when: not on main, the tag/release already exists, the new version is
+# not higher than the previous one, or nothing changed since the previous release. The Windows
 # installer is installed, started and uninstalled on a Windows machine first.
 #
-# Signing the Android app uses four repository secrets (see docs/installation.md):
-# ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD.
-# This key is the Play upload key. Without them a publish fails; a "none" build falls back to a
-# debug APK with a warning. The Play upload needs the secret PLAY_SERVICE_ACCOUNT_JSON.
+# Signing the APK uses four repository secrets (see docs/installation.md): ANDROID_KEYSTORE_BASE64,
+# ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD. Without them a publish
+# fails; a "none" build falls back to a debug APK with a warning.
 name: Release
 
 on:
@@ -190,17 +186,16 @@ jobs:
         shell: pwsh
         run: ./scripts/smoke-test-installer.ps1 -Installer '${{ steps.installer.outputs.path }}' -ProductName '${{ steps.installer.outputs.product }}' -WindowTitle 'Time Tracker'
 
-      # For a release this is where the installer is downloaded from (no GitHub Release).
       - name: Upload the installer
         uses: actions/upload-artifact@v7
         with:
           name: windows
           path: ${{ steps.installer.outputs.artifact }}
-          retention-days: 90
+          retention-days: 30
           if-no-files-found: error
 
   android:
-    name: Android checks
+    name: Android APK
     needs: plan
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -279,24 +274,23 @@ jobs:
       - name: Test and lint
         run: ./gradlew testDebugUnitTest lintDebug
 
-      # Build-only run ("none") only. A release builds its bundle in the play-internal job, so no
-      # installable release file is left behind in this public repository.
-      - name: Build APK and AAB (build-only run)
+      - name: Build APK
         id: build
-        if: needs.plan.outputs.publish != 'true'
         env:
+          PUBLISH: ${{ needs.plan.outputs.publish }}
           SIGNED: ${{ steps.signing.outputs.signed }}
+          VERSION: ${{ needs.plan.outputs.version }}
+          CODE: ${{ needs.plan.outputs.code }}
         run: |
           set -euo pipefail
           args=()
+          if [ "$PUBLISH" = "true" ]; then args=(-PappVersionName="$VERSION" -PappVersionCode="$CODE"); fi
           base="$(./gradlew -q :app:printApkBaseName "${args[@]}")"
           mkdir -p dist
           if [ "$SIGNED" = "true" ]; then
-            ./gradlew assembleRelease bundleRelease "${args[@]}"
+            ./gradlew assembleRelease "${args[@]}"
             apk="dist/$base.apk"
             cp app/build/outputs/apk/release/app-release.apk "$apk"
-            # The AAB is for the first upload by hand in the Play Console.
-            cp app/build/outputs/bundle/release/app-release.aab "dist/$base.aab"
             # R8's map from the shortened names back to the real ones, to read crash stack traces.
             cp app/build/outputs/mapping/release/mapping.txt "dist/$base-mapping.txt"
             apksigner="$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -n 1)"
@@ -315,8 +309,7 @@ jobs:
         if: always()
         run: rm -f keystore.properties "$RUNNER_TEMP/release.keystore"
 
-      - name: Upload APK, AAB and mapping file
-        if: needs.plan.outputs.publish != 'true'
+      - name: Upload APK and mapping file
         uses: actions/upload-artifact@v7
         with:
           name: android
@@ -324,124 +317,37 @@ jobs:
           retention-days: 30
           if-no-files-found: error
 
-  # Builds the signed AAB and uploads it to Google Play's internal testing track. Runs only for a
-  # release, after both apps passed their checks. It has read-only GitHub access: the third-party
-  # upload action never gets a token that can write to the repository.
-  # Before the first run (docs/installation.md, "Publishing the Android app through Google Play"):
-  # the app exists in the Play Console, a first AAB was uploaded there by hand, and the service
-  # account's JSON key is the repository secret PLAY_SERVICE_ACCOUNT_JSON.
-  play-internal:
-    name: Upload to Google Play (internal testing)
+  publish:
+    name: Publish the GitHub Release
     needs: [plan, windows, android]
     if: needs.plan.outputs.publish == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 10
     permissions:
-      contents: read
-    defaults:
-      run:
-        working-directory: android
-    env:
-      PACKAGE_NAME: com.impca201.notiontimetracker
-    steps:
-      - name: Check the Play secret
-        working-directory: .
-        env:
-          PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
-        run: |
-          if [ -z "$PLAY_SERVICE_ACCOUNT_JSON" ]; then
-            echo "::error title=Play secret missing::Add the repository secret PLAY_SERVICE_ACCOUNT_JSON (see docs/installation.md, 'Publishing the Android app through Google Play')."
-            exit 1
-          fi
-
-      - name: Check out (full history, needed for git-describe versions)
-        uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
-          fetch-tags: true
-          persist-credentials: false
-
-      - name: Set up JDK
-        uses: actions/setup-java@v6
-        with:
-          distribution: temurin
-          java-version: "21"
-
-      - name: Set up Gradle (with caching)
-        uses: gradle/actions/setup-gradle@v6
-        with:
-          cache-provider: basic
-
-      - name: Build signed AAB
-        env:
-          # Already verified by the android job.
-          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-          VERSION: ${{ needs.plan.outputs.version }}
-          CODE: ${{ needs.plan.outputs.code }}
-        run: |
-          set -euo pipefail
-          keystore="$RUNNER_TEMP/release.keystore"
-          python3 scripts/decode_keystore.py "$keystore"
-          umask 077
-          {
-            echo "storeFile=$keystore"
-            echo "storePassword=$ANDROID_KEYSTORE_PASSWORD"
-            echo "keyAlias=$ANDROID_KEY_ALIAS"
-            echo "keyPassword=$ANDROID_KEY_PASSWORD"
-          } > keystore.properties
-          args=(-PappVersionName="$VERSION" -PappVersionCode="$CODE")
-          base="$(./gradlew -q :app:printApkBaseName "${args[@]}")"
-          ./gradlew bundleRelease "${args[@]}"
-          mkdir -p dist
-          # R8's map from the shortened names back to the real ones, to read crash stack traces.
-          cp app/build/outputs/mapping/release/mapping.txt "dist/$base-mapping.txt"
-          echo "### Built \`$base.aab\` (versionCode $CODE)" >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Remove signing key
-        if: always()
-        run: rm -f keystore.properties "$RUNNER_TEMP/release.keystore"
-
-      - name: Upload to internal testing
-        # r0adkll/upload-google-play v1.1.5, pinned to its commit so a moved tag cannot change it.
-        uses: r0adkll/upload-google-play@e738b9dd8f2476ea806d921b64aacd24f34515a5 # v1.1.5
-        with:
-          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
-          packageName: ${{ env.PACKAGE_NAME }}
-          releaseFiles: android/app/build/outputs/bundle/release/app-release.aab
-          releaseName: ${{ needs.plan.outputs.tag }}
-          mappingFile: android/app/build/outputs/mapping/release/mapping.txt
-          track: internal
-          status: completed
-
-      # Kept for decoding crash reports with retrace (docs/testing.md). Not an installable file.
-      - name: Upload R8 mapping file
-        uses: actions/upload-artifact@v7
-        with:
-          name: android-mapping
-          path: android/dist/
-          retention-days: 90
-          if-no-files-found: error
-
-  # Creates the version tag only after both apps were built and Play accepted the bundle, so a
-  # failed run can simply be run again. A pushed tag already exists, so this is skipped then.
-  tag:
-    name: Create the version tag
-    needs: [plan, play-internal]
-    if: needs.plan.outputs.publish == 'true' && github.event_name != 'push'
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    permissions:
-      # The only job that may write: it creates the tag.
+      # The only job that may write: it creates the tag and the release.
       contents: write
     steps:
-      - name: Create tag
+      - uses: actions/download-artifact@v8
+        with:
+          path: release-files
+          merge-multiple: true
+
+      - name: Publish
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ needs.plan.outputs.tag }}
+          VERSION: ${{ needs.plan.outputs.version }}
+          PREVIOUS: ${{ needs.plan.outputs.previous }}
         run: |
           set -euo pipefail
-          gh api "repos/$GITHUB_REPOSITORY/git/refs" -f ref="refs/tags/$TAG" -f sha="$GITHUB_SHA" >/dev/null
-          echo "### Released $TAG: Android to Google Play (internal testing), Windows installer under Artifacts. Tagged [$TAG]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/tree/$TAG)" >> "$GITHUB_STEP_SUMMARY"
+          ls -l release-files
+          notes_from=()
+          if [ -n "$PREVIOUS" ]; then notes_from=(--notes-start-tag "$PREVIOUS"); fi
+          # Creates the tag on this exact commit if it does not exist yet (manual runs).
+          gh release create "$TAG" release-files/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "Time Tracker for Notion $VERSION" \
+            --generate-notes "${notes_from[@]}" \
+            --latest
+          echo "### Published [$TAG]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/tag/$TAG)" >> "$GITHUB_STEP_SUMMARY"
