@@ -76,8 +76,8 @@ Use `gradlew.bat` on Windows. Android Studio writes `local.properties` with the 
 ## Verify it works
 
 1. Open the app's **Settings**, paste the token and click **Test connection & save**. Expect **API key works and was saved.**
-2. Add a workspace and press **START**. A new row with the *running* status appears in the Notion database.
-3. Press **STOP**. The row gets an end time and the *done* status.
+2. Add a workspace and press **Start**. A new row with the *running* status appears in the Notion database.
+3. Press **Stop**. The row gets an end time and the *done* status.
 
 ## Release builds (CI)
 

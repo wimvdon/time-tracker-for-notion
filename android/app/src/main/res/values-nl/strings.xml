@@ -151,8 +151,8 @@
     <string name="warn_already_running_title">Timer is al actief</string>
     <string name="warn_already_running_body">Er is al een timer actief. Wil je die stoppen en de nieuwe starten, of annuleren?</string>
     <string name="btn_stop_and_start_new">Stoppen en nieuwe starten</string>
-    <string name="placeholder_preset_name">Titel snelstarter (bijv. Dagelijkse stand-up)</string>
-    <string name="label_preset_name">Titel snelstarter</string>
+    <string name="placeholder_preset_name">bijv. Ochtendoverleg</string>
+    <string name="label_preset_name">Naam</string>
     <string name="presets_manage_title">Snelstarters beheren</string>
     <string name="title_new_preset">Nieuwe snelstarter</string>
     <string name="title_edit_preset">Snelstarter bewerken</string>

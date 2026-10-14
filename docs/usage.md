@@ -66,10 +66,10 @@ A *workspace* is one Time Entries database plus how you use it. Add several to t
 ### Start
 
 1. Choose a **Workspace**: tap or click its name above the timer.
-2. Type what you are working on (the **Working on…** field on Windows, **Description** on Android). Leave it empty to title the entry with today's date.
+2. Type what you are working on in **Description**. Leave it empty to title the entry with today's date.
 3. Forgot to start the timer earlier? Pick a **Start time**. Empty means now; a time later than now counts as yesterday's.
 4. Fill in extra fields.
-5. Press **START**.
+5. Press **Start**.
 
 A Notion row appears with the running status. On Windows the tray stopwatch turns the workspace colour (red without one). On Android a notification shows the running timer.
 
@@ -79,12 +79,12 @@ A Notion row appears with the running status. On Windows the tray stopwatch turn
 |---|---|
 | Edit the description, press **Enter** or click away | Title updated immediately |
 | Change an extra field | Saved shortly after you stop typing |
-| Change **Start time** | Start corrected, e.g. if you forgot to press START |
+| Change **Start time** | Start corrected, e.g. if you forgot to press Start |
 | Fill **End time** | Stops the timer at that time |
 
 ### Stop
 
-Press **STOP**. Unsaved edits are flushed first. The row gets its end time and the *done* status. With rounding, start and end are rounded to the nearest step and the entry lasts at least one step.
+Press **Stop**. Unsaved edits are flushed first. The row gets its end time and the *done* status. With rounding, start and end are rounded to the nearest step and the entry lasts at least one step.
 
 Also possible:
 - **Windows:** tray icon › right-click › **Stop timer**.
@@ -153,7 +153,7 @@ Changes reach other devices within about a minute. If the same settings changed 
 |---|---|
 | **Connection failed** on test | Re-copy the token without spaces around it |
 | **No databases found** | The connection has no access to the page (step 1.2.5), then **Refresh** |
-| **Fill in required fields before stopping.** | Fill the red fields, press **STOP** again |
+| **Fill in required fields before stopping.** | Fill the red fields, press **Stop** again |
 | **Page not found in Notion** | The entry was deleted. **Dismiss**, or restore it from Notion's **Trash** |
 | Window closed but app won't reopen (Windows) | It's in the tray: **^** next to the clock › right-click › **Open** |
 | **Windows protected your PC** | **More info** › **Run anyway** (unsigned installer) |

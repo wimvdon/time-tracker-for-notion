@@ -2,13 +2,13 @@ export default {
   // Timer view — idle
   labelWorkspace: 'Espace de travail',
   labelProject: 'Projet',
-  labelDescription: 'Travaille sur…',
-  placeholderDescription: 'Description',
+  labelDescription: 'Description',
+  placeholderDescription: 'Travaille sur…',
   placeholderSelectWorkspace: 'Sélectionner l\'espace…',
   placeholderSelectProject: 'Sélectionner le projet…',
   placeholderLoading: 'Chargement…',
-  btnStart: '▶ DÉMARRER',
-  btnStop: '⏹ ARRÊTER',
+  btnStart: 'Démarrer',
+  btnStop: 'Arrêter',
   labelStartTime: 'Heure de début',
   labelEndTime: 'Heure de fin',
   timeNow: 'Maintenant',
@@ -16,7 +16,7 @@ export default {
   hintManualEnd: 'Remplir une heure de fin arrête le minuteur.',
   toastEndBeforeStart: 'L\'heure de fin doit être après l\'heure de début.',
   warnNoApiKey: 'Aucune clé API Notion configurée.',
-  warnNoApiKeyLink: 'Ouvrir les Paramètres',
+  warnNoApiKeyLink: 'Ouvrir les paramètres',
   warnNoWorkspaces: 'Ajoutez un espace dans les',
   warnNoWorkspacesLink: 'Paramètres',
   warnNoWorkspacesSuffix: 'pour commencer.',
@@ -166,13 +166,8 @@ export default {
   btnClose: 'Fermer',
 
   // Presets
-  sectionPresets: 'Préréglages (facultatif)',
-  hintPresets: 'Jusqu\'à 5 préréglages. Cliquez sur un préréglage pour démarrer immédiatement.',
-  btnAddPreset: '+ Ajouter un préréglage',
   titleRemovePreset: 'Supprimer le préréglage',
   presetNamePlaceholder: 'ex. Standup du matin',
-  labelPresetTitle: 'Titre par défaut',
-  presetTitlePlaceholder: 'Titre par défaut facultatif…',
 
   // Timer stopped elsewhere
   timerStoppedElsewhere: 'Le minuteur a été arrêté sur un autre appareil.',

@@ -2,13 +2,13 @@ export default {
   // Timer view — idle
   labelWorkspace: 'Workspace',
   labelProject: 'Project',
-  labelDescription: 'Working on…',
-  placeholderDescription: 'Description',
+  labelDescription: 'Description',
+  placeholderDescription: 'Working on…',
   placeholderSelectWorkspace: 'Select workspace…',
   placeholderSelectProject: 'Select project…',
   placeholderLoading: 'Loading…',
-  btnStart: '▶ START',
-  btnStop: '⏹ STOP',
+  btnStart: 'Start',
+  btnStop: 'Stop',
   labelStartTime: 'Start time',
   labelEndTime: 'End time',
   timeNow: 'Now',
@@ -16,7 +16,7 @@ export default {
   hintManualEnd: 'Filling in an end time stops the timer.',
   toastEndBeforeStart: 'The end time must be after the start time.',
   warnNoApiKey: 'No Notion API key set.',
-  warnNoApiKeyLink: 'Open Settings',
+  warnNoApiKeyLink: 'Open settings',
   warnNoWorkspaces: 'Add a workspace in',
   warnNoWorkspacesLink: 'Settings',
   warnNoWorkspacesSuffix: 'to get started.',
@@ -24,7 +24,7 @@ export default {
   // Settings
   settingsTitle: 'Settings',
   firstLaunchHint: 'Add your Notion API key and at least one workspace to get started.',
-  labelApiKey: 'Notion API Key',
+  labelApiKey: 'Notion API key',
   placeholderApiKey: 'secret_… or ntn_…',
   btnShowKey: 'Show',
   btnHideKey: 'Hide',
@@ -65,8 +65,8 @@ export default {
   btnAttach: 'Attach',
 
   // Add/Edit workspace modal
-  modalTitleAddWorkspace: 'Add Workspace',
-  modalTitleEditWorkspace: 'Edit Workspace',
+  modalTitleAddWorkspace: 'Add workspace',
+  modalTitleEditWorkspace: 'Edit workspace',
   labelWorkspaceName: 'Name',
   labelTimeEntriesDb: 'Time Entries database',
   hintTimeEntriesDb: 'Time entries are created here. Required properties: one date-range field and one status field.',
@@ -166,13 +166,8 @@ export default {
   btnClose: 'Close',
 
   // Presets
-  sectionPresets: 'Presets (optional)',
-  hintPresets: 'Up to 5 quick-start configurations. Click a preset chip to start the timer immediately.',
-  btnAddPreset: '+ Add preset',
   titleRemovePreset: 'Remove preset',
   presetNamePlaceholder: 'e.g. Morning standup',
-  labelPresetTitle: 'Default title',
-  presetTitlePlaceholder: 'Optional default title…',
 
   // Timer stopped elsewhere
   timerStoppedElsewhere: 'Timer was stopped on another device.',
@@ -191,7 +186,7 @@ export default {
   presetsNoneConfigured: 'No presets configured',
   colorNone: 'None',
   btnStopAndStartNew: 'Stop & start new',
-  presetsManageTitle: 'Manage Presets',
+  presetsManageTitle: 'Manage presets',
   presetNew: 'New preset',
   presetEdit: 'Edit preset',
   labelPresetName: 'Name',

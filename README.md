@@ -15,7 +15,7 @@
 
 ## Description
 
-Press **START** when you begin working and **STOP** when you're done. Time Tracker writes each block of time as a row in your own Notion database, from a small always-on-top window on Windows or from an Android app.
+Press **Start** when you begin working and **Stop** when you're done. Time Tracker writes each block of time as a row in your own Notion database, from a small always-on-top window on Windows or from an Android app.
 
 - **What it does:**
   - Creates a Notion page with status *In progress* when a timer starts.
@@ -28,7 +28,7 @@ Press **START** when you begin working and **STOP** when you're done. Time Track
 
 1. Download the installer (`.exe`) and/or the Android APK from the [latest release](https://github.com/impca201/time-tracker-for-notion/releases/latest).
 2. Create a Notion connection, copy its token, and connect it to the page that holds your Time Entries database.
-3. In the app: **Settings** › paste the key › **Test connection & save** › **+ Add workspace**, then press **START**.
+3. In the app: **Settings** › paste the key › **Test connection & save** › **+ Add workspace**, then press **Start**.
 
 Full walkthrough: [docs/usage.md](docs/usage.md).
 

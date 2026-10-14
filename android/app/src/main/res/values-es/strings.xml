@@ -151,8 +151,8 @@
     <string name="warn_already_running_title">Temporizador activo</string>
     <string name="warn_already_running_body">Ya hay un temporizador activo. ¿Quieres detenerlo y empezar el nuevo, o cancelar?</string>
     <string name="btn_stop_and_start_new">Detener e iniciar nuevo</string>
-    <string name="placeholder_preset_name">Título del preajuste (ej. Standup diario)</string>
-    <string name="label_preset_name">Título del preajuste</string>
+    <string name="placeholder_preset_name">ej. Standup matinal</string>
+    <string name="label_preset_name">Nombre</string>
     <string name="presets_manage_title">Gestionar preajustes</string>
     <string name="title_new_preset">Nuevo preajuste</string>
     <string name="title_edit_preset">Editar preajuste</string>

@@ -2,13 +2,13 @@ export default {
   // Timer view — idle
   labelWorkspace: 'Werkruimte',
   labelProject: 'Project',
-  labelDescription: 'Bezig met…',
-  placeholderDescription: 'Omschrijving',
+  labelDescription: 'Omschrijving',
+  placeholderDescription: 'Bezig met…',
   placeholderSelectWorkspace: 'Kies werkruimte…',
   placeholderSelectProject: 'Kies project…',
   placeholderLoading: 'Laden…',
-  btnStart: '▶ START',
-  btnStop: '⏹ STOP',
+  btnStart: 'Start',
+  btnStop: 'Stop',
   labelStartTime: 'Starttijd',
   labelEndTime: 'Eindtijd',
   timeNow: 'Nu',
@@ -16,7 +16,7 @@ export default {
   hintManualEnd: 'Een eindtijd invullen stopt de timer.',
   toastEndBeforeStart: 'De eindtijd moet na de starttijd liggen.',
   warnNoApiKey: 'Geen Notion API-sleutel ingesteld.',
-  warnNoApiKeyLink: 'Open Instellingen',
+  warnNoApiKeyLink: 'Instellingen openen',
   warnNoWorkspaces: 'Voeg een werkruimte toe in',
   warnNoWorkspacesLink: 'Instellingen',
   warnNoWorkspacesSuffix: 'om te beginnen.',
@@ -162,13 +162,8 @@ export default {
   btnClose: 'Sluiten',
 
   // Snelstarters
-  sectionPresets: 'Snelstarters (optioneel)',
-  hintPresets: 'Tot 5 snelstartconfiguraties. Klik op een chip om de timer direct te starten.',
-  btnAddPreset: '+ Snelstarter toevoegen',
   titleRemovePreset: 'Snelstarter verwijderen',
   presetNamePlaceholder: 'bijv. Ochtendoverleg',
-  labelPresetTitle: 'Standaardtitel',
-  presetTitlePlaceholder: 'Optionele standaardtitel…',
 
   // Timer gestopt elders
   timerStoppedElsewhere: 'Timer gestopt op een ander apparaat.',
