@@ -2,8 +2,8 @@
 
 Time Tracker for Notion: a Windows desktop app (Electron, `windows/`) and an Android app
 (`android/`) in one repository, built from the same rules as the
-[windows-electron-app](https://github.com/wimvdon/windows-electron-app) and
-[android-app](https://github.com/wimvdon/android-app) templates. The owner is **not a developer
+`windows-electron-app` and
+`android-app` templates (private repositories). The owner is **not a developer
 and does not review code**. CI, tests, lint and these rules are the safety net. Follow them every
 time.
 
