@@ -1,5 +1,9 @@
 # Technical decisions
 
+## Shared design rules have their master copy in the template (2026-10-14)
+
+`DESIGN.md` was kept identical in the three sibling apps by hand, with no single place to start a change, and the copies had drifted (Snoozer was missing the Loading section; the Tracker for Simkl icon row was out of date in two apps). The android-app template (`wimvdon/android-app`) now holds the master copy; each app keeps a full copy so Claude sessions can read the rules without opening another repository, and only its "This app" section is its own. Rejected: keeping the file only in the template (sessions in an app would have to fetch it every time) and a shared library for the design kit (a new dependency and more setup than three small apps need). The design kit files (`ui/theme/`) stay in the apps.
+
 ## Android through Google Play, no GitHub Releases (2026-10-14)
 
 The repository becomes public (free GitHub Actions minutes), and the apps should not be freely downloadable. The Release workflow no longer creates a GitHub Release. The `vX.Y.Z` tag is still created (after a successful release), and the version rules (`android/scripts/release_version.py`) are unchanged. Same setup as the sibling apps Snoozer and Tracker for Simkl.
