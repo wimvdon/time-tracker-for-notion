@@ -1,5 +1,15 @@
 # Technical decisions
 
+## Android through Google Play, no GitHub Releases (2026-10-14)
+
+The repository becomes public (free GitHub Actions minutes), and the apps should not be freely downloadable. The Release workflow no longer creates a GitHub Release. The `vX.Y.Z` tag is still created (after a successful release), and the version rules (`android/scripts/release_version.py`) are unchanged. Same setup as the sibling apps Snoozer and Tracker for Simkl.
+
+- **Android:** a signed AAB goes to Google Play's **internal testing** track; the owner installs from Play with automatic updates and no longer needs Obtainium. Uploaded with `r0adkll/upload-google-play` (approved by the owner), a widely used action, pinned to the v1.1.5 commit, in its own job with read-only GitHub access that runs only after both apps passed. The tag is created by a separate job afterwards, so a failed run leaves no tag and can be re-run. Rejected: a hand-written upload script against the Play Developer API.
+- **Windows:** no public download at all (the owner's choice). A release's installer is a file of the workflow run (kept 90 days), downloaded by hand. Trade-off: no update notice and manual installs; once the repository is public, anyone signed in to GitHub can download run artifacts. Rejected: a GitHub Release with only the installer (public download); the Microsoft Store (a much larger change).
+- **A new Google-generated app signing key** (Play App Signing), not the key shared with the owner's other apps; the existing key is only the upload key. Cost: the GitHub-installed Android app must be uninstalled once, losing the saved API key and settings (time entries are in Notion). Rejected: giving Google the shared key, which ties the three apps' signing together.
+- **A build-only run (`none`) still produces a Dev installer, an APK and an AAB**, the AAB for the first upload by hand, with versionCode 1 so they can never update an installed app.
+- Selling the apps later would need Google's billing library (a new dependency) and a way to sell the Windows app; not part of this change.
+
 ## All rights reserved, no open-source licence (2026-10-14)
 
 The repository becomes public so GitHub Actions minutes are free, but the code is not meant to be reused: the apps may become paid later. `LICENSE` is therefore a plain copyright notice ("all rights reserved"): the source can be read, but not copied, modified, distributed or sold without written permission. Without any licence the default is the same under copyright law; the explicit notice makes it clear to readers. Rejected: MIT, Apache 2.0 and GPL, which would let anyone reuse the code or publish their own build. Note that by GitHub's terms of service, other GitHub users may still view and fork a public repository on GitHub itself; that grants no other rights.
