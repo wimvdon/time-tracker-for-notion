@@ -19,7 +19,9 @@ import {
   Delete20Regular,
   Stop20Regular,
   Open20Regular,
-  Info20Regular
+  Info20Regular,
+  ChevronDown20Regular,
+  Dismiss16Regular
 } from '@fluentui/react-icons';
 
 /** Combines the date of `base` with an "HH:MM" string from a time input. */
@@ -77,6 +79,9 @@ export default function Timer() {
   const [showSavePresetModal, setShowSavePresetModal] = useState(false);
   const [showManagePresetsModal, setShowManagePresetsModal] = useState(false);
   const [presetNameInput, setPresetNameInput] = useState('');
+  // A start time picked for a timer the user forgot to start ("HH:MM"); empty means now.
+  // Only the Start button uses it: presets, shortcuts and recent entries always start now.
+  const [pickedStart, setPickedStart] = useState('');
 
   const selectedWorkspace = workspaces.find((w) => w.id === selectedWorkspaceId);
   const isDarkTheme = useIsDarkTheme();
@@ -140,6 +145,7 @@ export default function Timer() {
         onApplyPreset={applyPreset}
         onStartFromRecentEntry={startFromRecentEntry}
         onManagePresetsClick={() => setShowManagePresetsModal(true)}
+        onSavePresetClick={() => setShowSavePresetModal(true)}
       />
     );
   } else {
@@ -152,7 +158,7 @@ export default function Timer() {
 
     content = (
       <div className="flex flex-col h-full">
-        <div className="flex-1 flex flex-col px-5 pt-5 gap-4 overflow-y-auto">
+        <div className="flex-1 flex flex-col px-5 pt-5 pb-4 gap-4 overflow-y-auto">
           {!apiKey && (
             <div className="text-xs bg-warning-bg border border-warning-stroke text-fg1 rounded-md p-2">
               {t('warnNoApiKey')}{' '}
@@ -179,54 +185,17 @@ export default function Timer() {
             className="mb-2"
           />
 
-          <div>
-            <label className="block text-xs text-fg2 mb-1">{t('labelWorkspace')}</label>
-            <SearchableSelect
-              value={selectedWorkspaceId || ''}
-              onChange={(v) => selectWorkspace(v || null)}
-              options={workspaces.map((w) => ({ value: w.id, label: w.name }))}
-              placeholder={t('placeholderSelectWorkspace')}
-              disabled={workspaces.length === 0}
-              triggerClass="bg-control"
-              className="w-full"
-            />
-          </div>
+          <WorkspaceTitle
+            workspaces={workspaces}
+            selectedId={selectedWorkspaceId}
+            onSelect={(v) => selectWorkspace(v || null)}
+          />
 
-          <div>
-            <label className={`block text-xs mb-1 ${descriptionMissing ? 'text-danger' : 'text-fg2'}`}>
-              {t('labelDescription')}
-              {descriptionRequired && ' *'}
-            </label>
-            <input
-              type="text"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder={t('placeholderDescription')}
-              className={`w-full bg-control border rounded-md px-3 py-2 text-sm placeholder-fg3 ${
-                descriptionMissing ? 'border-danger' : 'border-stroke'
-              }`}
-            />
-          </div>
-
-          {selectedWorkspaceId && extrasLoading && (
-            <div className="text-xs text-fg3">{t('placeholderLoading')}</div>
-          )}
-          {selectedWorkspaceId &&
-            extraFieldDefs.map((def) => (
-              <ExtraFieldInput
-                key={def.name}
-                def={def}
-                value={extraValues[def.name]}
-                error={def.required && buildPropertyValue(def.type, extraValues[def.name]) === null}
-                onChange={(value) => setExtraValue(def.name, value)}
-              />
-            ))}
-
-          <div className="flex gap-2 items-stretch mt-2">
+          <TimerHeroCard elapsedText={formatElapsed(0)} running={false}>
             <button
-              onClick={startTimer}
+              onClick={() => startTimer(pickedStart ? timeOnDate(new Date(), pickedStart) : undefined)}
               disabled={!canStart || isStarting}
-              className={`flex-1 py-3 rounded-lg font-semibold text-lg transition-colors flex items-center justify-center ${
+              className={`w-full h-10 rounded-md font-semibold text-base transition-colors flex items-center justify-center ${
                 selectedWorkspace?.color
                   ? 'text-white hover:brightness-110 active:brightness-90 disabled:bg-control-disabled disabled:text-fg-disabled'
                   : 'bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white disabled:bg-control-disabled disabled:text-fg-disabled'
@@ -243,16 +212,50 @@ export default function Timer() {
                 t('btnStart')
               )}
             </button>
-            
-            <button
-              onClick={() => setShowSavePresetModal(true)}
-              disabled={!selectedWorkspaceId || isStarting}
-              title={t('dialogSavePresetTitle')}
-              className="px-3.5 bg-control hover:bg-control-hover border border-stroke hover:border-stroke-strong rounded-lg text-lg text-fg2 hover:text-fg1 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center"
-            >
-              <Bookmark20Regular className="w-5 h-5" />
-            </button>
-          </div>
+          </TimerHeroCard>
+
+          <TimerDetailsCard>
+            <div>
+              <label htmlFor="idle-description" className={`block text-xs mb-1 ${descriptionMissing ? 'text-danger' : 'text-fg2'}`}>
+                {t('labelDescription')}
+                {descriptionRequired && ' *'}
+              </label>
+              <input
+                id="idle-description"
+                type="text"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder={t('placeholderDescription')}
+                className={`w-full bg-control border rounded-md px-3 py-2 text-sm placeholder-fg3 ${
+                  descriptionMissing ? 'border-danger' : 'border-stroke'
+                }`}
+              />
+            </div>
+
+            <div>
+              <label htmlFor="idle-start" className="block text-xs text-fg2 mb-1">{t('labelStartTime')}</label>
+              <TimeInput id="idle-start" value={pickedStart} onChange={setPickedStart} emptyLabel={t('timeNow')} />
+            </div>
+
+            {selectedWorkspaceId && extrasLoading && (
+              <div className="text-xs text-fg3">{t('placeholderLoading')}</div>
+            )}
+            {selectedWorkspaceId &&
+              extraFieldDefs.map((def) => (
+                <ExtraFieldInput
+                  key={def.name}
+                  def={def}
+                  value={extraValues[def.name]}
+                  error={def.required && buildPropertyValue(def.type, extraValues[def.name]) === null}
+                  onChange={(value) => setExtraValue(def.name, value)}
+                />
+              ))}
+          </TimerDetailsCard>
+
+          <SavePresetButton
+            onClick={() => setShowSavePresetModal(true)}
+            disabled={!selectedWorkspaceId || isStarting}
+          />
 
           <OtherRunningTimers
             timers={runningTimers}
@@ -458,6 +461,7 @@ function RunningView({
   onApplyPreset,
   onStartFromRecentEntry,
   onManagePresetsClick,
+  onSavePresetClick,
 }) {
   const timer = useStore((s) => s.timer);
   const isStopping = useStore((s) => s.isStopping);
@@ -601,103 +605,109 @@ function RunningView({
   };
 
   const timeInputClass =
-    'w-full bg-control border border-stroke rounded-md px-2 py-1.5 text-sm tabular-nums text-center';
+    'w-full bg-control border border-stroke rounded-md px-3 py-2 text-sm tabular-nums';
 
   return (
     <div
       className="flex flex-col h-full"
       style={accentColor ? { backgroundColor: accentColor + '33' } : undefined}
     >
-      <div className="flex-1 flex flex-col items-center px-6 pt-6 overflow-y-auto">
+      <div className="flex-1 flex flex-col px-5 pt-5 pb-4 gap-4 overflow-y-auto">
         <PresetChips
           workspaces={workspaces}
           apiKey={apiKey}
           onApplyPreset={onApplyPreset}
           onManageClick={onManagePresetsClick}
-          className="mb-3"
+          className="mb-2"
         />
 
-        <div className="text-sm font-semibold text-fg1 truncate max-w-full">
-          {workspaceName}
-        </div>
-        <input
-          type="text"
-          value={localDesc}
-          onChange={(e) => setLocalDesc(e.target.value)}
-          onBlur={() => {
-            if (localDesc.trim() === description.trim()) return;
-            const pending = cancelPendingExtras();
-            descSaveRef.current = updateTimerDetails(selectedProjectId, localDesc, pending || localExtras);
-          }}
-          onKeyDown={blurOnEnter}
-          placeholder={t('placeholderDescription')}
-          className={`mt-1 w-full bg-transparent border rounded-md px-2 py-0.5 text-sm text-fg1 text-center placeholder-fg3 outline-none transition-colors ${
-            descriptionMissing
-              ? 'border-danger'
-              : 'border-transparent hover:border-stroke-strong focus:border-accent'
-          }`}
-        />
+        {/* A running timer's workspace can't change, so here it is a plain title. */}
+        <WorkspaceTitle workspaces={workspaces} selectedId={selectedWorkspaceId} fallbackName={workspaceName} />
 
-        <div className="mt-6 text-5xl font-mono font-bold tabular-nums text-danger">
-          {formatElapsed(timer.elapsedSeconds)}
-        </div>
+        <TimerHeroCard elapsedText={formatElapsed(timer.elapsedSeconds)} running tint={accentColor}>
+          <button
+            onClick={() => handleStop()}
+            disabled={isStopping || flushingStop}
+            className="w-full h-10 rounded-md bg-red-600 hover:bg-red-500 active:bg-red-700 text-white font-semibold text-base transition-colors flex items-center justify-center disabled:opacity-50"
+          >
+            {isStopping || flushingStop ? (
+              <span className="animate-spin inline-block w-5 h-5 border-2 border-current border-t-transparent rounded-full" />
+            ) : (
+              t('btnStop')
+            )}
+          </button>
+        </TimerHeroCard>
 
-
-        <div className="mt-5 w-full grid grid-cols-2 gap-3">
+        <TimerDetailsCard>
           <div>
-            <label className="block text-xs text-fg2 mb-1">{t('labelStartTime')}</label>
+            <label htmlFor="running-description" className={`block text-xs mb-1 ${descriptionMissing ? 'text-danger' : 'text-fg2'}`}>
+              {t('labelDescription')}
+              {activeWorkspace?.descriptionRequired && ' *'}
+            </label>
             <input
-              type="time"
-              value={startInput}
-              onChange={(e) => setStartInput(e.target.value)}
-              onBlur={commitStart}
+              id="running-description"
+              type="text"
+              value={localDesc}
+              onChange={(e) => setLocalDesc(e.target.value)}
+              onBlur={() => {
+                if (localDesc.trim() === description.trim()) return;
+                const pending = cancelPendingExtras();
+                descSaveRef.current = updateTimerDetails(selectedProjectId, localDesc, pending || localExtras);
+              }}
               onKeyDown={blurOnEnter}
-              className={timeInputClass}
+              placeholder={t('placeholderDescription')}
+              className={`w-full bg-control border rounded-md px-3 py-2 text-sm placeholder-fg3 ${
+                descriptionMissing ? 'border-danger' : 'border-stroke'
+              }`}
             />
           </div>
+
           <div>
-            <label className="block text-xs text-fg2 mb-1">{t('labelEndTime')}</label>
-            <input
-              type="time"
-              value={endInput}
-              onChange={(e) => setEndInput(e.target.value)}
-              onBlur={commitEnd}
-              onKeyDown={blurOnEnter}
-              className={timeInputClass}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label htmlFor="running-start" className="block text-xs text-fg2 mb-1">{t('labelStartTime')}</label>
+                <input
+                  id="running-start"
+                  type="time"
+                  value={startInput}
+                  onChange={(e) => setStartInput(e.target.value)}
+                  onBlur={commitStart}
+                  onKeyDown={blurOnEnter}
+                  className={timeInputClass}
+                />
+              </div>
+              <div>
+                <label htmlFor="running-end" className="block text-xs text-fg2 mb-1">{t('labelEndTime')}</label>
+                <input
+                  id="running-end"
+                  type="time"
+                  value={endInput}
+                  onChange={(e) => setEndInput(e.target.value)}
+                  onBlur={commitEnd}
+                  onKeyDown={blurOnEnter}
+                  className={timeInputClass}
+                />
+              </div>
+            </div>
+            <p className="mt-1 text-xs text-fg3">{t('hintManualEnd')}</p>
+          </div>
+
+          {extraFieldDefs.map((def) => (
+            <ExtraFieldInput
+              key={def.name}
+              def={def}
+              value={localExtras[def.name]}
+              error={def.required && buildPropertyValue(def.type, localExtras[def.name]) === null}
+              onChange={(value) => {
+                const newExtras = { ...localExtras, [def.name]: value };
+                setLocalExtras(newExtras);
+                scheduleExtrasSave(newExtras);
+              }}
             />
-          </div>
-        </div>
-        <p className="mt-1 text-xs text-fg3 w-full">{t('hintManualEnd')}</p>
+          ))}
+        </TimerDetailsCard>
 
-        {extraFieldDefs.length > 0 && (
-          <div className="mt-4 w-full flex flex-col gap-3">
-            {extraFieldDefs.map((def) => (
-              <ExtraFieldInput
-                key={def.name}
-                def={def}
-                value={localExtras[def.name]}
-                error={def.required && buildPropertyValue(def.type, localExtras[def.name]) === null}
-                onChange={(value) => {
-                  const newExtras = { ...localExtras, [def.name]: value };
-                  setLocalExtras(newExtras);
-                  scheduleExtrasSave(newExtras);
-                }}
-              />
-            ))}
-          </div>
-        )}
-
-        <button
-          onClick={() => handleStop()}
-          disabled={isStopping || flushingStop}
-          className="mt-5 w-full py-3 rounded-lg bg-red-600 hover:bg-red-500 active:bg-red-700 text-white font-semibold text-lg transition-colors flex items-center justify-center disabled:opacity-50"
-        >
-          {isStopping || flushingStop ? (
-            <span className="animate-spin inline-block w-5 h-5 border-2 border-current border-t-transparent rounded-full" />
-          ) : (
-            t('btnStop')
-          )}
-        </button>
+        <SavePresetButton onClick={onSavePresetClick} />
 
         <OtherRunningTimers
           timers={runningTimers}
@@ -760,6 +770,140 @@ function RunningView({
         </div>
       )}
     </div>
+  );
+}
+
+/**
+ * The workspace as the screen's title, in Fluent's Subtitle style with its colour dot. With
+ * `onSelect` (idle) it is a subtle drop-down button opening the workspace list, each with its
+ * dot; while a timer runs it is plain text, since a running timer's workspace can't change.
+ */
+function WorkspaceTitle({ workspaces, selectedId, onSelect, fallbackName }) {
+  const isDarkTheme = useIsDarkTheme();
+  const dotFor = (ws) => {
+    const hex = ws?.color?.trim();
+    return hex ? getWorkspaceAccentColor(hex, isDarkTheme) : null;
+  };
+  const anyColour = workspaces.some((w) => dotFor(w));
+  const selected = workspaces.find((w) => w.id === selectedId);
+  const dot = (color) => (
+    <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: color || 'transparent' }} />
+  );
+  const title = (ws) => (
+    <span className={`min-w-0 truncate text-xl leading-7 font-semibold ${ws ? 'text-fg1' : 'text-fg3'}`}>
+      {ws?.name || fallbackName || t('placeholderSelectWorkspace')}
+    </span>
+  );
+
+  if (!onSelect) {
+    return (
+      <div className="w-full flex justify-center items-center gap-2 px-2 py-1">
+        {dotFor(selected) && dot(dotFor(selected))}
+        {title(selected)}
+      </div>
+    );
+  }
+  return (
+    <div className="w-full flex justify-center">
+      <SearchableSelect
+        value={selectedId || ''}
+        onChange={onSelect}
+        options={workspaces.map((w) => ({ value: w.id, label: w.name }))}
+        allowClear={false}
+        disabled={workspaces.length === 0}
+        className="max-w-full min-w-0"
+        panelMinWidth={240}
+        buttonClass="max-w-full flex items-center gap-2 px-2 py-1 rounded-md hover:bg-subtle-hover active:bg-control-pressed transition-colors disabled:opacity-50"
+        renderValue={() => (
+          <>
+            {dotFor(selected) && dot(dotFor(selected))}
+            {title(selected)}
+            <ChevronDown20Regular className="w-4 h-4 shrink-0 text-fg2" />
+          </>
+        )}
+        renderPrefix={anyColour ? (o) => dot(dotFor(workspaces.find((w) => w.id === o.value))) : undefined}
+      />
+    </div>
+  );
+}
+
+/**
+ * The timer itself: the elapsed time large (Fluent Title Large) on a card, with Start or Stop
+ * as the card's own action. Idle it shows 00:00:00 in a quiet colour; running, the card takes a
+ * tint of the workspace colour.
+ */
+function TimerHeroCard({ elapsedText, running, tint, children }) {
+  return (
+    <div
+      className="w-full rounded-lg border border-stroke bg-layer px-4 pt-5 pb-4 flex flex-col items-center gap-4"
+      style={tint ? { backgroundColor: tint + '26' } : undefined}
+    >
+      <div
+        className={`text-[40px] leading-[52px] font-semibold tabular-nums ${running ? 'text-fg1' : 'text-fg3'}`}
+        style={{ fontFamily: "'Segoe UI Variable Display', 'Segoe UI', system-ui, sans-serif" }}
+      >
+        {elapsedText}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+/** Every field of the timer in one card, set apart from the timer above and the lists below. */
+function TimerDetailsCard({ children }) {
+  return (
+    <section className="w-full rounded-lg border border-stroke bg-layer p-3 flex flex-col gap-3">
+      {children}
+    </section>
+  );
+}
+
+/**
+ * A time ("HH:MM") that may be left empty. Empty, it reads `emptyLabel` ("Now") until it gets
+ * focus, since a native time input can only show "--:--"; set, a button clears it again.
+ */
+function TimeInput({ id, value, onChange, emptyLabel }) {
+  const [focused, setFocused] = useState(false);
+  return (
+    <div className="relative">
+      <input
+        id={id}
+        type={focused || value ? 'time' : 'text'}
+        value={value}
+        placeholder={emptyLabel}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+        onChange={(e) => onChange(e.target.value)}
+        onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
+        className="w-full bg-control border border-stroke rounded-md pl-3 pr-9 py-2 text-sm tabular-nums placeholder-fg3"
+      />
+      {value && (
+        <button
+          type="button"
+          onClick={() => onChange('')}
+          title={t('btnClear')}
+          aria-label={t('btnClear')}
+          className="absolute right-1 top-1/2 -translate-y-1/2 p-1.5 rounded text-fg2 hover:text-fg1 hover:bg-subtle-hover flex items-center justify-center"
+        >
+          <Dismiss16Regular className="w-4 h-4" />
+        </button>
+      )}
+    </div>
+  );
+}
+
+/** Saves the form as a preset: a subtle button under the details. */
+function SavePresetButton({ onClick, disabled = false }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className="self-center flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-sm text-fg1 hover:bg-subtle-hover active:bg-control-pressed transition-colors disabled:opacity-40 disabled:pointer-events-none"
+    >
+      <Bookmark20Regular className="w-4 h-4" />
+      {t('btnSavePreset')}
+    </button>
   );
 }
 

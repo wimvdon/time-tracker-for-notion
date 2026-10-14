@@ -540,7 +540,12 @@ export const useStore = create((set, get) => ({
 
   // ---- Timer ----
 
-  startTimer: async () => {
+  /**
+   * Starts a timer now, or at `startAt` (a Date) when the user picked a start time on the
+   * idle screen for a timer they forgot to start. A time later than now is taken as
+   * yesterday's. Anything else (a click event, no argument) starts now.
+   */
+  startTimer: async (startAt) => {
     if (get().timer.running || get().isStarting) return;
     set({ isStarting: true });
 
@@ -557,7 +562,9 @@ export const useStore = create((set, get) => ({
       return;
     }
 
-    const rawStart = new Date();
+    const now = new Date();
+    let rawStart = startAt instanceof Date && !isNaN(startAt) ? startAt : now;
+    if (rawStart > now) rawStart = new Date(rawStart.getTime() - 24 * 3600 * 1000);
     const startISO = toNotionDateTime(rawStart);
     // An empty description becomes the start date on the Notion page; the
     // description input stays empty so nothing is pre-filled for the user.
