@@ -104,7 +104,8 @@ const store = new Store({
   },
 });
 
-// The Notion API key, encrypted at rest (see apiKey.cjs). Use apiKeys.get(), never apiKeys.get().
+// The Notion API key, encrypted at rest (see apiKey.cjs). Always read it with apiKeys.get(),
+// never straight from the store.
 const apiKeys = createApiKeyStore(store, safeStorage);
 
 // The UI is served from app://bundle/ instead of file:// (Electron security checklist).
