@@ -1,9 +1,12 @@
-const { app, BrowserWindow, Tray, Menu, ipcMain, nativeImage, nativeTheme, screen, shell, systemPreferences } = require('electron');
+const { app, BrowserWindow, Tray, Menu, ipcMain, nativeImage, nativeTheme, net, protocol, safeStorage, screen, shell, systemPreferences } = require('electron');
 const os = require('os');
 const path = require('path');
 const zlib = require('zlib');
+const { pathToFileURL } = require('url');
 const Store = require('electron-store');
 const notion = require('./notionClient.cjs');
+const { createApiKeyStore } = require('./apiKey.cjs');
+const { APP_ORIGIN, APP_SCHEME, resolveBundlePath } = require('./bundlePath.cjs');
 
 // ---- Minimal PNG encoder (for the coloured tray icon) ----
 
@@ -83,7 +86,8 @@ function makeColoredTrayIcon(hexColor) {
 }
 
 // encryptionKey obfuscates the config file at rest (it is not a hard security
-// boundary — anyone with access to this source can derive it, see README).
+// boundary — anyone with access to this source can derive it). The API key itself is
+// additionally encrypted with Windows' DPAPI, see apiKey.cjs.
 const store = new Store({
   encryptionKey: 'notion-timer-local-config-v1',
   defaults: {
@@ -99,6 +103,39 @@ const store = new Store({
     lastSyncedUpdatedAt: null,
   },
 });
+
+// The Notion API key, encrypted at rest (see apiKey.cjs). Use apiKeys.get(), never apiKeys.get().
+const apiKeys = createApiKeyStore(store, safeStorage);
+
+// The UI is served from app://bundle/ instead of file:// (Electron security checklist).
+// Must be registered before the app is ready.
+protocol.registerSchemesAsPrivileged([
+  { scheme: APP_SCHEME, privileges: { standard: true, secure: true, supportFetchAPI: true } },
+]);
+
+/** The window only ever shows the bundled UI or, during development, the Vite dev server. */
+function isAppUrl(url) {
+  if (typeof url !== 'string') return false;
+  if (url.startsWith(`${APP_ORIGIN}/`)) return true;
+  const devServer = process.env.VITE_DEV_SERVER_URL;
+  return !app.isPackaged && !!devServer && url.startsWith(devServer);
+}
+
+// Every IPC message must come from the app's own page (Electron security checklist).
+function isTrustedSender(event) {
+  return !!event.senderFrame && isAppUrl(event.senderFrame.url);
+}
+function handle(channel, listener) {
+  ipcMain.handle(channel, (event, ...args) => {
+    if (!isTrustedSender(event)) throw new Error(`Blocked IPC from an untrusted page: ${channel}`);
+    return listener(event, ...args);
+  });
+}
+function on(channel, listener) {
+  ipcMain.on(channel, (event, ...args) => {
+    if (isTrustedSender(event)) listener(event, ...args);
+  });
+}
 
 let mainWindow = null;
 let tray = null;
@@ -196,6 +233,10 @@ function createWindow() {
   // shell:openExternal, so block in-window navigation and new windows.
   mainWindow.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   mainWindow.webContents.on('will-navigate', (event) => event.preventDefault());
+  mainWindow.webContents.on('will-attach-webview', (event) => event.preventDefault());
+  // The app needs no camera, microphone, location, notifications etc. from the page.
+  mainWindow.webContents.session.setPermissionRequestHandler((_wc, _permission, callback) => callback(false));
+  mainWindow.webContents.session.setPermissionCheckHandler(() => false);
 
   // Appearance is passed in the URL so the first paint already uses it.
   const query = {};
@@ -208,7 +249,7 @@ function createWindow() {
     for (const [key, value] of Object.entries(query)) url.searchParams.set(key, value);
     mainWindow.loadURL(url.toString());
   } else {
-    mainWindow.loadFile(path.join(__dirname, '..', 'dist', 'index.html'), { query });
+    mainWindow.loadURL(`${APP_ORIGIN}/index.html?${new URLSearchParams(query)}`);
   }
 
   // Closing the window minimises to tray instead of quitting
@@ -302,94 +343,100 @@ function applyPresetById(presetId) {
 
 // ---- IPC handlers ----
 
-ipcMain.handle('store:get', () => store.store);
+// The renderer sees the API key in plain `apiKey`; on disk it is only stored encrypted.
+handle('store:get', () => apiKeys.forRenderer(store.store));
 
-ipcMain.handle('store:set', (_event, data) => {
+handle('store:set', (_event, data) => {
   for (const [key, value] of Object.entries(data)) {
-    // undefined means "remove this key" — used by schema migrations
-    if (value === undefined) {
+    if (key === apiKeys.PLAIN_FIELD) {
+      apiKeys.set(value);
+    } else if (key === apiKeys.ENCRYPTED_FIELD) {
+      // Only apiKeys may write the encrypted key.
+      continue;
+    } else if (value === undefined) {
+      // undefined means "remove this key" — used by schema migrations
       store.delete(key);
     } else {
       store.set(key, value);
     }
   }
-  return store.store;
+  return apiKeys.forRenderer(store.store);
 });
 
-ipcMain.handle('notion:searchDatabases', () =>
-  notion.searchDatabases(store.get('apiKey'))
+handle('notion:searchDatabases', () =>
+  notion.searchDatabases(apiKeys.get())
 );
 
-ipcMain.handle('notion:getDatabaseSchema', (_event, dbId) =>
-  notion.getDatabaseSchema(store.get('apiKey'), dbId)
+handle('notion:getDatabaseSchema', (_event, dbId) =>
+  notion.getDatabaseSchema(apiKeys.get(), dbId)
 );
 
-ipcMain.handle('notion:fetchDatabasePages', (_event, dbId) =>
-  notion.fetchDatabasePages(store.get('apiKey'), dbId)
+handle('notion:fetchDatabasePages', (_event, dbId) =>
+  notion.fetchDatabasePages(apiKeys.get(), dbId)
 );
 
-ipcMain.handle('notion:listUsers', () => notion.listUsers(store.get('apiKey')));
+handle('notion:listUsers', () => notion.listUsers(apiKeys.get()));
 
-ipcMain.handle('notion:create', (_event, params) =>
-  notion.createTimeEntry(store.get('apiKey'), params)
+handle('notion:create', (_event, params) =>
+  notion.createTimeEntry(apiKeys.get(), params)
 );
 
-ipcMain.handle('notion:stop', (_event, params) =>
-  notion.stopTimeEntry(store.get('apiKey'), params)
+handle('notion:stop', (_event, params) =>
+  notion.stopTimeEntry(apiKeys.get(), params)
 );
 
-ipcMain.handle('notion:fetchRunningTimers', (_event, dbId, statusProp, statusRunning, dateProp) =>
-  notion.fetchRunningTimers(store.get('apiKey'), dbId, statusProp, statusRunning, dateProp)
+handle('notion:fetchRunningTimers', (_event, dbId, statusProp, statusRunning, dateProp) =>
+  notion.fetchRunningTimers(apiKeys.get(), dbId, statusProp, statusRunning, dateProp)
 );
 
-ipcMain.handle('notion:fetchRecentEntries', (_event, dbId, statusProp, statusDone, dateProp) =>
-  notion.fetchRecentEntries(store.get('apiKey'), dbId, statusProp, statusDone, dateProp)
+handle('notion:fetchRecentEntries', (_event, dbId, statusProp, statusDone, dateProp) =>
+  notion.fetchRecentEntries(apiKeys.get(), dbId, statusProp, statusDone, dateProp)
 );
 
-ipcMain.handle('notion:deletePage', (_event, pageId) =>
-  notion.deletePage(store.get('apiKey'), pageId)
+handle('notion:deletePage', (_event, pageId) =>
+  notion.deletePage(apiKeys.get(), pageId)
 );
 
-ipcMain.handle('notion:updatePage', (_event, pageId, properties) =>
-  notion.updatePageProperties(store.get('apiKey'), pageId, properties)
+handle('notion:updatePage', (_event, pageId, properties) =>
+  notion.updatePageProperties(apiKeys.get(), pageId, properties)
 );
 
-ipcMain.handle('notion:getPageProperties', (_event, pageId) =>
-  notion.getPageProperties(store.get('apiKey'), pageId)
+handle('notion:getPageProperties', (_event, pageId) =>
+  notion.getPageProperties(apiKeys.get(), pageId)
 );
 
-ipcMain.handle('notion:searchPages', () => notion.searchPages(store.get('apiKey')));
+handle('notion:searchPages', () => notion.searchPages(apiKeys.get()));
 
-ipcMain.handle('notion:createSyncPage', (_event, parentPageId, title, payload) =>
-  notion.createSyncPage(store.get('apiKey'), parentPageId, title, payload)
+handle('notion:createSyncPage', (_event, parentPageId, title, payload) =>
+  notion.createSyncPage(apiKeys.get(), parentPageId, title, payload)
 );
 
-ipcMain.handle('notion:fetchSyncPage', (_event, pageId) =>
-  notion.fetchSyncPageContent(store.get('apiKey'), pageId)
+handle('notion:fetchSyncPage', (_event, pageId) =>
+  notion.fetchSyncPageContent(apiKeys.get(), pageId)
 );
 
-ipcMain.handle('notion:updateSyncBlock', (_event, blockId, payload) =>
-  notion.updateSyncBlock(store.get('apiKey'), blockId, payload)
+handle('notion:updateSyncBlock', (_event, blockId, payload) =>
+  notion.updateSyncBlock(apiKeys.get(), blockId, payload)
 );
 
 // Only web links (Notion page URLs) — never file:// or other protocol handlers.
-ipcMain.handle('shell:openExternal', (_event, url) => {
+handle('shell:openExternal', (_event, url) => {
   if (typeof url !== 'string' || !/^https?:\/\//i.test(url)) return;
   return shell.openExternal(url);
 });
 
 // apiKey is passed explicitly here so Settings can test a key before saving it
-ipcMain.handle('notion:test', (_event, apiKey, dbId) =>
-  notion.testConnection(apiKey || store.get('apiKey'), dbId)
+handle('notion:test', (_event, apiKey, dbId) =>
+  notion.testConnection(apiKey || apiKeys.get(), dbId)
 );
 
-ipcMain.handle('window:alwaysOnTop', (_event, value) => {
+handle('window:alwaysOnTop', (_event, value) => {
   store.set('alwaysOnTop', value);
   if (mainWindow) mainWindow.setAlwaysOnTop(value);
   return value;
 });
 
-ipcMain.handle('window:startWithWindows', (_event, value) => {
+handle('window:startWithWindows', (_event, value) => {
   store.set('startWithWindows', value);
   if (app.isPackaged) {
     app.setLoginItemSettings({ openAtLogin: value, args: value ? ['--hidden'] : [] });
@@ -397,13 +444,13 @@ ipcMain.handle('window:startWithWindows', (_event, value) => {
   return value;
 });
 
-ipcMain.on('window:setTheme', (_event, theme) => {
+on('window:setTheme', (_event, theme) => {
   applyNativeTheme(theme);
   if (mainWindow && !useMica) mainWindow.setBackgroundColor(fallbackBackground());
 });
 
 // Renderer reports timer state so the tray icon/menu can reflect it
-ipcMain.on('timer:state', (_event, data) => {
+on('timer:state', (_event, data) => {
   timerRunning = typeof data === 'object' ? !!data.running : !!data;
   timerColor = typeof data === 'object' ? (data.color || null) : null;
   if (tray) {
@@ -414,7 +461,7 @@ ipcMain.on('timer:state', (_event, data) => {
 
 // Renderer notifies that settings changed (presets added, language switched,
 // a newer configuration pulled in from the sync page, …)
-ipcMain.on('settings:changed', () => {
+on('settings:changed', () => {
   cachedWorkspaces = store.get('workspaces') || [];
   const storedLocale = store.get('locale');
   trayStrings = trayStringsFor(
@@ -439,6 +486,15 @@ if (!gotLock) {
   });
 
   app.whenReady().then(() => {
+    // safeStorage only works once the app is ready.
+    apiKeys.migrate();
+    const distDir = path.join(__dirname, '..', 'dist');
+    protocol.handle(APP_SCHEME, (request) => {
+      const file = resolveBundlePath(distDir, request.url);
+      if (!file) return new Response('Not found', { status: 404 });
+      return net.fetch(pathToFileURL(file).toString());
+    });
+
     // The stored language wins; 'system' (or nothing stored) follows Windows.
     const storedLocale = store.get('locale');
     trayStrings = trayStringsFor(
