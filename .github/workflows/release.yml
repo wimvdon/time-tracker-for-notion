@@ -5,6 +5,9 @@ name: Release
 # picks the next version after the latest v* tag, builds both apps and publishes
 # that release (creating the tag). With "Release" left at none it only builds
 # downloadable artifacts. (Pull requests are checked by the CI workflow.)
+# It refuses to publish when: not on main, the tag or release already exists, the version is
+# not higher than the previous release, or nothing changed since the previous release. The
+# Windows installer is installed, started and uninstalled on a Windows machine first.
 # Signing needs four repository secrets: ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD,
 # ANDROID_KEY_ALIAS and ANDROID_KEY_PASSWORD.
 on:
@@ -37,14 +40,32 @@ jobs:
         shell: bash
         env:
           BUMP: ${{ inputs.bump || 'none' }}
+          GH_TOKEN: ${{ github.token }}
         run: |
+          set -euo pipefail
+          refuse() { echo "::error title=Release refused::$1"; exit 1; }
+          git fetch --quiet origin main
+          # Highest vX.Y.Z tag by version (not date), optionally leaving one tag out.
+          latest_tag() {
+            git tag --list 'v*' --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | grep -vxF "${1:-}" | head -n1 || true
+          }
+          # "a > b" for X.Y.Z versions.
+          is_newer() { [ "$1" != "$2" ] && [ "$(printf '%s\n%s\n' "$1" "$2" | sort -V | tail -n1)" = "$1" ]; }
+
           publish=false
           if [[ "$GITHUB_REF_TYPE" == "tag" ]]; then
             name="${GITHUB_REF_NAME#v}"
+            [[ "$GITHUB_REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || refuse "Tag must look like v1.2.3, got '$GITHUB_REF_NAME'."
+            git merge-base --is-ancestor "$GITHUB_SHA" origin/main || refuse "Tag $GITHUB_REF_NAME points to a commit that is not on main."
+            if gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+              refuse "A release for $GITHUB_REF_NAME already exists."
+            fi
+            previous="$(latest_tag "$GITHUB_REF_NAME")"
             publish=true
           elif [[ "$BUMP" != "none" ]]; then
-            latest=$(git tag --list 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -n1)
-            IFS=. read -r major minor patch <<< "${latest#v}"
+            [[ "$GITHUB_REF" == "refs/heads/main" ]] || refuse "Releases can only be made from main (this run is on $GITHUB_REF_NAME)."
+            previous="$(latest_tag)"
+            IFS=. read -r major minor patch <<< "${previous#v}"
             major=${major:-0}; minor=${minor:-0}; patch=${patch:-0}
             case "$BUMP" in
               major) major=$((major + 1)); minor=0; patch=0 ;;
@@ -52,48 +73,94 @@ jobs:
               patch) patch=$((patch + 1)) ;;
             esac
             name="$major.$minor.$patch"
-            if git rev-parse -q --verify "refs/tags/v$name" >/dev/null; then
-              echo "::error::Tag v$name already exists"
-              exit 1
+            if git rev-parse -q --verify "refs/tags/v$name" >/dev/null || [ -n "$(git ls-remote --tags origin "refs/tags/v$name")" ]; then
+              refuse "Tag v$name already exists."
             fi
-            echo "Latest tag ${latest:-none}, releasing v$name"
             publish=true
           else
             # Not a release: the latest release plus "-dev" and the commit, e.g. 1.0.0-dev+abc1234.
-            latest=$(git tag --list 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -n1)
+            latest=$(latest_tag)
             latest=${latest#v}
             name="${latest:-0.0.0}-dev+$(git rev-parse --short HEAD)"
           fi
+
+          if [[ "$publish" == "true" && -n "$previous" ]]; then
+            is_newer "$name" "${previous#v}" \
+              || refuse "Version $name is not higher than the previous release $previous; Android would refuse the update."
+            [ "$(git rev-list --count "$previous..$GITHUB_SHA")" -gt 0 ] \
+              || refuse "No commits since the previous release $previous. Nothing to release."
+          fi
+          echo "Releasing: $publish, version $name, previous release ${previous:-none}"
+
           if [[ ! "${name%%-*}" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
-            echo "::error::Tag must look like v1.2.3, got '$GITHUB_REF_NAME'"
+            echo "::error::Version must look like 1.2.3, got '$name'"
             exit 1
           fi
           code=$(( BASH_REMATCH[1] * 10000 + BASH_REMATCH[2] * 100 + BASH_REMATCH[3] ))
-          echo "name=$name" >> "$GITHUB_OUTPUT"
-          echo "code=$code" >> "$GITHUB_OUTPUT"
-          echo "publish=$publish" >> "$GITHUB_OUTPUT"
+          {
+            echo "name=$name"
+            echo "code=$code"
+            echo "publish=$publish"
+          } >> "$GITHUB_OUTPUT"
 
   windows:
     needs: version
     runs-on: windows-latest
+    timeout-minutes: 30
     defaults:
       run:
         working-directory: windows
+    env:
+      PUBLISH: ${{ needs.version.outputs.publish }}
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
         with:
-          node-version: 22
+          node-version: 24
           cache: npm
           cache-dependency-path: windows/package-lock.json
+      - name: Cache Electron downloads
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/AppData/Local/electron/Cache
+            ~/AppData/Local/electron-builder/Cache
+          key: electron-${{ runner.os }}-${{ hashFiles('windows/package-lock.json') }}
+          restore-keys: electron-${{ runner.os }}-
       - run: npm ci
       - run: npm version "${{ needs.version.outputs.name }}" --no-git-tag-version --allow-same-version
+      - run: npm run lint
       - run: npm test
-      - run: npm run dist -- --publish never
+      # A release builds the real app; a build-only run builds the Dev app, which installs next
+      # to the real one, so trying it never replaces your installed app or its settings.
+      - name: Build the installer
+        shell: bash
+        run: |
+          if [ "$PUBLISH" = "true" ]; then npm run dist -- --publish never; else npm run dist:dev -- --publish never; fi
+      - name: Find the installer
+        id: installer
+        shell: bash
+        run: |
+          set -euo pipefail
+          name=""
+          for file in ../release/*Setup*.exe; do
+            case "$file" in *__uninstaller*) ;; *) [ -e "$file" ] && name="$(basename "$file")" && break ;; esac
+          done
+          [ -n "$name" ] || { echo "::error::No installer found in release/"; exit 1; }
+          product="Time Tracker for Notion"
+          if [ "$PUBLISH" != "true" ]; then product="$product Dev"; fi
+          {
+            echo "path=../release/$name"
+            echo "artifact=release/$name"
+            echo "product=$product"
+          } >> "$GITHUB_OUTPUT"
+      - name: Install, start and uninstall it
+        shell: pwsh
+        run: ./scripts/smoke-test-installer.ps1 -Installer '${{ steps.installer.outputs.path }}' -ProductName '${{ steps.installer.outputs.product }}' -WindowTitle 'Time Tracker'
       - uses: actions/upload-artifact@v7
         with:
           name: windows
-          path: release/*.exe
+          path: ${{ steps.installer.outputs.artifact }}
           if-no-files-found: error
 
   android:
