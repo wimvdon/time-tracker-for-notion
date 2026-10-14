@@ -20,7 +20,7 @@
     "dist:dir": "npm run build && electron-builder --win --dir"
   },
   "dependencies": {
-    "electron-store": "^8.2.0"
+    "electron-store": "^11.0.2"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
