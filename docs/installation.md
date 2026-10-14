@@ -5,7 +5,7 @@
 | For | Requirement |
 |---|---|
 | Both apps | A Notion account and an internal connection (integration) token; see [usage.md](usage.md#1-prepare-notion) |
-| Windows app | Windows 10 or 11 (Mica on Windows 11 22H2+). Development: Node.js LTS (CI uses Node 22) and npm. |
+| Windows app | Windows 10 or 11 (Mica on Windows 11 22H2+). Development: Node.js 24 LTS (as in CI) and npm. |
 | Android app | Phone with Android 8.0+ (API 26). Development: Android Studio with JDK 17 (CI uses Temurin 17) and SDK Platform 36. |
 
 No environment variables, database or backend are needed.
@@ -42,13 +42,16 @@ Other scripts:
 
 | Command | Does |
 |---|---|
-| `npm test` | Unit tests (`node --test "src/**/*.test.js"`) |
+| `npm test` | Unit tests (`node --test`, in `src/` and `electron/`) |
+| `npm run lint` | ESLint |
+| `npm run check` | Lint + unit tests + build, what CI checks first |
 | `npm run build` | Production renderer build into `windows/dist/` |
 | `npm run dist` | Build + NSIS installer into `release/` at the repo root |
+| `npm run dist:dev` | Build + installer for *Time Tracker for Notion Dev*, which installs next to the real app with its own settings |
 | `npm run dist:dir` | Build + unpacked app (no installer), faster for smoke tests |
 | `npm run icons` | Regenerate all icons from the vector design, including Android launcher layers |
 
-Settings are stored by electron-store in `%APPDATA%\Time Tracker for Notion\config.json` (obfuscated, see [decisions.md](decisions.md#api-key-handling)). Uninstalling keeps it (`deleteAppDataOnUninstall: false`).
+Settings are stored by electron-store in `%APPDATA%\Time Tracker for Notion\config.json` (obfuscated, with the API key encrypted by Windows, see [decisions.md](decisions.md#api-key-handling)). The Dev app uses `%APPDATA%\Time Tracker for Notion Dev\`. Uninstalling keeps it (`deleteAppDataOnUninstall: false`).
 
 #### Optional: mock Notion server
 
@@ -81,12 +84,16 @@ Use `gradlew.bat` on Windows. Android Studio writes `local.properties` with the 
 
 ## Release builds (CI)
 
-`.github/workflows/ci.yml` checks every pull request and every push to `main`: the Windows tests and build, and the Android debug and release builds.
+`.github/workflows/ci.yml` checks every pull request:
+- **windows** (Linux): lint, unit tests, renderer build, and an audit of the packages that ship in the app.
+- **windows-installer** (Windows): builds the Dev installer, installs it silently, starts it, checks its window, uninstalls it, and attaches the installer to the run (**Checks → CI → Artifacts**).
+- **android**: unit tests, debug and release builds.
 
 `.github/workflows/release.yml` builds both apps on tag pushes (`v*`) and on **Run workflow**.
 
 - **Version:** taken from the tag, or bumped from the latest tag (`patch`, `minor`, `major`). `none` builds without publishing. The Android version code is `major × 10000 + minor × 100 + patch`.
-- **Windows job:** `npm ci`, sets the package version, `npm test`, `npm run dist -- --publish never`.
+- **Refuses to publish** from outside `main`, when the tag or release already exists, when the version isn't higher than the previous release, or with no commits since it.
+- **Windows job:** `npm ci`, sets the package version, lint, `npm test`, builds the installer (`dist`, or `dist:dev` for a build-only run), then installs, starts and uninstalls it with `windows/scripts/smoke-test-installer.ps1`.
 - **Android job:** restores the keystore from the secrets (`.github/scripts/restore_keystore.py`), checks it opens, writes `android/keystore.properties` and runs `assemble{Release|Debug}` with `-PversionName` and `-PversionCode`. It builds debug when the secrets are missing and nothing is published.
 - **Release job:** attaches `Time Tracker for Notion Setup x.y.z.exe` and `TimeTracker-x.y.z.apk` to the GitHub Release.
 

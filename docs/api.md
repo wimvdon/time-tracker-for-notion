@@ -126,7 +126,9 @@ Defined in `windows/electron/preload.cjs`; handlers live in `windows/electron/ma
 | `notifySettingsChanged()` | `settings:changed` (rebuild tray menu) | send |
 | `onTrayStopTimer(cb)`, `onTrayApplyPreset(cb)`, `onAccentColorChanged(cb)` | `tray:stop-timer`, `tray:apply-preset`, `appearance:accent` | main → renderer |
 
-The main process injects the API key into every `notion:*` call. The renderer never receives it except as part of `store:get`, which the Settings screen needs to display the field.
+The main process injects the API key into every `notion:*` call. The renderer never receives it except as part of `store:get`, which the Settings screen needs to display the field. On disk it is stored only encrypted (`apiKeyEncrypted`); `store:get` and `store:set` translate to and from the plain `apiKey` field the renderer uses.
+
+Every channel is registered through `handle()` / `on()` in `main.cjs`, which reject or ignore messages that don't come from the app's own page (`app://bundle/…`, or the Vite dev server during `npm run dev`).
 
 ## 4. Windows command-line arguments
 
@@ -141,7 +143,7 @@ Example desktop shortcut target:
 "%LOCALAPPDATA%\Programs\Time Tracker for Notion\Time Tracker for Notion.exe" --preset=3f2c…
 ```
 
-Preset ids are visible in the sync page JSON or in `%APPDATA%\Time Tracker for Notion\config.json` (obfuscated).
+Preset ids are visible in the sync page JSON or in `%APPDATA%\Time Tracker for Notion\config.json` (obfuscated; the API key inside is encrypted).
 
 ## 5. Android intents
 

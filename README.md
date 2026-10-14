@@ -49,10 +49,10 @@ npm run dev
 | UI | React 19, Tailwind CSS 4, Fluent UI icons | Jetpack Compose, Material 3 |
 | State | Zustand | ViewModel + `StateFlow` |
 | Shell / runtime | Electron 42 (tray, Mica, single instance) | Foreground service for the running timer |
-| Storage | electron-store (obfuscated JSON) | DataStore + EncryptedSharedPreferences |
+| Storage | electron-store (API key encrypted with Windows DPAPI) | DataStore + EncryptedSharedPreferences |
 | HTTP | Node `fetch` in the main process | OkHttp + kotlinx.serialization |
 | Build | Vite 6, electron-builder (NSIS) | Gradle 8.11, AGP 8.7 |
-| Tests | `node:test` | — |
+| Tests | `node:test`, ESLint, installer smoke test on Windows | — |
 
 Shared:
 - **External service:** Notion REST API (`2022-06-28`).

@@ -109,7 +109,7 @@ It is last-writer-wins at whole-payload granularity. The API key and device-only
 ## Patterns used
 
 - **Thin client, no backend.** Each user's own token talks to their own workspace.
-- **Process isolation (Windows).** `contextIsolation: true`, `nodeIntegration: false`, navigation and `window.open` blocked, strict CSP in production. The renderer never sees the token.
+- **Process isolation (Windows).** `contextIsolation: true`, `nodeIntegration: false`, navigation and `window.open` blocked, strict CSP in production, UI served from `app://bundle/`, every IPC message checked to come from the app's page, Electron fuses on. Notion requests (and so the token's use) stay in the main process; the renderer only gets the token to show it in Settings.
 - **Single store / MVVM.** Zustand on Windows and ViewModel + `StateFlow` on Android hold all logic; views are declarative.
 - **Repository + cache (Android).** `NotionRepository` hides the token and caches slow-changing metadata.
 - **Optimistic local state with Notion reconciliation.** UI updates immediately; the refresh loop corrects it from Notion.
@@ -119,7 +119,7 @@ It is last-writer-wins at whole-payload granularity. The API key and device-only
 
 | Data | Windows | Android |
 |---|---|---|
-| API key | electron-store, obfuscated with a fixed `encryptionKey` | EncryptedSharedPreferences (AES-256). Falls back to recreating it, then to plain prefs if the keystore fails. Excluded from backups. |
+| API key | electron-store, encrypted with `safeStorage` (Windows DPAPI, tied to the Windows user) | EncryptedSharedPreferences (AES-256). Falls back to recreating it, then to plain prefs if the keystore fails. Excluded from backups. |
 | Workspaces, presets, active timer, preferences | electron-store `config.json` | DataStore `notion_settings` (JSON strings for structured values) |
 | Time entries | Notion | Notion |
 | Shared settings | Notion sync page | Notion sync page |

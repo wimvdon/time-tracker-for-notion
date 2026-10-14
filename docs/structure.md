@@ -17,8 +17,13 @@ time-tracker-for-notion/
 │   ├── index.html                    Renderer entry HTML
 │   ├── assets/                       icon.svg (source), icon.ico/png, tray icons
 │   ├── scripts/generate-icons.cjs    Renders all icons from one vector design (desktop + Android)
+│   ├── electron-builder.dev.cjs      Dev installer: same build, installs as "Time Tracker for Notion Dev"
+│   ├── eslint.config.js              Lint rules (the UI may not import Node.js/Electron)
+│   ├── scripts/smoke-test-installer.ps1  CI: install, start and uninstall the installer on Windows
 │   ├── electron/
-│   │   ├── main.cjs                  Window, tray, IPC handlers, lifecycle, electron-store
+│   │   ├── main.cjs                  Window, tray, IPC handlers (sender-checked), app:// protocol, lifecycle
+│   │   ├── apiKey.cjs                API key encrypted at rest with safeStorage (DPAPI), unit tested
+│   │   ├── bundlePath.cjs            Safe app://bundle/ → dist/ file mapping, unit tested
 │   │   ├── preload.cjs               contextBridge → window.notionAPI
 │   │   └── notionClient.cjs          All Notion REST calls (main process only)
 │   └── src/

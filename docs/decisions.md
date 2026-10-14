@@ -51,8 +51,10 @@ Entries are created with the exact start time. When stopping, both start and end
 
 ### Windows
 
-- The token is only used in the Electron main process. The renderer runs with `contextIsolation`, without `nodeIntegration`, with navigation and `window.open` blocked and a strict production CSP. It reaches Notion only through named IPC channels.
-- electron-store "encrypts" the config file with a key embedded in the source. This is **obfuscation, not security**: anyone with the file and this repository can decode it. It was accepted because Windows has no app-private keystore that Electron uses without extra native modules, and the threat model is a single-user PC.
+- The token is only used for requests in the Electron main process. The renderer receives it through `store:get` because the Settings screen shows the field, and reaches Notion only through named IPC channels.
+- **At rest, the token is encrypted with Electron's `safeStorage`** (`electron/apiKey.cjs`), which on Windows uses DPAPI: only the same Windows user on the same PC can decrypt it, without extra native modules. A plain token saved by an older version is moved over on start-up. If the settings file is copied to another PC or user, the token can't be decrypted and must be entered again. If encryption is ever unavailable, the token falls back to the old plain field so the app keeps working.
+  - *Replaced (2026-10-14):* earlier versions relied only on electron-store's `encryptionKey`, a key embedded in the source. That stays on for the rest of the file, but it is **obfuscation, not security**: anyone with the file and this repository can decode it.
+  - *Downgrading* to an older version loses the saved token (that version can't read the encrypted field); enter it again.
 
 ### Android
 
@@ -98,6 +100,22 @@ Android uses **kotlinx.serialization** for everything: stored settings and the s
 - **Installer:** one-click, per-user NSIS, so no admin rights are needed. App data is kept on uninstall so reinstalling preserves settings. The installer isn't code-signed, which means SmartScreen warns; a certificate costs money and the audience is small.
 - **Language:** tray strings live in the main process, keyed by language subtag, because the renderer's i18n isn't available there.
 
+## Electron security hardening (2026-10-14)
+
+Following the Electron security checklist, beyond process isolation and the CSP:
+- **`app://bundle/` instead of `file://`:** the UI is served by a custom protocol that only maps to files inside `dist/` (`electron/bundlePath.cjs`, unit tested against `../` tricks), so the page can't read other local files. This also allows the `grantFileProtocolExtraPrivileges` fuse to be off.
+- **IPC sender checks:** every `handle()`/`on()` channel in `main.cjs` ignores or rejects messages that don't come from the app's own page.
+- **Blocked permissions:** permission requests (camera, notifications, …) and `<webview>` are refused; the app uses none of them.
+- **Electron fuses** (`package.json` → `build.electronFuses`): no `ELECTRON_RUN_AS_NODE`, `NODE_OPTIONS` or `--inspect`, cookie encryption on, and the app only loads from its integrity-checked `app.asar`.
+
+## Packaging, lint and installer tests (2026-10-14)
+
+- **Only main-process packages are runtime dependencies** (`electron-store`). React, Fluent icons and Zustand are bundled into `dist/` by Vite, so they are dev dependencies and no longer shipped a second time inside the app: the packaged app code went from 119 MB to 1.9 MB.
+- **ESLint** with the recommended rules and the classic React hook rules (`rules-of-hooks`, `exhaustive-deps`). The newer React Compiler rules (`set-state-in-effect`, `refs`) are left off: they ask for rewrites of working effect code, which is riskier than the warnings are worth without a UI test suite. The UI is forbidden from importing Node.js or Electron.
+- **Dev builds install next to the real app.** `npm run dist:dev` (`electron-builder.dev.cjs`) builds *Time Tracker for Notion Dev*, with its own app ID, Start menu entry and settings folder, so testing a pull request never touches the real settings, token or running timer.
+- **The installer is tested on Windows in CI.** `windows/scripts/smoke-test-installer.ps1` installs it silently, starts the installed app (with the fuses on), checks its window, and uninstalls it, on every pull request and before every release.
+- **Node.js 24**, the current LTS, in CI and for development. npm 11's `allowScripts` in `package.json` only lets esbuild run its install script.
+
 ## Releases from CI only
 
 GitHub Actions builds both apps from a tag and publishes them together, so the Windows and Android versions always match.
@@ -105,4 +123,5 @@ GitHub Actions builds both apps from a tag and publishes them together, so the W
 - **Version:** derived from the tag; the Android version code is `major × 10000 + minor × 100 + patch`, so it always increases with semver.
 - **Signing:** the key comes from environment variables, so no keystore file or password is ever in the repository.
 - **Without secrets:** non-publishing runs fall back to a debug APK, so forks and PRs still produce artifacts.
+- **Refusal rules (2026-10-14):** the workflow refuses to publish from outside `main`, when the tag or release already exists, when the version isn't higher than the previous release (Android would refuse the update), or when nothing changed since the previous release. A build-only run builds the Windows *Dev* app, so trying it never replaces the installed app.
 - **Local builds:** the local `build.bat` scripts were removed in favour of Releases. A local APK has a different signature, which caused install conflicts with released builds.
