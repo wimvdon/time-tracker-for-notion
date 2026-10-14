@@ -12,6 +12,7 @@
     <string name="btn_stop">Stop</string>
     <string name="label_start_time">Starttijd</string>
     <string name="label_end_time">Eindtijd</string>
+    <string name="time_now">Nu</string>
     <string name="hint_manual_end">Een eindtijd invullen stopt de timer.</string>
     <string name="warn_no_api_key">Geen Notion API-sleutel ingesteld.</string>
     <string name="warn_no_api_key_link">Instellingen openen</string>
@@ -101,7 +102,6 @@
 
     <!-- Recent entries -->
     <string name="recent_entries_heading">Recente tijdsregistraties</string>
-    <string name="section_timer_details">Details</string>
     <string name="title_delete_entry">Verwijderen</string>
     <string name="title_open_in_notion">Openen in Notion</string>
     <string name="title_start_from_entry">Nieuwe timer starten met deze gegevens</string>

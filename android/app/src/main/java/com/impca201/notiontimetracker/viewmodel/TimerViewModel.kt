@@ -589,7 +589,11 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun startTimer() {
+    /**
+     * Starts a timer now, or at [startAtMs] when the user picked a start time on the idle screen
+     * (for a timer they forgot to start). A picked time later than now is taken as yesterday's.
+     */
+    fun startTimer(startAtMs: Long? = null) {
         val initial = _uiState.value
         val workspace = initial.workspaces.firstOrNull { it.id == initial.selectedWorkspaceId } ?: return
         if (initial.apiKey.isBlank()) { _uiState.update { it.copy(error = UiError.NO_API_KEY) }; return }
@@ -607,7 +611,8 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
             extrasJob?.join()
             val state = _uiState.value
             runCatching {
-                val nowMs = System.currentTimeMillis()
+                val currentMs = System.currentTimeMillis()
+                val nowMs = startAtMs?.let { if (it > currentMs) it - 24 * 3600 * 1000L else it } ?: currentMs
                 val rawStartISO = toNotionDateTime(nowMs)
 
                 val project = state.projects.firstOrNull { it.id == state.selectedProjectId }

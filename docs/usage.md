@@ -65,10 +65,11 @@ A *workspace* is one Time Entries database plus how you use it. Add several to t
 
 ### Start
 
-1. Choose a **Workspace**.
+1. Choose a **Workspace**: tap or click its name above the timer.
 2. Type what you are working on (the **Working on…** field on Windows, **Description** on Android). Leave it empty to title the entry with today's date.
-3. Fill in extra fields.
-4. Press **START**.
+3. Forgot to start the timer earlier? Pick a **Start time**. Empty means now; a time later than now counts as yesterday's.
+4. Fill in extra fields.
+5. Press **START**.
 
 A Notion row appears with the running status. On Windows the tray stopwatch turns the workspace colour (red without one). On Android a notification shows the running timer.
 
@@ -81,7 +82,7 @@ A Notion row appears with the running status. On Windows the tray stopwatch turn
 | Change **Start time** | Start corrected, e.g. if you forgot to press START |
 | Fill **End time** | Stops the timer at that time |
 
-On Android, **End time** and the extra fields sit under **Details** below the start time; tap it to open them. It opens by itself while a required field is still empty. The active and recent lists start below the timer: scroll down to reach them.
+**Save as preset**, under the fields, saves the workspace, description and extra fields as a preset, also while a timer runs.
 
 ### Stop
 

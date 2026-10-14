@@ -12,6 +12,7 @@
     <string name="btn_stop">Arrêter</string>
     <string name="label_start_time">Heure de début</string>
     <string name="label_end_time">Heure de fin</string>
+    <string name="time_now">Maintenant</string>
     <string name="hint_manual_end">Remplir une heure de fin arrête le minuteur.</string>
     <string name="warn_no_api_key">Aucune clé API Notion configurée.</string>
     <string name="warn_no_api_key_link">Ouvrir les paramètres</string>
@@ -101,7 +102,6 @@
 
     <!-- Recent entries -->
     <string name="recent_entries_heading">Saisies de temps récentes</string>
-    <string name="section_timer_details">Détails</string>
     <string name="title_delete_entry">Supprimer</string>
     <string name="title_open_in_notion">Ouvrir dans Notion</string>
     <string name="title_start_from_entry">Démarrer un nouveau chronomètre avec ces informations</string>

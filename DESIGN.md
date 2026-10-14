@@ -115,23 +115,28 @@ the other two repositories:
 ## This app
 
 - Seed `#F04438` (red), green tertiary (`#16A34A`) for Start when a workspace has no colour.
-- Signature element: the running timer. The elapsed time sits on a slowly turning nine-lobed
-  cookie shape (the Material 3 Expressive shape Snoozer's toggle uses) that springs in when a
-  timer starts, over the same slowly breathing glow as Snoozer's snoozing screen. No progress
-  ring: a running timer has no target. Start and Stop are Material 3 Expressive medium buttons
-  (56dp, Title Medium label, 24dp icon), round, tightening to 12dp corners while pressed.
-- The home screen's form uses standard outlined fields with the field's name as its own
-  floating label (no separate label line above), all one height, so Start is the one thing
-  that stands out. The workspace field shows the workspace colour as a dot at its start, and
-  each workspace in its menu has the same dot.
-- The running timer keeps the description, the timer, Stop and the start time on top. End time
-  and the extra fields sit in a collapsed "Details" card (styled like the settings sections),
-  open while a required field is empty or when stopping is refused for one. The timer part
-  fills the screen, so the lists start below it with their first heading peeking in.
+- Signature element: the timer. The elapsed time sits on a nine-lobed cookie shape (the
+  Material 3 Expressive shape Snoozer's toggle uses), on both the idle and the running screen:
+  idle it stands still at 00:00:00; running it turns slowly and springs in when the timer
+  starts, over the same slowly breathing glow as Snoozer's snoozing screen. No progress ring:
+  a running timer has no target. Start and Stop are Material 3 Expressive medium buttons
+  (56dp, Title Medium label, 24dp icon), round, tightening to 12dp corners while pressed. They
+  sit on the cookie's bottom edge, overlapping it by half their height, as a FAB anchored to a
+  surface does: labelled, full size, and never over the time.
+- Idle and running share one layout, top to bottom: preset chips; the workspace as the
+  screen's title (Headline Small, its colour dot; idle, a button opening the workspace menu,
+  each workspace with its dot); the cookie with Start or Stop; one card (`AppShapes.Group`)
+  holding every timer field; "Save as preset" as a text button; the lists.
+- The card's fields are standard outlined fields with the field's name as its own floating
+  label: description, start time (and end time while running), extra fields. Idle, the start
+  time is empty ("Now") unless the user picks one for a timer they forgot to start.
 - List sections (Active timers, Recent time entries) start with a Title Medium heading and
   are set apart by space, not dividers.
 - Start is green and Stop is red whatever the theme or wallpaper colours (a workspace colour
   replaces the green), so their meaning never depends on Dynamic color.
 - The launcher icon comes from `windows/scripts/generate-icons.cjs` (`npm run icons`), which
   also draws the Windows icons. Edit the artwork there, not the generated XML.
-- The Windows app is not covered by this file.
+- The Windows app is not covered by this file. Its timer follows the same order in Fluent
+  terms (Subtitle workspace title as a drop-down button, the time in Title Large on a card with
+  Start or Stop as the card's action, a card with every field, a subtle "Save as preset"), so
+  the two apps are recognisably the same.

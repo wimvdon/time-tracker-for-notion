@@ -17,6 +17,14 @@ import { t } from '../lib/i18n.js';
  * @param {string}   [className]   - Applied to the outer wrapper div
  * @param {string}   [triggerClass] - Background class for the trigger button
  *                                    (default 'bg-control')
+ * @param {string}   [buttonClass] - Replaces the trigger button's whole look
+ *                                   (the timer's workspace title uses it)
+ * @param {fn}       [renderValue] - Draws the trigger's content from the selected
+ *                                   option (or undefined); replaces label and ▾
+ * @param {fn}       [renderPrefix] - Draws something before each option's label
+ *                                    (a workspace's colour dot)
+ * @param {number}   [panelMinWidth] - Minimum width of the panel, for a trigger
+ *                                     narrower than its options
  */
 export default function SearchableSelect({
   value = '',
@@ -28,6 +36,10 @@ export default function SearchableSelect({
   loading = false,
   className = '',
   triggerClass = 'bg-control',
+  buttonClass,
+  renderValue,
+  renderPrefix,
+  panelMinWidth = 0,
 }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
@@ -53,18 +65,21 @@ export default function SearchableSelect({
     const spaceBelow = window.innerHeight - rect.bottom - 4;
     const spaceAbove = rect.top - 4;
     const MAX_HEIGHT = 320;
+    // A panel wider than its trigger is centred under it, and kept inside the window.
+    const width = Math.min(Math.max(rect.width, panelMinWidth), window.innerWidth - 16);
+    const left = Math.max(8, Math.min(rect.left + (rect.width - width) / 2, window.innerWidth - width - 8));
     if (spaceBelow >= spaceAbove || spaceBelow >= 160) {
       setPanelStyle({
         top: rect.bottom + 2,
-        left: rect.left,
-        width: rect.width,
+        left,
+        width,
         maxHeight: Math.min(MAX_HEIGHT, spaceBelow),
       });
     } else {
       setPanelStyle({
         bottom: window.innerHeight - rect.top + 2,
-        left: rect.left,
-        width: rect.width,
+        left,
+        width,
         maxHeight: Math.min(MAX_HEIGHT, spaceAbove),
       });
     }
@@ -130,7 +145,7 @@ export default function SearchableSelect({
                 key={o.value === '' ? '__empty__' : o.value}
                 type="button"
                 onClick={() => select(o.value)}
-                className={`w-full text-left px-3 py-1.5 text-sm transition-colors hover:bg-subtle-hover ${
+                className={`w-full text-left px-3 py-1.5 text-sm transition-colors hover:bg-subtle-hover flex items-center gap-2 ${
                   o.value !== '' && o.value === value
                     ? 'bg-subtle-hover font-medium text-fg1'
                     : o.value === ''
@@ -138,6 +153,7 @@ export default function SearchableSelect({
                     : 'text-fg1'
                 }`}
               >
+                {renderPrefix && o.value !== '' && renderPrefix(o)}
                 {o.label}
               </button>
             ))}
@@ -153,14 +169,23 @@ export default function SearchableSelect({
         type="button"
         onClick={open ? closePanel : openPanel}
         disabled={disabled || loading}
-        className={`w-full flex items-center justify-between ${triggerClass} border border-stroke rounded-md px-3 py-2 text-sm text-left disabled:opacity-50 hover:border-stroke-strong transition-colors`}
+        className={
+          buttonClass ??
+          `w-full flex items-center justify-between ${triggerClass} border border-stroke rounded-md px-3 py-2 text-sm text-left disabled:opacity-50 hover:border-stroke-strong transition-colors`
+        }
       >
-        <span className={selectedLabel ? 'text-fg1' : 'text-fg3'}>
-          {loading
-            ? (placeholder || '…')
-            : (selectedLabel || placeholder || '–')}
-        </span>
-        <span className="ml-2 text-fg3 text-xs shrink-0">▾</span>
+        {renderValue ? (
+          renderValue(options.find((o) => o.value === value))
+        ) : (
+          <>
+            <span className={selectedLabel ? 'text-fg1' : 'text-fg3'}>
+              {loading
+                ? (placeholder || '…')
+                : (selectedLabel || placeholder || '–')}
+            </span>
+            <span className="ml-2 text-fg3 text-xs shrink-0">▾</span>
+          </>
+        )}
       </button>
       {panel}
     </div>

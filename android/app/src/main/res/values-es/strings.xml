@@ -12,6 +12,7 @@
     <string name="btn_stop">Detener</string>
     <string name="label_start_time">Hora de inicio</string>
     <string name="label_end_time">Hora de fin</string>
+    <string name="time_now">Ahora</string>
     <string name="hint_manual_end">Rellenar una hora de fin detiene el temporizador.</string>
     <string name="warn_no_api_key">Clave API de Notion no configurada.</string>
     <string name="warn_no_api_key_link">Abrir ajustes</string>
@@ -101,7 +102,6 @@
 
     <!-- Recent entries -->
     <string name="recent_entries_heading">Entradas de tiempo recientes</string>
-    <string name="section_timer_details">Detalles</string>
     <string name="title_delete_entry">Eliminar</string>
     <string name="title_open_in_notion">Abrir en Notion</string>
     <string name="title_start_from_entry">Iniciar un nuevo temporizador con estos datos</string>

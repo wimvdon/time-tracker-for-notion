@@ -61,9 +61,10 @@ private object CookieShape : Shape {
 }
 
 /**
- * The running timer: the elapsed time on a slowly turning cookie shape that springs in when a
- * timer starts. There is no progress ring: a running timer has no target to progress towards.
- * With animations switched off on the device, the shape stands still.
+ * The timer: the elapsed time on a cookie shape. While [running] the cookie turns slowly and
+ * springs in when the timer starts; idle, it stands still. There is no progress ring: a running
+ * timer has no target to progress towards. With animations switched off on the device, the shape
+ * stands still.
  */
 @Composable
 fun TimerHero(
@@ -71,8 +72,9 @@ fun TimerHero(
     container: Color,
     contentColor: Color,
     modifier: Modifier = Modifier,
+    running: Boolean = true,
 ) {
-    val animate = !rememberReducedMotion()
+    val animate = running && !rememberReducedMotion()
 
     val appear = remember { Animatable(if (animate) 0.7f else 1f) }
     LaunchedEffect(Unit) {

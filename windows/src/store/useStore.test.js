@@ -70,3 +70,44 @@ test('a failed running-timer query keeps the active timer instead of clearing it
   await useStore.getState().loadRunningTimers();
   assert.equal(useStore.getState().timer.running, false);
 });
+
+test('startTimer starts at a picked time, yesterday when it is later than now, else now', async () => {
+  const { useStore } = await import('./useStore.js');
+  const api = globalThis.window.notionAPI;
+  const starts = [];
+  api.createTimeEntry = async ({ startISO }) => { starts.push(new Date(startISO)); return { pageId: `p${starts.length}` }; };
+  api.saveSettings = async () => {};
+  api.setTimerRunning = () => {};
+  api.fetchRunningTimers = async () => [];
+  api.fetchRecentEntries = async () => [];
+
+  const ws = { id: 'ws1', name: 'Work', timeEntriesDbId: 'db1', propertyMap: {} };
+  const idle = () => useStore.setState({
+    apiKey: 'k', workspaces: [ws], selectedWorkspaceId: 'ws1', description: '',
+    extraFieldDefs: [], extraValues: {}, extrasLoading: false, isStarting: false,
+    timer: { ...useStore.getState().timer, running: false, tickInterval: null },
+  });
+
+  const originalSetInterval = globalThis.setInterval;
+  globalThis.setInterval = () => 0;
+  try {
+    const hourAgo = new Date(Date.now() - 3600 * 1000);
+    idle();
+    await useStore.getState().startTimer(hourAgo);
+    assert.equal(starts[0].getTime(), Math.floor(hourAgo.getTime() / 60000) * 60000);
+
+    const inAnHour = new Date(Date.now() + 3600 * 1000);
+    idle();
+    await useStore.getState().startTimer(inAnHour);
+    assert.ok(starts[1].getTime() < Date.now());
+    assert.ok(Date.now() - starts[1].getTime() > 22 * 3600 * 1000);
+
+    // A click event (Start bound straight to onClick) is not a start time.
+    idle();
+    const before = Date.now();
+    await useStore.getState().startTimer({ type: 'click' });
+    assert.ok(Math.abs(starts[2].getTime() - before) < 120 * 1000);
+  } finally {
+    globalThis.setInterval = originalSetInterval;
+  }
+});

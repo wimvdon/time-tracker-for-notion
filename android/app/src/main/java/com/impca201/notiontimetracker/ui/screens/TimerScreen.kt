@@ -50,16 +50,8 @@ import com.impca201.notiontimetracker.ui.theme.SkeletonBlock
 import com.impca201.notiontimetracker.ui.theme.SkeletonLine
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.EnterTransition
-import androidx.compose.animation.ExitTransition
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.stateDescription
 import com.impca201.notiontimetracker.ui.theme.AppShapes
 import androidx.compose.ui.semantics.semantics
 import com.impca201.notiontimetracker.ui.theme.rememberReducedMotion
@@ -75,13 +67,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import com.impca201.notiontimetracker.R
-import com.impca201.notiontimetracker.data.models.NamedOption
 import com.impca201.notiontimetracker.data.models.Preset
 import com.impca201.notiontimetracker.data.models.RecentEntryInfo
 import com.impca201.notiontimetracker.data.models.RunningTimerInfo
 import com.impca201.notiontimetracker.ui.components.EditTimerModal
 import com.impca201.notiontimetracker.ui.components.ExtraFieldInput
-import com.impca201.notiontimetracker.ui.components.SearchableDropdown
 import com.impca201.notiontimetracker.ui.components.RunningGlow
 import com.impca201.notiontimetracker.ui.components.TimerHero
 import com.impca201.notiontimetracker.viewmodel.TimerViewModel
@@ -95,7 +85,7 @@ fun TimerScreen(
     onProjectSelect: (String?) -> Unit,
     onDescriptionChange: (String) -> Unit,
     onExtraValueChange: (String, String) -> Unit,
-    onStart: () -> Unit,
+    onStart: (Long?) -> Unit,
     onStop: (Long?, String?) -> Unit,
     onUpdateStartTime: (String) -> Unit,
     onNavigateToSettings: () -> Unit,
@@ -277,13 +267,13 @@ fun TimerScreen(
                 onOpenUrl = onOpenUrl,
                 onApplyPreset = onApplyPreset,
                 onStartFromRecentEntry = onStartFromRecentEntry,
+                onSavePresetClick = { showSavePresetDialog = true },
                 onManagePresetsClick = { showManagePresetsDialog = true }
             )
         } else {
             IdleView(
                 uiState = uiState,
                 onWorkspaceSelect = onWorkspaceSelect,
-                onProjectSelect = onProjectSelect,
                 onDescriptionChange = onDescriptionChange,
                 onExtraValueChange = onExtraValueChange,
                 onStart = onStart,
@@ -308,10 +298,9 @@ fun TimerScreen(
 private fun IdleView(
     uiState: TimerViewModel.UiState,
     onWorkspaceSelect: (String) -> Unit,
-    onProjectSelect: (String?) -> Unit,
     onDescriptionChange: (String) -> Unit,
     onExtraValueChange: (String, String) -> Unit,
-    onStart: () -> Unit,
+    onStart: (Long?) -> Unit,
     onNavigateToSettings: () -> Unit,
     onClearError: () -> Unit,
     onLoadRunningTimer: (RunningTimerInfo) -> Unit,
@@ -325,6 +314,11 @@ private fun IdleView(
     onManagePresetsClick: () -> Unit
 ) {
     val scrollState = rememberScrollState()
+    val context = LocalContext.current
+    val is12h = uiState.timeFormat == "12h"
+    // A start time picked for a timer the user forgot to start; empty means "now". Only the
+    // Start button uses it: presets, shortcuts and recent entries always start now.
+    var pickedStartMs by rememberSaveable { mutableStateOf<Long?>(null) }
 
     Scaffold(
         contentColor = MaterialTheme.colorScheme.onBackground,
@@ -381,7 +375,6 @@ private fun IdleView(
                 }
             }
 
-            // Preset chips
             PresetChips(
                 workspaces = uiState.workspaces,
                 apiKey = uiState.apiKey,
@@ -389,93 +382,14 @@ private fun IdleView(
                 onManageClick = onManagePresetsClick
             )
 
-            Spacer(Modifier.height(4.dp))
+            val selectedWorkspace = uiState.workspaces.firstOrNull { it.id == uiState.selectedWorkspaceId }
 
-            // Every field is a standard Material 3 field with its name as the field's own
-            // label: one height and one style, so the form reads as a group and Start below
-            // stays the one thing that stands out. The workspace carries its colour instead.
-            val workspaceOptions = uiState.workspaces.map { NamedOption(it.id, it.name) }
-            val selectedWorkspaceColor = workspaceAccentColor(
-                uiState.workspaces.firstOrNull { it.id == uiState.selectedWorkspaceId }?.color
+            WorkspaceTitle(
+                workspaces = uiState.workspaces,
+                selected = selectedWorkspace,
+                onSelect = onWorkspaceSelect,
+                modifier = Modifier.align(Alignment.CenterHorizontally).padding(top = 12.dp)
             )
-            SearchableDropdown(
-                options = workspaceOptions,
-                selected = workspaceOptions.firstOrNull { it.id == uiState.selectedWorkspaceId },
-                placeholder = stringResource(R.string.placeholder_select_workspace),
-                onSelect = { it?.let { opt -> onWorkspaceSelect(opt.id) } },
-                modifier = Modifier.fillMaxWidth(),
-                searchable = workspaceOptions.size > 4,
-                enabled = uiState.workspaces.isNotEmpty(),
-                label = stringResource(R.string.label_workspace),
-                leadingIcon = selectedWorkspaceColor?.let { color ->
-                    { WorkspaceSwatch(color) }
-                },
-                // The same dots in the menu. Workspaces without a colour get an empty slot
-                // so the names stay lined up.
-                optionLeadingIcon = if (uiState.workspaces.any { workspaceAccentColor(it.color) != null }) {
-                    { opt ->
-                        val color = workspaceAccentColor(uiState.workspaces.firstOrNull { it.id == opt.id }?.color)
-                        WorkspaceSwatch(color ?: Color.Transparent)
-                    }
-                } else null
-            )
-
-            // Like required extra fields, a required description is enforced when
-            // the timer is stopped — starting stays a single tap.
-            val descriptionRequired = uiState.workspaces
-                .firstOrNull { it.id == uiState.selectedWorkspaceId }?.descriptionRequired == true
-            OutlinedTextField(
-                value = uiState.description,
-                onValueChange = onDescriptionChange,
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                isError = descriptionRequired && uiState.description.isBlank(),
-                label = {
-                    Text(stringResource(R.string.placeholder_description) + if (descriptionRequired) " *" else "")
-                },
-                placeholder = { Text(stringResource(R.string.label_description)) },
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                keyboardActions = KeyboardActions(onDone = { })
-            )
-
-            if (uiState.extrasLoading) {
-                ExtraFieldsSkeleton(
-                    uiState.workspaces.firstOrNull { it.id == uiState.selectedWorkspaceId }?.extraProps.orEmpty()
-                )
-            }
-
-            uiState.extraFieldDefs.forEach { def ->
-                ExtraFieldInput(
-                    fieldDef = def,
-                    value = uiState.extraValues[def.propName] ?: "",
-                    onValueChange = { onExtraValueChange(def.propName, it) },
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-
-            // Loading the fields can fail (offline, rate limited) or find properties
-            // that no longer exist in the database. Both used to just show fewer
-            // fields than configured, with no way to tell that from "correct".
-            uiState.extrasError?.let { err ->
-                Spacer(Modifier.height(8.dp))
-                Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)) {
-                    Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            localisedMessage(err),
-                            modifier = Modifier.weight(1f),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onErrorContainer
-                        )
-                        uiState.selectedWorkspaceId?.let { wsId ->
-                            TextButton(onClick = { onWorkspaceSelect(wsId) }) {
-                                Text(stringResource(R.string.btn_retry))
-                            }
-                        }
-                    }
-                }
-            }
-
-            Spacer(Modifier.height(8.dp))
 
             // Starting while the fields are still loading would drop every extra
             // value from the new entry, so the button waits for them.
@@ -483,39 +397,106 @@ private fun IdleView(
                     uiState.selectedWorkspaceId != null &&
                     !uiState.extrasLoading &&
                     !uiState.isStarting
+            val buttonColor = workspaceSolidFillColor(selectedWorkspace?.color) ?: TimerColors.Start
 
-            val selectedWorkspace = uiState.workspaces.firstOrNull { it.id == uiState.selectedWorkspaceId }
-            val startWorkspaceColor = workspaceSolidFillColor(selectedWorkspace?.color)
-            val buttonColor = startWorkspaceColor ?: TimerColors.Start
-            val onButtonColor = TimerColors.OnAction
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
+            TimerHeroWithAction(
+                elapsedText = formatElapsed(0L),
+                container = MaterialTheme.colorScheme.surfaceContainerHigh,
+                contentColor = MaterialTheme.colorScheme.outline,
+                running = false,
+                modifier = Modifier.align(Alignment.CenterHorizontally)
             ) {
                 TimerActionButton(
                     label = stringResource(R.string.btn_start),
                     icon = Icons.Rounded.PlayArrow,
-                    onClick = onStart,
+                    onClick = { onStart(pickedStartMs) },
                     enabled = canStart,
                     loading = uiState.isStarting,
                     containerColor = buttonColor,
-                    contentColor = onButtonColor,
-                    modifier = Modifier.weight(1f)
+                    contentColor = TimerColors.OnAction
                 )
-                IconButton(
-                    onClick = onSavePresetClick,
-                    enabled = canStart,
-                    modifier = Modifier.size(TimerActionButtonHeight)
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.BookmarkBorder,
-                        contentDescription = stringResource(R.string.title_save_preset),
-                        tint = if (canStart) buttonColor else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+            }
+
+            TimerDetailsCard(containerColor = MaterialTheme.colorScheme.surfaceContainerLow) {
+                // Like required extra fields, a required description is enforced when
+                // the timer is stopped — starting stays a single tap.
+                val descriptionRequired = selectedWorkspace?.descriptionRequired == true
+                OutlinedTextField(
+                    value = uiState.description,
+                    onValueChange = onDescriptionChange,
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    isError = descriptionRequired && uiState.description.isBlank(),
+                    label = {
+                        Text(stringResource(R.string.placeholder_description) + if (descriptionRequired) " *" else "")
+                    },
+                    placeholder = { Text(stringResource(R.string.label_description)) },
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(onDone = { })
+                )
+
+                TimeField(
+                    label = stringResource(R.string.label_start_time),
+                    value = pickedStartMs?.let { formatHHMM(isoAt(it), is12h) } ?: "",
+                    placeholder = stringResource(R.string.time_now),
+                    pickerDescription = stringResource(R.string.title_select_start_time),
+                    onPick = {
+                        val now = java.util.Calendar.getInstance().apply {
+                            pickedStartMs?.let { ms -> timeInMillis = ms }
+                        }
+                        android.app.TimePickerDialog(context, { _, hour, minute ->
+                            pickedStartMs = java.util.Calendar.getInstance().apply {
+                                set(java.util.Calendar.HOUR_OF_DAY, hour)
+                                set(java.util.Calendar.MINUTE, minute)
+                                set(java.util.Calendar.SECOND, 0)
+                                set(java.util.Calendar.MILLISECOND, 0)
+                            }.timeInMillis
+                        }, now.get(java.util.Calendar.HOUR_OF_DAY), now.get(java.util.Calendar.MINUTE), !is12h).show()
+                    },
+                    onClear = pickedStartMs?.let { { pickedStartMs = null } },
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                if (uiState.extrasLoading) {
+                    ExtraFieldsSkeleton(selectedWorkspace?.extraProps.orEmpty())
+                }
+
+                uiState.extraFieldDefs.forEach { def ->
+                    ExtraFieldInput(
+                        fieldDef = def,
+                        value = uiState.extraValues[def.propName] ?: "",
+                        onValueChange = { onExtraValueChange(def.propName, it) },
+                        modifier = Modifier.fillMaxWidth()
                     )
                 }
+
+                // Loading the fields can fail (offline, rate limited) or find properties
+                // that no longer exist in the database. Both used to just show fewer
+                // fields than configured, with no way to tell that from "correct".
+                uiState.extrasError?.let { err ->
+                    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)) {
+                        Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                localisedMessage(err),
+                                modifier = Modifier.weight(1f),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                            uiState.selectedWorkspaceId?.let { wsId ->
+                                TextButton(onClick = { onWorkspaceSelect(wsId) }) {
+                                    Text(stringResource(R.string.btn_retry))
+                                }
+                            }
+                        }
+                    }
+                }
             }
+
+            SavePresetButton(
+                onClick = onSavePresetClick,
+                enabled = canStart,
+                modifier = Modifier.align(Alignment.CenterHorizontally)
+            )
 
             OtherRunningTimers(
                 timers = uiState.runningTimers,
@@ -565,14 +546,14 @@ private fun RunningView(
     onOpenUrl: (String) -> Unit,
     onApplyPreset: (String, Preset) -> Unit = { _, _ -> },
     onStartFromRecentEntry: (RecentEntryInfo) -> Unit = {},
+    onSavePresetClick: () -> Unit = {},
     onManagePresetsClick: () -> Unit = {}
 ) {
     val timer = uiState.activeTimer ?: return
     val workspace = uiState.workspaces.firstOrNull { it.id == timer.workspaceId }
-    val rounding = workspace?.roundingMinutes ?: 15
+    val is12h = uiState.timeFormat == "12h"
 
-
-    var startTimeInput by remember(timer.roundedStart, uiState.timeFormat) { mutableStateOf(formatHHMM(timer.roundedStart, uiState.timeFormat == "12h")) }
+    var startTimeInput by remember(timer.roundedStart, uiState.timeFormat) { mutableStateOf(formatHHMM(timer.roundedStart, is12h)) }
     var endTimeInput by remember { mutableStateOf("") }
 
     // Declared here rather than next to its text field: stopping has to hand
@@ -617,31 +598,25 @@ private fun RunningView(
 
     val showStartTimePicker = {
         val odt = runCatching { OffsetDateTime.parse(timer.roundedStart) }.getOrNull() ?: OffsetDateTime.now()
-        val initialHour = odt.hour
-        val initialMinute = odt.minute
-        val is24h = uiState.timeFormat != "12h"
         android.app.TimePickerDialog(context, { _, hour, minute ->
             val formatted24 = String.format("%02d:%02d", hour, minute)
             val iso = parseHHMMToISO(formatted24, timer.roundedStart)
             if (iso != null) {
                 onUpdateStartTime(iso)
-                startTimeInput = formatHHMM(iso, uiState.timeFormat == "12h")
+                startTimeInput = formatHHMM(iso, is12h)
             }
-        }, initialHour, initialMinute, is24h).show()
+        }, odt.hour, odt.minute, !is12h).show()
     }
 
     val showEndTimePicker = {
         val cal = java.util.Calendar.getInstance()
-        val initialHour = cal.get(java.util.Calendar.HOUR_OF_DAY)
-        val initialMinute = cal.get(java.util.Calendar.MINUTE)
-        val is24h = uiState.timeFormat != "12h"
         android.app.TimePickerDialog(context, { _, hour, minute ->
             val formatted24 = String.format("%02d:%02d", hour, minute)
             val iso = parseHHMMToISO(formatted24, timer.roundedStart)
             if (iso != null) {
-                endTimeInput = formatHHMM(iso, uiState.timeFormat == "12h")
+                endTimeInput = formatHHMM(iso, is12h)
             }
-        }, initialHour, initialMinute, is24h).show()
+        }, cal.get(java.util.Calendar.HOUR_OF_DAY), cal.get(java.util.Calendar.MINUTE), !is12h).show()
     }
 
     val handleStopClick = {
@@ -700,24 +675,13 @@ private fun RunningView(
                 }
             }
         ) { padding ->
-          BoxWithConstraints(Modifier.padding(padding)) {
-            // The timer part fills the screen, so the lists start below it with only their first
-            // heading peeking in: the timer gets the screen to itself, the lists a scroll away.
-            val timerAreaMinHeight = (maxHeight - ListsPeek).coerceAtLeast(0.dp)
             Column(
                 modifier = Modifier
+                    .padding(padding)
                     .padding(horizontal = 16.dp)
                     .verticalScroll(scrollState),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-              Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = timerAreaMinHeight),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-              ) {
-
                 PresetChips(
                     workspaces = uiState.workspaces,
                     apiKey = uiState.apiKey,
@@ -725,13 +689,48 @@ private fun RunningView(
                     onManageClick = onManagePresetsClick
                 )
 
-                Spacer(Modifier.height(4.dp))
-
-                Text(
-                    workspace?.name ?: "",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
+                // A running timer's workspace can't change, so here it is a plain title.
+                WorkspaceTitle(
+                    workspaces = uiState.workspaces,
+                    selected = workspace,
+                    onSelect = null,
+                    modifier = Modifier.align(Alignment.CenterHorizontally).padding(top = 12.dp)
                 )
+
+                TimerHeroWithAction(
+                    elapsedText = formatElapsed(uiState.elapsedSeconds),
+                    container = lerp(
+                        MaterialTheme.colorScheme.surfaceContainerHighest,
+                        workspaceColor ?: MaterialTheme.colorScheme.primaryContainer,
+                        if (workspaceColor != null) 0.35f else 0.6f
+                    ),
+                    contentColor = MaterialTheme.colorScheme.onSurface,
+                    running = true,
+                    heroModifier = Modifier.onGloballyPositioned { heroCenter = it.boundsInRoot().center },
+                    modifier = Modifier.align(Alignment.CenterHorizontally)
+                ) {
+                    TimerActionButton(
+                        label = stringResource(R.string.btn_stop),
+                        icon = Icons.Rounded.Stop,
+                        onClick = handleStopClick,
+                        enabled = !uiState.isStopping,
+                        loading = uiState.isStopping,
+                        containerColor = TimerColors.Stop,
+                        contentColor = TimerColors.OnAction
+                    )
+                }
+
+                uiState.stopError?.let { err ->
+                    val errMsg = localisedMessage(err)
+                    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)) {
+                        Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Text(errMsg, modifier = Modifier.weight(1f), color = MaterialTheme.colorScheme.onErrorContainer)
+                            if (!isValidationMessage(err)) {
+                                TextButton(onClick = onRetryStop) { Text(stringResource(R.string.toast_stop_retry)) }
+                            }
+                        }
+                    }
+                }
 
                 var localProjectId by remember(timer.notionPageId) { mutableStateOf(uiState.selectedProjectId) }
                 var localExtras by remember(timer.notionPageId) { mutableStateOf(uiState.extraValues) }
@@ -750,152 +749,65 @@ private fun RunningView(
                     onUpdateTimerDetails(localProjectId, timer.description, localExtras)
                     pendingSave = false
                 }
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
+
+                // The tinted screen shows through the card a little, so it reads as part of
+                // the running timer while its fields stay legible.
+                TimerDetailsCard(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = 0.72f)) {
                     OutlinedTextField(
                         value = titleDraft,
                         onValueChange = { titleDraft = it },
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
                         isError = workspace?.descriptionRequired == true && titleDraft.isBlank(),
-                        placeholder = { Text(stringResource(R.string.hint_timer_title), color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f)) },
+                        label = {
+                            Text(stringResource(R.string.placeholder_description) + if (workspace?.descriptionRequired == true) " *" else "")
+                        },
+                        placeholder = { Text(stringResource(R.string.hint_timer_title)) },
+                        trailingIcon = if (isTitleDirty) {
+                            {
+                                IconButton(onClick = { onQuickSaveDescription(titleDraft.trim()) }) {
+                                    Icon(
+                                        Icons.Rounded.Check,
+                                        contentDescription = stringResource(R.string.btn_save_changes),
+                                        tint = workspaceAccent ?: MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                            }
+                        } else null,
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                         keyboardActions = KeyboardActions(onDone = { onQuickSaveDescription(titleDraft.trim()) }),
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedTextColor = MaterialTheme.colorScheme.onBackground,
-                            unfocusedTextColor = MaterialTheme.colorScheme.onBackground,
                             focusedBorderColor = workspaceAccent ?: MaterialTheme.colorScheme.primary,
-                            unfocusedBorderColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.3f)
+                            focusedLabelColor = workspaceAccent ?: MaterialTheme.colorScheme.primary
                         )
                     )
-                    if (isTitleDirty) {
-                        IconButton(onClick = { onQuickSaveDescription(titleDraft.trim()) }, modifier = Modifier.size(36.dp)) {
-                            Icon(
-                                Icons.Rounded.Check,
-                                contentDescription = stringResource(R.string.btn_save_changes),
-                                modifier = Modifier.size(18.dp),
-                                tint = MaterialTheme.colorScheme.primary
+
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            TimeField(
+                                label = stringResource(R.string.label_start_time),
+                                value = startTimeInput,
+                                placeholder = null,
+                                pickerDescription = stringResource(R.string.title_select_start_time),
+                                onPick = showStartTimePicker,
+                                modifier = Modifier.weight(1f)
                             )
-                        }
-                    }
-                }
-
-                Spacer(Modifier.height(8.dp))
-
-                TimerHero(
-                    elapsedText = formatElapsed(uiState.elapsedSeconds),
-                    modifier = Modifier.onGloballyPositioned { heroCenter = it.boundsInRoot().center },
-                    container = lerp(
-                        MaterialTheme.colorScheme.surfaceContainerHighest,
-                        workspaceColor ?: MaterialTheme.colorScheme.primaryContainer,
-                        if (workspaceColor != null) 0.35f else 0.6f
-                    ),
-                    contentColor = MaterialTheme.colorScheme.onSurface
-                )
-
-                uiState.stopError?.let { err ->
-                    val errMsg = localisedMessage(err)
-                    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)) {
-                        Row(modifier = Modifier.padding(12.dp)) {
-                            Text(errMsg, modifier = Modifier.weight(1f), color = MaterialTheme.colorScheme.onErrorContainer)
-                            if (!isValidationMessage(err)) {
-                                TextButton(onClick = onRetryStop) { Text(stringResource(R.string.toast_stop_retry)) }
-                            }
-                        }
-                    }
-                }
-
-                TimerActionButton(
-                    label = stringResource(R.string.btn_stop),
-                    icon = Icons.Rounded.Stop,
-                    onClick = handleStopClick,
-                    enabled = !uiState.isStopping,
-                    loading = uiState.isStopping,
-                    containerColor = TimerColors.Stop,
-                    contentColor = TimerColors.OnAction,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                Spacer(Modifier.height(4.dp))
-
-                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                    Text(
-                        stringResource(R.string.label_start_time),
-                        style = MaterialTheme.typography.labelMedium,
-                        modifier = Modifier.width(100.dp),
-                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
-                    )
-                    Box(modifier = Modifier.weight(1f)) {
-                        OutlinedTextField(
-                            value = startTimeInput,
-                            onValueChange = { },
-                            readOnly = true,
-                            enabled = false,
-                            modifier = Modifier.fillMaxWidth(),
-                            singleLine = true,
-                            trailingIcon = {
-                                Icon(Icons.Rounded.AccessTime, contentDescription = stringResource(R.string.title_select_start_time), tint = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f))
-                            },
-                            colors = OutlinedTextFieldDefaults.colors(
-                                disabledTextColor = MaterialTheme.colorScheme.onBackground,
-                                disabledBorderColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.3f),
-                                disabledTrailingIconColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
-                            )
-                        )
-                        Box(modifier = Modifier.matchParentSize().clickable { showStartTimePicker() })
-                    }
-                }
-
-                // End time and the extra fields are needed only now and then, so they wait in a
-                // collapsed section. It starts open while a required field is still empty, and
-                // opens when stopping is refused because one is.
-                val requiredBlank = uiState.extraFieldDefs.any { it.required && localExtras[it.propName].isNullOrBlank() }
-                var detailsExpanded by rememberSaveable(timer.notionPageId) {
-                    mutableStateOf(requiredBlank || endTimeInput.isNotBlank())
-                }
-                // The fields load after the timer starts, so check again once they arrive.
-                LaunchedEffect(requiredBlank) {
-                    if (requiredBlank) detailsExpanded = true
-                }
-                LaunchedEffect(uiState.stopError) {
-                    if (uiState.stopError?.let { isValidationMessage(it) } == true) detailsExpanded = true
-                }
-                val endLabel = stringResource(R.string.label_end_time)
-                TimerDetailsSection(
-                    expanded = detailsExpanded,
-                    onToggle = { detailsExpanded = !detailsExpanded },
-                    summary = (listOf(if (endTimeInput.isNotBlank()) "$endLabel $endTimeInput" else endLabel) +
-                        uiState.extraFieldDefs.map { it.propName }).joinToString(" · ")
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                        Text(
-                            stringResource(R.string.label_end_time),
-                            style = MaterialTheme.typography.labelMedium,
-                            modifier = Modifier.width(100.dp),
-                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
-                        )
-                        Box(modifier = Modifier.weight(1f)) {
-                            OutlinedTextField(
+                            TimeField(
+                                label = stringResource(R.string.label_end_time),
                                 value = endTimeInput,
-                                onValueChange = { },
-                                readOnly = true,
-                                enabled = false,
-                                modifier = Modifier.fillMaxWidth(),
-                                singleLine = true,
-                                placeholder = { Text(stringResource(R.string.hint_manual_end), color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f)) },
-                                trailingIcon = {
-                                    Icon(Icons.Rounded.AccessTime, contentDescription = stringResource(R.string.title_select_end_time), tint = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f))
-                                },
-                                colors = OutlinedTextFieldDefaults.colors(
-                                    disabledTextColor = MaterialTheme.colorScheme.onBackground,
-                                    disabledBorderColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.3f),
-                                    disabledTrailingIconColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
-                                )
+                                placeholder = null,
+                                pickerDescription = stringResource(R.string.title_select_end_time),
+                                onPick = showEndTimePicker,
+                                onClear = if (endTimeInput.isNotBlank()) ({ endTimeInput = "" }) else null,
+                                modifier = Modifier.weight(1f)
                             )
-                            Box(modifier = Modifier.matchParentSize().clickable { showEndTimePicker() })
                         }
+                        Text(
+                            stringResource(R.string.hint_manual_end),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(start = 16.dp)
+                        )
                     }
 
                     uiState.extraFieldDefs.forEach { def ->
@@ -910,7 +822,13 @@ private fun RunningView(
                         )
                     }
                 }
-              }
+
+                SavePresetButton(
+                    onClick = onSavePresetClick,
+                    enabled = true,
+                    color = workspaceAccent,
+                    modifier = Modifier.align(Alignment.CenterHorizontally)
+                )
 
                 OtherRunningTimers(
                     timers = uiState.runningTimers,
@@ -940,80 +858,203 @@ private fun RunningView(
 
                 Spacer(Modifier.height(16.dp))
             }
-          }
         }
     }
 }
 
-/** How much of the lists shows under a running timer before scrolling: their first heading. */
-private val ListsPeek: Dp = 56.dp
-
 /**
- * The running timer's less-used fields (end time, extra fields) behind a header that expands
- * and collapses them, styled like the settings sections (`CollapsibleSection`): a Group-shaped
- * card, Title Medium title, what is inside as the summary, a turning chevron. Its open state
- * is held by the caller so a refused stop can open it.
+ * The workspace as the screen's title: its colour dot and name in Headline Small. Idle
+ * ([onSelect] set) it is a button that opens the workspace menu, each workspace with its dot;
+ * while a timer runs it is plain text, since a running timer's workspace can't change.
  */
 @Composable
-private fun TimerDetailsSection(
-    expanded: Boolean,
-    onToggle: () -> Unit,
-    summary: String,
-    content: @Composable ColumnScope.() -> Unit
+private fun WorkspaceTitle(
+    workspaces: List<com.impca201.notiontimetracker.data.models.Workspace>,
+    selected: com.impca201.notiontimetracker.data.models.Workspace?,
+    onSelect: ((String) -> Unit)?,
+    modifier: Modifier = Modifier
 ) {
-    val animate = !rememberReducedMotion()
-    val chevronRotation by animateFloatAsState(if (expanded) 180f else 0f, label = "details-chevron")
-    val stateText = stringResource(if (expanded) R.string.section_expanded else R.string.section_collapsed)
-    Card(
-        shape = AppShapes.Group,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-        modifier = Modifier.fillMaxWidth()
-    ) {
+    var menuOpen by remember { mutableStateOf(false) }
+    val anyColour = workspaces.any { workspaceAccentColor(it.color) != null }
+    val dot = workspaceAccentColor(selected?.color)
+    val name = selected?.name ?: stringResource(R.string.placeholder_select_workspace)
+    val enabled = onSelect != null && workspaces.isNotEmpty()
+    val changeLabel = stringResource(R.string.label_workspace)
+    Box(modifier) {
         Row(
             modifier = Modifier
-                .fillMaxWidth()
-                .clickable(role = Role.Button, onClick = onToggle)
-                .semantics { stateDescription = stateText }
-                .padding(horizontal = 20.dp, vertical = 16.dp),
+                .heightIn(min = 48.dp)
+                .clip(CircleShape)
+                .then(
+                    if (enabled) Modifier
+                        .clickable(role = Role.DropdownList, onClickLabel = changeLabel) { menuOpen = true }
+                        .padding(start = 16.dp, end = 8.dp)
+                    else Modifier.padding(horizontal = 16.dp)
+                ),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            Icon(Icons.Rounded.Tune, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-            Column(Modifier.weight(1f)) {
-                Text(
-                    stringResource(R.string.section_timer_details),
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.semantics { heading() }
+            if (dot != null) WorkspaceSwatch(dot)
+            Text(
+                name,
+                style = MaterialTheme.typography.headlineSmall,
+                color = if (selected != null) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f, fill = false)
+            )
+            if (enabled) {
+                Icon(
+                    Icons.Rounded.ArrowDropDown,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                if (!expanded) {
-                    Text(
-                        summary,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+            }
+        }
+        if (onSelect != null) {
+            DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                workspaces.forEach { ws ->
+                    val wsDot = workspaceAccentColor(ws.color)
+                    DropdownMenuItem(
+                        text = { Text(ws.name) },
+                        onClick = { menuOpen = false; onSelect(ws.id) },
+                        // Workspaces without a colour get an empty slot so the names line up.
+                        leadingIcon = if (anyColour) ({ WorkspaceSwatch(wsDot ?: Color.Transparent) }) else null,
+                        colors = MenuDefaults.itemColors(
+                            textColor = if (ws.id == selected?.id) MaterialTheme.colorScheme.primary
+                            else MaterialTheme.colorScheme.onSurface
+                        )
                     )
                 }
             }
-            Icon(
-                painter = painterResource(R.drawable.ic_expand_more),
-                contentDescription = null,
-                modifier = Modifier.rotate(chevronRotation)
-            )
-        }
-        AnimatedVisibility(
-            visible = expanded,
-            enter = if (animate) fadeIn() + expandVertically() else EnterTransition.None,
-            exit = if (animate) fadeOut() + shrinkVertically() else ExitTransition.None
-        ) {
-            Column(
-                modifier = Modifier.padding(start = 20.dp, end = 20.dp, bottom = 20.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-                content = content
-            )
         }
     }
 }
+
+/**
+ * The cookie with Start or Stop on its bottom edge: the button overlaps the shape by half its
+ * height, as a FAB anchored to a surface does, so the action reads as belonging to the timer
+ * while keeping its label and full 56dp size.
+ */
+@Composable
+private fun TimerHeroWithAction(
+    elapsedText: String,
+    container: Color,
+    contentColor: Color,
+    running: Boolean,
+    modifier: Modifier = Modifier,
+    heroModifier: Modifier = Modifier,
+    action: @Composable () -> Unit
+) {
+    Box(modifier.width(HeroSize).height(HeroSize + TimerActionButtonHeight / 2)) {
+        TimerHero(
+            elapsedText = elapsedText,
+            container = container,
+            contentColor = contentColor,
+            running = running,
+            modifier = heroModifier.align(Alignment.TopCenter)
+        )
+        Box(Modifier.align(Alignment.BottomCenter)) { action() }
+    }
+}
+
+private val HeroSize: Dp = 272.dp
+
+/**
+ * Every field of the timer in one card: a Group-shaped surface sets the form apart from the
+ * timer above and the lists below. Not collapsible — all fields are always in reach.
+ */
+@Composable
+private fun TimerDetailsCard(containerColor: Color, content: @Composable ColumnScope.() -> Unit) {
+    Card(
+        shape = AppShapes.Group,
+        colors = CardDefaults.cardColors(containerColor = containerColor),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            content = content
+        )
+    }
+}
+
+/**
+ * A time as a read-only outlined field with its name as the label: tapping it opens the time
+ * picker. [onClear] (when set) adds a clear button, which empties it again.
+ */
+@Composable
+private fun TimeField(
+    label: String,
+    value: String,
+    placeholder: String?,
+    pickerDescription: String,
+    onPick: () -> Unit,
+    modifier: Modifier = Modifier,
+    onClear: (() -> Unit)? = null
+) {
+    Box(modifier) {
+        OutlinedTextField(
+            value = value,
+            onValueChange = { },
+            readOnly = true,
+            enabled = false,
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            label = { Text(label) },
+            placeholder = placeholder?.let { { Text(it) } },
+            // With a clear button on top, the slot stays empty but keeps the text clear of it.
+            trailingIcon = {
+                if (onClear == null) Icon(Icons.Rounded.AccessTime, contentDescription = null)
+                else Spacer(Modifier.size(24.dp))
+            },
+            colors = OutlinedTextFieldDefaults.colors(
+                disabledTextColor = MaterialTheme.colorScheme.onSurface,
+                disabledBorderColor = MaterialTheme.colorScheme.outline,
+                disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                disabledPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                disabledTrailingIconColor = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        )
+        Box(
+            Modifier
+                .matchParentSize()
+                .clickable(role = Role.Button, onClickLabel = pickerDescription, onClick = onPick)
+        )
+        if (onClear != null) {
+            IconButton(
+                onClick = onClear,
+                modifier = Modifier.align(Alignment.CenterEnd).padding(top = 8.dp)
+            ) {
+                Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.btn_clear))
+            }
+        }
+    }
+}
+
+/** Saves the form as a preset: a text button under the details, in the workspace colour. */
+@Composable
+private fun SavePresetButton(
+    onClick: () -> Unit,
+    enabled: Boolean,
+    modifier: Modifier = Modifier,
+    color: Color? = null
+) {
+    TextButton(
+        onClick = onClick,
+        enabled = enabled,
+        modifier = modifier,
+        colors = if (color != null) ButtonDefaults.textButtonColors(contentColor = color) else ButtonDefaults.textButtonColors()
+    ) {
+        Icon(Icons.Rounded.BookmarkBorder, contentDescription = null, modifier = Modifier.size(18.dp))
+        Spacer(Modifier.width(8.dp))
+        Text(stringResource(R.string.title_save_preset))
+    }
+}
+
+/** An instant as the ISO timestamp the time formatting here reads. */
+private fun isoAt(ms: Long): String =
+    java.time.Instant.ofEpochMilli(ms).atZone(java.time.ZoneId.systemDefault()).toOffsetDateTime().toString()
 
 @Composable
 private fun OtherRunningTimers(

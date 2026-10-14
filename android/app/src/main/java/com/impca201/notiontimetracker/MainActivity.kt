@@ -154,7 +154,7 @@ private fun AppNavigation(
                 onProjectSelect = timerViewModel::setSelectedProject,
                 onDescriptionChange = timerViewModel::setDescription,
                 onExtraValueChange = timerViewModel::setExtraValue,
-                onStart = timerViewModel::startTimer,
+                onStart = { timerViewModel.startTimer(it) },
                 onStop = timerViewModel::stopTimer,
                 onUpdateStartTime = timerViewModel::updateStartTime,
                 onNavigateToSettings = { navController.navigate("settings") },
