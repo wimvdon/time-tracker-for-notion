@@ -79,6 +79,10 @@ passwords, Notion API keys or `.env` files.
   a dated entry to `docs/decisions.md`.
 - Structure: `docs/structure.md`. Design and flow: `docs/architecture.md`. What is tested and how:
   `docs/testing.md`. Look and feel: `DESIGN.md`.
+- `DESIGN.md`: only its "This app" section belongs to this repository. The other sections are
+  copied from the master copy in the android-app template (`wimvdon/android-app`): change a
+  shared rule there first, then copy it unchanged to all three apps (Tracker for Simkl, Time
+  Tracker for Notion, Snoozer).
 
 ## Releasing (only when the owner asks)
 

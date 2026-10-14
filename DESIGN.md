@@ -1,8 +1,11 @@
 # Design
 
 Time Tracker for Notion (Android) is one of three sibling Android apps (Tracker for Simkl, Time Tracker for Notion and
-Snoozer) that share one design language. This file is the same in each repository apart from
-the "This app" section; change the rules in all three together.
+Snoozer) that share one design language.
+
+The shared rules (every section except "This app") have their master copy in `DESIGN.md` of
+the android-app template (`wimvdon/android-app`). Change them there first, then copy them
+unchanged to all three apps. Only the "This app" section belongs to this repository.
 
 ## Icons
 
@@ -14,7 +17,7 @@ the "This app" section; change the rules in all three together.
 
 | App | Shape | Gradient |
 | --- | --- | --- |
-| Tracker for Simkl | TV with a play button | `#3D7BFF` → `#7A5CFF` → `#D15CE6` |
+| Tracker for Simkl | TV screen with a checkmark | `#3D7BFF` → `#7A5CFF` → `#D15CE6` |
 | Time Tracker for Notion | Stopwatch dial with a hand | `#FF8A3D` → `#F04438` → `#C81E5A` |
 | Snoozer | Nine-lobed "cookie" (the home screen toggle) with a bell | `#22C3B4` → `#3E7BDA` → `#4E5BB0` |
 
@@ -100,8 +103,9 @@ English, Dutch, German, French, Spanish and Italian).
 
 ## Shared design kit
 
-These files are identical in the three apps apart from their package (and `R` import) lines. Copy a change to
-the other two repositories:
+These files live in each app (the template does not include them). They are identical in the
+three apps apart from their package (and `R` import) lines. Copy a change to the other two
+repositories:
 
 - `ui/theme/Motion.kt`: motion tokens, the shared-axis transition and `rememberReducedMotion()`.
 - `ui/theme/Shapes.kt`: `AppShapes`.
