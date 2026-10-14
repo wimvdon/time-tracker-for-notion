@@ -62,11 +62,11 @@ For each pull request, install the Dev installer and/or the debug APK from the C
 - [ ] Start and stop a timer on each platform; the Notion row gets its start, end and status.
 - [ ] Dark mode on and off: text stays readable.
 - [ ] Another language (Windows: Settings › Language; Android: Settings › System › Languages › App languages): all text is translated.
-- [ ] After a release: install over the previous version. Settings, API key and a running timer are kept.
+- [ ] After a release: install the Windows installer over the previous version, and update the Android app from the Play Store. Settings, API key and a running timer are kept.
 
 ## Reading a crash from a release APK
 
-Release APKs are minified. Download `TimeTracker-<version>-mapping.txt` from the matching GitHub Release and decode the trace with R8's `retrace` (Android SDK `cmdline-tools/latest/bin/retrace`):
+Release builds are minified. Crashes reported through Google Play are decoded by Play (the workflow uploads the mapping file). For a trace from elsewhere, download `TimeTracker-<version>-mapping.txt` from the matching run of the Release workflow (**Actions › Release › Artifacts › android-mapping**, kept 90 days; older versions: the GitHub Release) and decode the trace with R8's `retrace` (Android SDK `cmdline-tools/latest/bin/retrace`):
 
 ```bash
 retrace TimeTracker-<version>-mapping.txt stacktrace.txt

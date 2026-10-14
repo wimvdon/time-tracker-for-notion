@@ -1,5 +1,15 @@
 # Technical decisions
 
+## Android through Google Play, no GitHub Releases (2026-10-14)
+
+The repository becomes public (free GitHub Actions minutes), and the apps should not be freely downloadable. The Release workflow no longer creates a GitHub Release. The `vX.Y.Z` tag is still created (after a successful release), and the version rules (`android/scripts/release_version.py`) are unchanged. Same setup as the sibling apps Snoozer and Tracker for Simkl.
+
+- **Android:** a signed AAB goes to Google Play's **internal testing** track; the owner installs from Play with automatic updates and no longer needs Obtainium. Uploaded with `r0adkll/upload-google-play` (approved by the owner), a widely used action, pinned to the v1.1.5 commit, in its own job with read-only GitHub access that runs only after both apps passed. The tag is created by a separate job afterwards, so a failed run leaves no tag and can be re-run. Rejected: a hand-written upload script against the Play Developer API.
+- **Windows:** no public download at all (the owner's choice). A release's installer is a file of the workflow run (kept 90 days), downloaded by hand. Trade-off: no update notice and manual installs; once the repository is public, anyone signed in to GitHub can download run artifacts. Rejected: a GitHub Release with only the installer (public download); the Microsoft Store (a much larger change).
+- **A new Google-generated app signing key** (Play App Signing), not the key shared with the owner's other apps; the existing key is only the upload key. Cost: the GitHub-installed Android app must be uninstalled once, losing the saved API key and settings (time entries are in Notion). Rejected: giving Google the shared key, which ties the three apps' signing together.
+- **A build-only run (`none`) still produces a Dev installer, an APK and an AAB**, the AAB for the first upload by hand, with versionCode 1 so they can never update an installed app.
+- Selling the apps later would need Google's billing library (a new dependency) and a way to sell the Windows app; not part of this change.
+
 ## Aligned with the windows-electron-app and android-app templates (2026-10-14)
 
 The repository now follows the rules and workflows of [impca201/windows-electron-app](https://github.com/impca201/windows-electron-app) and [impca201/android-app](https://github.com/impca201/android-app), like the sibling apps Snoozer and Tracker for Simkl.

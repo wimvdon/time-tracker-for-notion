@@ -26,7 +26,7 @@ Press **Start** when you begin working and **Stop** when you're done. Time Track
 
 ## Quick start
 
-1. Download the installer (`.exe`) and/or the Android APK from the [latest release](https://github.com/impca201/time-tracker-for-notion/releases/latest).
+1. Android: install from Google Play's internal testing track (invite only). Windows: download the installer from the latest **Release** workflow run (**Actions › Release › Artifacts › windows**). See [docs/installation.md](docs/installation.md#option-a-install-a-release).
 2. Create a Notion connection, copy its token, and connect it to the page that holds your Time Entries database.
 3. In the app: **Settings** › paste the key › **Test connection & save** › **+ Add workspace**, then press **Start**.
 
@@ -56,12 +56,12 @@ npm run dev
 
 Shared:
 - **External service:** Notion REST API (`2022-06-28`).
-- **CI/CD:** GitHub Actions checks every pull request (with a Dev installer and a debug APK to try), builds both apps and publishes one release; Dependabot keeps dependencies current.
+- **CI/CD:** GitHub Actions checks every pull request (with a Dev installer and a debug APK to try), builds both apps for a release (Android to Google Play internal testing); Dependabot keeps dependencies current.
 - **Rules for Claude Code sessions:** [`CLAUDE.md`](CLAUDE.md). **Privacy:** [`PRIVACY.md`](PRIVACY.md).
 
 ## Quick installation
 
-- **Use it:** download from [Releases](https://github.com/impca201/time-tracker-for-notion/releases) and install.
+- **Use it:** Android from Google Play (internal testing), Windows from the Release workflow's artifacts; see [docs/installation.md](docs/installation.md#option-a-install-a-release).
 - **Develop on Windows:** Node.js 24 (`windows/.nvmrc`), then `cd windows && npm ci && npm run dev`.
 - **Develop on Android:** open `android/` in Android Studio and run.
 
