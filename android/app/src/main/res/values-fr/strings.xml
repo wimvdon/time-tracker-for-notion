@@ -156,6 +156,7 @@
     <string name="presets_manage_title">Gérer les préréglages</string>
     <string name="title_new_preset">Nouveau préréglage</string>
     <string name="title_edit_preset">Modifier le préréglage</string>
+    <string name="hint_preset_required">Les champs marqués * sont nécessaires pour arrêter un minuteur. Un préréglage peut les laisser vides.</string>
     <string name="tooltip_presets_shortcuts">Les préréglages du haut seront utilisés pour les raccourcis du lanceur.</string>
     <string name="dialog_unsaved_changes_title">Modifications non enregistrées</string>
     <string name="dialog_unsaved_changes_body">Vous avez des modifications non enregistrées. Voulez-vous les enregistrer avant de quitter ?</string>

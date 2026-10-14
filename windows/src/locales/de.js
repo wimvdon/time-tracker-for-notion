@@ -189,6 +189,7 @@ export default {
   presetsManageTitle: 'Vorlagen verwalten',
   presetNew: 'Neue Vorlage',
   presetEdit: 'Vorlage bearbeiten',
+  hintPresetRequired: 'Mit * markierte Felder werden zum Stoppen eines Timers benötigt. Eine Vorlage darf sie leer lassen.',
   labelPresetName: 'Name',
   tooltipPresetsShortcuts: 'Alle Vorlagen werden zu Tray-Verknüpfungen hinzugefügt.',
   dialogTimeErrorTitle: 'Endzeit liegt vor der Startzeit',

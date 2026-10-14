@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Tray, Menu, ipcMain, nativeImage, nativeTheme, shell, systemPreferences } = require('electron');
+const { app, BrowserWindow, Tray, Menu, ipcMain, nativeImage, nativeTheme, screen, shell, systemPreferences } = require('electron');
 const os = require('os');
 const path = require('path');
 const zlib = require('zlib');
@@ -166,9 +166,14 @@ function accentColor() {
 function createWindow() {
   const startHidden = process.argv.includes('--hidden');
   applyNativeTheme(store.get('theme'));
+  // Sized for the timer screen: the time, Start/Stop and the details card with a couple of extra
+  // fields fit without scrolling (the lists below scroll). The size is the content area, so the
+  // title bar doesn't eat into it; on a short screen it shrinks to fit.
+  const workArea = screen.getPrimaryDisplay().workAreaSize;
   mainWindow = new BrowserWindow({
     width: 340,
-    height: 480,
+    height: Math.min(620, workArea.height - 40),
+    useContentSize: true,
     ...(useMica
       ? { backgroundMaterial: 'mica', backgroundColor: '#00000000' }
       : { backgroundColor: fallbackBackground() }),

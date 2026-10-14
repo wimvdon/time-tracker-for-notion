@@ -1007,6 +1007,11 @@ function PresetEditorDialog({ draft, workspaces, onCancel, onSave }) {
               onChange={(value) => setValues((current) => ({ ...current, [def.name]: value }))}
             />
           ))}
+          {/* Required fields are marked but not enforced here: they only have to be filled in
+              before a timer stops. */}
+          {defs.some((def) => def.required) && (
+            <p className="text-xs text-fg3">{t('hintPresetRequired')}</p>
+          )}
         </div>
         <div className="flex gap-2 mt-1">
           <button

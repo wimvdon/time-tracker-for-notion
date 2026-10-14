@@ -185,6 +185,7 @@ export default {
   presetsManageTitle: 'Snelstarters beheren',
   presetNew: 'Nieuwe snelstarter',
   presetEdit: 'Snelstarter bewerken',
+  hintPresetRequired: 'Velden met * zijn nodig om een timer te stoppen. Een snelstarter mag ze leeg laten.',
   labelPresetName: 'Naam',
   tooltipPresetsShortcuts: 'Alle snelstarters worden toegevoegd aan tray-snelkoppelingen.',
   dialogTimeErrorTitle: 'Eindtijd ligt voor starttijd',

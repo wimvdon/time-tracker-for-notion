@@ -23,7 +23,10 @@ fun ExtraFieldInput(
     fieldDef: ExtraFieldDef,
     value: String,
     onValueChange: (String) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    // A preset may leave a required field empty (it's only needed when a timer stops), so the
+    // preset editor lets a required dropdown be cleared too.
+    clearableWhenRequired: Boolean = false
 ) {
     val label = fieldDef.propName + if (fieldDef.required) " *" else ""
 
@@ -45,7 +48,7 @@ fun ExtraFieldInput(
                 selected = fieldDef.options.firstOrNull { it.id == value || it.name == value },
                 placeholder = stringResource(R.string.placeholder_select),
                 onSelect = { onValueChange(it?.name ?: "") },
-                allowClear = !fieldDef.required,
+                allowClear = !fieldDef.required || clearableWhenRequired,
                 searchable = fieldDef.options.size > 5,
                 label = label,
                 modifier = modifier
@@ -78,7 +81,7 @@ fun ExtraFieldInput(
                 selected = fieldDef.options.firstOrNull { it.id == firstId },
                 placeholder = stringResource(R.string.placeholder_select),
                 onSelect = { onValueChange(it?.id ?: "") },
-                allowClear = !fieldDef.required,
+                allowClear = !fieldDef.required || clearableWhenRequired,
                 searchable = true,
                 label = label,
                 modifier = modifier

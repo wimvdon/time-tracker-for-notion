@@ -189,6 +189,7 @@ export default {
   presetsManageTitle: 'Manage presets',
   presetNew: 'New preset',
   presetEdit: 'Edit preset',
+  hintPresetRequired: 'Fields marked * are needed before a timer can stop. A preset can leave them empty.',
   labelPresetName: 'Name',
   tooltipPresetsShortcuts: 'All presets are added to tray shortcuts.',
   dialogTimeErrorTitle: 'End time is before start time',

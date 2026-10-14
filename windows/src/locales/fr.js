@@ -189,6 +189,7 @@ export default {
   presetsManageTitle: 'Gérer les préréglages',
   presetNew: 'Nouveau préréglage',
   presetEdit: 'Modifier le préréglage',
+  hintPresetRequired: 'Les champs marqués * sont nécessaires pour arrêter un minuteur. Un préréglage peut les laisser vides.',
   labelPresetName: 'Nom',
   tooltipPresetsShortcuts: 'Tous les préréglages sont ajoutés aux raccourcis de la barre des tâches.',
   dialogTimeErrorTitle: 'L\'heure de fin est antérieure à l\'heure de début',

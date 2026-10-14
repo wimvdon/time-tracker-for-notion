@@ -41,7 +41,7 @@ The two codebases share no code. They agree on Notion page shapes and the sync p
 
 | Component | File | Responsibility |
 |---|---|---|
-| Main process | `windows/electron/main.cjs` | Window: 340×480, non-resizable, always on top optional, Mica on Win 11 22H2+. Tray icon tinted with the running workspace colour (in-process PNG encoder). Tray menu: open, stop, up to 10 presets, quit. Also: single-instance lock, `--preset=` / `--hidden` arguments, start with Windows, electron-store. Registers all IPC handlers. |
+| Main process | `windows/electron/main.cjs` | Window: 340×620 content area (less on a short screen), non-resizable, always on top optional, Mica on Win 11 22H2+. Tray icon tinted with the running workspace colour (in-process PNG encoder). Tray menu: open, stop, up to 10 presets, quit. Also: single-instance lock, `--preset=` / `--hidden` arguments, start with Windows, electron-store. Registers all IPC handlers. |
 | Notion client | `windows/electron/notionClient.cjs` | Every REST call: retry with backoff on 429/5xx (honours `Retry-After`), pagination, sync payload encoding. |
 | Preload bridge | `windows/electron/preload.cjs` | Exposes `window.notionAPI` through `contextBridge`. Queues preset requests that arrive before the renderer subscribes. |
 | Store | `windows/src/store/useStore.js` | Zustand store with all app logic: init and migrations, start/stop/update timer, running and recent lists, presets, sync, theme, toasts, and the 60-second refresh loop. |
