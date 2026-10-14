@@ -167,6 +167,8 @@ export default {
 
   // Presets
   titleRemovePreset: 'Rimuovi preimpostazione',
+  confirmRemovePresetTitle: 'Rimuovere questa preimpostazione?',
+  btnRemove: 'Rimuovi',
   presetNamePlaceholder: 'es. Standup mattutino',
 
   // Timer stopped elsewhere

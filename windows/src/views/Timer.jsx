@@ -399,14 +399,6 @@ export default function Timer() {
                       >
                         <Edit20Regular className="w-4 h-4" />
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => deletePreset(ws.id, p.id)}
-                        title={t('titleRemovePreset')}
-                        className="p-1 hover:bg-subtle-hover text-danger hover:text-danger rounded flex items-center justify-center"
-                      >
-                        <Delete20Regular className="w-4 h-4" />
-                      </button>
                     </div>
                   </div>
                 ));
@@ -443,6 +435,10 @@ export default function Timer() {
             await savePreset(preset);
             setPresetDraft(null);
           }}
+          onDelete={presetDraft.presetId ? async () => {
+            await deletePreset(presetDraft.workspaceId, presetDraft.presetId);
+            setPresetDraft(null);
+          } : undefined}
         />
       )}
     </>
@@ -906,7 +902,7 @@ function TimeInput({ id, value, onChange, emptyLabel }) {
  * with and its extra field values. The workspace's fields are loaded from Notion when it opens
  * and whenever another workspace is picked.
  */
-function PresetEditorDialog({ draft, workspaces, onCancel, onSave }) {
+function PresetEditorDialog({ draft, workspaces, onCancel, onSave, onDelete }) {
   const isDarkTheme = useIsDarkTheme();
   const [workspaceId, setWorkspaceId] = useState(draft.workspaceId);
   const [name, setName] = useState(draft.name);
@@ -916,6 +912,7 @@ function PresetEditorDialog({ draft, workspaces, onCancel, onSave }) {
   const [loading, setLoading] = useState(false);
   const [loadFailed, setLoadFailed] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [confirmRemove, setConfirmRemove] = useState(false);
   const workspace = workspaces.find((w) => w.id === workspaceId);
 
   useEffect(() => {
@@ -949,33 +946,10 @@ function PresetEditorDialog({ draft, workspaces, onCancel, onSave }) {
       <div className="bg-dialog border border-surface-stroke rounded-lg shadow-dialog p-4 w-full flex flex-col gap-3 max-h-[90vh]">
         <h2 className="text-sm font-semibold">{t(draft.presetId ? 'presetEdit' : 'presetNew')}</h2>
         <div className="flex-1 overflow-y-auto pr-1 flex flex-col gap-3 min-h-0">
+          {/* The name stands on its own: it is the preset (what its chip shows) and always
+              needed, so it carries no "required" mark. */}
           <div>
-            <label className="block text-xs text-fg2 mb-1">{t('labelWorkspace')}</label>
-            {draft.presetId ? (
-              <div className="flex items-center gap-2 text-sm text-fg1 py-1">
-                {dotFor(workspace) && (
-                  <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: dotFor(workspace) }} />
-                )}
-                <span className="truncate">{workspace?.name}</span>
-              </div>
-            ) : (
-              <SearchableSelect
-                value={workspaceId}
-                onChange={(v) => { if (v) { setWorkspaceId(v); setValues({}); } }}
-                options={workspaces.map((w) => ({ value: w.id, label: w.name }))}
-                allowClear={false}
-                className="w-full"
-                renderPrefix={anyColour ? (o) => (
-                  <span
-                    className="w-2 h-2 rounded-full shrink-0"
-                    style={{ backgroundColor: dotFor(workspaces.find((w) => w.id === o.value)) || 'transparent' }}
-                  />
-                ) : undefined}
-              />
-            )}
-          </div>
-          <div>
-            <label htmlFor="preset-name" className="block text-xs text-fg2 mb-1">{t('labelPresetName')} *</label>
+            <label htmlFor="preset-name" className="block text-xs text-fg2 mb-1">{t('labelPresetName')}</label>
             <input
               id="preset-name"
               type="text"
@@ -986,31 +960,73 @@ function PresetEditorDialog({ draft, workspaces, onCancel, onSave }) {
               className="w-full bg-control border border-stroke rounded-md px-3 py-2 text-sm placeholder-fg3"
             />
           </div>
-          <div>
-            <label htmlFor="preset-title" className="block text-xs text-fg2 mb-1">{t('labelDescription')}</label>
-            <input
-              id="preset-title"
-              type="text"
-              value={pageTitle}
-              onChange={(e) => setPageTitle(e.target.value)}
-              placeholder={t('placeholderDescription')}
-              className="w-full bg-control border border-stroke rounded-md px-3 py-2 text-sm placeholder-fg3"
-            />
-          </div>
-          {loading && <div className="text-xs text-fg3">{t('placeholderLoading')}</div>}
-          {loadFailed && <div className="text-xs text-danger">{t('errorLoadingExtras')}</div>}
-          {defs.map((def) => (
-            <ExtraFieldInput
-              key={def.name}
-              def={def}
-              value={values[def.name] ?? emptyValueFor(def.type)}
-              onChange={(value) => setValues((current) => ({ ...current, [def.name]: value }))}
-            />
-          ))}
-          {/* Required fields are marked but not enforced here: they only have to be filled in
-              before a timer stops. */}
-          {defs.some((def) => def.required) && (
-            <p className="text-xs text-fg3">{t('hintPresetRequired')}</p>
+
+          {/* What the preset fills in when it starts a timer, in a card like the timer's own
+              details: the workspace, the description and the extra fields. */}
+          <section className="rounded-lg border border-stroke bg-layer p-3 flex flex-col gap-3">
+            <div>
+              <label className="block text-xs text-fg2 mb-1">{t('labelWorkspace')}</label>
+              {draft.presetId ? (
+                <div className="flex items-center gap-2 text-sm text-fg1 py-1">
+                  {dotFor(workspace) && (
+                    <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: dotFor(workspace) }} />
+                  )}
+                  <span className="truncate">{workspace?.name}</span>
+                </div>
+              ) : (
+                <SearchableSelect
+                  value={workspaceId}
+                  onChange={(v) => { if (v) { setWorkspaceId(v); setValues({}); } }}
+                  options={workspaces.map((w) => ({ value: w.id, label: w.name }))}
+                  allowClear={false}
+                  className="w-full"
+                  renderPrefix={anyColour ? (o) => (
+                    <span
+                      className="w-2 h-2 rounded-full shrink-0"
+                      style={{ backgroundColor: dotFor(workspaces.find((w) => w.id === o.value)) || 'transparent' }}
+                    />
+                  ) : undefined}
+                />
+              )}
+            </div>
+            <div>
+              <label htmlFor="preset-title" className="block text-xs text-fg2 mb-1">{t('labelDescription')}</label>
+              <input
+                id="preset-title"
+                type="text"
+                value={pageTitle}
+                onChange={(e) => setPageTitle(e.target.value)}
+                placeholder={t('placeholderDescription')}
+                className="w-full bg-control border border-stroke rounded-md px-3 py-2 text-sm placeholder-fg3"
+              />
+            </div>
+            {loading && <div className="text-xs text-fg3">{t('placeholderLoading')}</div>}
+            {loadFailed && <div className="text-xs text-danger">{t('errorLoadingExtras')}</div>}
+            {defs.map((def) => (
+              <ExtraFieldInput
+                key={def.name}
+                def={def}
+                value={values[def.name] ?? emptyValueFor(def.type)}
+                onChange={(value) => setValues((current) => ({ ...current, [def.name]: value }))}
+              />
+            ))}
+            {/* Required fields are marked but not enforced here: they only have to be filled in
+                before a timer stops. */}
+            {defs.some((def) => def.required) && (
+              <p className="text-xs text-fg3">{t('hintPresetRequired')}</p>
+            )}
+          </section>
+
+          {/* Removing lives here, with the preset it removes, rather than in the list. */}
+          {onDelete && (
+            <button
+              type="button"
+              onClick={() => setConfirmRemove(true)}
+              className="self-start flex items-center gap-1.5 px-2 py-1.5 rounded-md text-sm text-danger hover:bg-subtle-hover active:bg-control-pressed transition-colors"
+            >
+              <Delete20Regular className="w-4 h-4" />
+              {t('titleRemovePreset')}
+            </button>
           )}
         </div>
         <div className="flex gap-2 mt-1">
@@ -1034,6 +1050,31 @@ function PresetEditorDialog({ draft, workspaces, onCancel, onSave }) {
           </button>
         </div>
       </div>
+
+      {confirmRemove && (
+        <div className="fixed inset-0 bg-smoke flex items-center justify-center z-[60] px-4">
+          <div className="bg-dialog border border-surface-stroke rounded-lg shadow-dialog p-4 max-w-xs w-full">
+            <p className="text-sm text-fg1 mb-1">{t('confirmRemovePresetTitle')}</p>
+            <p className="text-xs text-fg3 mb-4 truncate">&ldquo;{draft.name}&rdquo;</p>
+            <div className="flex gap-2 justify-end">
+              <button
+                type="button"
+                onClick={() => setConfirmRemove(false)}
+                className="px-3 py-1.5 text-sm text-fg2 hover:text-fg1 transition-colors"
+              >
+                {t('btnCancel')}
+              </button>
+              <button
+                type="button"
+                onClick={onDelete}
+                className="px-3 py-1.5 text-sm bg-red-700 hover:bg-red-600 text-white rounded-md font-medium transition-colors"
+              >
+                {t('btnRemove')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

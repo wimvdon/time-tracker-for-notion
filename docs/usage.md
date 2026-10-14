@@ -104,7 +104,9 @@ A preset remembers a workspace, a title, a description and extra field values, a
 
 **Create:** click the pen button after the preset chips (or **New preset** when you have none yet) › **New preset**. The editor starts from what is in the timer form: pick the workspace, enter a name (required, it's the chip label), the description and extra field values › **Save**.
 
-**Edit, reorder, remove:** the pen button after the chips opens **Manage presets**. Each preset has buttons to move it up or down, edit it (pen) and remove it.
+**Edit, reorder, remove:** the pen button after the chips opens **Manage presets**. Each preset has buttons to move it up or down and to edit it (pen). **Remove preset** is at the bottom of the edit screen.
+
+Required extra fields (marked *) may stay empty in a preset: they only have to be filled in before the timer stops.
 
 **Use:** click a preset chip at the top of the timer screen. If a timer is running, choose **Stop & start new** or **Cancel**. Chips appear once a key is set.
 

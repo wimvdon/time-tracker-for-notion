@@ -167,6 +167,8 @@ export default {
 
   // Presets
   titleRemovePreset: 'Remove preset',
+  confirmRemovePresetTitle: 'Remove this preset?',
+  btnRemove: 'Remove',
   presetNamePlaceholder: 'e.g. Morning standup',
 
   // Timer stopped elsewhere

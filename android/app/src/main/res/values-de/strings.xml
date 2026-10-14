@@ -136,6 +136,8 @@
 
     <!-- Presets -->
     <string name="title_remove_preset">Vorlage entfernen</string>
+    <string name="confirm_remove_preset_title">Diese Vorlage entfernen?</string>
+    <string name="btn_remove">Entfernen</string>
 
     <!-- Timer stopped elsewhere -->
     <string name="timer_stopped_elsewhere">Der Timer wurde auf einem anderen Gerät gestoppt.</string>

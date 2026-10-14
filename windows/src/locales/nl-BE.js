@@ -163,6 +163,8 @@ export default {
 
   // Snelstarters
   titleRemovePreset: 'Snelstarter verwijderen',
+  confirmRemovePresetTitle: 'Deze snelstarter verwijderen?',
+  btnRemove: 'Verwijderen',
   presetNamePlaceholder: 'bijv. Ochtendoverleg',
 
   // Timer gestopt elders

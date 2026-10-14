@@ -136,6 +136,8 @@
 
     <!-- Presets -->
     <string name="title_remove_preset">Supprimer le préréglage</string>
+    <string name="confirm_remove_preset_title">Supprimer ce préréglage ?</string>
+    <string name="btn_remove">Supprimer</string>
 
     <!-- Timer stopped elsewhere -->
     <string name="timer_stopped_elsewhere">Le minuteur a été arrêté sur un autre appareil.</string>
