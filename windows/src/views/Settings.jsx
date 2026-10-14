@@ -7,22 +7,14 @@ import { errorMessage } from '../lib/errors.js';
 import { getWorkspaceColorVariants } from '../lib/color.js';
 import SearchableSelect from '../components/SearchableSelect.jsx';
 import {
-  Settings20Regular,
   Delete20Regular,
   Edit20Regular,
-  Save20Regular,
-  Stop20Regular,
-  Play20Regular,
   ArrowUp20Regular,
   ArrowDown20Regular,
-  Bookmark20Regular,
-  Add20Regular,
   ArrowClockwise20Regular,
   Eye20Regular,
   EyeOff20Regular,
   Dismiss20Regular,
-  Open20Regular,
-  Info20Regular
 } from '@fluentui/react-icons';
 
 export default function Settings() {

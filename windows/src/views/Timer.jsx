@@ -544,7 +544,7 @@ function RunningView({
   useEffect(() => {
     if (pendingExtrasRef.current) return;
     setLocalExtras({ ...extraValues });
-  }, [extraValues]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [extraValues]);
 
   const commitStart = () => {
     if (!startInput) {
@@ -1222,7 +1222,7 @@ function PresetChips({ workspaces, apiKey, onApplyPreset, onManageClick, onNewCl
   );
 }
 
-function OtherRunningTimers({ timers, loading, activePageId, onLoad, onStop, onDelete, onOpenUrl }) {
+function OtherRunningTimers({ timers, activePageId, onLoad, onStop, onDelete, onOpenUrl }) {
   if (!timers.length) return null;
   return (
     <div className="w-full mt-6 pt-3 border-t border-stroke">
@@ -1266,7 +1266,7 @@ function formatRecentRange(startISO, endISO) {
   return `${dateStr} ${startStr} → …`;
 }
 
-function RecentEntries({ entries, loading, workspaces, onDelete, onOpenUrl, onPlay }) {
+function RecentEntries({ entries, workspaces, onDelete, onOpenUrl, onPlay }) {
   const showNotionLink = useStore((s) => s.showNotionLink);
   const showArchiveAction = useStore((s) => s.showArchiveAction);
   const isDarkTheme = useIsDarkTheme();

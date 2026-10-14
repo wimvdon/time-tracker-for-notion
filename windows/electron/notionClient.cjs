@@ -34,7 +34,7 @@ async function notionFetch(apiKey, method, endpoint, body) {
         body: body ? JSON.stringify(body) : undefined,
       });
     } catch (err) {
-      throw new Error(`Network error reaching Notion: ${err.message}`);
+      throw new Error(`Network error reaching Notion: ${err.message}`, { cause: err });
     }
     const data = await response.json().catch(() => ({}));
     if (response.ok) return data;

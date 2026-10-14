@@ -1,8 +1,9 @@
 name: CI
 
-# The Windows app's tests and build, and the Android debug APK plus a release build so R8
-# problems show up before a release. Runs once per pull request push; a merge to main isn't
-# built again, as the release workflow builds what you test.
+# The Windows app's lint, tests and build; a Windows installer that is installed, started and
+# uninstalled on a Windows machine (and attached to the run for testing); and the Android debug
+# APK plus a release build so R8 problems show up before a release. Runs once per pull request
+# push; a merge to main isn't built again, as the release workflow builds what you test.
 on:
   pull_request:
   workflow_dispatch:
@@ -21,12 +22,86 @@ jobs:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
         with:
-          node-version: 22
+          node-version: 24
           cache: npm
           cache-dependency-path: windows/package-lock.json
       - run: npm ci
-      - run: npm test
-      - run: npm run build
+      - name: Lint
+        run: npm run lint
+      - name: Unit tests
+        run: npm test
+      - name: Build the UI
+        run: npm run build
+      - name: Audit the packages that ship in the app
+        run: npm audit --omit=dev --audit-level=high
+
+  # Builds the "Time Tracker for Notion Dev" installer, which installs next to the real app with
+  # its own settings, and checks on a real Windows machine that it installs, starts and uninstalls.
+  windows-installer:
+    runs-on: windows-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: windows
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          # Tags, so the Dev build is versioned from the latest release (git describe).
+          fetch-depth: 0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: windows/package-lock.json
+      - name: Cache Electron downloads
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/AppData/Local/electron/Cache
+            ~/AppData/Local/electron-builder/Cache
+          key: electron-${{ runner.os }}-${{ hashFiles('windows/package-lock.json') }}
+          restore-keys: electron-${{ runner.os }}-
+      - run: npm ci
+      - name: Version the Dev build
+        shell: bash
+        run: |
+          # e.g. 1.2.0-dev.3+abc1234: 3 commits after v1.2.0, so it never looks like a release.
+          describe="$(git describe --tags --long --match 'v[0-9]*' 2>/dev/null || true)"
+          if [[ "$describe" =~ ^v([0-9]+\.[0-9]+\.[0-9]+)-([0-9]+)-g([0-9a-f]+)$ ]]; then
+            version="${BASH_REMATCH[1]}-dev.${BASH_REMATCH[2]}+${BASH_REMATCH[3]}"
+          else
+            version="0.0.0-dev+$(git rev-parse --short HEAD)"
+          fi
+          npm version "$version" --no-git-tag-version --allow-same-version
+      - name: Build the Dev installer
+        run: npm run dist:dev -- --publish never
+      - name: Find the installer
+        id: installer
+        shell: bash
+        run: |
+          set -euo pipefail
+          # "<product> Setup <version>.exe" (not the temporary *.__uninstaller.exe).
+          name=""
+          for file in ../release/*Setup*.exe; do
+            case "$file" in *__uninstaller*) ;; *) [ -e "$file" ] && name="$(basename "$file")" && break ;; esac
+          done
+          [ -n "$name" ] || { echo "::error::No installer found in release/"; exit 1; }
+          {
+            echo "path=../release/$name"
+            echo "artifact=release/$name"
+          } >> "$GITHUB_OUTPUT"
+          echo "### Dev installer: \`$name\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "Download it from **Artifacts** below. It installs as *Time Tracker for Notion Dev*, next to your real app, with its own settings." >> "$GITHUB_STEP_SUMMARY"
+      - name: Install, start and uninstall it
+        shell: pwsh
+        run: ./scripts/smoke-test-installer.ps1 -Installer '${{ steps.installer.outputs.path }}' -ProductName 'Time Tracker for Notion Dev' -WindowTitle 'Time Tracker'
+      - uses: actions/upload-artifact@v7
+        with:
+          path: ${{ steps.installer.outputs.artifact }}
+          # A plain .exe (not a zip), so it can be run straight from the download.
+          archive: false
+          retention-days: 14
+          if-no-files-found: error
 
   android:
     runs-on: ubuntu-latest
