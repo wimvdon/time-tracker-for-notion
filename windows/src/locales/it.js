@@ -189,6 +189,7 @@ export default {
   presetsManageTitle: 'Gestisci preimpostazioni',
   presetNew: 'Nuova preimpostazione',
   presetEdit: 'Modifica preimpostazione',
+  hintPresetRequired: 'I campi con * servono per fermare un timer. Una preimpostazione può lasciarli vuoti.',
   labelPresetName: 'Nome',
   tooltipPresetsShortcuts: 'Tutte le preimpostazioni vengono aggiunte alle scorciatoie della barra delle applicazioni.',
   dialogTimeErrorTitle: 'L\'ora di fine è antecedente a quella di inizio',

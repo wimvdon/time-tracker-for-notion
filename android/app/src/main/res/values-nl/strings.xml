@@ -156,6 +156,7 @@
     <string name="presets_manage_title">Snelstarters beheren</string>
     <string name="title_new_preset">Nieuwe snelstarter</string>
     <string name="title_edit_preset">Snelstarter bewerken</string>
+    <string name="hint_preset_required">Velden met * zijn nodig om een timer te stoppen. Een snelstarter mag ze leeg laten.</string>
     <string name="tooltip_presets_shortcuts">De bovenste snelstarters worden gebruikt voor snelkoppelingen op het startscherm.</string>
     <string name="dialog_unsaved_changes_title">Niet-opgeslagen wijzigingen</string>
     <string name="dialog_unsaved_changes_body">Je hebt niet-opgeslagen wijzigingen. Wil je deze opslaan voor je weggaat?</string>

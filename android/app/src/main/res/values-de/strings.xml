@@ -156,6 +156,7 @@
     <string name="presets_manage_title">Vorlagen verwalten</string>
     <string name="title_new_preset">Neue Vorlage</string>
     <string name="title_edit_preset">Vorlage bearbeiten</string>
+    <string name="hint_preset_required">Mit * markierte Felder werden zum Stoppen eines Timers benötigt. Eine Vorlage darf sie leer lassen.</string>
     <string name="tooltip_presets_shortcuts">Die obersten Vorlagen werden für Launcher-Verknüpfungen verwendet.</string>
     <string name="dialog_unsaved_changes_title">Ungespeicherte Änderungen</string>
     <string name="dialog_unsaved_changes_body">Du hast ungespeicherte Änderungen. Möchtest du sie vor dem Verlassen speichern?</string>

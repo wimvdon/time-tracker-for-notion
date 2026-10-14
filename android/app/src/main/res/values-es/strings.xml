@@ -156,6 +156,7 @@
     <string name="presets_manage_title">Gestionar preajustes</string>
     <string name="title_new_preset">Nuevo preajuste</string>
     <string name="title_edit_preset">Editar preajuste</string>
+    <string name="hint_preset_required">Los campos marcados con * son necesarios para detener un temporizador. Un preajuste puede dejarlos vacíos.</string>
     <string name="tooltip_presets_shortcuts">Los preajustes superiores se usarán como accesos directos.</string>
     <string name="dialog_unsaved_changes_title">Cambios sin guardar</string>
     <string name="dialog_unsaved_changes_body">Tienes cambios sin guardar. ¿Quieres guardarlos antes de salir?</string>

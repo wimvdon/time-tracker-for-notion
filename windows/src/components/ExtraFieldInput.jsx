@@ -134,19 +134,21 @@ export default function ExtraFieldInput({ def, value, onChange, disabled, error 
   };
 
   const labelClass = `text-xs ${error ? 'text-danger' : 'text-fg2'}`;
+  // A required field is marked with *, as on Android.
+  const label = def.required ? `${def.name} *` : def.name;
 
   if (def.type === 'checkbox') {
     return (
       <label className="flex items-center gap-2 text-sm cursor-pointer">
         {input()}
-        <span className={labelClass}>{def.name}</span>
+        <span className={labelClass}>{label}</span>
       </label>
     );
   }
 
   return (
     <div>
-      <label className={`block mb-1 ${labelClass}`}>{def.name}</label>
+      <label className={`block mb-1 ${labelClass}`}>{label}</label>
       {input()}
     </div>
   );

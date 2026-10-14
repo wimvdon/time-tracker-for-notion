@@ -131,7 +131,18 @@ fun PresetEditorScreen(
                     fieldDef = def,
                     value = editor.extraValues[def.propName] ?: "",
                     onValueChange = { onExtraChange(def.propName, it) },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    clearableWhenRequired = true
+                )
+            }
+
+            // Required fields are marked but not enforced here: they only have to be filled
+            // in before a timer stops.
+            if (editor.fieldDefs.any { it.required }) {
+                Text(
+                    stringResource(R.string.hint_preset_required),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 

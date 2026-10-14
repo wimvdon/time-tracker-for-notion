@@ -189,6 +189,7 @@ export default {
   presetsManageTitle: 'Gestionar preajustes',
   presetNew: 'Nuevo preajuste',
   presetEdit: 'Editar preajuste',
+  hintPresetRequired: 'Los campos marcados con * son necesarios para detener un temporizador. Un preajuste puede dejarlos vacíos.',
   labelPresetName: 'Nombre',
   tooltipPresetsShortcuts: 'Todos los preajustes se agregarán a los accesos directos de la bandeja.',
   dialogTimeErrorTitle: 'La hora de fin es anterior a la de inicio',
