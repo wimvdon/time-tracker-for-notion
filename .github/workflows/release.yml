@@ -65,7 +65,8 @@ jobs:
           set -euo pipefail
           fail() { echo "::error title=Release refused::$1"; exit 1; }
           version_tool() { python3 android/scripts/release_version.py "$@"; }
-          git fetch --quiet origin main
+          # The checkout above (fetch-depth: 0) already has origin/main and every tag. It keeps no
+          # credentials, so no further git commands may talk to GitHub; use the gh API instead.
           # Highest vX.Y.Z tag (by version, not date), optionally excluding one tag.
           latest_tag() {
             git tag --list 'v*' --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | grep -vxF "${1:-}" | head -n 1 || true
@@ -92,7 +93,7 @@ jobs:
             previous="$(latest_tag)"
             version="$(version_tool next "$previous" "$BUMP")" || fail "Could not compute the next version."
             tag="v$version"
-            if git rev-parse --quiet --verify "refs/tags/$tag" >/dev/null || [ -n "$(git ls-remote --tags origin "refs/tags/$tag")" ]; then
+            if git rev-parse --quiet --verify "refs/tags/$tag" >/dev/null || gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$tag" >/dev/null 2>&1; then
               fail "Tag $tag already exists."
             fi
           fi
