@@ -136,6 +136,8 @@
 
     <!-- Presets -->
     <string name="title_remove_preset">Eliminar preajuste</string>
+    <string name="confirm_remove_preset_title">¿Eliminar este preajuste?</string>
+    <string name="btn_remove">Eliminar</string>
 
     <!-- Timer stopped elsewhere -->
     <string name="timer_stopped_elsewhere">El temporizador se detuvo en otro dispositivo.</string>

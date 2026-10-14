@@ -167,6 +167,8 @@ export default {
 
   // Presets
   titleRemovePreset: 'Eliminar preajuste',
+  confirmRemovePresetTitle: '¿Eliminar este preajuste?',
+  btnRemove: 'Eliminar',
   presetNamePlaceholder: 'ej. Standup matinal',
 
   // Timer stopped elsewhere

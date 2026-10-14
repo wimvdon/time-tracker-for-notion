@@ -136,6 +136,8 @@
 
     <!-- Presets -->
     <string name="title_remove_preset">Snelstarter verwijderen</string>
+    <string name="confirm_remove_preset_title">Deze snelstarter verwijderen?</string>
+    <string name="btn_remove">Verwijderen</string>
 
     <!-- Timer stopped elsewhere -->
     <string name="timer_stopped_elsewhere">Timer gestopt op een ander apparaat.</string>

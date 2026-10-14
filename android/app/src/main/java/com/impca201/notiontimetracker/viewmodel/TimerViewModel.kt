@@ -1621,6 +1621,14 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /** Removes the preset open in the editor and closes it. */
+    fun deletePresetEditor() {
+        val editor = _uiState.value.presetEditor ?: return
+        val presetId = editor.presetId ?: return
+        deletePreset(editor.workspaceId, presetId)
+        closePresetEditor()
+    }
+
     fun closePresetEditor() {
         presetFieldsJob?.cancel()
         _uiState.update { it.copy(presetEditor = null) }

@@ -186,7 +186,7 @@ private fun AppNavigation(
                 onPresetEditorExtra = timerViewModel::setPresetEditorExtra,
                 onSavePresetEditor = timerViewModel::savePresetEditor,
                 onClosePresetEditor = timerViewModel::closePresetEditor,
-                onDeletePreset = timerViewModel::deletePreset,
+                onDeletePresetEditor = timerViewModel::deletePresetEditor,
                 onMovePresetUp = timerViewModel::movePresetUp,
                 onMovePresetDown = timerViewModel::movePresetDown
             )

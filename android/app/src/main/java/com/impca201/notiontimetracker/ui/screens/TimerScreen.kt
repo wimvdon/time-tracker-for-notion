@@ -119,7 +119,7 @@ fun TimerScreen(
     onPresetEditorExtra: (String, String) -> Unit,
     onSavePresetEditor: () -> Unit,
     onClosePresetEditor: () -> Unit,
-    onDeletePreset: (String, String) -> Unit,
+    onDeletePresetEditor: () -> Unit,
     onMovePresetUp: (String, String) -> Unit,
     onMovePresetDown: (String, String) -> Unit
 ) {
@@ -148,7 +148,6 @@ fun TimerScreen(
             workspaces = uiState.workspaces,
             onNewPreset = onNewPreset,
             onEditPreset = onEditPreset,
-            onDeletePreset = onDeletePreset,
             onMovePresetUp = onMovePresetUp,
             onMovePresetDown = onMovePresetDown,
             onDismiss = { showManagePresetsDialog = false }
@@ -213,7 +212,8 @@ fun TimerScreen(
             onExtraChange = onPresetEditorExtra,
             onSave = onSavePresetEditor,
             onDismiss = onClosePresetEditor,
-            errorText = { localisedMessage(it) }
+            errorText = { localisedMessage(it) },
+            onDelete = if (editor.presetId != null) onDeletePresetEditor else null
         )
         BackHandler(onBack = onClosePresetEditor)
         return
@@ -1591,7 +1591,6 @@ private fun ManagePresetsDialog(
     workspaces: List<com.impca201.notiontimetracker.data.models.Workspace>,
     onNewPreset: () -> Unit,
     onEditPreset: (String, String) -> Unit,
-    onDeletePreset: (String, String) -> Unit,
     onMovePresetUp: (String, String) -> Unit,
     onMovePresetDown: (String, String) -> Unit,
     onDismiss: () -> Unit
@@ -1680,12 +1679,6 @@ private fun ManagePresetsDialog(
                                 modifier = Modifier.size(36.dp)
                             ) {
                                 Icon(Icons.Rounded.Edit, contentDescription = stringResource(R.string.title_edit_preset), modifier = Modifier.size(18.dp))
-                            }
-                            IconButton(
-                                onClick = { onDeletePreset(ws.id, preset.id) },
-                                modifier = Modifier.size(36.dp)
-                            ) {
-                                Icon(Icons.Rounded.Delete, contentDescription = stringResource(R.string.title_remove_preset), modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.error)
                             }
                         }
                     }

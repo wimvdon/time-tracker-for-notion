@@ -167,6 +167,8 @@ export default {
 
   // Presets
   titleRemovePreset: 'Supprimer le préréglage',
+  confirmRemovePresetTitle: 'Supprimer ce préréglage ?',
+  btnRemove: 'Supprimer',
   presetNamePlaceholder: 'ex. Standup du matin',
 
   // Timer stopped elsewhere

@@ -167,6 +167,8 @@ export default {
 
   // Presets
   titleRemovePreset: 'Vorlage entfernen',
+  confirmRemovePresetTitle: 'Diese Vorlage entfernen?',
+  btnRemove: 'Entfernen',
   presetNamePlaceholder: 'z.B. Morgen-Standup',
 
   // Timer stopped elsewhere

@@ -131,8 +131,10 @@ the other two repositories:
   holding every timer field; the lists.
 - Presets are made and changed in one place: the pen after the preset chips opens Manage
   presets (each preset: its name over its workspace with colour dot; move up, move down,
-  edit, remove), with New preset as a dialog action. New and Edit open a full-screen editor
-  (workspace, name, description, extra fields); a new preset starts from the timer form.
+  edit), with New preset as a dialog action. New and Edit open a full-screen editor: the name
+  on top on its own, then a card (`AppShapes.Group`) with what the preset fills in (workspace,
+  description, extra fields; required ones marked but not enforced); editing adds Remove
+  preset at the bottom, with a confirmation. A new preset starts from the timer form.
   Before the first preset, a "New preset" chip stands in for the chips.
 - The card's fields are standard outlined fields with the field's name as its own floating
   label: description, start time (and end time while running), extra fields. Idle, the start
