@@ -151,11 +151,11 @@
     <string name="warn_already_running_title">Timer is al actief</string>
     <string name="warn_already_running_body">Er is al een timer actief. Wil je die stoppen en de nieuwe starten, of annuleren?</string>
     <string name="btn_stop_and_start_new">Stoppen en nieuwe starten</string>
-    <string name="dialog_save_preset_title">Snelstarter opslaan</string>
-    <string name="dialog_save_preset_body">Sla de huidige omschrijving en geselecteerde werkruimte/velden op als een snelstarter.</string>
-    <string name="dialog_save_preset_placeholder">Titel snelstarter (bijv. Dagelijkse stand-up)</string>
-    <string name="dialog_save_preset_name">Titel snelstarter</string>
+    <string name="placeholder_preset_name">Titel snelstarter (bijv. Dagelijkse stand-up)</string>
+    <string name="label_preset_name">Titel snelstarter</string>
     <string name="presets_manage_title">Snelstarters beheren</string>
+    <string name="title_new_preset">Nieuwe snelstarter</string>
+    <string name="title_edit_preset">Snelstarter bewerken</string>
     <string name="tooltip_presets_shortcuts">De bovenste snelstarters worden gebruikt voor snelkoppelingen op het startscherm.</string>
     <string name="dialog_unsaved_changes_title">Niet-opgeslagen wijzigingen</string>
     <string name="dialog_unsaved_changes_body">Je hebt niet-opgeslagen wijzigingen. Wil je deze opslaan voor je weggaat?</string>
@@ -201,7 +201,6 @@
     <string name="error_running_timers_failed">Kon de lopende timers niet uit Notion laden. De lijst is mogelijk onvolledig.</string>
     <string name="error_extras_missing_props">Sommige ingestelde eigenschappen bestaan niet meer in deze database. Controleer de workspace in Instellingen.</string>
     <string name="app_title">Time Tracker</string>
-    <string name="title_save_preset">Opslaan als snelstarter</string>
     <string name="title_manage_presets">Snelstarters beheren</string>
     <string name="title_select_start_time">Starttijd kiezen</string>
     <string name="title_select_end_time">Eindtijd kiezen</string>
