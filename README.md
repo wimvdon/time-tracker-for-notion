@@ -48,7 +48,7 @@ npm run dev
 | Language | JavaScript (ES modules, CommonJS in Electron main) | Kotlin 2.4 |
 | UI | React 19, Tailwind CSS 4, Fluent UI icons | Jetpack Compose, Material 3 |
 | State | Zustand | ViewModel + `StateFlow` |
-| Shell / runtime | Electron 42 (tray, Mica, single instance) | Foreground service for the running timer |
+| Shell / runtime | Electron 44 (tray, Mica, single instance) | Foreground service for the running timer |
 | Storage | electron-store (API key encrypted with Windows DPAPI) | DataStore + EncryptedSharedPreferences |
 | HTTP | Node `fetch` in the main process | OkHttp + kotlinx.serialization |
 | Build | Vite 6, electron-builder (NSIS), Node.js 24 (`windows/.nvmrc`) | Gradle 9.8, AGP 9.4, R8 |

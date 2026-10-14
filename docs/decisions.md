@@ -152,3 +152,12 @@ GitHub Actions builds both apps from a tag and publishes them together, so the W
 - **Without secrets:** non-publishing runs fall back to a debug APK, so forks and PRs still produce artifacts.
 - **Refusal rules (2026-10-14):** the workflow refuses to publish from outside `main`, when the tag or release already exists, when the version isn't higher than the previous release (Android would refuse the update), or when nothing changed since the previous release. A build-only run builds the Windows *Dev* app, so trying it never replaces the installed app.
 - **Local builds:** the local `build.bat` scripts were removed in favour of Releases. A local APK has a different signature, which caused install conflicts with released builds.
+
+## electron-store 8 and @vitejs/plugin-react 4 held back (2026-10-14)
+
+Two Dependabot major updates were merged with red CI and reverted:
+
+- **electron-store 11** is ESM-only (since 9). `electron/main.cjs` is CommonJS, so `require('electron-store')` returned a module object instead of the class and the installed app showed an error window at launch (caught by the installer smoke test). Moving up needs the main process to load it with `import()` or to become ESM.
+- **@vitejs/plugin-react 6** requires Vite 8; the app uses Vite 6, so `npm ci` refused to install. Moving up needs Vite upgraded first (plugin-react 5.2 supports Vite 6 to 8).
+
+Merge either update only when all three CI jobs, including the installer smoke test, are green.
