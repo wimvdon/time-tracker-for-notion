@@ -39,11 +39,9 @@ export function detectLocale() {
   return normaliseLocale(lang) ?? 'en-GB';
 }
 
-let activeLocale = 'system';
 let resolvedLocaleStr = detectLocale();
 
 export function setLocale(locale) {
-  activeLocale = locale;
   if (locale === 'system' || !locale) {
     resolvedLocaleStr = detectLocale();
   } else {
