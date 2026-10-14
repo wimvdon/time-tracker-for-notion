@@ -58,6 +58,7 @@ Shared:
 - **External service:** Notion REST API (`2022-06-28`).
 - **CI/CD:** GitHub Actions checks every pull request (with a Dev installer and a debug APK to try), builds both apps for a release (Android to Google Play internal testing); Dependabot keeps dependencies current.
 - **Rules for Claude Code sessions:** [`CLAUDE.md`](CLAUDE.md). **Privacy:** [`PRIVACY.md`](PRIVACY.md).
+- **Licence:** Source available for reference; all rights reserved. See [LICENSE](LICENSE).
 
 ## Quick installation
 

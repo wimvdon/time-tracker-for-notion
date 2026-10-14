@@ -10,6 +10,10 @@ The repository becomes public (free GitHub Actions minutes), and the apps should
 - **A build-only run (`none`) still produces a Dev installer, an APK and an AAB**, the AAB for the first upload by hand, with versionCode 1 so they can never update an installed app.
 - Selling the apps later would need Google's billing library (a new dependency) and a way to sell the Windows app; not part of this change.
 
+## All rights reserved, no open-source licence (2026-10-14)
+
+The repository becomes public so GitHub Actions minutes are free, but the code is not meant to be reused: the apps may become paid later. `LICENSE` is therefore a plain copyright notice ("all rights reserved"): the source can be read, but not copied, modified, distributed or sold without written permission. Without any licence the default is the same under copyright law; the explicit notice makes it clear to readers. Rejected: MIT, Apache 2.0 and GPL, which would let anyone reuse the code or publish their own build. Note that by GitHub's terms of service, other GitHub users may still view and fork a public repository on GitHub itself; that grants no other rights.
+
 ## Aligned with the windows-electron-app and android-app templates (2026-10-14)
 
 The repository now follows the rules and workflows of [impca201/windows-electron-app](https://github.com/impca201/windows-electron-app) and [impca201/android-app](https://github.com/impca201/android-app), like the sibling apps Snoozer and Tracker for Simkl.
