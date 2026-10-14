@@ -151,11 +151,11 @@
     <string name="warn_already_running_title">Timer già attivo</string>
     <string name="warn_already_running_body">Un timer è già attivo. Vuoi fermarlo e avviare quello nuovo, oppure annullare?</string>
     <string name="btn_stop_and_start_new">Ferma e avvia nuovo</string>
-    <string name="dialog_save_preset_title">Salva preimpostazione</string>
-    <string name="dialog_save_preset_body">Salva la descrizione e i campi correnti come preimpostazione.</string>
-    <string name="dialog_save_preset_placeholder">Titolo preimpostazione (es. Standup giornaliero)</string>
-    <string name="dialog_save_preset_name">Titolo preimpostazione</string>
+    <string name="placeholder_preset_name">Titolo preimpostazione (es. Standup giornaliero)</string>
+    <string name="label_preset_name">Titolo preimpostazione</string>
     <string name="presets_manage_title">Gestisci preimpostazioni</string>
+    <string name="title_new_preset">Nuova preimpostazione</string>
+    <string name="title_edit_preset">Modifica preimpostazione</string>
     <string name="tooltip_presets_shortcuts">Le preimpostazioni in alto saranno usate per le scorciatoie di avvio.</string>
     <string name="dialog_unsaved_changes_title">Modifiche non salvate</string>
     <string name="dialog_unsaved_changes_body">Hai modifiche non salvate. Vuoi salvarle prima di uscire?</string>
@@ -201,7 +201,6 @@
     <string name="error_running_timers_failed">Impossibile caricare i timer in corso da Notion. L\'elenco potrebbe essere incompleto.</string>
     <string name="error_extras_missing_props">Alcune proprietà configurate non esistono più in questo database. Controlla lo spazio nelle Impostazioni.</string>
     <string name="app_title">Time Tracker</string>
-    <string name="title_save_preset">Salva come preimpostazione</string>
     <string name="title_manage_presets">Gestisci preimpostazioni</string>
     <string name="title_select_start_time">Scegli ora di inizio</string>
     <string name="title_select_end_time">Scegli ora di fine</string>

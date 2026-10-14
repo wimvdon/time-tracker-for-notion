@@ -71,6 +71,8 @@ import com.impca201.notiontimetracker.data.models.Preset
 import com.impca201.notiontimetracker.data.models.RecentEntryInfo
 import com.impca201.notiontimetracker.data.models.RunningTimerInfo
 import com.impca201.notiontimetracker.ui.components.EditTimerModal
+import com.impca201.notiontimetracker.ui.components.PresetEditorScreen
+import androidx.activity.compose.BackHandler
 import com.impca201.notiontimetracker.ui.components.ExtraFieldInput
 import com.impca201.notiontimetracker.ui.components.RunningGlow
 import com.impca201.notiontimetracker.ui.components.TimerHero
@@ -109,7 +111,14 @@ fun TimerScreen(
     onClearInfoToast: () -> Unit = {},
     onConfirmAlreadyRunning: () -> Unit,
     onCancelAlreadyRunning: () -> Unit,
-    onSavePreset: (String) -> Unit,
+    onNewPreset: () -> Unit,
+    onEditPreset: (String, String) -> Unit,
+    onPresetEditorWorkspace: (String) -> Unit,
+    onPresetEditorName: (String) -> Unit,
+    onPresetEditorPageTitle: (String) -> Unit,
+    onPresetEditorExtra: (String, String) -> Unit,
+    onSavePresetEditor: () -> Unit,
+    onClosePresetEditor: () -> Unit,
     onDeletePreset: (String, String) -> Unit,
     onMovePresetUp: (String, String) -> Unit,
     onMovePresetDown: (String, String) -> Unit
@@ -132,53 +141,13 @@ fun TimerScreen(
         )
     }
 
-    var showSavePresetDialog by remember { mutableStateOf(false) }
-    var presetNameInput by remember { mutableStateOf("") }
-    if (showSavePresetDialog) {
-        AlertDialog(
-            onDismissRequest = { showSavePresetDialog = false },
-            title = { Text(stringResource(R.string.dialog_save_preset_title)) },
-            text = {
-                Column {
-                    Text(stringResource(R.string.dialog_save_preset_body))
-                    Spacer(Modifier.height(12.dp))
-                    OutlinedTextField(
-                        value = presetNameInput,
-                        onValueChange = { presetNameInput = it },
-                        label = { Text(stringResource(R.string.dialog_save_preset_name) + " *") },
-                        placeholder = { Text(stringResource(R.string.dialog_save_preset_placeholder)) },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        onSavePreset(presetNameInput.trim())
-                        presetNameInput = ""
-                        showSavePresetDialog = false
-                    },
-                    enabled = presetNameInput.isNotBlank()
-                ) {
-                    Text(stringResource(R.string.btn_save))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = {
-                    presetNameInput = ""
-                    showSavePresetDialog = false
-                }) {
-                    Text(stringResource(R.string.btn_cancel))
-                }
-            }
-        )
-    }
-
     var showManagePresetsDialog by remember { mutableStateOf(false) }
-    if (showManagePresetsDialog) {
+    // The editor opens over the manage dialog and returns to it when closed.
+    if (showManagePresetsDialog && uiState.presetEditor == null) {
         ManagePresetsDialog(
             workspaces = uiState.workspaces,
+            onNewPreset = onNewPreset,
+            onEditPreset = onEditPreset,
             onDeletePreset = onDeletePreset,
             onMovePresetUp = onMovePresetUp,
             onMovePresetDown = onMovePresetDown,
@@ -234,6 +203,22 @@ fun TimerScreen(
         }
     }
 
+    uiState.presetEditor?.let { editor ->
+        PresetEditorScreen(
+            editor = editor,
+            workspaces = uiState.workspaces,
+            onWorkspaceChange = onPresetEditorWorkspace,
+            onNameChange = onPresetEditorName,
+            onPageTitleChange = onPresetEditorPageTitle,
+            onExtraChange = onPresetEditorExtra,
+            onSave = onSavePresetEditor,
+            onDismiss = onClosePresetEditor,
+            errorText = { localisedMessage(it) }
+        )
+        BackHandler(onBack = onClosePresetEditor)
+        return
+    }
+
     if (uiState.editTimerOpen && uiState.activeTimer != null) {
         EditTimerModal(
             uiState = uiState,
@@ -267,7 +252,7 @@ fun TimerScreen(
                 onOpenUrl = onOpenUrl,
                 onApplyPreset = onApplyPreset,
                 onStartFromRecentEntry = onStartFromRecentEntry,
-                onSavePresetClick = { showSavePresetDialog = true },
+                onNewPresetClick = onNewPreset,
                 onManagePresetsClick = { showManagePresetsDialog = true }
             )
         } else {
@@ -286,7 +271,7 @@ fun TimerScreen(
                 onOpenUrl = onOpenUrl,
                 onApplyPreset = onApplyPreset,
                 onStartFromRecentEntry = onStartFromRecentEntry,
-                onSavePresetClick = { showSavePresetDialog = true },
+                onNewPresetClick = onNewPreset,
                 onManagePresetsClick = { showManagePresetsDialog = true }
             )
         }
@@ -310,7 +295,7 @@ private fun IdleView(
     onOpenUrl: (String) -> Unit,
     onApplyPreset: (String, Preset) -> Unit = { _, _ -> },
     onStartFromRecentEntry: (RecentEntryInfo) -> Unit = {},
-    onSavePresetClick: () -> Unit,
+    onNewPresetClick: () -> Unit,
     onManagePresetsClick: () -> Unit
 ) {
     val scrollState = rememberScrollState()
@@ -379,7 +364,8 @@ private fun IdleView(
                 workspaces = uiState.workspaces,
                 apiKey = uiState.apiKey,
                 onApplyPreset = onApplyPreset,
-                onManageClick = onManagePresetsClick
+                onManageClick = onManagePresetsClick,
+                onNewClick = onNewPresetClick
             )
 
             val selectedWorkspace = uiState.workspaces.firstOrNull { it.id == uiState.selectedWorkspaceId }
@@ -492,12 +478,6 @@ private fun IdleView(
                 }
             }
 
-            SavePresetButton(
-                onClick = onSavePresetClick,
-                enabled = canStart,
-                modifier = Modifier.align(Alignment.CenterHorizontally)
-            )
-
             OtherRunningTimers(
                 timers = uiState.runningTimers,
                 loading = uiState.runningTimersLoading,
@@ -546,7 +526,7 @@ private fun RunningView(
     onOpenUrl: (String) -> Unit,
     onApplyPreset: (String, Preset) -> Unit = { _, _ -> },
     onStartFromRecentEntry: (RecentEntryInfo) -> Unit = {},
-    onSavePresetClick: () -> Unit = {},
+    onNewPresetClick: () -> Unit = {},
     onManagePresetsClick: () -> Unit = {}
 ) {
     val timer = uiState.activeTimer ?: return
@@ -686,7 +666,8 @@ private fun RunningView(
                     workspaces = uiState.workspaces,
                     apiKey = uiState.apiKey,
                     onApplyPreset = onApplyPreset,
-                    onManageClick = onManagePresetsClick
+                    onManageClick = onManagePresetsClick,
+                    onNewClick = onNewPresetClick
                 )
 
                 // A running timer's workspace can't change, so here it is a plain title.
@@ -822,13 +803,6 @@ private fun RunningView(
                         )
                     }
                 }
-
-                SavePresetButton(
-                    onClick = onSavePresetClick,
-                    enabled = true,
-                    color = workspaceAccent,
-                    modifier = Modifier.align(Alignment.CenterHorizontally)
-                )
 
                 OtherRunningTimers(
                     timers = uiState.runningTimers,
@@ -1029,26 +1003,6 @@ private fun TimeField(
                 Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.btn_clear))
             }
         }
-    }
-}
-
-/** Saves the form as a preset: a text button under the details, in the workspace colour. */
-@Composable
-private fun SavePresetButton(
-    onClick: () -> Unit,
-    enabled: Boolean,
-    modifier: Modifier = Modifier,
-    color: Color? = null
-) {
-    TextButton(
-        onClick = onClick,
-        enabled = enabled,
-        modifier = modifier,
-        colors = if (color != null) ButtonDefaults.textButtonColors(contentColor = color) else ButtonDefaults.textButtonColors()
-    ) {
-        Icon(Icons.Rounded.BookmarkBorder, contentDescription = null, modifier = Modifier.size(18.dp))
-        Spacer(Modifier.width(8.dp))
-        Text(stringResource(R.string.title_save_preset))
     }
 }
 
@@ -1300,10 +1254,20 @@ private fun PresetChips(
     workspaces: List<com.impca201.notiontimetracker.data.models.Workspace>,
     apiKey: String,
     onApplyPreset: (String, Preset) -> Unit,
-    onManageClick: () -> Unit
+    onManageClick: () -> Unit,
+    onNewClick: () -> Unit
 ) {
     val allPresets = workspaces.flatMap { ws -> ws.presets.map { ws to it } }
-    if (allPresets.isEmpty() || apiKey.isBlank()) return
+    if (apiKey.isBlank() || workspaces.isEmpty()) return
+    // Before the first preset, one quiet chip creates it.
+    if (allPresets.isEmpty()) {
+        AssistChip(
+            onClick = onNewClick,
+            label = { Text(stringResource(R.string.title_new_preset)) },
+            leadingIcon = { Icon(Icons.Rounded.Add, contentDescription = null, modifier = Modifier.size(AssistChipDefaults.IconSize)) }
+        )
+        return
+    }
     // SuggestionChip pads itself out to Material3's ~48dp minimum touch target, which
     // makes each chip's laid-out height much taller than its visible ~32dp content —
     // that invisible padding was stacking on top of the declared line spacing below,
@@ -1417,7 +1381,17 @@ private fun TimerActionButton(
         modifier = modifier.height(TimerActionButtonHeight),
         shape = RoundedCornerShape(corner),
         interactionSource = interactionSource,
-        colors = ButtonDefaults.buttonColors(containerColor = container, contentColor = contentColor),
+        // The button sits on the cookie's edge, so it never turns see-through: busy, it keeps
+        // its colour (only the spinner shows it's working); unavailable, it takes a solid
+        // grey instead of Material's translucent disabled fill.
+        colors = ButtonDefaults.buttonColors(
+            containerColor = container,
+            contentColor = contentColor,
+            disabledContainerColor = if (loading) container
+            else lerp(MaterialTheme.colorScheme.surface, MaterialTheme.colorScheme.onSurface, 0.12f),
+            disabledContentColor = if (loading) contentColor
+            else lerp(MaterialTheme.colorScheme.surface, MaterialTheme.colorScheme.onSurface, 0.38f)
+        ),
         contentPadding = PaddingValues(horizontal = 24.dp)
     ) {
         if (loading) {
@@ -1615,6 +1589,8 @@ private fun formatRecentRange(startISO: String?, endISO: String?, dateFormat: St
 @Composable
 private fun ManagePresetsDialog(
     workspaces: List<com.impca201.notiontimetracker.data.models.Workspace>,
+    onNewPreset: () -> Unit,
+    onEditPreset: (String, String) -> Unit,
     onDeletePreset: (String, String) -> Unit,
     onMovePresetUp: (String, String) -> Unit,
     onMovePresetDown: (String, String) -> Unit,
@@ -1629,7 +1605,7 @@ private fun ManagePresetsDialog(
                     .fillMaxWidth()
                     .heightIn(max = 400.dp)
                     .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Card(
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
@@ -1650,44 +1626,66 @@ private fun ManagePresetsDialog(
                 }
 
                 val flatPresets = workspaces.flatMap { ws ->
-                    ws.presets.mapIndexed { index, preset ->
-                        Triple(ws, preset, index)
-                    }
+                    ws.presets.mapIndexed { index, preset -> Triple(ws, preset, index) }
                 }
                 flatPresets.forEach { (ws, preset, indexInWorkspace) ->
-                    val label = "${ws.name} – ${preset.name}"
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)
                     ) {
                         Row(
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                            modifier = Modifier.padding(start = 12.dp, end = 4.dp, top = 6.dp, bottom = 6.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(
-                                text = label,
-                                style = MaterialTheme.typography.bodyMedium,
-                                modifier = Modifier.weight(1f)
-                            )
+                            // The preset's name, with its workspace (and colour) underneath.
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    preset.name,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    workspaceAccentColor(ws.color)?.let { dot ->
+                                        Box(Modifier.size(8.dp).clip(CircleShape).background(dot))
+                                    }
+                                    Text(
+                                        ws.name,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                            }
                             IconButton(
                                 onClick = { onMovePresetUp(ws.id, preset.id) },
                                 enabled = indexInWorkspace > 0,
-                                modifier = Modifier.size(32.dp)
+                                modifier = Modifier.size(36.dp)
                             ) {
-                                Icon(Icons.Rounded.ArrowUpward, contentDescription = stringResource(R.string.title_move_preset_up), modifier = Modifier.size(16.dp))
+                                Icon(Icons.Rounded.ArrowUpward, contentDescription = stringResource(R.string.title_move_preset_up), modifier = Modifier.size(18.dp))
                             }
                             IconButton(
                                 onClick = { onMovePresetDown(ws.id, preset.id) },
                                 enabled = indexInWorkspace < ws.presets.size - 1,
-                                modifier = Modifier.size(32.dp)
+                                modifier = Modifier.size(36.dp)
                             ) {
-                                Icon(Icons.Rounded.ArrowDownward, contentDescription = stringResource(R.string.title_move_preset_down), modifier = Modifier.size(16.dp))
+                                Icon(Icons.Rounded.ArrowDownward, contentDescription = stringResource(R.string.title_move_preset_down), modifier = Modifier.size(18.dp))
+                            }
+                            IconButton(
+                                onClick = { onEditPreset(ws.id, preset.id) },
+                                modifier = Modifier.size(36.dp)
+                            ) {
+                                Icon(Icons.Rounded.Edit, contentDescription = stringResource(R.string.title_edit_preset), modifier = Modifier.size(18.dp))
                             }
                             IconButton(
                                 onClick = { onDeletePreset(ws.id, preset.id) },
-                                modifier = Modifier.size(32.dp)
+                                modifier = Modifier.size(36.dp)
                             ) {
-                                Icon(Icons.Rounded.Delete, contentDescription = stringResource(R.string.title_remove_preset), modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.error)
+                                Icon(Icons.Rounded.Delete, contentDescription = stringResource(R.string.title_remove_preset), modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.error)
                             }
                         }
                     }
@@ -1698,8 +1696,13 @@ private fun ManagePresetsDialog(
             TextButton(onClick = onDismiss) {
                 Text(stringResource(R.string.title_dismiss))
             }
+        },
+        dismissButton = {
+            TextButton(onClick = onNewPreset, enabled = workspaces.isNotEmpty()) {
+                Icon(Icons.Rounded.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text(stringResource(R.string.title_new_preset))
+            }
         }
     )
 }
-
-

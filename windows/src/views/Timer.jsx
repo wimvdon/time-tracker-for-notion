@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import { useStore } from '../store/useStore.js';
+import { useStore, fetchExtraFieldDefs } from '../store/useStore.js';
 import { formatHHMM, formatElapsed, formatDateStr, formatTimeStr, parseTimeStr } from '../lib/format.js';
 import { t } from '../lib/i18n.js';
-import { buildPropertyValue } from '../lib/notionValues.js';
+import { buildPropertyValue, emptyValueFor } from '../lib/notionValues.js';
 import { getWorkspaceAccentColor, getWorkspaceSolidFillColor } from '../lib/color.js';
 import { useIsDarkTheme } from '../hooks/useIsDarkTheme.js';
 import ExtraFieldInput from '../components/ExtraFieldInput.jsx';
@@ -13,7 +13,6 @@ import {
   Settings20Regular,
   Play20Regular,
   Edit20Regular,
-  Bookmark20Regular,
   ArrowUp20Regular,
   ArrowDown20Regular,
   Delete20Regular,
@@ -21,7 +20,8 @@ import {
   Open20Regular,
   Info20Regular,
   ChevronDown20Regular,
-  Dismiss16Regular
+  Dismiss16Regular,
+  Add20Regular as AddPreset20Regular
 } from '@fluentui/react-icons';
 
 /** Combines the date of `base` with an "HH:MM" string from a time input. */
@@ -71,14 +71,24 @@ export default function Timer() {
   const onConfirmAlreadyRunning = useStore((s) => s.onConfirmAlreadyRunning);
   const onCancelAlreadyRunning = useStore((s) => s.onCancelAlreadyRunning);
   const onPlusButtonClicked = useStore((s) => s.onPlusButtonClicked);
-  const saveCurrentAsPreset = useStore((s) => s.saveCurrentAsPreset);
+  const savePreset = useStore((s) => s.savePreset);
   const deletePreset = useStore((s) => s.deletePreset);
   const movePresetUp = useStore((s) => s.movePresetUp);
   const movePresetDown = useStore((s) => s.movePresetDown);
 
-  const [showSavePresetModal, setShowSavePresetModal] = useState(false);
   const [showManagePresetsModal, setShowManagePresetsModal] = useState(false);
-  const [presetNameInput, setPresetNameInput] = useState('');
+  // The preset being created or edited: { workspaceId, presetId (none for a new one), name,
+  // pageTitle, extraValues }, or null when the editor is closed.
+  const [presetDraft, setPresetDraft] = useState(null);
+  // A new preset starts from the timer form (its workspace, description and fields), so
+  // "save what I'm doing as a preset" stays one step.
+  const newPresetDraft = () => ({
+    workspaceId: selectedWorkspaceId || workspaces[0]?.id || '',
+    presetId: null,
+    name: '',
+    pageTitle: description,
+    extraValues: { ...extraValues },
+  });
   // A start time picked for a timer the user forgot to start ("HH:MM"); empty means now.
   // Only the Start button uses it: presets, shortcuts and recent entries always start now.
   const [pickedStart, setPickedStart] = useState('');
@@ -145,7 +155,7 @@ export default function Timer() {
         onApplyPreset={applyPreset}
         onStartFromRecentEntry={startFromRecentEntry}
         onManagePresetsClick={() => setShowManagePresetsModal(true)}
-        onSavePresetClick={() => setShowSavePresetModal(true)}
+        onNewPresetClick={() => setPresetDraft(newPresetDraft())}
       />
     );
   } else {
@@ -182,6 +192,7 @@ export default function Timer() {
             apiKey={apiKey}
             onApplyPreset={applyPreset}
             onManageClick={() => setShowManagePresetsModal(true)}
+            onNewClick={() => setPresetDraft(newPresetDraft())}
             className="mb-2"
           />
 
@@ -252,11 +263,6 @@ export default function Timer() {
               ))}
           </TimerDetailsCard>
 
-          <SavePresetButton
-            onClick={() => setShowSavePresetModal(true)}
-            disabled={!selectedWorkspaceId || isStarting}
-          />
-
           <OtherRunningTimers
             timers={runningTimers}
             loading={runningTimersLoading}
@@ -325,47 +331,6 @@ export default function Timer() {
         </div>
       )}
 
-      {showSavePresetModal && (
-        <div className="fixed inset-0 bg-smoke flex items-center justify-center z-50 p-4">
-          <div className="bg-dialog border border-surface-stroke rounded-lg shadow-dialog p-4 w-full flex flex-col gap-3">
-            <h2 className="text-sm font-semibold">{t('dialogSavePresetTitle')}</h2>
-            <p className="text-xs text-fg2">{t('dialogSavePresetBody')}</p>
-            <input
-              type="text"
-              value={presetNameInput}
-              onChange={(e) => setPresetNameInput(e.target.value)}
-              placeholder={t('dialogSavePresetPlaceholder')}
-              required
-              autoFocus
-              className="w-full bg-control border border-stroke rounded-md px-3 py-2 text-xs focus:outline-none focus:border-accent placeholder-fg3"
-            />
-            <div className="flex gap-2 mt-1">
-              <button
-                onClick={async () => {
-                  if (!presetNameInput.trim()) return;
-                  await saveCurrentAsPreset(presetNameInput);
-                  setPresetNameInput('');
-                  setShowSavePresetModal(false);
-                }}
-                disabled={!presetNameInput.trim()}
-                className="flex-1 py-2 rounded-md bg-accent hover:bg-accent-hover active:bg-accent-pressed text-on-accent text-sm font-semibold disabled:opacity-40 disabled:pointer-events-none"
-              >
-                {t('btnSave')}
-              </button>
-              <button
-                onClick={() => {
-                  setPresetNameInput('');
-                  setShowSavePresetModal(false);
-                }}
-                className="flex-1 py-2 rounded-md bg-control hover:bg-control-hover active:bg-control-pressed border border-stroke text-sm"
-              >
-                {t('btnCancel')}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {showManagePresetsModal && (
         <div className="fixed inset-0 bg-smoke flex items-center justify-center z-50 p-4">
           <div className="bg-dialog border border-surface-stroke rounded-lg shadow-dialog p-4 w-full flex flex-col gap-3 max-h-[90vh]">
@@ -416,6 +381,21 @@ export default function Timer() {
                       </button>
                       <button
                         type="button"
+                        onClick={() => setPresetDraft({
+                          workspaceId: ws.id,
+                          presetId: p.id,
+                          name: p.name,
+                          pageTitle: p.pageTitle || '',
+                          extraValues: { ...(p.extraValues || {}) },
+                        })}
+                        title={t('presetEdit')}
+                        aria-label={t('presetEdit')}
+                        className="p-1 hover:bg-subtle-hover rounded flex items-center justify-center text-fg2 hover:text-fg1"
+                      >
+                        <Edit20Regular className="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
                         onClick={() => deletePreset(ws.id, p.id)}
                         title={t('titleRemovePreset')}
                         className="p-1 hover:bg-subtle-hover text-danger hover:text-danger rounded flex items-center justify-center"
@@ -430,6 +410,16 @@ export default function Timer() {
 
             <button
               type="button"
+              onClick={() => setPresetDraft(newPresetDraft())}
+              disabled={workspaces.length === 0}
+              className="self-start flex items-center gap-1.5 px-2 py-1.5 rounded-md text-sm text-fg1 hover:bg-subtle-hover active:bg-control-pressed transition-colors disabled:opacity-40 disabled:pointer-events-none"
+            >
+              <AddPreset20Regular className="w-4 h-4" />
+              {t('presetNew')}
+            </button>
+
+            <button
+              type="button"
               onClick={() => setShowManagePresetsModal(false)}
               className="w-full py-2 rounded-md bg-control hover:bg-control-hover active:bg-control-pressed border border-stroke text-sm mt-1"
             >
@@ -437,6 +427,18 @@ export default function Timer() {
             </button>
           </div>
         </div>
+      )}
+
+      {presetDraft && (
+        <PresetEditorDialog
+          draft={presetDraft}
+          workspaces={workspaces}
+          onCancel={() => setPresetDraft(null)}
+          onSave={async (preset) => {
+            await savePreset(preset);
+            setPresetDraft(null);
+          }}
+        />
       )}
     </>
   );
@@ -461,7 +463,7 @@ function RunningView({
   onApplyPreset,
   onStartFromRecentEntry,
   onManagePresetsClick,
-  onSavePresetClick,
+  onNewPresetClick,
 }) {
   const timer = useStore((s) => s.timer);
   const isStopping = useStore((s) => s.isStopping);
@@ -618,6 +620,7 @@ function RunningView({
           apiKey={apiKey}
           onApplyPreset={onApplyPreset}
           onManageClick={onManagePresetsClick}
+          onNewClick={onNewPresetClick}
           className="mb-2"
         />
 
@@ -706,8 +709,6 @@ function RunningView({
             />
           ))}
         </TimerDetailsCard>
-
-        <SavePresetButton onClick={onSavePresetClick} />
 
         <OtherRunningTimers
           timers={runningTimers}
@@ -892,18 +893,135 @@ function TimeInput({ id, value, onChange, emptyLabel }) {
   );
 }
 
-/** Saves the form as a preset: a subtle button under the details. */
-function SavePresetButton({ onClick, disabled = false }) {
+/**
+ * Creates or edits a preset: its workspace (new presets only), name, the description it starts
+ * with and its extra field values. The workspace's fields are loaded from Notion when it opens
+ * and whenever another workspace is picked.
+ */
+function PresetEditorDialog({ draft, workspaces, onCancel, onSave }) {
+  const isDarkTheme = useIsDarkTheme();
+  const [workspaceId, setWorkspaceId] = useState(draft.workspaceId);
+  const [name, setName] = useState(draft.name);
+  const [pageTitle, setPageTitle] = useState(draft.pageTitle);
+  const [values, setValues] = useState(draft.extraValues);
+  const [defs, setDefs] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const workspace = workspaces.find((w) => w.id === workspaceId);
+
+  useEffect(() => {
+    let cancelled = false;
+    setDefs([]);
+    setLoadFailed(false);
+    setLoading(!!workspace?.extraProps?.length);
+    fetchExtraFieldDefs(workspace)
+      .then((loaded) => {
+        if (cancelled) return;
+        setDefs(loaded);
+        setValues((current) => {
+          const next = { ...current };
+          for (const def of loaded) if (next[def.name] === undefined) next[def.name] = emptyValueFor(def.type);
+          return next;
+        });
+      })
+      .catch(() => { if (!cancelled) setLoadFailed(true); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [workspaceId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const dotFor = (ws) => {
+    const hex = ws?.color?.trim();
+    return hex ? getWorkspaceAccentColor(hex, isDarkTheme) : null;
+  };
+  const anyColour = workspaces.some((w) => dotFor(w));
+
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      className="self-center flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-sm text-fg1 hover:bg-subtle-hover active:bg-control-pressed transition-colors disabled:opacity-40 disabled:pointer-events-none"
-    >
-      <Bookmark20Regular className="w-4 h-4" />
-      {t('btnSavePreset')}
-    </button>
+    <div className="fixed inset-0 bg-smoke flex items-center justify-center z-50 p-4">
+      <div className="bg-dialog border border-surface-stroke rounded-lg shadow-dialog p-4 w-full flex flex-col gap-3 max-h-[90vh]">
+        <h2 className="text-sm font-semibold">{t(draft.presetId ? 'presetEdit' : 'presetNew')}</h2>
+        <div className="flex-1 overflow-y-auto pr-1 flex flex-col gap-3 min-h-0">
+          <div>
+            <label className="block text-xs text-fg2 mb-1">{t('labelWorkspace')}</label>
+            {draft.presetId ? (
+              <div className="flex items-center gap-2 text-sm text-fg1 py-1">
+                {dotFor(workspace) && (
+                  <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: dotFor(workspace) }} />
+                )}
+                <span className="truncate">{workspace?.name}</span>
+              </div>
+            ) : (
+              <SearchableSelect
+                value={workspaceId}
+                onChange={(v) => { if (v) { setWorkspaceId(v); setValues({}); } }}
+                options={workspaces.map((w) => ({ value: w.id, label: w.name }))}
+                allowClear={false}
+                className="w-full"
+                renderPrefix={anyColour ? (o) => (
+                  <span
+                    className="w-2 h-2 rounded-full shrink-0"
+                    style={{ backgroundColor: dotFor(workspaces.find((w) => w.id === o.value)) || 'transparent' }}
+                  />
+                ) : undefined}
+              />
+            )}
+          </div>
+          <div>
+            <label htmlFor="preset-name" className="block text-xs text-fg2 mb-1">{t('labelPresetName')} *</label>
+            <input
+              id="preset-name"
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder={t('presetNamePlaceholder')}
+              autoFocus
+              className="w-full bg-control border border-stroke rounded-md px-3 py-2 text-sm placeholder-fg3"
+            />
+          </div>
+          <div>
+            <label htmlFor="preset-title" className="block text-xs text-fg2 mb-1">{t('labelDescription')}</label>
+            <input
+              id="preset-title"
+              type="text"
+              value={pageTitle}
+              onChange={(e) => setPageTitle(e.target.value)}
+              placeholder={t('placeholderDescription')}
+              className="w-full bg-control border border-stroke rounded-md px-3 py-2 text-sm placeholder-fg3"
+            />
+          </div>
+          {loading && <div className="text-xs text-fg3">{t('placeholderLoading')}</div>}
+          {loadFailed && <div className="text-xs text-danger">{t('errorLoadingExtras')}</div>}
+          {defs.map((def) => (
+            <ExtraFieldInput
+              key={def.name}
+              def={def}
+              value={values[def.name] ?? emptyValueFor(def.type)}
+              onChange={(value) => setValues((current) => ({ ...current, [def.name]: value }))}
+            />
+          ))}
+        </div>
+        <div className="flex gap-2 mt-1">
+          <button
+            type="button"
+            onClick={async () => {
+              setSaving(true);
+              await onSave({ workspaceId, presetId: draft.presetId, name, pageTitle, extraValues: values });
+            }}
+            disabled={!name.trim() || !workspaceId || saving}
+            className="flex-1 py-2 rounded-md bg-accent hover:bg-accent-hover active:bg-accent-pressed text-on-accent text-sm font-semibold disabled:opacity-40 disabled:pointer-events-none"
+          >
+            {t('btnSave')}
+          </button>
+          <button
+            type="button"
+            onClick={onCancel}
+            className="flex-1 py-2 rounded-md bg-control hover:bg-control-hover active:bg-control-pressed border border-stroke text-sm"
+          >
+            {t('btnCancel')}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -995,10 +1113,24 @@ function RunningTimerItem({ rt, isActive, onLoad, onStop, onDelete, onOpenUrl })
 /** Quick-start preset chips — shown when an API key is set and any workspace
  *  has presets, in both the idle form and the running view. Clicking one while a timer is already
  *  running goes through `applyPreset`'s "already running" confirmation. */
-function PresetChips({ workspaces, apiKey, onApplyPreset, onManageClick, className = '' }) {
+function PresetChips({ workspaces, apiKey, onApplyPreset, onManageClick, onNewClick, className = '' }) {
   const isDarkTheme = useIsDarkTheme();
   // Hidden (not just disabled) without an API key, same as on Android.
-  if (!apiKey || !workspaces.some((w) => (w.presets?.length ?? 0) > 0)) return null;
+  if (!apiKey || workspaces.length === 0) return null;
+  // Before the first preset, one quiet chip creates it.
+  if (!workspaces.some((w) => (w.presets?.length ?? 0) > 0)) {
+    return (
+      <div className={`w-full flex ${className}`}>
+        <button
+          onClick={onNewClick}
+          className="flex items-center gap-1 px-2.5 py-1 border border-dashed border-stroke-strong rounded-full text-xs text-fg2 hover:text-fg1 hover:bg-subtle-hover transition-colors"
+        >
+          <AddPreset20Regular className="w-3 h-3 shrink-0" />
+          {t('presetNew')}
+        </button>
+      </div>
+    );
+  }
   return (
     <div className={`w-full flex flex-wrap items-center gap-1.5 ${className}`}>
       {workspaces.flatMap((w) =>

@@ -89,7 +89,20 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
         val dateFormat: String = "DD/MM/YYYY",
         val timeFormat: String = "24h",
         val showNotionLink: Boolean = true,
-        val showArchiveAction: Boolean = true
+        val showArchiveAction: Boolean = true,
+        val presetEditor: PresetEditor? = null
+    )
+
+    /** A preset being created ([presetId] null) or edited in the preset editor. */
+    data class PresetEditor(
+        val presetId: String?,
+        val workspaceId: String,
+        val name: String = "",
+        val pageTitle: String = "",
+        val extraValues: Map<String, String> = emptyMap(),
+        val fieldDefs: List<ExtraFieldDef> = emptyList(),
+        val fieldsLoading: Boolean = false,
+        val fieldsError: String? = null
     )
 
     private val _uiState = MutableStateFlow(UiState())
@@ -345,12 +358,31 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
             return
         }
 
-        val schema = retryNotionCall { notionRepo.getDatabaseSchema(workspace.timeEntriesDbId) }
-        if (schema == null) {
+        val result = buildExtraFieldDefs(workspace)
+        if (result == null) {
             if (!isStillSelected(workspace)) return
             _uiState.update { it.copy(extrasLoading = false, extrasError = "extras_load_failed") }
             return
         }
+
+        if (!isStillSelected(workspace)) return
+        _uiState.update { it.copy(
+            extraFieldDefs = result.defs,
+            extrasLoading = false,
+            extrasError = result.error
+        ) }
+        initExtraValues(workspace.extraProps, result.defs)
+    }
+
+    /** [workspace]'s extra field definitions, and the problem to report with them (options that
+     *  could not be loaded, configured properties missing from the database), if any. */
+    private class ExtraDefsResult(val defs: List<ExtraFieldDef>, val error: String?)
+
+    /** Builds [workspace]'s extra field definitions from Notion; null when its schema can't be
+     *  read. Shared by the timer form and the preset editor. */
+    private suspend fun buildExtraFieldDefs(workspace: Workspace): ExtraDefsResult? {
+        if (workspace.extraProps.isEmpty() || workspace.timeEntriesDbId.isBlank()) return ExtraDefsResult(emptyList(), null)
+        val schema = retryNotionCall { notionRepo.getDatabaseSchema(workspace.timeEntriesDbId) } ?: return null
 
         var optionsIncomplete = false
         val defs = workspace.extraProps.mapNotNull { prop ->
@@ -399,17 +431,14 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
             prop.propName.isNotBlank() && (schema[prop.propName]?.type ?: "") !in WRITABLE_EXTRA_TYPES
         }
 
-        if (!isStillSelected(workspace)) return
-        _uiState.update { it.copy(
-            extraFieldDefs = defs,
-            extrasLoading = false,
-            extrasError = when {
+        return ExtraDefsResult(
+            defs,
+            when {
                 optionsIncomplete -> "extras_load_failed"
                 missing > 0 -> "extras_missing_props"
                 else -> null
             }
-        ) }
-        initExtraValues(workspace.extraProps, defs)
+        )
     }
 
     private fun initExtraValues(extraProps: List<ExtraProp>, defs: List<ExtraFieldDef>) {
@@ -1539,20 +1568,106 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
         return (DATE_FORMATS + dateFormat).any { formatDate(startMs, it) == trimmed }
     }
 
-    fun saveCurrentAsPreset(name: String) {
-        // The title is what the preset chip shows, so it's required.
-        val title = name.trim()
-        if (title.isBlank()) return
+    private var presetFieldsJob: Job? = null
+
+    /** Opens the preset editor on a new preset, starting from the timer form: its workspace,
+     *  description and field values, so "save what I'm doing as a preset" stays one step. */
+    fun openNewPreset() {
         val state = _uiState.value
-        val workspaceId = state.selectedWorkspaceId ?: return
-        if (state.workspaces.none { it.id == workspaceId }) return
-        val newPreset = Preset(
-            id = java.util.UUID.randomUUID().toString(),
-            name = title,
-            pageTitle = state.description,
-            extraValues = state.extraValues
+        val workspaceId = state.selectedWorkspaceId ?: state.workspaces.firstOrNull()?.id ?: return
+        val fromForm = workspaceId == state.selectedWorkspaceId
+        openPresetEditor(
+            PresetEditor(
+                presetId = null,
+                workspaceId = workspaceId,
+                pageTitle = if (fromForm) state.description else "",
+                extraValues = if (fromForm) state.extraValues else emptyMap()
+            )
         )
-        editPresets(workspaceId) { it + newPreset }
+    }
+
+    fun openEditPreset(workspaceId: String, presetId: String) {
+        val preset = _uiState.value.workspaces.firstOrNull { it.id == workspaceId }
+            ?.presets?.firstOrNull { it.id == presetId } ?: return
+        openPresetEditor(
+            PresetEditor(
+                presetId = presetId,
+                workspaceId = workspaceId,
+                name = preset.name,
+                pageTitle = preset.pageTitle,
+                extraValues = preset.extraValues
+            )
+        )
+    }
+
+    /** Picks the workspace of a new preset; its fields replace the previous workspace's. */
+    fun setPresetEditorWorkspace(workspaceId: String) {
+        val editor = _uiState.value.presetEditor ?: return
+        if (editor.presetId != null || editor.workspaceId == workspaceId) return
+        openPresetEditor(editor.copy(workspaceId = workspaceId, extraValues = emptyMap()))
+    }
+
+    fun updatePresetEditor(name: String? = null, pageTitle: String? = null) {
+        _uiState.update { s ->
+            s.copy(presetEditor = s.presetEditor?.let { e ->
+                e.copy(name = name ?: e.name, pageTitle = pageTitle ?: e.pageTitle)
+            })
+        }
+    }
+
+    fun setPresetEditorExtra(propName: String, value: String) {
+        _uiState.update { s ->
+            s.copy(presetEditor = s.presetEditor?.let { e -> e.copy(extraValues = e.extraValues + (propName to value)) })
+        }
+    }
+
+    fun closePresetEditor() {
+        presetFieldsJob?.cancel()
+        _uiState.update { it.copy(presetEditor = null) }
+    }
+
+    /** Saves the editor's preset: a new one goes at the end of its workspace's list, an edited
+     *  one keeps its place. The name is what the preset chip shows, so it's required. */
+    fun savePresetEditor() {
+        val editor = _uiState.value.presetEditor ?: return
+        val title = editor.name.trim()
+        if (title.isBlank()) return
+        if (_uiState.value.workspaces.none { it.id == editor.workspaceId }) return
+        val preset = Preset(
+            id = editor.presetId ?: java.util.UUID.randomUUID().toString(),
+            name = title,
+            pageTitle = editor.pageTitle.trim(),
+            extraValues = editor.extraValues
+        )
+        editPresets(editor.workspaceId) { presets ->
+            if (editor.presetId == null) presets + preset
+            else presets.map { if (it.id == editor.presetId) preset else it }
+        }
+        closePresetEditor()
+    }
+
+    private fun openPresetEditor(editor: PresetEditor) {
+        val workspace = _uiState.value.workspaces.firstOrNull { it.id == editor.workspaceId } ?: return
+        presetFieldsJob?.cancel()
+        _uiState.update {
+            it.copy(presetEditor = editor.copy(
+                fieldDefs = emptyList(),
+                fieldsLoading = workspace.extraProps.isNotEmpty(),
+                fieldsError = null
+            ))
+        }
+        presetFieldsJob = viewModelScope.launch {
+            val result = buildExtraFieldDefs(workspace)
+            _uiState.update { s ->
+                val e = s.presetEditor
+                if (e == null || e.workspaceId != workspace.id) s
+                else s.copy(presetEditor = e.copy(
+                    fieldDefs = result?.defs ?: emptyList(),
+                    fieldsLoading = false,
+                    fieldsError = result?.error ?: if (result == null) "extras_load_failed" else null
+                ))
+            }
+        }
     }
 
     fun deletePreset(workspaceId: String, presetId: String) {

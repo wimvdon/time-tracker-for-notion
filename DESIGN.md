@@ -122,11 +122,18 @@ the other two repositories:
   a running timer has no target. Start and Stop are Material 3 Expressive medium buttons
   (56dp, Title Medium label, 24dp icon), round, tightening to 12dp corners while pressed. They
   sit on the cookie's bottom edge, overlapping it by half their height, as a FAB anchored to a
-  surface does: labelled, full size, and never over the time.
+  surface does: labelled, full size, and never over the time. Because they sit on the cookie
+  they are never see-through: busy, they keep their colour with a spinner; unavailable, they
+  take a solid grey.
 - Idle and running share one layout, top to bottom: preset chips; the workspace as the
   screen's title (Headline Small, its colour dot; idle, a button opening the workspace menu,
   each workspace with its dot); the cookie with Start or Stop; one card (`AppShapes.Group`)
-  holding every timer field; "Save as preset" as a text button; the lists.
+  holding every timer field; the lists.
+- Presets are made and changed in one place: the pen after the preset chips opens Manage
+  presets (each preset: its name over its workspace with colour dot; move up, move down,
+  edit, remove), with New preset as a dialog action. New and Edit open a full-screen editor
+  (workspace, name, description, extra fields); a new preset starts from the timer form.
+  Before the first preset, a "New preset" chip stands in for the chips.
 - The card's fields are standard outlined fields with the field's name as its own floating
   label: description, start time (and end time while running), extra fields. Idle, the start
   time is empty ("Now") unless the user picks one for a timer they forgot to start.
@@ -138,5 +145,5 @@ the other two repositories:
   also draws the Windows icons. Edit the artwork there, not the generated XML.
 - The Windows app is not covered by this file. Its timer follows the same order in Fluent
   terms (Subtitle workspace title as a drop-down button, the time in Title Large on a card with
-  Start or Stop as the card's action, a card with every field, a subtle "Save as preset"), so
-  the two apps are recognisably the same.
+  Start or Stop as the card's action, a card with every field; presets made and edited from
+  Manage presets), so the two apps are recognisably the same.

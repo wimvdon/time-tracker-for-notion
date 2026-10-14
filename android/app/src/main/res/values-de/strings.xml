@@ -151,11 +151,11 @@
     <string name="warn_already_running_title">Timer läuft bereits</string>
     <string name="warn_already_running_body">Ein Timer läuft bereits. Möchtest du ihn stoppen und den neuen starten, oder abbrechen?</string>
     <string name="btn_stop_and_start_new">Stoppen und neu starten</string>
-    <string name="dialog_save_preset_title">Vorlage speichern</string>
-    <string name="dialog_save_preset_body">Aktuelle Beschreibung und ausgewählte Workspace/Felder als Vorlage speichern.</string>
-    <string name="dialog_save_preset_placeholder">Vorlagentitel (z.B. Tägliches Standup)</string>
-    <string name="dialog_save_preset_name">Vorlagentitel</string>
+    <string name="placeholder_preset_name">Vorlagentitel (z.B. Tägliches Standup)</string>
+    <string name="label_preset_name">Vorlagentitel</string>
     <string name="presets_manage_title">Vorlagen verwalten</string>
+    <string name="title_new_preset">Neue Vorlage</string>
+    <string name="title_edit_preset">Vorlage bearbeiten</string>
     <string name="tooltip_presets_shortcuts">Die obersten Vorlagen werden für Launcher-Verknüpfungen verwendet.</string>
     <string name="dialog_unsaved_changes_title">Ungespeicherte Änderungen</string>
     <string name="dialog_unsaved_changes_body">Du hast ungespeicherte Änderungen. Möchtest du sie vor dem Verlassen speichern?</string>
@@ -201,7 +201,6 @@
     <string name="error_running_timers_failed">Die laufenden Timer konnten nicht aus Notion geladen werden. Die Liste ist möglicherweise unvollständig.</string>
     <string name="error_extras_missing_props">Einige konfigurierte Eigenschaften gibt es in dieser Datenbank nicht mehr. Prüfe den Workspace in den Einstellungen.</string>
     <string name="app_title">Time Tracker</string>
-    <string name="title_save_preset">Als Vorlage speichern</string>
     <string name="title_manage_presets">Vorlagen verwalten</string>
     <string name="title_select_start_time">Startzeit wählen</string>
     <string name="title_select_end_time">Endzeit wählen</string>

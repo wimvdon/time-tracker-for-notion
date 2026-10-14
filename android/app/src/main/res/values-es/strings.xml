@@ -151,11 +151,11 @@
     <string name="warn_already_running_title">Temporizador activo</string>
     <string name="warn_already_running_body">Ya hay un temporizador activo. ¿Quieres detenerlo y empezar el nuevo, o cancelar?</string>
     <string name="btn_stop_and_start_new">Detener e iniciar nuevo</string>
-    <string name="dialog_save_preset_title">Guardar preajuste</string>
-    <string name="dialog_save_preset_body">Guardar la descripción y campos actuales como preajuste.</string>
-    <string name="dialog_save_preset_placeholder">Título del preajuste (ej. Standup diario)</string>
-    <string name="dialog_save_preset_name">Título del preajuste</string>
+    <string name="placeholder_preset_name">Título del preajuste (ej. Standup diario)</string>
+    <string name="label_preset_name">Título del preajuste</string>
     <string name="presets_manage_title">Gestionar preajustes</string>
+    <string name="title_new_preset">Nuevo preajuste</string>
+    <string name="title_edit_preset">Editar preajuste</string>
     <string name="tooltip_presets_shortcuts">Los preajustes superiores se usarán como accesos directos.</string>
     <string name="dialog_unsaved_changes_title">Cambios sin guardar</string>
     <string name="dialog_unsaved_changes_body">Tienes cambios sin guardar. ¿Quieres guardarlos antes de salir?</string>
@@ -201,7 +201,6 @@
     <string name="error_running_timers_failed">No se pudieron cargar los temporizadores en curso desde Notion. La lista puede estar incompleta.</string>
     <string name="error_extras_missing_props">Algunas propiedades configuradas ya no existen en esta base de datos. Revisa el espacio en Ajustes.</string>
     <string name="app_title">Time Tracker</string>
-    <string name="title_save_preset">Guardar como preajuste</string>
     <string name="title_manage_presets">Gestionar preajustes</string>
     <string name="title_select_start_time">Elegir hora de inicio</string>
     <string name="title_select_end_time">Elegir hora de fin</string>

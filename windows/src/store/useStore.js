@@ -77,6 +77,33 @@ let initialized = false;
 // wait for its field definitions.
 let extrasLoadPromise = null;
 
+/**
+ * The input definitions for a workspace's extra properties: the live Notion type of each
+ * configured property plus the options it can be set to. Used by the timer form and the
+ * preset editor; throws when Notion can't be reached.
+ */
+export async function fetchExtraFieldDefs(workspace) {
+  if (!(workspace?.extraProps?.length)) return [];
+  const schema = await api.getDatabaseSchema(workspace.timeEntriesDbId);
+  let users = null;
+  const defs = [];
+  for (const { propName: name, required } of workspace.extraProps) {
+    const prop = schema?.[name];
+    if (!prop || !WRITABLE_EXTRA_TYPES.includes(prop.type)) continue;
+    const def = { name, type: prop.type, options: [], required: !!required };
+    if (prop.type === 'select' || prop.type === 'multi_select' || prop.type === 'status') {
+      def.options = (prop[prop.type]?.options ?? []).map((o) => ({ name: o.name }));
+    } else if (prop.type === 'people') {
+      users = users ?? (await api.listUsers());
+      def.options = users;
+    } else if (prop.type === 'relation' && prop.relation?.database_id) {
+      def.options = await api.fetchDatabasePages(prop.relation.database_id);
+    }
+    defs.push(def);
+  }
+  return defs;
+}
+
 export const useStore = create((set, get) => ({
   // Settings
   apiKey: '',
@@ -346,26 +373,29 @@ export const useStore = create((set, get) => ({
     get().touchSettingsUpdatedAt();
   },
 
-  saveCurrentAsPreset: async (name) => {
+  /**
+   * Creates a preset (no `presetId`) at the end of the workspace's list, or replaces the
+   * preset with that id in place, keeping its position. From the preset editor.
+   */
+  savePreset: async ({ workspaceId, presetId, name, pageTitle, extraValues }) => {
     const state = get();
-    const workspaceId = state.selectedWorkspaceId;
     // The title is what the preset chip shows, so it's required.
     if (!workspaceId || !name?.trim()) return;
-    const workspace = state.workspaces.find((w) => w.id === workspaceId);
-    const newPreset = {
-      id: Math.random().toString(36).substring(2, 9),
+    const preset = {
+      id: presetId || Math.random().toString(36).substring(2, 9),
       name: name.trim(),
-      pageTitle: state.description.trim(),
-      extraValues: { ...state.extraValues },
+      pageTitle: (pageTitle || '').trim(),
+      extraValues: { ...extraValues },
     };
     const workspaces = state.workspaces.map((w) => {
-      if (w.id === workspaceId) {
-        return {
-          ...w,
-          presets: [...(w.presets || []), newPreset]
-        };
-      }
-      return w;
+      if (w.id !== workspaceId) return w;
+      const presets = w.presets || [];
+      return {
+        ...w,
+        presets: presetId
+          ? presets.map((p) => (p.id === presetId ? preset : p))
+          : [...presets, preset],
+      };
     });
     await api.saveSettings({ workspaces });
     set({ workspaces });
@@ -506,23 +536,7 @@ export const useStore = create((set, get) => ({
   loadExtraFields: async (workspace, active = null) => {
     if (!(workspace.extraProps?.length)) return;
     try {
-      const schema = await api.getDatabaseSchema(workspace.timeEntriesDbId);
-      let users = null;
-      const defs = [];
-      for (const { propName: name, required } of workspace.extraProps) {
-        const prop = schema?.[name];
-        if (!prop || !WRITABLE_EXTRA_TYPES.includes(prop.type)) continue;
-        const def = { name, type: prop.type, options: [], required: !!required };
-        if (prop.type === 'select' || prop.type === 'multi_select' || prop.type === 'status') {
-          def.options = (prop[prop.type]?.options ?? []).map((o) => ({ name: o.name }));
-        } else if (prop.type === 'people') {
-          users = users ?? (await api.listUsers());
-          def.options = users;
-        } else if (prop.type === 'relation' && prop.relation?.database_id) {
-          def.options = await api.fetchDatabasePages(prop.relation.database_id);
-        }
-        defs.push(def);
-      }
+      const defs = await fetchExtraFieldDefs(workspace);
       if (get().selectedWorkspaceId !== workspace.id) return;
       const extraValues = { ...active?.extraValues };
       for (const def of defs) {

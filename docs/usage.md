@@ -82,8 +82,6 @@ A Notion row appears with the running status. On Windows the tray stopwatch turn
 | Change **Start time** | Start corrected, e.g. if you forgot to press START |
 | Fill **End time** | Stops the timer at that time |
 
-**Save as preset**, under the fields, saves the workspace, description and extra fields as a preset, also while a timer runs.
-
 ### Stop
 
 Press **STOP**. Unsaved edits are flushed first. The row gets its end time and the *done* status. With rounding, start and end are rounded to the nearest step and the entry lasts at least one step.
@@ -104,10 +102,9 @@ If the timer is stopped on another device, this one clears it within a minute: *
 
 A preset remembers a workspace, a title, a description and extra field values, and starts a timer in one click.
 
-**Create:**
-1. Set up the timer form the way you want it.
-2. Click the bookmark button next to **START**.
-3. Enter a title (required, it's the button label) › **Save**.
+**Create:** click the pen button after the preset chips (or **New preset** when you have none yet) › **New preset**. The editor starts from what is in the timer form: pick the workspace, enter a name (required, it's the chip label), the description and extra field values › **Save**.
+
+**Edit, reorder, remove:** the pen button after the chips opens **Manage presets**. Each preset has buttons to move it up or down, edit it (pen) and remove it.
 
 **Use:** click a preset chip at the top of the timer screen. If a timer is running, choose **Stop & start new** or **Cancel**. Chips appear once a key is set.
 

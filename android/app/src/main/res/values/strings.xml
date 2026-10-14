@@ -151,11 +151,11 @@
     <string name="warn_already_running_title">Timer already running</string>
     <string name="warn_already_running_body">A timer is already running. Stop it and start the new one, or cancel?</string>
     <string name="btn_stop_and_start_new">Stop and start new</string>
-    <string name="dialog_save_preset_title">Save preset</string>
-    <string name="dialog_save_preset_body">Save the current description and selected workspace/fields as a preset.</string>
-    <string name="dialog_save_preset_placeholder">Preset title (e.g. Daily Standup)</string>
-    <string name="dialog_save_preset_name">Preset title</string>
+    <string name="placeholder_preset_name">Preset title (e.g. Daily Standup)</string>
+    <string name="label_preset_name">Preset title</string>
     <string name="presets_manage_title">Manage presets</string>
+    <string name="title_new_preset">New preset</string>
+    <string name="title_edit_preset">Edit preset</string>
     <string name="tooltip_presets_shortcuts">Top presets will be used for launcher shortcuts.</string>
     <string name="dialog_unsaved_changes_title">Unsaved changes</string>
     <string name="dialog_unsaved_changes_body">You have unsaved changes. Would you like to save them before leaving?</string>
@@ -201,7 +201,6 @@
     <string name="error_running_timers_failed">Could not load the running timers from Notion. The list may be incomplete.</string>
     <string name="error_extras_missing_props">Some configured properties no longer exist in this database. Check the workspace in Settings.</string>
     <string name="app_title">Time Tracker</string>
-    <string name="title_save_preset">Save as preset</string>
     <string name="title_manage_presets">Manage presets</string>
     <string name="title_select_start_time">Select start time</string>
     <string name="title_select_end_time">Select end time</string>

@@ -111,3 +111,27 @@ test('startTimer starts at a picked time, yesterday when it is later than now, e
     globalThis.setInterval = originalSetInterval;
   }
 });
+
+test('savePreset adds a new preset at the end and edits one in place', async () => {
+  const { useStore } = await import('./useStore.js');
+  const api = globalThis.window.notionAPI;
+  api.saveSettings = async () => {};
+  api.notifySettingsChanged = () => {};
+  const ws = { id: 'ws1', name: 'Work', presets: [{ id: 'a', name: 'A' }, { id: 'b', name: 'B' }] };
+  useStore.setState({ workspaces: [ws, { id: 'ws2', name: 'Other', presets: [] }] });
+
+  await useStore.getState().savePreset({ workspaceId: 'ws1', name: ' C ', pageTitle: 'Standup', extraValues: { Billable: true } });
+  let presets = useStore.getState().workspaces[0].presets;
+  assert.deepEqual(presets.map((p) => p.name), ['A', 'B', 'C']);
+  assert.equal(presets[2].pageTitle, 'Standup');
+  assert.deepEqual(presets[2].extraValues, { Billable: true });
+
+  await useStore.getState().savePreset({ workspaceId: 'ws1', presetId: 'a', name: 'A2', pageTitle: '', extraValues: {} });
+  presets = useStore.getState().workspaces[0].presets;
+  assert.deepEqual(presets.map((p) => [p.id, p.name]), [['a', 'A2'], ['b', 'B'], [presets[2].id, 'C']]);
+  assert.equal(useStore.getState().workspaces[1].presets.length, 0);
+
+  // A preset needs a name.
+  await useStore.getState().savePreset({ workspaceId: 'ws1', name: '  ' });
+  assert.equal(useStore.getState().workspaces[0].presets.length, 3);
+});
