@@ -12,7 +12,7 @@ No environment variables, database or backend are needed.
 
 ## Option A: install a release
 
-New versions are no longer published as a GitHub Release (the repository is public). Older versions remain on the [Releases](https://github.com/impca201/time-tracker-for-notion/releases) page, but no new ones are added.
+New versions are no longer published as a GitHub Release (the repository is public). Older versions remain on the [Releases](https://github.com/wimvdon/time-tracker-for-notion/releases) page, but no new ones are added.
 
 1. **Android:** install from Google Play's internal testing track (invite only). See [Publishing the Android app through Google Play](#publishing-the-android-app-through-google-play). Updates come automatically through the Play Store.
 2. **Windows:** in GitHub, open **Actions › Release**, click the run of the version you want (green, with the version in its summary), and download **windows** under **Artifacts** (kept 90 days; you must be signed in to GitHub). Unzip it and run the `.exe`. It's a one-click per-user NSIS installer that updates the installed app and keeps its settings. SmartScreen warns because the installer isn't code-signed; choose **More info › Run anyway**.
@@ -25,7 +25,7 @@ An APK built locally is signed with a debug key. Android refuses to install a re
 ### 1. Clone the repo
 
 ```bash
-git clone https://github.com/impca201/time-tracker-for-notion.git
+git clone https://github.com/wimvdon/time-tracker-for-notion.git
 cd time-tracker-for-notion
 ```
 
@@ -205,7 +205,7 @@ From now on, **Actions › Release › Run workflow** with `patch`, `minor` or `
 Not needed for your own use. Before the app can go to **Production** (anyone can find and install it), Google requires:
 
 - **A closed test first** for personal developer accounts created after November 2023: as of 2026, at least **12 testers** who stay opted in for **14 days in a row**, after which you apply for production access. Google has changed these numbers before; check the current rule in the Play Console (**Dashboard**) or [Play Console Help](https://support.google.com/googleplay/android-developer/answer/14151465).
-- **A privacy policy URL.** Once the repository is public, [PRIVACY.md](../PRIVACY.md) is reachable at `https://github.com/impca201/time-tracker-for-notion/blob/main/PRIVACY.md`.
+- **A privacy policy URL.** Once the repository is public, [PRIVACY.md](../PRIVACY.md) is reachable at `https://github.com/wimvdon/time-tracker-for-notion/blob/main/PRIVACY.md`.
 - **The Data safety form** (**Policy and programs › App content**): fill it in from PRIVACY.md (the app sends your Notion API key and time entries to the Notion API only; no ads, analytics or tracking).
 - **The content rating questionnaire** and the other items under **App content** (target audience, ads: none).
 - A store listing: short and full description, icon, feature graphic and screenshots.

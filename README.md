@@ -35,7 +35,7 @@ Full walkthrough: [docs/usage.md](docs/usage.md).
 To run the desktop app from source:
 
 ```bash
-git clone https://github.com/impca201/time-tracker-for-notion.git
+git clone https://github.com/wimvdon/time-tracker-for-notion.git
 cd time-tracker-for-notion/windows
 npm install
 npm run dev

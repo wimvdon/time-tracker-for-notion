@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "description": "Floating time-tracking widget that creates and manages time registrations in Notion",
   "author": "Wim Vandonck",
-  "license": "MIT",
+  "license": "UNLICENSED",
   "private": true,
   "type": "module",
   "main": "electron/main.cjs",
