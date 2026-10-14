@@ -16,7 +16,7 @@ The repository becomes public so GitHub Actions minutes are free, but the code i
 
 ## Aligned with the windows-electron-app and android-app templates (2026-10-14)
 
-The repository now follows the rules and workflows of [impca201/windows-electron-app](https://github.com/impca201/windows-electron-app) and [impca201/android-app](https://github.com/impca201/android-app), like the sibling apps Snoozer and Tracker for Simkl.
+The repository now follows the rules and workflows of [wimvdon/windows-electron-app](https://github.com/wimvdon/windows-electron-app) and [wimvdon/android-app](https://github.com/wimvdon/android-app), like the sibling apps Snoozer and Tracker for Simkl.
 
 - **Rules and process:** `CLAUDE.md` for Claude Code sessions, a plain-language pull request template with PC and phone test steps, weekly Dependabot updates (npm in `windows/`, Gradle in `android/`, GitHub Actions), `PRIVACY.md`, `.editorconfig`.
 - **CI** runs on pull requests *and* on pushes to `main` (as in the templates; previously pull requests only), cancels outdated runs, and the Android job now also runs **lint** (errors fail, no baseline) and the release-script tests, and attaches `TimeTracker-<version>-debug.apk` unzipped. Lint found 5 errors, fixed in code: Compose string lookups now use `LocalResources`, and the "timer stopped" broadcast names the app's own package, so other apps can no longer receive the Notion page ID it carries.

@@ -25,4 +25,4 @@ Uninstalling the Android app deletes everything. The Windows uninstaller keeps y
 
 If this changes, this file will be updated **before** the change is released.
 
-Questions: open an issue at https://github.com/impca201/time-tracker-for-notion/issues.
+Questions: open an issue at https://github.com/wimvdon/time-tracker-for-notion/issues.
