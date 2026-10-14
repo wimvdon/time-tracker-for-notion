@@ -45,23 +45,24 @@ npm run dev
 
 | Area | Windows app (`windows/`) | Android app (`android/`) |
 |---|---|---|
-| Language | JavaScript (ES modules, CommonJS in Electron main) | Kotlin 2.1 |
+| Language | JavaScript (ES modules, CommonJS in Electron main) | Kotlin 2.4 |
 | UI | React 19, Tailwind CSS 4, Fluent UI icons | Jetpack Compose, Material 3 |
 | State | Zustand | ViewModel + `StateFlow` |
 | Shell / runtime | Electron 42 (tray, Mica, single instance) | Foreground service for the running timer |
 | Storage | electron-store (API key encrypted with Windows DPAPI) | DataStore + EncryptedSharedPreferences |
 | HTTP | Node `fetch` in the main process | OkHttp + kotlinx.serialization |
-| Build | Vite 6, electron-builder (NSIS) | Gradle 8.11, AGP 8.7 |
-| Tests | `node:test`, ESLint, installer smoke test on Windows | — |
+| Build | Vite 6, electron-builder (NSIS), Node.js 24 (`windows/.nvmrc`) | Gradle 9.8, AGP 9.4, R8 |
+| Tests | `node:test`, ESLint, installer smoke test on Windows | JUnit 4 unit tests, Android lint |
 
 Shared:
 - **External service:** Notion REST API (`2022-06-28`).
-- **CI/CD:** GitHub Actions builds both apps and publishes a release.
+- **CI/CD:** GitHub Actions checks every pull request (with a Dev installer and a debug APK to try), builds both apps and publishes one release; Dependabot keeps dependencies current.
+- **Rules for Claude Code sessions:** [`CLAUDE.md`](CLAUDE.md). **Privacy:** [`PRIVACY.md`](PRIVACY.md).
 
 ## Quick installation
 
 - **Use it:** download from [Releases](https://github.com/impca201/time-tracker-for-notion/releases) and install.
-- **Develop on Windows:** Node.js LTS, then `cd windows && npm install && npm run dev`.
+- **Develop on Windows:** Node.js 24 (`windows/.nvmrc`), then `cd windows && npm ci && npm run dev`.
 - **Develop on Android:** open `android/` in Android Studio and run.
 
 Details: [docs/installation.md](docs/installation.md).
@@ -78,13 +79,15 @@ On Windows the API key and all HTTP calls stay in the Electron main process; the
 
 ```
 time-tracker-for-notion/
-├── .github/workflows/             CI for pull requests; release builds both apps
+├── .github/                        CI, release (both apps), PR template, Dependabot
+├── CLAUDE.md, PRIVACY.md           Rules for Claude Code sessions; privacy policy
 ├── windows/                        Electron + React desktop app
 │   ├── electron/                   Main process, preload bridge, Notion client
 │   ├── src/                        React UI, Zustand store, pure helpers + tests
 │   └── scripts/                    Icon generator (also writes Android launcher icons)
 └── android/                        Kotlin + Compose phone app
-    └── app/src/main/java/…/        data (api, models, repository), service, ui, viewmodel
+    ├── app/src/main/kotlin/…/      data (api, models, repository), service, ui, viewmodel
+    └── scripts/                    Release helpers (versioning, keystore secret) with tests
 ```
 
 Full tree: [docs/structure.md](docs/structure.md).

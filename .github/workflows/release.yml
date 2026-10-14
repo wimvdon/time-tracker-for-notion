@@ -1,23 +1,29 @@
+# Builds both apps and publishes them as one GitHub Release (the Windows installer and the
+# signed Android APK), following the windows-electron-app and android-app templates.
+#
+# How to start it:
+#   - Actions tab -> Release -> Run workflow -> choose "patch", "minor" or "major".
+#     The next version is computed from the latest vX.Y.Z tag, the tag is created and the
+#     release is published.
+#   - Choose "none" to only build downloadable files (a Dev installer and an APK): no tag, no release.
+#   - Or push a tag yourself: git tag v1.2.3 && git push origin v1.2.3
+#
+# It refuses to publish when: not on main, the tag/release already exists, the new version is
+# not higher than the previous one, or nothing changed since the previous release. The Windows
+# installer is installed, started and uninstalled on a Windows machine first.
+#
+# Signing the APK uses four repository secrets (see docs/installation.md): ANDROID_KEYSTORE_BASE64,
+# ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD. Without them a publish
+# fails; a "none" build falls back to a debug APK with a warning.
 name: Release
 
-# Push a tag like v1.2.0 to build both apps and publish them as a GitHub Release.
-# "Run workflow" on the Actions tab with "Release" set to patch, minor or major
-# picks the next version after the latest v* tag, builds both apps and publishes
-# that release (creating the tag). With "Release" left at none it only builds
-# downloadable artifacts. (Pull requests are checked by the CI workflow.)
-# It refuses to publish when: not on main, the tag or release already exists, the version is
-# not higher than the previous release, or nothing changed since the previous release. The
-# Windows installer is installed, started and uninstalled on a Windows machine first.
-# Signing needs four repository secrets: ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD,
-# ANDROID_KEY_ALIAS and ANDROID_KEY_PASSWORD.
 on:
   push:
-    tags:
-      - "v*"
+    tags: ["v*.*.*"]
   workflow_dispatch:
     inputs:
       bump:
-        description: Release (none = only build, patch = 1.0.0 -> 1.0.1, minor = 1.0.0 -> 1.1.0, major = 1.0.0 -> 2.0.0)
+        description: "Version bump (none = build files only, no release)"
         type: choice
         options: [none, patch, minor, major]
         default: none
@@ -25,100 +31,111 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: release
+  cancel-in-progress: false
+
 jobs:
-  version:
+  plan:
+    name: Decide the version
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     outputs:
-      name: ${{ steps.v.outputs.name }}
-      code: ${{ steps.v.outputs.code }}
-      publish: ${{ steps.v.outputs.publish }}
+      publish: ${{ steps.plan.outputs.publish }}
+      tag: ${{ steps.plan.outputs.tag }}
+      version: ${{ steps.plan.outputs.version }}
+      code: ${{ steps.plan.outputs.code }}
+      previous: ${{ steps.plan.outputs.previous }}
+      dev: ${{ steps.plan.outputs.dev }}
     steps:
-      - uses: actions/checkout@v6
+      - name: Check out (full history, needed for tags)
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - id: v
-        shell: bash
+          fetch-tags: true
+          persist-credentials: false
+
+      - name: Decide version and check release rules
+        id: plan
         env:
-          BUMP: ${{ inputs.bump || 'none' }}
+          EVENT: ${{ github.event_name }}
+          BUMP: ${{ inputs.bump }}
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          refuse() { echo "::error title=Release refused::$1"; exit 1; }
+          fail() { echo "::error title=Release refused::$1"; exit 1; }
+          version_tool() { python3 android/scripts/release_version.py "$@"; }
           git fetch --quiet origin main
-          # Highest vX.Y.Z tag by version (not date), optionally leaving one tag out.
+          # Highest vX.Y.Z tag (by version, not date), optionally excluding one tag.
           latest_tag() {
-            git tag --list 'v*' --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | grep -vxF "${1:-}" | head -n1 || true
+            git tag --list 'v*' --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | grep -vxF "${1:-}" | head -n 1 || true
           }
-          # "a > b" for X.Y.Z versions.
-          is_newer() { [ "$1" != "$2" ] && [ "$(printf '%s\n%s\n' "$1" "$2" | sort -V | tail -n1)" = "$1" ]; }
 
-          publish=false
-          if [[ "$GITHUB_REF_TYPE" == "tag" ]]; then
-            name="${GITHUB_REF_NAME#v}"
-            [[ "$GITHUB_REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || refuse "Tag must look like v1.2.3, got '$GITHUB_REF_NAME'."
-            git merge-base --is-ancestor "$GITHUB_SHA" origin/main || refuse "Tag $GITHUB_REF_NAME points to a commit that is not on main."
-            if gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-              refuse "A release for $GITHUB_REF_NAME already exists."
-            fi
-            previous="$(latest_tag "$GITHUB_REF_NAME")"
-            publish=true
-          elif [[ "$BUMP" != "none" ]]; then
-            [[ "$GITHUB_REF" == "refs/heads/main" ]] || refuse "Releases can only be made from main (this run is on $GITHUB_REF_NAME)."
-            previous="$(latest_tag)"
-            IFS=. read -r major minor patch <<< "${previous#v}"
-            major=${major:-0}; minor=${minor:-0}; patch=${patch:-0}
-            case "$BUMP" in
-              major) major=$((major + 1)); minor=0; patch=0 ;;
-              minor) minor=$((minor + 1)); patch=0 ;;
-              patch) patch=$((patch + 1)) ;;
-            esac
-            name="$major.$minor.$patch"
-            if git rev-parse -q --verify "refs/tags/v$name" >/dev/null || [ -n "$(git ls-remote --tags origin "refs/tags/v$name")" ]; then
-              refuse "Tag v$name already exists."
-            fi
-            publish=true
-          else
+          if [ "$EVENT" = "push" ]; then
+            tag="$GITHUB_REF_NAME"
+            version="$(version_tool parse-tag "$tag")" || fail "Tag $tag must look like v1.2.3."
+            git merge-base --is-ancestor "$GITHUB_SHA" origin/main || fail "Tag $tag points to a commit that is not on main."
+            if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then fail "A release for $tag already exists."; fi
+            previous="$(latest_tag "$tag")"
+          elif [ "${BUMP:-none}" = "none" ]; then
             # Not a release: the latest release plus "-dev" and the commit, e.g. 1.0.0-dev+abc1234.
-            latest=$(latest_tag)
-            latest=${latest#v}
-            name="${latest:-0.0.0}-dev+$(git rev-parse --short HEAD)"
+            latest="$(latest_tag)"
+            latest="${latest#v}"
+            {
+              echo "publish=false"
+              echo "dev=${latest:-0.0.0}-dev+$(git rev-parse --short HEAD)"
+            } >> "$GITHUB_OUTPUT"
+            echo "Build only: a Dev installer and an APK, no tag and no release."
+            exit 0
+          else
+            [ "$GITHUB_REF" = "refs/heads/main" ] || fail "Releases can only be made from main (this run is on $GITHUB_REF_NAME)."
+            previous="$(latest_tag)"
+            version="$(version_tool next "$previous" "$BUMP")" || fail "Could not compute the next version."
+            tag="v$version"
+            if git rev-parse --quiet --verify "refs/tags/$tag" >/dev/null || [ -n "$(git ls-remote --tags origin "refs/tags/$tag")" ]; then
+              fail "Tag $tag already exists."
+            fi
           fi
 
-          if [[ "$publish" == "true" && -n "$previous" ]]; then
-            is_newer "$name" "${previous#v}" \
-              || refuse "Version $name is not higher than the previous release $previous; Android would refuse the update."
+          if [ -n "$previous" ]; then
+            version_tool is-newer "$version" "${previous#v}" \
+              || fail "Version $version is not higher than the previous release $previous; installed apps would not update."
             [ "$(git rev-list --count "$previous..$GITHUB_SHA")" -gt 0 ] \
-              || refuse "No commits since the previous release $previous. Nothing to release."
+              || fail "No commits since the previous release $previous. Nothing to release."
           fi
-          echo "Releasing: $publish, version $name, previous release ${previous:-none}"
+          code="$(version_tool code "$version")" || fail "Version $version cannot be used."
 
-          if [[ ! "${name%%-*}" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
-            echo "::error::Version must look like 1.2.3, got '$name'"
-            exit 1
-          fi
-          code=$(( BASH_REMATCH[1] * 10000 + BASH_REMATCH[2] * 100 + BASH_REMATCH[3] ))
           {
-            echo "name=$name"
+            echo "publish=true"
+            echo "tag=$tag"
+            echo "version=$version"
             echo "code=$code"
-            echo "publish=$publish"
+            echo "previous=$previous"
           } >> "$GITHUB_OUTPUT"
+          echo "Releasing $tag (Android versionCode $code); previous release: ${previous:-none}."
 
   windows:
-    needs: version
+    name: Windows installer
+    needs: plan
     runs-on: windows-latest
     timeout-minutes: 30
     defaults:
       run:
         working-directory: windows
     env:
-      PUBLISH: ${{ needs.version.outputs.publish }}
+      PUBLISH: ${{ needs.plan.outputs.publish }}
+      VERSION: ${{ needs.plan.outputs.publish == 'true' && needs.plan.outputs.version || needs.plan.outputs.dev }}
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-node@v6
+      - uses: actions/checkout@v7
         with:
-          node-version: 24
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: windows/.nvmrc
           cache: npm
           cache-dependency-path: windows/package-lock.json
+
       - name: Cache Electron downloads
         uses: actions/cache@v5
         with:
@@ -127,16 +144,24 @@ jobs:
             ~/AppData/Local/electron-builder/Cache
           key: electron-${{ runner.os }}-${{ hashFiles('windows/package-lock.json') }}
           restore-keys: electron-${{ runner.os }}-
-      - run: npm ci
-      - run: npm version "${{ needs.version.outputs.name }}" --no-git-tag-version --allow-same-version
-      - run: npm run lint
-      - run: npm test
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Set the version
+        shell: bash
+        run: npm version "$VERSION" --no-git-tag-version --allow-same-version
+
+      - name: Lint and unit tests
+        run: npm run lint && npm test
+
       # A release builds the real app; a build-only run builds the Dev app, which installs next
       # to the real one, so trying it never replaces your installed app or its settings.
       - name: Build the installer
         shell: bash
         run: |
           if [ "$PUBLISH" = "true" ]; then npm run dist -- --publish never; else npm run dist:dev -- --publish never; fi
+
       - name: Find the installer
         id: installer
         shell: bash
@@ -154,101 +179,174 @@ jobs:
             echo "artifact=release/$name"
             echo "product=$product"
           } >> "$GITHUB_OUTPUT"
+          echo "### Built \`$name\`" >> "$GITHUB_STEP_SUMMARY"
+
       - name: Install, start and uninstall it
         shell: pwsh
         run: ./scripts/smoke-test-installer.ps1 -Installer '${{ steps.installer.outputs.path }}' -ProductName '${{ steps.installer.outputs.product }}' -WindowTitle 'Time Tracker'
-      - uses: actions/upload-artifact@v7
+
+      - name: Upload the installer
+        uses: actions/upload-artifact@v7
         with:
           name: windows
           path: ${{ steps.installer.outputs.artifact }}
+          retention-days: 30
           if-no-files-found: error
 
   android:
-    needs: version
+    name: Android APK
+    needs: plan
     runs-on: ubuntu-latest
     timeout-minutes: 30
     defaults:
       run:
         working-directory: android
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-java@v5
+      - name: Check out (full history, needed for git-describe versions)
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+          persist-credentials: false
+
+      - name: Set up JDK
+        uses: actions/setup-java@v6
         with:
           distribution: temurin
-          java-version: 21
-      - uses: gradle/actions/setup-gradle@v5
-      - name: Restore the signing key
-        working-directory: .
+          java-version: "21"
+
+      - name: Set up Gradle (with caching)
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-provider: basic
+
+      - name: Prepare signing key
+        id: signing
         env:
-          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-          PUBLISH: ${{ needs.version.outputs.publish }}
+          PUBLISH: ${{ needs.plan.outputs.publish }}
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
-          if [ -z "$KEYSTORE_BASE64" ] || [ -z "$KEYSTORE_PASSWORD" ] || [ -z "$KEY_ALIAS" ] || [ -z "$KEY_PASSWORD" ]; then
+          set -euo pipefail
+          missing=""
+          for name in ANDROID_KEYSTORE_BASE64 ANDROID_KEYSTORE_PASSWORD ANDROID_KEY_ALIAS ANDROID_KEY_PASSWORD; do
+            [ -n "${!name}" ] || missing="$missing $name"
+          done
+          if [ -n "$missing" ]; then
             if [ "$PUBLISH" = "true" ]; then
-              echo "::error::Add the ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS and ANDROID_KEY_PASSWORD secrets first (see the README)."
+              echo "::error title=Signing secrets missing::Add these repository secrets before releasing:$missing (see docs/installation.md)."
               exit 1
             fi
-            echo "::warning::No signing key secrets, so this run builds a debug APK instead."
-            echo "BUILD_TYPE=debug" >> "$GITHUB_ENV"
+            echo "::warning title=Signing secrets missing::$missing not set. Building a DEBUG APK instead of a signed release."
+            echo "signed=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          # Written to a file so the secret never appears on a command line.
-          printf '%s' "$KEYSTORE_BASE64" > "$RUNNER_TEMP/keystore.b64"
-          python3 .github/scripts/restore_keystore.py "$RUNNER_TEMP/keystore.b64" "$RUNNER_TEMP/release.jks"
-          if ! keytool -list -keystore "$RUNNER_TEMP/release.jks" -storepass "$KEYSTORE_PASSWORD" -alias "$KEY_ALIAS" > /dev/null 2>&1; then
-            echo "::error::The key could not be opened: check ANDROID_KEYSTORE_PASSWORD and ANDROID_KEY_ALIAS (and that ANDROID_KEYSTORE_BASE64 is the whole .jks file)."
+
+          keystore="$RUNNER_TEMP/release.keystore"
+          python3 scripts/decode_keystore.py "$keystore"
+
+          # Check the keystore password and alias before spending time on the build.
+          if ! keytool -list -keystore "$keystore" -storepass:env ANDROID_KEYSTORE_PASSWORD >/dev/null 2>&1; then
+            echo "::error title=Keystore password::The keystore does not open with ANDROID_KEYSTORE_PASSWORD. Check that secret."
             exit 1
           fi
-          {
-            echo "storeFile=$RUNNER_TEMP/release.jks"
-            echo "storePassword=$KEYSTORE_PASSWORD"
-            echo "keyAlias=$KEY_ALIAS"
-            echo "keyPassword=$KEY_PASSWORD"
-          } > android/keystore.properties
-          echo "BUILD_TYPE=release" >> "$GITHUB_ENV"
-      - name: Build APK
-        run: |
-          task="assemble${BUILD_TYPE^}"
-          ./gradlew "$task" \
-            -PversionName=${{ needs.version.outputs.name }} \
-            -PversionCode=${{ needs.version.outputs.code }}
-          cp "app/build/outputs/apk/$BUILD_TYPE/app-$BUILD_TYPE.apk" \
-            "$RUNNER_TEMP/TimeTracker-${{ needs.version.outputs.name }}.apk"
-          # R8's map from the shortened names back to the real ones, so a crash from this build
-          # can be read (Android Studio: Build > Analyze Stack Trace, or the retrace tool).
-          if [ "$BUILD_TYPE" = release ]; then
-            cp app/build/outputs/mapping/release/mapping.txt \
-              "$RUNNER_TEMP/TimeTracker-${{ needs.version.outputs.name }}-mapping.txt"
+          if ! keytool -list -keystore "$keystore" -storepass:env ANDROID_KEYSTORE_PASSWORD -alias "$ANDROID_KEY_ALIAS" >/dev/null 2>&1; then
+            count="$(keytool -list -keystore "$keystore" -storepass:env ANDROID_KEYSTORE_PASSWORD 2>/dev/null | grep -c 'PrivateKeyEntry' || true)"
+            echo "::error title=Key alias::ANDROID_KEY_ALIAS is not in the keystore (it holds $count key(s)). Check the alias you used with keytool -genkeypair."
+            exit 1
           fi
-      - name: Remove the signing key
+          # keytool cannot check the key password of PKCS12 keystores, so check it with Java.
+          java scripts/VerifySigningKey.java "$keystore"
+
+          umask 077
+          {
+            echo "storeFile=$keystore"
+            echo "storePassword=$ANDROID_KEYSTORE_PASSWORD"
+            echo "keyAlias=$ANDROID_KEY_ALIAS"
+            echo "keyPassword=$ANDROID_KEY_PASSWORD"
+          } > keystore.properties
+          echo "signed=true" >> "$GITHUB_OUTPUT"
+          echo "Signing key verified."
+
+      - name: Test and lint
+        run: ./gradlew testDebugUnitTest lintDebug
+
+      - name: Build APK
+        id: build
+        env:
+          PUBLISH: ${{ needs.plan.outputs.publish }}
+          SIGNED: ${{ steps.signing.outputs.signed }}
+          VERSION: ${{ needs.plan.outputs.version }}
+          CODE: ${{ needs.plan.outputs.code }}
+        run: |
+          set -euo pipefail
+          args=()
+          if [ "$PUBLISH" = "true" ]; then args=(-PappVersionName="$VERSION" -PappVersionCode="$CODE"); fi
+          base="$(./gradlew -q :app:printApkBaseName "${args[@]}")"
+          mkdir -p dist
+          if [ "$SIGNED" = "true" ]; then
+            ./gradlew assembleRelease "${args[@]}"
+            apk="dist/$base.apk"
+            cp app/build/outputs/apk/release/app-release.apk "$apk"
+            # R8's map from the shortened names back to the real ones, to read crash stack traces.
+            cp app/build/outputs/mapping/release/mapping.txt "dist/$base-mapping.txt"
+            apksigner="$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -n 1)"
+            "$apksigner" verify "$apk"
+            # The certificate fingerprint is public; it must stay the same for every release.
+            "$apksigner" verify --print-certs "$apk" | grep -E 'certificate (DN|SHA-256 digest)' || true
+          else
+            ./gradlew assembleDebug "${args[@]}"
+            apk="dist/$base-debug.apk"
+            cp app/build/outputs/apk/debug/app-debug.apk "$apk"
+          fi
+          echo "apk=$apk" >> "$GITHUB_OUTPUT"
+          echo "### Built \`$(basename "$apk")\`" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Remove signing key
         if: always()
-        run: rm -f "$RUNNER_TEMP/release.jks" "$RUNNER_TEMP/keystore.b64" keystore.properties
-      - uses: actions/upload-artifact@v7
+        run: rm -f keystore.properties "$RUNNER_TEMP/release.keystore"
+
+      - name: Upload APK and mapping file
+        uses: actions/upload-artifact@v7
         with:
           name: android
-          path: |
-            ${{ runner.temp }}/TimeTracker-*.apk
-            ${{ runner.temp }}/TimeTracker-*-mapping.txt
+          path: android/dist/
+          retention-days: 30
           if-no-files-found: error
 
-  release:
-    if: needs.version.outputs.publish == 'true'
-    needs: [version, windows, android]
+  publish:
+    name: Publish the GitHub Release
+    needs: [plan, windows, android]
+    if: needs.plan.outputs.publish == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
+      # The only job that may write: it creates the tag and the release.
       contents: write
     steps:
       - uses: actions/download-artifact@v8
         with:
-          path: dist
+          path: release-files
           merge-multiple: true
-      - uses: softprops/action-gh-release@v2
-        with:
-          tag_name: v${{ needs.version.outputs.name }}
-          target_commitish: ${{ github.sha }}
-          name: Time Tracker for Notion ${{ needs.version.outputs.name }}
-          files: dist/*
-          generate_release_notes: true
+
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.plan.outputs.tag }}
+          VERSION: ${{ needs.plan.outputs.version }}
+          PREVIOUS: ${{ needs.plan.outputs.previous }}
+        run: |
+          set -euo pipefail
+          ls -l release-files
+          notes_from=()
+          if [ -n "$PREVIOUS" ]; then notes_from=(--notes-start-tag "$PREVIOUS"); fi
+          # Creates the tag on this exact commit if it does not exist yet (manual runs).
+          gh release create "$TAG" release-files/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "Time Tracker for Notion $VERSION" \
+            --generate-notes "${notes_from[@]}" \
+            --latest
+          echo "### Published [$TAG]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/tag/$TAG)" >> "$GITHUB_STEP_SUMMARY"

@@ -17,3 +17,22 @@ android/keystore.properties
 # OS
 .DS_Store
 Thumbs.db
+
+# Build outputs and signing material (NEVER commit)
+android/dist/
+*.apk
+*.aab
+*.p12
+*.pfx
+keystore.properties
+.env
+.env.*
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# Python (release scripts)
+__pycache__/
+*.pyc

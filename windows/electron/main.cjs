@@ -227,6 +227,8 @@ function createWindow() {
       preload: path.join(__dirname, 'preload.cjs'),
       contextIsolation: true,
       nodeIntegration: false,
+      // The default since Electron 20, set explicitly so it can't be switched off by accident.
+      sandbox: true,
     },
   });
 

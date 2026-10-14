@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Debug builds install next to the released app (application ID ending in .debug); this name
+     tells them apart. Every language overrides app_name, so each needs this copy. -->
+<resources>
+    <string name="app_name">Time Tracker Dev</string>
+</resources>

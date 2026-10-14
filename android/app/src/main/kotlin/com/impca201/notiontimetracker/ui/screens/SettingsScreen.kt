@@ -10,8 +10,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
@@ -85,17 +85,17 @@ fun SettingsScreen(
 ) {
     BackHandler(onBack = onBack)
     val snackbarHostState = remember { SnackbarHostState() }
-    val context = LocalContext.current
+    val resources = LocalResources.current
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
 
     LaunchedEffect(uiState.snackbarMessage) {
         uiState.snackbarMessage?.let { msg ->
             val text = when {
-                msg == "api_key_saved" -> context.getString(R.string.toast_api_key_saved)
-                msg == "api_key_removed" -> context.getString(R.string.toast_api_key_removed)
-                msg.startsWith("workspace_added:") -> context.getString(R.string.toast_workspace_added, msg.substringAfter(":"))
-                msg.startsWith("workspace_saved:") -> context.getString(R.string.toast_workspace_saved, msg.substringAfter(":"))
+                msg == "api_key_saved" -> resources.getString(R.string.toast_api_key_saved)
+                msg == "api_key_removed" -> resources.getString(R.string.toast_api_key_removed)
+                msg.startsWith("workspace_added:") -> resources.getString(R.string.toast_workspace_added, msg.substringAfter(":"))
+                msg.startsWith("workspace_saved:") -> resources.getString(R.string.toast_workspace_saved, msg.substringAfter(":"))
                 else -> msg
             }
             // Dismiss the keyboard so the snackbar isn't hidden behind it.
