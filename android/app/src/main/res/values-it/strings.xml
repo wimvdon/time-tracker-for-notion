@@ -12,6 +12,7 @@
     <string name="btn_stop">Ferma</string>
     <string name="label_start_time">Ora di inizio</string>
     <string name="label_end_time">Ora di fine</string>
+    <string name="time_now">Adesso</string>
     <string name="hint_manual_end">Inserire un\'ora di fine arresta il timer.</string>
     <string name="warn_no_api_key">Chiave API Notion non configurata.</string>
     <string name="warn_no_api_key_link">Apri impostazioni</string>
@@ -101,7 +102,6 @@
 
     <!-- Recent entries -->
     <string name="recent_entries_heading">Registrazioni recenti</string>
-    <string name="section_timer_details">Dettagli</string>
     <string name="title_delete_entry">Elimina</string>
     <string name="title_open_in_notion">Apri in Notion</string>
     <string name="title_start_from_entry">Avvia un nuovo timer con questi dati</string>

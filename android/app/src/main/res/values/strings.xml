@@ -12,6 +12,7 @@
     <string name="btn_stop">Stop</string>
     <string name="label_start_time">Start time</string>
     <string name="label_end_time">End time</string>
+    <string name="time_now">Now</string>
     <string name="hint_manual_end">Filling in an end time stops the timer.</string>
     <string name="warn_no_api_key">No Notion API key set.</string>
     <string name="warn_no_api_key_link">Open settings</string>
@@ -101,7 +102,6 @@
 
     <!-- Recent entries -->
     <string name="recent_entries_heading">Recent time entries</string>
-    <string name="section_timer_details">Details</string>
     <string name="title_delete_entry">Delete</string>
     <string name="title_open_in_notion">Open in Notion</string>
     <string name="title_start_from_entry">Start a new timer with these details</string>
