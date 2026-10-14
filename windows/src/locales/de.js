@@ -2,13 +2,13 @@ export default {
   // Timer view — idle
   labelWorkspace: 'Workspace',
   labelProject: 'Projekt',
-  labelDescription: 'Arbeite an…',
-  placeholderDescription: 'Beschreibung',
+  labelDescription: 'Beschreibung',
+  placeholderDescription: 'Arbeite an…',
   placeholderSelectWorkspace: 'Workspace auswählen…',
   placeholderSelectProject: 'Projekt auswählen…',
   placeholderLoading: 'Laden…',
-  btnStart: '▶ START',
-  btnStop: '⏹ STOPP',
+  btnStart: 'Start',
+  btnStop: 'Stopp',
   labelStartTime: 'Startzeit',
   labelEndTime: 'Endzeit',
   timeNow: 'Jetzt',
@@ -166,13 +166,8 @@ export default {
   btnClose: 'Schließen',
 
   // Presets
-  sectionPresets: 'Vorlagen (optional)',
-  hintPresets: 'Bis zu 5 Schnellstart-Vorlagen. Klicken Sie auf ein Vorlagen-Chip, um den Timer sofort zu starten.',
-  btnAddPreset: '+ Vorlage hinzufügen',
   titleRemovePreset: 'Vorlage entfernen',
   presetNamePlaceholder: 'z.B. Morgen-Standup',
-  labelPresetTitle: 'Standardtitel',
-  presetTitlePlaceholder: 'Optionaler Standardtitel…',
 
   // Timer stopped elsewhere
   timerStoppedElsewhere: 'Der Timer wurde auf einem anderen Gerät gestoppt.',

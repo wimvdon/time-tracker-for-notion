@@ -2,13 +2,13 @@ export default {
   // Timer view — idle
   labelWorkspace: 'Espacio de trabajo',
   labelProject: 'Proyecto',
-  labelDescription: 'Trabajando en…',
-  placeholderDescription: 'Descripción',
+  labelDescription: 'Descripción',
+  placeholderDescription: 'Trabajando en…',
   placeholderSelectWorkspace: 'Seleccionar espacio…',
   placeholderSelectProject: 'Seleccionar proyecto…',
   placeholderLoading: 'Cargando…',
-  btnStart: '▶ INICIAR',
-  btnStop: '⏹ DETENER',
+  btnStart: 'Iniciar',
+  btnStop: 'Detener',
   labelStartTime: 'Hora de inicio',
   labelEndTime: 'Hora de fin',
   timeNow: 'Ahora',
@@ -16,7 +16,7 @@ export default {
   hintManualEnd: 'Rellenar una hora de fin detiene el temporizador.',
   toastEndBeforeStart: 'La hora de fin debe ser posterior a la de inicio.',
   warnNoApiKey: 'Clave API de Notion no configurada.',
-  warnNoApiKeyLink: 'Abrir Ajustes',
+  warnNoApiKeyLink: 'Abrir ajustes',
   warnNoWorkspaces: 'Añada un espacio en los',
   warnNoWorkspacesLink: 'Ajustes',
   warnNoWorkspacesSuffix: 'para comenzar.',
@@ -166,13 +166,8 @@ export default {
   btnClose: 'Cerrar',
 
   // Presets
-  sectionPresets: 'Preajustes (opcional)',
-  hintPresets: 'Hasta 5 preajustes. Haga clic en un chip de preajuste para iniciar el temporizador inmediatamente.',
-  btnAddPreset: '+ Añadir preajuste',
   titleRemovePreset: 'Eliminar preajuste',
   presetNamePlaceholder: 'ej. Standup matinal',
-  labelPresetTitle: 'Título por defecto',
-  presetTitlePlaceholder: 'Título por defecto opcional…',
 
   // Timer stopped elsewhere
   timerStoppedElsewhere: 'El temporizador se detuvo en otro dispositivo.',

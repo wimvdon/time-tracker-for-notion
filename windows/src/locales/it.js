@@ -2,13 +2,13 @@ export default {
   // Timer view — idle
   labelWorkspace: 'Spazio di lavoro',
   labelProject: 'Progetto',
-  labelDescription: 'Lavorando a…',
-  placeholderDescription: 'Descrizione',
+  labelDescription: 'Descrizione',
+  placeholderDescription: 'Lavorando a…',
   placeholderSelectWorkspace: 'Seleziona spazio…',
   placeholderSelectProject: 'Seleziona progetto…',
   placeholderLoading: 'Caricamento…',
-  btnStart: '▶ AVVIA',
-  btnStop: '⏹ FERMA',
+  btnStart: 'Avvia',
+  btnStop: 'Ferma',
   labelStartTime: 'Ora di inizio',
   labelEndTime: 'Ora di fine',
   timeNow: 'Adesso',
@@ -16,7 +16,7 @@ export default {
   hintManualEnd: 'Inserire un\'ora di fine arresta il timer.',
   toastEndBeforeStart: 'L\'ora di fine deve essere successiva a quella di inizio.',
   warnNoApiKey: 'Chiave API Notion non configurata.',
-  warnNoApiKeyLink: 'Apri Impostazioni',
+  warnNoApiKeyLink: 'Apri impostazioni',
   warnNoWorkspaces: 'Aggiungi uno spazio nelle',
   warnNoWorkspacesLink: 'Impostazioni',
   warnNoWorkspacesSuffix: 'per iniziare.',
@@ -166,13 +166,8 @@ export default {
   btnClose: 'Chiudi',
 
   // Presets
-  sectionPresets: 'Preimpostazioni (opzionale)',
-  hintPresets: 'Fino a 5 preimpostazioni. Fai clic su un chip per avviare il timer immediatamente.',
-  btnAddPreset: '+ Aggiungi preimpostazione',
   titleRemovePreset: 'Rimuovi preimpostazione',
   presetNamePlaceholder: 'es. Standup mattutino',
-  labelPresetTitle: 'Titolo predefinito',
-  presetTitlePlaceholder: 'Titolo predefinito opzionale…',
 
   // Timer stopped elsewhere
   timerStoppedElsewhere: 'Il timer è stato fermato su un altro dispositivo.',

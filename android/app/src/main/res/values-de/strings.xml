@@ -151,8 +151,8 @@
     <string name="warn_already_running_title">Timer läuft bereits</string>
     <string name="warn_already_running_body">Ein Timer läuft bereits. Möchtest du ihn stoppen und den neuen starten, oder abbrechen?</string>
     <string name="btn_stop_and_start_new">Stoppen und neu starten</string>
-    <string name="placeholder_preset_name">Vorlagentitel (z.B. Tägliches Standup)</string>
-    <string name="label_preset_name">Vorlagentitel</string>
+    <string name="placeholder_preset_name">z.B. Morgen-Standup</string>
+    <string name="label_preset_name">Name</string>
     <string name="presets_manage_title">Vorlagen verwalten</string>
     <string name="title_new_preset">Neue Vorlage</string>
     <string name="title_edit_preset">Vorlage bearbeiten</string>
