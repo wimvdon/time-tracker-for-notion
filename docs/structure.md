@@ -13,6 +13,7 @@ time-tracker-for-notion/
 ├── .gitignore                        Build outputs, release/, keystores, .env
 ├── CLAUDE.md                         Rules for Claude Code sessions
 ├── DESIGN.md                         Design language shared with the sibling apps
+├── LICENSE                           Copyright notice: all rights reserved, no open-source licence
 ├── PRIVACY.md                        Privacy policy (both apps)
 ├── README.md
 ├── docs/
