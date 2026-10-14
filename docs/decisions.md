@@ -1,5 +1,9 @@
 # Technical decisions
 
+## Back to GitHub Releases instead of Google Play (2026-10-14)
+
+The owner chose to publish through GitHub Releases again, as before the Google Play entry below. One GitHub Release with the `vX.Y.Z` tag again holds the Windows installer and the signed Android APK; the Play upload job, the AAB and the `PLAY_SERVICE_ACCOUNT_JSON` secret are no longer used. The Android signing key stays the one already in the GitHub secrets, so phones that installed a GitHub APK keep updating. Trade-off: the repository is public, so anyone can download the installer and the APK. Rejected: keeping Play internal testing for Android and run artifacts for Windows (manual downloads, no update notice, and a Play developer account to maintain).
+
 ## Android through Google Play, no GitHub Releases (2026-10-14)
 
 The repository becomes public (free GitHub Actions minutes), and the apps should not be freely downloadable. The Release workflow no longer creates a GitHub Release. The `vX.Y.Z` tag is still created (after a successful release), and the version rules (`android/scripts/release_version.py`) are unchanged. Same setup as the sibling apps Snoozer and Tracker for Simkl.
