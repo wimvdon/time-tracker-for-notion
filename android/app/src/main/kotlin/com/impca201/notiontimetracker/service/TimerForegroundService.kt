@@ -215,7 +215,9 @@ class TimerForegroundService : Service() {
                 if (activeTimer != null && activeTimer.notionPageId == pageId) {
                     app.settingsRepository.clearActiveTimer()
                 }
+                // Explicit package: only this app's own receiver (MainActivity) gets the page ID.
                 sendBroadcast(Intent(ACTION_TIMER_STOPPED).apply {
+                    setPackage(packageName)
                     putExtra(EXTRA_PAGE_ID, pageId)
                 })
             }

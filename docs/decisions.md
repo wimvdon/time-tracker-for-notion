@@ -1,5 +1,18 @@
 # Technical decisions
 
+## Aligned with the windows-electron-app and android-app templates (2026-10-14)
+
+The repository now follows the rules and workflows of [impca201/windows-electron-app](https://github.com/impca201/windows-electron-app) and [impca201/android-app](https://github.com/impca201/android-app), like the sibling apps Snoozer and Tracker for Simkl.
+
+- **Rules and process:** `CLAUDE.md` for Claude Code sessions, a plain-language pull request template with PC and phone test steps, weekly Dependabot updates (npm in `windows/`, Gradle in `android/`, GitHub Actions), `PRIVACY.md`, `.editorconfig`.
+- **CI** runs on pull requests *and* on pushes to `main` (as in the templates; previously pull requests only), cancels outdated runs, and the Android job now also runs **lint** (errors fail, no baseline) and the release-script tests, and attaches `TimeTracker-<version>-debug.apk` unzipped. Lint found 5 errors, fixed in code: Compose string lookups now use `LocalResources`, and the "timer stopped" broadcast names the app's own package, so other apps can no longer receive the Notion page ID it carries.
+- **Release workflow** restructured like the templates: a *plan* job with tested version maths (`android/scripts/release_version.py`), the Android signing key checked before the build (`decode_keystore.py`, `VerifySigningKey.java`), tests and lint before the signed build, and a separate *publish* job, the only one with write access, that uses `gh release create` instead of a third-party action.
+- **Android debug builds use `applicationIdSuffix = ".debug"` and the name "Time Tracker Dev"**, so a pull request's APK installs next to the released app with its own settings and API key, like the Windows Dev installer.
+- **Node.js version in `windows/.nvmrc`** (24), used by CI and development.
+- **`sandbox: true`** is set explicitly on the window (the Electron default), as in the template, so it can't be switched off by accident.
+- **Android sources moved from `src/*/java/` to `src/*/kotlin/`**, the template's layout.
+- **Kept on purpose, unlike the templates:** the Windows app stays JavaScript with Tailwind and Fluent icons rather than TypeScript, Fluent UI components and electron-vite, and has no Playwright end-to-end tests; moving would be a rewrite of a released app, and the installer smoke test already starts the real packaged app on Windows. Android `minSdk` stays 26 (Android 8.0) instead of 31 so existing users keep getting updates. Six languages instead of two.
+
 ## No backend: clients call Notion directly
 
 Each user creates their own Notion internal connection and pastes the token into the app.

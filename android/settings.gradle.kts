@@ -20,5 +20,6 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "NotionTimeTracker"
+// Also used as the APK file name prefix: <rootProject.name>-<version>.apk
+rootProject.name = "TimeTracker"
 include(":app")

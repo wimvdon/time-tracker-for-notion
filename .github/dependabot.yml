@@ -1,0 +1,45 @@
+# Weekly dependency updates for both apps and the workflows. Minor and patch updates are grouped
+# into one pull request per ecosystem to limit noise; major updates get their own pull request
+# because they are more likely to need code changes. CI checks every update, including
+# installing and starting the Windows app.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /windows
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      npm-minor-and-patch:
+        update-types: [minor, patch]
+    ignore:
+      # Matches the Node.js major version in windows/.nvmrc.
+      - dependency-name: '@types/node'
+        update-types: [version-update:semver-major]
+    commit-message:
+      prefix: deps
+
+  - package-ecosystem: gradle
+    directory: /android
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      gradle-minor-and-patch:
+        update-types: [minor, patch]
+    commit-message:
+      prefix: deps
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      actions-minor-and-patch:
+        update-types: [minor, patch]
+    commit-message:
+      prefix: ci

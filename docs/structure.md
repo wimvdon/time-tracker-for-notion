@@ -2,15 +2,22 @@
 
 ```
 time-tracker-for-notion/
+├── .editorconfig                     Editor rules (LF, 4 spaces; Kotlin 140 columns)
+├── .gitattributes                    LF everywhere; *.bat, *.ps1 → CRLF; binaries
 ├── .github/
-│   ├── scripts/restore_keystore.py   Turns the keystore secret back into a .jks
+│   ├── dependabot.yml                Weekly npm (windows/), Gradle (android/) and Actions updates
+│   ├── pull_request_template.md      Plain-language PR description, PC and phone test steps, checklist
 │   └── workflows/
-│       ├── ci.yml                    Tests and builds every pull request and push to main
+│       ├── ci.yml                    Windows checks, Windows installer smoke test, Android checks
 │       └── release.yml               Version → Windows installer + Android APK → GitHub Release
-├── .gitignore                        Build outputs, release/, keystores
+├── .gitignore                        Build outputs, release/, keystores, .env
+├── CLAUDE.md                         Rules for Claude Code sessions
+├── DESIGN.md                         Design language shared with the sibling apps
+├── PRIVACY.md                        Privacy policy (both apps)
 ├── README.md
 ├── docs/
 ├── windows/                          Electron desktop app
+│   ├── .nvmrc                        Node.js version (24), used by CI and for development
 │   ├── package.json                  Scripts, dependencies, electron-builder config (NSIS → ../release)
 │   ├── package-lock.json
 │   ├── vite.config.js                React + Tailwind plugins, production CSP, relative base
@@ -54,12 +61,19 @@ time-tracker-for-notion/
     │   ├── libs.versions.toml        Version catalog: AGP 9.4, Kotlin 2.4, all libraries
     │   └── wrapper/                  Gradle 9.8.1
     ├── gradlew, gradlew.bat
+    ├── scripts/                      Release helpers, shared with the android-app template
+    │   ├── release_version.py        Tag parsing, next version, versionCode, "is newer" (also used for the Windows version)
+    │   ├── decode_keystore.py        Decodes the keystore secret tolerantly, explains failures
+    │   ├── VerifySigningKey.java     Checks the key password before the build
+    │   └── tests/                    unittest suites for both Python scripts
     └── app/
-        ├── build.gradle.kts          SDK levels, signing from keystore.properties, versioning, dependencies
+        ├── build.gradle.kts          App ID, versioning, signing, lint, dependencies, printApkBaseName
         ├── proguard-rules.pro        Notes on R8 (no extra keep rules needed)
+        ├── src/debug/res/values*/    Debug build only: the "Time Tracker Dev" name, in every language
+        ├── src/test/kotlin/…/        SyncPayloadJsonTest (JVM unit tests)
         └── src/main/
             ├── AndroidManifest.xml
-            ├── java/com/impca201/notiontimetracker/
+            ├── kotlin/com/impca201/notiontimetracker/
             │   ├── NotionTimeTrackerApp.kt   Creates repositories and syncer
             │   ├── MainActivity.kt           Compose host, navigation, shortcut + service intents
             │   ├── ShortcutHelper.kt         Preset launcher shortcuts

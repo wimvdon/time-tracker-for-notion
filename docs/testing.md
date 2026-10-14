@@ -6,7 +6,7 @@ Windows app (Node's built-in test runner, no extra framework):
 
 ```bash
 cd windows
-npm install
+npm ci
 npm test            # node --test, unit tests in src/ and electron/
 npm run lint        # ESLint
 npm run check       # lint + unit tests + build
@@ -14,15 +14,23 @@ npm run check       # lint + unit tests + build
 
 The tests import only pure modules and the Zustand store with a stubbed `window.notionAPI`, so they run without Electron. On a fresh checkout, `npm install --ignore-scripts` is enough and skips downloading the Electron binary.
 
-CI (`.github/workflows/ci.yml`) runs lint and `npm test` on every pull request, and the release workflow runs them again before building the installer. A failing test blocks the merge and the release.
+CI (`.github/workflows/ci.yml`) runs lint and `npm test` on every pull request and push to `main`, and the release workflow runs them again before building the installer. A failing test blocks the merge and the release.
 
 **Installer smoke test (Windows, in CI).** On every pull request and before every release, `windows/scripts/smoke-test-installer.ps1` installs the installer silently on a Windows machine, checks the Start menu shortcut, starts the installed app with all Electron fuses on, waits for its window (titled *Time Tracker*), checks it doesn't crash, and uninstalls it. Pull requests use the *Dev* installer, which is attached to the run so it can be tried by hand without touching the real app.
 
-Android unit tests (`./gradlew testDebugUnitTest` in `android/`) cover the sync payload: round trips, the shapes the Windows app writes, rejecting non-sync pages, and the JSON helpers. CI runs them and then builds the debug and release APKs, so compile and R8 errors fail the check too.
+Android, inside `android/`:
+
+```bash
+./gradlew testDebugUnitTest                      # JVM unit tests
+./gradlew lintDebug                              # Android lint; errors fail the build (no baseline)
+python3 -m unittest discover -s scripts/tests    # release scripts (version maths, keystore secret)
+```
+
+The unit tests cover the sync payload: round trips, the shapes the Windows app writes, rejecting non-sync pages, and the JSON helpers. CI runs the script tests, unit tests and lint, then builds the debug and release APKs, so compile and R8 errors fail the check too; the release workflow runs the unit tests and lint again before the signed build. Test and lint reports are attached to every CI run (`android-reports`).
 
 ## What is covered
 
-All tests are unit tests. 45 tests across 8 files:
+All tests are unit tests. Windows: 45 tests across 8 files:
 
 | File | Covers |
 |---|---|
@@ -35,12 +43,31 @@ All tests are unit tests. 45 tests across 8 files:
 | `electron/apiKey.test.cjs` | The API key is saved encrypted, an old plain key is moved over, plain fallback without encryption, clearing, undecryptable keys read as empty, the renderer never gets the encrypted field |
 | `electron/bundlePath.test.cjs` | `app://bundle/` maps only to files inside `dist/`; `../` and encoded tricks, other schemes and hosts are refused |
 
+Android: 6 tests in `SyncPayloadJsonTest`, plus the release-script tests in `android/scripts/tests/` (version parsing and bumping, version codes, keystore-secret decoding).
+
 ## Strategy
 
 - **Pure logic lives in `src/lib/` and gets unit tests.** Rounding, formatting and value conversion are where silent data errors would end up in the user's Notion database. They are kept free of I/O so `node --test` can cover them.
 - **Cross-app compatibility is tested where it can break silently.** For example, preset values synced from Android must parse in the Windows app.
 - **Regression tests for the store** pin down bugs that lost data or duplicated work: a cleared timer after a failed query, and double initialisation.
 - **Security-relevant main-process logic is split into Electron-free modules** (`apiKey.cjs`, `bundlePath.cjs`) so it can be unit tested.
-- **Not covered by unit tests:** the rest of the Electron main process (the installer smoke test only checks that it starts), `notionClient.cjs`, React views and the whole Android app. These are verified manually, and the `NOTION_API_BASE_URL` override exists to point the desktop app at a mock Notion server for that purpose.
+- **Not covered by unit tests:** the rest of the Electron main process (the installer smoke test only checks that it starts), `notionClient.cjs`, React views, and the Android app beyond the sync payload (Android lint checks API use, translations and accessibility). These are verified manually, and the `NOTION_API_BASE_URL` override exists to point the desktop app at a mock Notion server for that purpose.
 
 No coverage tool is configured.
+
+## Manual checks
+
+For each pull request, install the Dev installer and/or the debug APK from the CI run (both install next to the real apps, as *Time Tracker for Notion Dev* and *Time Tracker Dev*) and follow the steps in the pull request. Before a release, also check:
+
+- [ ] Start and stop a timer on each platform; the Notion row gets its start, end and status.
+- [ ] Dark mode on and off: text stays readable.
+- [ ] Another language (Windows: Settings › Language; Android: Settings › System › Languages › App languages): all text is translated.
+- [ ] After a release: install over the previous version. Settings, API key and a running timer are kept.
+
+## Reading a crash from a release APK
+
+Release APKs are minified. Download `TimeTracker-<version>-mapping.txt` from the matching GitHub Release and decode the trace with R8's `retrace` (Android SDK `cmdline-tools/latest/bin/retrace`):
+
+```bash
+retrace TimeTracker-<version>-mapping.txt stacktrace.txt
+```
