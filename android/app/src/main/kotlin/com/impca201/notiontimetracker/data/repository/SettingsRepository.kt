@@ -20,7 +20,7 @@ import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
-private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "notion_settings")
+private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = DataFiles.SETTINGS)
 
 class SettingsRepository(private val context: Context) {
 
@@ -54,7 +54,7 @@ class SettingsRepository(private val context: Context) {
                 .build()
             EncryptedSharedPreferences.create(
                 context,
-                "NotionTimeTracker_encrypted_prefs",
+                DataFiles.API_KEY,
                 masterKey,
                 EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
                 EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
@@ -63,23 +63,23 @@ class SettingsRepository(private val context: Context) {
             android.util.Log.e("SettingsRepository", "EncryptedSharedPreferences creation failed, falling back", e)
             runCatching {
                 if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
-                    context.deleteSharedPreferences("NotionTimeTracker_encrypted_prefs")
+                    context.deleteSharedPreferences(DataFiles.API_KEY)
                 } else {
-                    context.getSharedPreferences("NotionTimeTracker_encrypted_prefs", Context.MODE_PRIVATE).edit().clear().apply()
+                    context.getSharedPreferences(DataFiles.API_KEY, Context.MODE_PRIVATE).edit().clear().apply()
                 }
                 val masterKey = MasterKey.Builder(context)
                     .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
                     .build()
                 EncryptedSharedPreferences.create(
                     context,
-                    "NotionTimeTracker_encrypted_prefs",
+                    DataFiles.API_KEY,
                     masterKey,
                     EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
                     EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
                 )
             }.getOrElse { e2 ->
                 android.util.Log.e("SettingsRepository", "Recreation of EncryptedSharedPreferences failed, using plain fallback", e2)
-                context.getSharedPreferences("NotionTimeTracker_plain_fallback_prefs", Context.MODE_PRIVATE)
+                context.getSharedPreferences(DataFiles.API_KEY_FALLBACK, Context.MODE_PRIVATE)
             }
         }
     }

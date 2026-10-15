@@ -119,7 +119,15 @@ It is last-writer-wins at whole-payload granularity. The API key and device-only
 
 | Data | Windows | Android |
 |---|---|---|
-| API key | electron-store, encrypted with `safeStorage` (Windows DPAPI, tied to the Windows user) | EncryptedSharedPreferences (AES-256). Falls back to recreating it, then to plain prefs if the keystore fails. Excluded from backups. |
-| Workspaces, presets, active timer, preferences | electron-store `config.json` | DataStore `notion_settings` (JSON strings for structured values) |
+| API key | electron-store, encrypted with `safeStorage` (Windows DPAPI, tied to the Windows user) | EncryptedSharedPreferences (AES-256). Falls back to recreating it, then to plain prefs if the keystore fails. Never backed up. |
+| Workspaces, presets, active timer, preferences | electron-store `config.json` | DataStore `notion_settings` (JSON strings for structured values). Backed up. |
 | Time entries | Notion | Notion |
 | Shared settings | Notion sync page | Notion sync page |
+
+**Android backup.** Android's own backup (to the Google account) and phone-to-phone transfer copy
+only `notion_settings`, so workspaces, presets and preferences come back on a new phone; you only
+enter the API key again. The rules are an allow list (`res/xml/data_extraction_rules.xml` for
+Android 12+, `res/xml/backup_rules.xml` for Android 8-11, guarded by `BackupRulesTest`), so a file
+added later is never backed up by accident. The API key is left out: it is secret, and it is
+encrypted with an Android Keystore key that can't be moved to another phone. File names are in
+`data/repository/DataFiles.kt`. Windows has no automatic backup.
