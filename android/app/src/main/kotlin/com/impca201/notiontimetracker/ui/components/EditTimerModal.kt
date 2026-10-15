@@ -11,6 +11,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import com.impca201.notiontimetracker.R
 import com.impca201.notiontimetracker.viewmodel.TimerViewModel
@@ -39,6 +40,8 @@ fun EditTimerModal(
     val scrollState = rememberScrollState()
 
     Scaffold(
+        // Edge-to-edge: the keyboard does not shrink the screen, so the content makes room for it.
+        contentWindowInsets = ScaffoldDefaults.contentWindowInsets.union(WindowInsets.ime),
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.title_edit_timer)) },
@@ -78,7 +81,10 @@ fun EditTimerModal(
                     Text(stringResource(R.string.placeholder_description) + if (descriptionRequired) " *" else "")
                 },
                 placeholder = { Text(stringResource(R.string.label_description)) },
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done)
+                keyboardOptions = KeyboardOptions(
+                    capitalization = KeyboardCapitalization.Sentences,
+                    imeAction = ImeAction.Done
+                )
             )
 
             uiState.extraFieldDefs.forEach { def ->
