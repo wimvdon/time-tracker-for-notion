@@ -1,5 +1,9 @@
 # Technical decisions
 
+## Android backup copies only the settings file (2026-10-15)
+
+The Android backup rules used to back up everything except the API key files. They now list only the settings file (`notion_settings`), the same allow-list approach as the template and the sibling apps: a file added later is never backed up by accident, and `BackupRulesTest` fails if the rules drift or ever include the API key. What is backed up today is unchanged (the settings file is the only other file the app writes). Rejected: keeping the exclude list (one forgotten exclusion leaks a secret into the backup).
+
 ## Phone testing doesn't block merging (2026-10-15)
 
 The owner can't review code and can't always test a pull request on the device right away, so pull requests waited for a manual test that adds little over CI. Green CI (unit tests, lint, builds) is now enough to merge; the owner tests afterwards with the steps from the pull request and always before a release, and problems are fixed in a new pull request. Merging to `main` does not reach users: releases stay manual. Rejected: keeping the phone test as a merge gate (pull requests pile up and go stale).

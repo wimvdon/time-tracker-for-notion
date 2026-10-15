@@ -69,6 +69,9 @@ passwords, Notion API keys or `.env` files.
   in `viewmodel/`, Notion calls only in `data/api/`. Logic in plain Kotlin classes without Android
   types so it runs on the JVM.
 - **Every logic change gets new or updated unit tests**, in the app it touches.
+- **Android stored data and backup:** settings go in the DataStore `notion_settings` (Android backs
+  it up); the API key and device-only state go in another file (never backed up). See
+  `docs/architecture.md`, "Data storage".
 - **All user-visible text is translated.** Windows: `windows/src/locales/` (every language file).
   Android: `values/strings.xml` and **every** `values-xx/strings.xml`. Never hard-code text.
   In Compose, read strings with `stringResource` or `LocalResources`, not `LocalContext` (lint fails).

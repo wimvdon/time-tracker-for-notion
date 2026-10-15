@@ -93,7 +93,7 @@ time-tracker-for-notion/
             └── res/
                 ├── drawable/, mipmap-anydpi-v26/   Generated launcher icon layers
                 ├── values*/                        Strings (en + nl, fr, de, es, it), colours, themes
-                └── xml/                            Backup and data-extraction rules
+                └── xml/                            Backup rules: only the settings file
 ```
 
 ## Responsibilities and layers

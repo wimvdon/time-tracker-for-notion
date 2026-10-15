@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Android 8-11: what Android's backup copies. Keep the same as data_extraction_rules.xml. -->
 <full-backup-content>
-    <exclude domain="sharedpref" path="NotionTimeTracker_encrypted_prefs.xml" />
-    <exclude domain="sharedpref" path="NotionTimeTracker_plain_fallback_prefs.xml" />
+    <include domain="file" path="datastore/notion_settings.preferences_pb" />
 </full-backup-content>

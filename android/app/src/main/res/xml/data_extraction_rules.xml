@@ -1,11 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Android 12+: what Android's backup (to the Google account) and phone-to-phone transfer copy.
+     Only the files listed here; everything else stays on this phone. That is just the settings
+     file (workspaces, presets, active timer, preferences); the API key never leaves the phone.
+     Android 8-11 use backup_rules.xml: keep both the same (BackupRulesTest checks this). -->
 <data-extraction-rules>
     <cloud-backup>
-        <exclude domain="sharedpref" path="NotionTimeTracker_encrypted_prefs.xml" />
-        <exclude domain="sharedpref" path="NotionTimeTracker_plain_fallback_prefs.xml" />
+        <include domain="file" path="datastore/notion_settings.preferences_pb" />
     </cloud-backup>
     <device-transfer>
-        <exclude domain="sharedpref" path="NotionTimeTracker_encrypted_prefs.xml" />
-        <exclude domain="sharedpref" path="NotionTimeTracker_plain_fallback_prefs.xml" />
+        <include domain="file" path="datastore/notion_settings.preferences_pb" />
     </device-transfer>
 </data-extraction-rules>
