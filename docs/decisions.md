@@ -1,5 +1,9 @@
 # Technical decisions
 
+## Phone testing doesn't block merging (2026-10-15)
+
+The owner can't review code and can't always test a pull request on the device right away, so pull requests waited for a manual test that adds little over CI. Green CI (unit tests, lint, builds) is now enough to merge; the owner tests afterwards with the steps from the pull request and always before a release, and problems are fixed in a new pull request. Merging to `main` does not reach users: releases stay manual. Rejected: keeping the phone test as a merge gate (pull requests pile up and go stale).
+
 ## Back to GitHub Releases instead of Google Play (2026-10-14)
 
 The owner chose to publish through GitHub Releases again, as before the Google Play entry below. One GitHub Release with the `vX.Y.Z` tag again holds the Windows installer and the signed Android APK; the Play upload job, the AAB and the `PLAY_SERVICE_ACCOUNT_JSON` secret are no longer used. The Android signing key stays the one already in the GitHub secrets, so phones that installed a GitHub APK keep updating. Trade-off: the repository is public, so anyone can download the installer and the APK. Rejected: keeping Play internal testing for Android and run artifacts for Windows (manual downloads, no update notice, and a Play developer account to maintain).
