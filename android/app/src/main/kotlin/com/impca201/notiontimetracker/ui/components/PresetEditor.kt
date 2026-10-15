@@ -55,6 +55,8 @@ fun PresetEditorScreen(
     val workspace = workspaces.firstOrNull { it.id == editor.workspaceId }
 
     Scaffold(
+        // Edge-to-edge: the keyboard does not shrink the screen, so the content makes room for it.
+        contentWindowInsets = ScaffoldDefaults.contentWindowInsets.union(WindowInsets.ime),
         topBar = {
             TopAppBar(
                 title = {

@@ -77,7 +77,7 @@ A Notion row appears with the running status. On Windows the tray stopwatch turn
 
 | Action | Effect in Notion |
 |---|---|
-| Edit the description, press **Enter** or click away | Title updated immediately |
+| Edit the description | Title saved shortly after you stop typing (right away on **Enter** or when you click away) |
 | Change an extra field | Saved shortly after you stop typing |
 | Change **Start time** | Start corrected, e.g. if you forgot to press Start |
 | Fill **End time** | Stops the timer at that time |

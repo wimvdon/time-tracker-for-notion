@@ -7,6 +7,7 @@ import { getWorkspaceAccentColor, getWorkspaceSolidFillColor } from '../lib/colo
 import { useIsDarkTheme } from '../hooks/useIsDarkTheme.js';
 import ExtraFieldInput from '../components/ExtraFieldInput.jsx';
 import SearchableSelect from '../components/SearchableSelect.jsx';
+import { DESCRIPTION_AUTOSAVE_DELAY_MS, shouldAutoSaveDescription } from '../lib/descriptionAutoSave.js';
 import {
   ArrowClockwise20Regular,
   Add20Regular,
@@ -512,6 +513,33 @@ function RunningView({
   const [flushingStop, setFlushingStop] = useState(false);
   const localDescRef = useRef(localDesc);
   localDescRef.current = localDesc;
+  const localExtrasRef = useRef(localExtras);
+  localExtrasRef.current = localExtras;
+  const descTimeoutRef = useRef(null);
+
+  const cancelPendingDescription = () => {
+    clearTimeout(descTimeoutRef.current);
+    descTimeoutRef.current = null;
+  };
+
+  const saveDescription = (desc) => {
+    cancelPendingDescription();
+    const pending = cancelPendingExtras();
+    descSaveRef.current = updateTimerDetails(selectedProjectId, desc, pending || localExtrasRef.current);
+  };
+
+  // The description is saved by itself a moment after the user stops typing (same rule and
+  // delay as the Android app). Stopping writes the draft itself, so no save runs alongside it.
+  const scheduleDescriptionSave = (desc) => {
+    cancelPendingDescription();
+    if (!shouldAutoSaveDescription(desc, description)) return;
+    descTimeoutRef.current = setTimeout(() => {
+      descTimeoutRef.current = null;
+      const state = useStore.getState();
+      if (state.isStopping || !shouldAutoSaveDescription(localDescRef.current, state.description)) return;
+      saveDescription(localDescRef.current);
+    }, DESCRIPTION_AUTOSAVE_DELAY_MS);
+  };
 
   const cancelPendingExtras = () => {
     clearTimeout(extrasTimeoutRef.current);
@@ -531,13 +559,17 @@ function RunningView({
   };
 
   useEffect(() => {
-    // Switching to another running timer: drop the old timer's pending edit.
+    // Switching to another running timer: drop the old timer's pending edits.
     cancelPendingExtras();
+    cancelPendingDescription();
     setLocalDesc(description);
     setLocalExtras({ ...extraValues });
   }, [timer.notionPageId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => () => clearTimeout(extrasTimeoutRef.current), []);
+  useEffect(() => () => {
+    clearTimeout(extrasTimeoutRef.current);
+    clearTimeout(descTimeoutRef.current);
+  }, []);
 
   // Extra field values (e.g. connected project) can arrive asynchronously
   // shortly after a running timer is loaded — re-sync the draft once they do.
@@ -570,6 +602,7 @@ function RunningView({
     // still being typed) before the entry is closed, so they aren't lost.
     // Clicking Stop blurs the description first; let that save land.
     if (flushingStop) return;
+    cancelPendingDescription();
     setFlushingStop(true);
     try {
       await descSaveRef.current;
@@ -655,11 +688,15 @@ function RunningView({
               id="running-description"
               type="text"
               value={localDesc}
-              onChange={(e) => setLocalDesc(e.target.value)}
+              onChange={(e) => {
+                setLocalDesc(e.target.value);
+                scheduleDescriptionSave(e.target.value);
+              }}
               onBlur={() => {
-                if (localDesc.trim() === description.trim()) return;
-                const pending = cancelPendingExtras();
-                descSaveRef.current = updateTimerDetails(selectedProjectId, localDesc, pending || localExtras);
+                cancelPendingDescription();
+                // Leaving the field saves right away, an emptied description too.
+                if (localDesc.trim() === useStore.getState().description.trim()) return;
+                saveDescription(localDesc);
               }}
               onKeyDown={blurOnEnter}
               placeholder={t('placeholderDescription')}

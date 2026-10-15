@@ -81,6 +81,7 @@
     <string name="label_custom_color">Hex personalizzato</string>
     <string name="btn_apply_color">Applica</string>
     <string name="save_incomplete_hint">Compila tutti i campi prima di salvare.</string>
+    <string name="btn_ok">OK</string>
     <string name="btn_cancel">Annulla</string>
     <string name="btn_save">Salva</string>
 

@@ -61,6 +61,10 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.platform.LocalFocusManager
+import com.impca201.notiontimetracker.viewmodel.DescriptionAutoSave
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
@@ -70,6 +74,7 @@ import com.impca201.notiontimetracker.R
 import com.impca201.notiontimetracker.data.models.Preset
 import com.impca201.notiontimetracker.data.models.RecentEntryInfo
 import com.impca201.notiontimetracker.data.models.RunningTimerInfo
+import com.impca201.notiontimetracker.ui.components.AppTimePickerDialog
 import com.impca201.notiontimetracker.ui.components.EditTimerModal
 import com.impca201.notiontimetracker.ui.components.PresetEditorScreen
 import androidx.activity.compose.BackHandler
@@ -304,8 +309,11 @@ private fun IdleView(
     // A start time picked for a timer the user forgot to start; empty means "now". Only the
     // Start button uses it: presets, shortcuts and recent entries always start now.
     var pickedStartMs by rememberSaveable { mutableStateOf<Long?>(null) }
+    var showStartPicker by rememberSaveable { mutableStateOf(false) }
 
     Scaffold(
+        // Edge-to-edge: the keyboard does not shrink the screen, so the content makes room for it.
+        contentWindowInsets = ScaffoldDefaults.contentWindowInsets.union(WindowInsets.ime),
         contentColor = MaterialTheme.colorScheme.onBackground,
         topBar = {
             TimerTopBar {
@@ -417,7 +425,10 @@ private fun IdleView(
                         Text(stringResource(R.string.placeholder_description) + if (descriptionRequired) " *" else "")
                     },
                     placeholder = { Text(stringResource(R.string.label_description)) },
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                    keyboardOptions = KeyboardOptions(
+                        capitalization = KeyboardCapitalization.Sentences,
+                        imeAction = ImeAction.Done
+                    ),
                     keyboardActions = KeyboardActions(onDone = { })
                 )
 
@@ -426,22 +437,31 @@ private fun IdleView(
                     value = pickedStartMs?.let { formatHHMM(isoAt(it), is12h) } ?: "",
                     placeholder = stringResource(R.string.time_now),
                     pickerDescription = stringResource(R.string.title_select_start_time),
-                    onPick = {
-                        val now = java.util.Calendar.getInstance().apply {
-                            pickedStartMs?.let { ms -> timeInMillis = ms }
-                        }
-                        android.app.TimePickerDialog(context, { _, hour, minute ->
+                    onPick = { showStartPicker = true },
+                    onClear = pickedStartMs?.let { { pickedStartMs = null } },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                if (showStartPicker) {
+                    val now = java.util.Calendar.getInstance().apply {
+                        pickedStartMs?.let { ms -> timeInMillis = ms }
+                    }
+                    AppTimePickerDialog(
+                        title = stringResource(R.string.title_select_start_time),
+                        initialHour = now.get(java.util.Calendar.HOUR_OF_DAY),
+                        initialMinute = now.get(java.util.Calendar.MINUTE),
+                        is24Hour = !is12h,
+                        onConfirm = { hour, minute ->
+                            showStartPicker = false
                             pickedStartMs = java.util.Calendar.getInstance().apply {
                                 set(java.util.Calendar.HOUR_OF_DAY, hour)
                                 set(java.util.Calendar.MINUTE, minute)
                                 set(java.util.Calendar.SECOND, 0)
                                 set(java.util.Calendar.MILLISECOND, 0)
                             }.timeInMillis
-                        }, now.get(java.util.Calendar.HOUR_OF_DAY), now.get(java.util.Calendar.MINUTE), !is12h).show()
-                    },
-                    onClear = pickedStartMs?.let { { pickedStartMs = null } },
-                    modifier = Modifier.fillMaxWidth()
-                )
+                        },
+                        onDismiss = { showStartPicker = false }
+                    )
+                }
 
                 if (uiState.extrasLoading) {
                     ExtraFieldsSkeleton(selectedWorkspace?.extraProps.orEmpty())
@@ -538,8 +558,22 @@ private fun RunningView(
 
     // Declared here rather than next to its text field: stopping has to hand
     // the draft over so a description typed but not yet saved is not lost.
-    var titleDraft by remember(timer.description) { mutableStateOf(timer.description) }
-    val isTitleDirty = titleDraft.trim() != timer.description.trim()
+    var titleDraft by remember(timer.notionPageId) { mutableStateOf(timer.description) }
+    var titleFocused by remember { mutableStateOf(false) }
+    // A save (or a refresh from Notion) updates timer.description. While the user is typing,
+    // that must not replace what they typed since; once they leave the field it may.
+    LaunchedEffect(timer.description) {
+        if (!titleFocused) titleDraft = timer.description
+    }
+    // The description is saved by itself a moment after the user stops typing. Stopping
+    // hands the draft over itself, so no save runs alongside it.
+    LaunchedEffect(titleDraft, timer.description, uiState.isStopping) {
+        if (uiState.isStopping || !DescriptionAutoSave.shouldSave(titleDraft, timer.description)) return@LaunchedEffect
+        kotlinx.coroutines.delay(DescriptionAutoSave.DELAY_MS)
+        onQuickSaveDescription(titleDraft.trim())
+    }
+
+    val focusManager = LocalFocusManager.current
 
     var showTimeErrorDialog by remember { mutableStateOf(false) }
     var pendingEndTimeMs by remember { mutableStateOf(0L) }
@@ -576,27 +610,44 @@ private fun RunningView(
 
     val context = LocalContext.current
 
-    val showStartTimePicker = {
-        val odt = runCatching { OffsetDateTime.parse(timer.roundedStart) }.getOrNull() ?: OffsetDateTime.now()
-        android.app.TimePickerDialog(context, { _, hour, minute ->
-            val formatted24 = String.format("%02d:%02d", hour, minute)
-            val iso = parseHHMMToISO(formatted24, timer.roundedStart)
-            if (iso != null) {
-                onUpdateStartTime(iso)
-                startTimeInput = formatHHMM(iso, is12h)
-            }
-        }, odt.hour, odt.minute, !is12h).show()
+    var pickerOpen by rememberSaveable { mutableStateOf<String?>(null) }
+    val showStartTimePicker = { pickerOpen = "start" }
+    val showEndTimePicker = { pickerOpen = "end" }
+    val onTimePicked: (Int, Int) -> String? = { hour, minute ->
+        parseHHMMToISO(String.format(java.util.Locale.ROOT, "%02d:%02d", hour, minute), timer.roundedStart)
     }
-
-    val showEndTimePicker = {
-        val cal = java.util.Calendar.getInstance()
-        android.app.TimePickerDialog(context, { _, hour, minute ->
-            val formatted24 = String.format("%02d:%02d", hour, minute)
-            val iso = parseHHMMToISO(formatted24, timer.roundedStart)
-            if (iso != null) {
-                endTimeInput = formatHHMM(iso, is12h)
-            }
-        }, cal.get(java.util.Calendar.HOUR_OF_DAY), cal.get(java.util.Calendar.MINUTE), !is12h).show()
+    when (pickerOpen) {
+        "start" -> {
+            val odt = runCatching { OffsetDateTime.parse(timer.roundedStart) }.getOrNull() ?: OffsetDateTime.now()
+            AppTimePickerDialog(
+                title = stringResource(R.string.title_select_start_time),
+                initialHour = odt.hour,
+                initialMinute = odt.minute,
+                is24Hour = !is12h,
+                onConfirm = { hour, minute ->
+                    pickerOpen = null
+                    onTimePicked(hour, minute)?.let { iso ->
+                        onUpdateStartTime(iso)
+                        startTimeInput = formatHHMM(iso, is12h)
+                    }
+                },
+                onDismiss = { pickerOpen = null }
+            )
+        }
+        "end" -> {
+            val cal = java.util.Calendar.getInstance()
+            AppTimePickerDialog(
+                title = stringResource(R.string.title_select_end_time),
+                initialHour = cal.get(java.util.Calendar.HOUR_OF_DAY),
+                initialMinute = cal.get(java.util.Calendar.MINUTE),
+                is24Hour = !is12h,
+                onConfirm = { hour, minute ->
+                    pickerOpen = null
+                    onTimePicked(hour, minute)?.let { iso -> endTimeInput = formatHHMM(iso, is12h) }
+                },
+                onDismiss = { pickerOpen = null }
+            )
+        }
     }
 
     val handleStopClick = {
@@ -638,6 +689,8 @@ private fun RunningView(
             modifier = Modifier.matchParentSize()
         )
         Scaffold(
+            // Edge-to-edge: the keyboard does not shrink the screen, so the content makes room for it.
+            contentWindowInsets = ScaffoldDefaults.contentWindowInsets.union(WindowInsets.ime),
             containerColor = Color.Transparent,
             contentColor = MaterialTheme.colorScheme.onBackground,
             topBar = {
@@ -737,26 +790,24 @@ private fun RunningView(
                     OutlinedTextField(
                         value = titleDraft,
                         onValueChange = { titleDraft = it },
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .onFocusChanged { titleFocused = it.isFocused },
                         singleLine = true,
                         isError = workspace?.descriptionRequired == true && titleDraft.isBlank(),
                         label = {
                             Text(stringResource(R.string.placeholder_description) + if (workspace?.descriptionRequired == true) " *" else "")
                         },
                         placeholder = { Text(stringResource(R.string.hint_timer_title)) },
-                        trailingIcon = if (isTitleDirty) {
-                            {
-                                IconButton(onClick = { onQuickSaveDescription(titleDraft.trim()) }) {
-                                    Icon(
-                                        Icons.Rounded.Check,
-                                        contentDescription = stringResource(R.string.btn_save_changes),
-                                        tint = workspaceAccent ?: MaterialTheme.colorScheme.primary
-                                    )
-                                }
-                            }
-                        } else null,
-                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                        keyboardActions = KeyboardActions(onDone = { onQuickSaveDescription(titleDraft.trim()) }),
+                        keyboardOptions = KeyboardOptions(
+                            capitalization = KeyboardCapitalization.Sentences,
+                            imeAction = ImeAction.Done
+                        ),
+                        keyboardActions = KeyboardActions(onDone = {
+                            // Done saves right away, an emptied description too.
+                            if (titleDraft.trim() != timer.description.trim()) onQuickSaveDescription(titleDraft.trim())
+                            focusManager.clearFocus()
+                        }),
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = workspaceAccent ?: MaterialTheme.colorScheme.primary,
                             focusedLabelColor = workspaceAccent ?: MaterialTheme.colorScheme.primary

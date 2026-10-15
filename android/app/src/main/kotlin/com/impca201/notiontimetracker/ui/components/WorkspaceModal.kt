@@ -126,6 +126,8 @@ fun WorkspaceModal(
     }
 
     Scaffold(
+        // Edge-to-edge: the keyboard does not shrink the screen, so the content makes room for it.
+        contentWindowInsets = ScaffoldDefaults.contentWindowInsets.union(WindowInsets.ime),
         topBar = {
             TopAppBar(
                 title = {

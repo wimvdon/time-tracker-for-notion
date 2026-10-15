@@ -1,5 +1,13 @@
 # Technical decisions
 
+## Android: keyboard room and Material 3 time picker (2026-10-15)
+
+The app targets Android 15+ and draws edge to edge, so the system no longer shrinks the screen when the keyboard opens (`adjustResize` has no effect). Every Android screen with text fields now adds the keyboard to its content insets (`ScaffoldDefaults.contentWindowInsets.union(WindowInsets.ime)`), so the focused field scrolls into view. The time fields use the Compose Material 3 `TimePickerDialog` instead of `android.app.TimePickerDialog`, which drew in the old platform style with a teal-green accent. Rejected: opting out of edge-to-edge (not possible for apps targeting Android 15+) and theming the platform dialog (still the old look).
+
+## Running timer description saves while typing (2026-10-15)
+
+Both apps save a running timer's description 800 ms after the last keystroke, besides on Enter/Done, leaving the field and Stop. An emptied field waits for Enter/Done, Stop or (Windows) leaving the field, so the page does not get the date as title halfway through retyping. Android starts the description with a capital letter. Rejected: saving on every keystroke (a Notion request per letter).
+
 ## Android backup copies only the settings file (2026-10-15)
 
 The Android backup rules used to back up everything except the API key files. They now list only the settings file (`notion_settings`), the same allow-list approach as the template and the sibling apps: a file added later is never backed up by accident, and `BackupRulesTest` fails if the rules drift or ever include the API key. What is backed up today is unchanged (the settings file is the only other file the app writes). Rejected: keeping the exclude list (one forgotten exclusion leaks a secret into the backup).
