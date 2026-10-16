@@ -16,10 +16,11 @@ export default {
   hintManualEnd: 'Remplir une heure de fin arrête le minuteur.',
   toastEndBeforeStart: 'L\'heure de fin doit être après l\'heure de début.',
   warnNoApiKey: 'Aucune clé API Notion configurée.',
-  warnNoApiKeyLink: 'Ouvrir les paramètres',
-  warnNoWorkspaces: 'Ajoutez un espace dans les',
-  warnNoWorkspacesLink: 'Paramètres',
-  warnNoWorkspacesSuffix: 'pour commencer.',
+  setupConnectTitle: 'Connexion à Notion',
+  setupConnectBody: 'Ajoutez votre clé API Notion dans les paramètres pour suivre votre temps.',
+  setupWorkspaceTitle: 'Ajoutez un espace',
+  setupWorkspaceBody: 'Un espace relie le minuteur à une base de données Notion. Ajoutez-en un dans les paramètres.',
+  setupOpenSettings: 'Ouvrir les paramètres',
 
   // Settings
   settingsTitle: 'Paramètres',

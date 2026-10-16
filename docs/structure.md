@@ -88,7 +88,7 @@ time-tracker-for-notion/
             │   ├── ui/
             │   │   ├── screens/              TimerScreen, SettingsScreen
             │   │   ├── components/           WorkspaceModal, EditTimerModal, ExtraFieldInput, SearchableDropdown
-            │   │   └── theme/                Material 3 theme, workspace colours, shared design kit (Motion, Shapes, SystemBars, SettingsKit)
+            │   │   └── theme/                Material 3 theme, workspace colours, shared design kit (Motion, Shapes, SystemBars, SettingsKit, EmptyState)
             │   └── viewmodel/                TimerViewModel, SettingsViewModel
             └── res/
                 ├── drawable/, mipmap-anydpi-v26/   Generated launcher icon layers

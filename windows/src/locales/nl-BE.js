@@ -16,10 +16,11 @@ export default {
   hintManualEnd: 'Een eindtijd invullen stopt de timer.',
   toastEndBeforeStart: 'De eindtijd moet na de starttijd liggen.',
   warnNoApiKey: 'Geen Notion API-sleutel ingesteld.',
-  warnNoApiKeyLink: 'Instellingen openen',
-  warnNoWorkspaces: 'Voeg een werkruimte toe in',
-  warnNoWorkspacesLink: 'Instellingen',
-  warnNoWorkspacesSuffix: 'om te beginnen.',
+  setupConnectTitle: 'Verbind met Notion',
+  setupConnectBody: 'Voeg je Notion API-sleutel toe in Instellingen om tijd bij te houden.',
+  setupWorkspaceTitle: 'Voeg een werkruimte toe',
+  setupWorkspaceBody: 'Een werkruimte koppelt de timer aan een Notion-database. Voeg er een toe in Instellingen.',
+  setupOpenSettings: 'Naar instellingen',
 
   // Settings
   settingsTitle: 'Instellingen',

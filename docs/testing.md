@@ -40,11 +40,12 @@ All tests are unit tests. Windows: 45 tests across 8 files:
 | `src/lib/color.test.js` | Light/dark workspace colour variants reach ~3:1 contrast; extremes (white, black, yellow) stay usable and recognisable |
 | `src/lib/presets.test.js` | Untitled presets get their description or the workspace name; workspaces without presets are untouched |
 | `src/lib/descriptionAutoSave.test.js` | A running timer's description is auto-saved only when it really changed; spaces and an emptied field don't trigger a save |
+| `src/lib/setupStep.test.js` | Which setup screen the timer shows: connect to Notion without an API key, add a workspace without one, nothing once both are set or while settings load |
 | `src/store/useStore.test.js` | `init()` is idempotent under React StrictMode (no double interval); a failed running-timer query keeps the active timer |
 | `electron/apiKey.test.cjs` | The API key is saved encrypted, an old plain key is moved over, plain fallback without encryption, clearing, undecryptable keys read as empty, the renderer never gets the encrypted field |
 | `electron/bundlePath.test.cjs` | `app://bundle/` maps only to files inside `dist/`; `../` and encoded tricks, other schemes and hosts are refused |
 
-Android: 6 tests in `SyncPayloadJsonTest`, `DescriptionAutoSaveTest` (same auto-save rule as Windows), `BackupRulesTest`, plus the release-script tests in `android/scripts/tests/` (version parsing and bumping, version codes, keystore-secret decoding).
+Android: tests in `SyncPayloadJsonTest`, `DescriptionAutoSaveTest` (same auto-save rule as Windows), `SetupStepTest` (same setup-screen rule as Windows), `BackupRulesTest`, plus the release-script tests in `android/scripts/tests/` (version parsing and bumping, version codes, keystore-secret decoding).
 
 ## Strategy
 

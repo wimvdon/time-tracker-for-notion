@@ -14,11 +14,6 @@
     <string name="label_end_time">Heure de fin</string>
     <string name="time_now">Maintenant</string>
     <string name="hint_manual_end">Remplir une heure de fin arrête le minuteur.</string>
-    <string name="warn_no_api_key">Aucune clé API Notion configurée.</string>
-    <string name="warn_no_api_key_link">Ouvrir les paramètres</string>
-    <string name="warn_no_workspaces">Ajoutez un espace dans les</string>
-    <string name="warn_no_workspaces_link">Paramètres</string>
-    <string name="warn_no_workspaces_suffix">pour commencer.</string>
 
     <!-- Settings -->
     <string name="settings_title">Paramètres</string>
@@ -217,4 +212,9 @@
     <string name="section_collapsed">Réduit</string>
     <string name="label_theme_mode">Thème</string>
     <string name="sync_summary_not_connected">Non connecté</string>
+    <string name="setup_connect_title">Connexion à Notion</string>
+    <string name="setup_connect_body">Ajoutez votre clé API Notion dans les paramètres pour suivre votre temps.</string>
+    <string name="setup_workspace_title">Ajoutez un espace</string>
+    <string name="setup_workspace_body">Un espace relie le minuteur à une base de données Notion. Ajoutez-en un dans les paramètres.</string>
+    <string name="setup_open_settings">Ouvrir les paramètres</string>
 </resources>

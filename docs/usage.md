@@ -35,6 +35,8 @@ Everything inside that page is included. If you'll use settings sync, the page w
 
 ## 2. Connect the app
 
+Until the key and a workspace are set, the timer screen shows **Connect to Notion** (or **Add a workspace**) with an **Open settings** button instead of the timer.
+
 ### 2.1 Add the key
 
 **Settings** › paste into **Notion API Key** › **Test connection & save**. Expect **API key works and was saved.**

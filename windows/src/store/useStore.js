@@ -106,6 +106,8 @@ export async function fetchExtraFieldDefs(workspace) {
 
 export const useStore = create((set, get) => ({
   // Settings
+  /** False until the stored settings have been read, so the setup screen doesn't flash at start. */
+  settingsLoaded: false,
   apiKey: '',
   workspaces: [],
   alwaysOnTop: true,
@@ -241,6 +243,7 @@ export const useStore = create((set, get) => ({
     setLocale(activeLocale);
 
     set({
+      settingsLoaded: true,
       apiKey: settings.apiKey || '',
       workspaces,
       alwaysOnTop: settings.alwaysOnTop !== false,

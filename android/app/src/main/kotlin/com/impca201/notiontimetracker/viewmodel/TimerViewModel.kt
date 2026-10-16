@@ -57,6 +57,8 @@ private fun uiError(key: String, cause: Throwable): String = uiError(key, cause.
 class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
 
     data class UiState(
+        /** False until the stored settings have been read, so the setup screen doesn't flash at start. */
+        val settingsLoaded: Boolean = false,
         val apiKey: String = "",
         val workspaces: List<Workspace> = emptyList(),
         val selectedWorkspaceId: String? = null,
@@ -197,6 +199,7 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
 
             _uiState.update { state ->
                 state.copy(
+                    settingsLoaded = true,
                     apiKey = apiKey,
                     workspaces = workspaces,
                     locale = locale,
@@ -256,6 +259,7 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
             }
         } catch (e: Exception) {
             android.util.Log.e("TimerViewModel", "Failed to load initial state", e)
+            _uiState.update { it.copy(settingsLoaded = true) }
         }
     }
 
@@ -270,6 +274,7 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
             val showNotionLink = settingsRepo.showNotionLinkFlow.first()
             val showArchiveAction = settingsRepo.showArchiveActionFlow.first()
             _uiState.update { it.copy(
+                settingsLoaded = true,
                 apiKey = apiKey,
                 workspaces = workspaces,
                 locale = locale,
