@@ -14,7 +14,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -65,7 +64,6 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.LocalFocusManager
 import com.impca201.notiontimetracker.viewmodel.DescriptionAutoSave
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
@@ -1104,18 +1102,14 @@ private fun OtherRunningTimers(
         val elapsedSecs = if (startMs > 0) (nowMs - startMs) / 1000L else 0L
         val elapsedStr = formatElapsed(elapsedSecs.coerceAtLeast(0L))
 
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .then(if (!isActive) Modifier.clickable { onLoad(rt) } else Modifier),
-            colors = CardDefaults.cardColors(
-                containerColor = if (isActive) MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.5f)
-                else MaterialTheme.colorScheme.surfaceContainerHigh
-            )
-        ) {
-            Row(
+        // A list row, not a card per timer; tap to show it in the timer above.
+        Row(
                 modifier = Modifier
-                    .padding(horizontal = 12.dp, vertical = 8.dp)
+                    .fillMaxWidth()
+                    .clip(AppShapes.Item)
+                    .then(if (!isActive) Modifier.clickable { onLoad(rt) } else Modifier)
+                    .heightIn(min = 56.dp)
+                    .padding(vertical = 4.dp)
                     .then(if (isActive) Modifier.alpha(0.6f) else Modifier),
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -1133,7 +1127,7 @@ private fun OtherRunningTimers(
                     )
                 }
                 if (!isActive) {
-                    IconButton(onClick = { onStop(rt) }, modifier = Modifier.size(36.dp)) {
+                    IconButton(onClick = { onStop(rt) }) {
                         Icon(
                             Icons.Rounded.Stop,
                             contentDescription = stringResource(R.string.btn_stop),
@@ -1143,7 +1137,7 @@ private fun OtherRunningTimers(
                     }
                 }
                 if (showNotionLink && rt.url.isNotBlank()) {
-                    IconButton(onClick = { onOpenUrl(rt.url) }, modifier = Modifier.size(36.dp)) {
+                    IconButton(onClick = { onOpenUrl(rt.url) }) {
                         Icon(
                             Icons.AutoMirrored.Rounded.OpenInNew,
                             contentDescription = stringResource(R.string.title_open_in_notion),
@@ -1153,7 +1147,7 @@ private fun OtherRunningTimers(
                     }
                 }
                 if (showArchiveAction) {
-                    IconButton(onClick = { onDelete(rt) }, modifier = Modifier.size(36.dp)) {
+                    IconButton(onClick = { onDelete(rt) }) {
                         Icon(
                             Icons.Rounded.Delete,
                             contentDescription = stringResource(R.string.title_delete_entry),
@@ -1163,7 +1157,6 @@ private fun OtherRunningTimers(
                     }
                 }
             }
-        }
     }
 }
 
@@ -1197,17 +1190,14 @@ private fun RecentEntriesSection(
     entries.forEach { re ->
         val timeRange = formatRecentRange(re.startISO, re.endISO, dateFormat, timeFormat == "12h")
         val wsAccent = workspaceAccentColor(workspaces.firstOrNull { it.id == re.workspaceId }?.color)
-        val cardContainerColor = wsAccent?.copy(alpha = 0.15f) ?: MaterialTheme.colorScheme.surfaceContainerHigh
 
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = cardContainerColor),
-            border = wsAccent?.let { BorderStroke(1.dp, it.copy(alpha = 0.4f)) }
-        ) {
-            Row(
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+        // A list row with the workspace's colour as a dot, not a tinted card per entry.
+        Row(
+                modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp).padding(vertical = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                WorkspaceSwatch(wsAccent ?: MaterialTheme.colorScheme.outlineVariant)
                 Column(modifier = Modifier.weight(1f)) {
                     Text(re.title, style = MaterialTheme.typography.bodyMedium, maxLines = 1)
                     Text(
@@ -1225,7 +1215,7 @@ private fun RecentEntriesSection(
                         overflow = TextOverflow.Ellipsis
                     )
                 }
-                IconButton(onClick = { onPlay(re) }, modifier = Modifier.size(36.dp)) {
+                IconButton(onClick = { onPlay(re) }) {
                     Icon(
                         Icons.Rounded.PlayArrow,
                         contentDescription = stringResource(R.string.title_start_from_entry),
@@ -1234,7 +1224,7 @@ private fun RecentEntriesSection(
                     )
                 }
                 if (showNotionLink && re.url.isNotBlank()) {
-                    IconButton(onClick = { onOpenUrl(re.url) }, modifier = Modifier.size(36.dp)) {
+                    IconButton(onClick = { onOpenUrl(re.url) }) {
                         Icon(
                             Icons.AutoMirrored.Rounded.OpenInNew,
                             contentDescription = stringResource(R.string.title_open_in_notion),
@@ -1244,7 +1234,7 @@ private fun RecentEntriesSection(
                     }
                 }
                 if (showArchiveAction) {
-                    IconButton(onClick = { onDelete(re) }, modifier = Modifier.size(36.dp)) {
+                    IconButton(onClick = { onDelete(re) }) {
                         Icon(
                             Icons.Rounded.Delete,
                             contentDescription = stringResource(R.string.title_delete_entry),
@@ -1254,25 +1244,19 @@ private fun RecentEntriesSection(
                     }
                 }
             }
-        }
     }
 }
 
-/** Stands in for a recent-entry card (title, workspace, time range) while the list loads. */
+/** Stands in for a recent-entry row (title, workspace, time range) while the list loads. */
 @Composable
 private fun RecentEntrySkeleton() {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(start = 24.dp, top = 8.dp, bottom = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
-        Column(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            SkeletonLine(Modifier.fillMaxWidth(0.6f), height = 16.dp)
-            SkeletonLine(Modifier.fillMaxWidth(0.35f), height = 12.dp)
-            SkeletonLine(Modifier.fillMaxWidth(0.5f), height = 12.dp)
-        }
+        SkeletonLine(Modifier.fillMaxWidth(0.6f), height = 16.dp)
+        SkeletonLine(Modifier.fillMaxWidth(0.35f), height = 12.dp)
+        SkeletonLine(Modifier.fillMaxWidth(0.5f), height = 12.dp)
     }
 }
 
@@ -1319,18 +1303,13 @@ private fun PresetChips(
         )
         return
     }
-    // SuggestionChip pads itself out to Material3's ~48dp minimum touch target, which
-    // makes each chip's laid-out height much taller than its visible ~32dp content —
-    // that invisible padding was stacking on top of the declared line spacing below,
-    // making wrapped rows look far apart. Setting the minimum to 0.dp here lets the
-    // chips (and the gap between wrapped lines) size to their actual visual content.
-    // (The older LocalMinimumInteractiveComponentEnforcement flag is deprecated and
-    // ignored since Material3 1.3, so it no longer has any effect.)
-    CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides 0.dp) {
+    // Chips keep Material's 48dp touch target: their invisible touch padding already
+    // separates wrapped lines, so the rows get no extra spacing of their own.
+    run {
         FlowRow(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically)
+            verticalArrangement = Arrangement.Center
         ) {
             allPresets.forEach { (ws, preset) ->
                 val wsColor = workspaceAccentColor(ws.color)

@@ -1,11 +1,13 @@
 package com.impca201.notiontimetracker.ui.screens
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.*
 import androidx.compose.material.icons.rounded.*
+import androidx.compose.material3.ListItem
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -24,10 +26,10 @@ import com.impca201.notiontimetracker.data.models.ThemeMode
 import com.impca201.notiontimetracker.data.models.Workspace
 import androidx.activity.compose.BackHandler
 import com.impca201.notiontimetracker.ui.components.WorkspaceModal
-import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import com.impca201.notiontimetracker.ui.theme.AppShapes
 import com.impca201.notiontimetracker.ui.theme.AppearanceSettings
-import com.impca201.notiontimetracker.ui.theme.CollapsibleSection
+import com.impca201.notiontimetracker.ui.theme.SettingsBlock
+import com.impca201.notiontimetracker.ui.theme.SettingsSection
 import com.impca201.notiontimetracker.ui.theme.SettingsFooter
 import com.impca201.notiontimetracker.ui.theme.SettingsScaffold
 import com.impca201.notiontimetracker.ui.theme.SwitchSetting
@@ -200,13 +202,15 @@ fun SettingsScreen(
     ) {
         if (uiState.workspaces.isEmpty()) {
             item(key = "first-launch") {
-                Surface(shape = AppShapes.Group, color = MaterialTheme.colorScheme.secondaryContainer) {
-                    Row(
-                        modifier = Modifier.padding(16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        Icon(Icons.Rounded.Info, contentDescription = null)
-                        Text(stringResource(R.string.first_launch_hint), style = MaterialTheme.typography.bodyMedium)
+                SettingsBlock {
+                    Surface(shape = AppShapes.Group, color = MaterialTheme.colorScheme.secondaryContainer) {
+                        Row(
+                            modifier = Modifier.padding(16.dp),
+                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            Icon(Icons.Rounded.Info, contentDescription = null)
+                            Text(stringResource(R.string.first_launch_hint), style = MaterialTheme.typography.bodyMedium)
+                        }
                     }
                 }
             }
@@ -214,13 +218,8 @@ fun SettingsScreen(
 
         // --- Connection: API key and sync ---
         item(key = "api-key") {
-            CollapsibleSection(
-                key = "api-key",
-                title = stringResource(R.string.label_api_key),
-                summary = uiState.savedApiKey.takeIf { it.isNotBlank() }?.let { "••••" + it.takeLast(4) },
-                icon = rememberVectorPainter(Icons.Rounded.Key),
-                initiallyExpanded = uiState.savedApiKey.isBlank()
-            ) {
+            SettingsSection(title = stringResource(R.string.label_api_key)) {
+              SettingsBlock {
                 OutlinedTextField(
                     value = uiState.apiKey,
                     onValueChange = onApiKeyChange,
@@ -265,25 +264,25 @@ fun SettingsScreen(
                         Text(stringResource(R.string.btn_remove_key), color = MaterialTheme.colorScheme.error)
                     }
                 }
+              }
             }
         }
 
         item(key = "sync") {
-            CollapsibleSection(
-                key = "sync",
-                title = stringResource(R.string.label_sync),
-                summary = if (uiState.syncPageId != null) {
-                    stringResource(R.string.sync_status_connected, uiState.syncPageTitle.ifBlank { uiState.syncPageId!! })
-                } else {
-                    stringResource(R.string.sync_summary_not_connected)
-                },
-                icon = rememberVectorPainter(Icons.Rounded.Sync)
-            ) {
+            SettingsSection(title = stringResource(R.string.label_sync)) {
                 if (uiState.syncPageId != null) {
-                    TextButton(onClick = onDisconnectSync) {
-                        Text(stringResource(R.string.btn_disconnect_sync))
-                    }
-                } else {
+                    ListItem(
+                        headlineContent = {
+                            Text(stringResource(R.string.sync_status_connected, uiState.syncPageTitle.ifBlank { uiState.syncPageId!! }))
+                        },
+                        leadingContent = { Icon(Icons.Rounded.Sync, contentDescription = null) },
+                        trailingContent = {
+                            TextButton(onClick = onDisconnectSync) {
+                                Text(stringResource(R.string.btn_disconnect_sync))
+                            }
+                        }
+                    )
+                } else SettingsBlock {
                     Text(
                         stringResource(R.string.sync_status_not_connected),
                         style = MaterialTheme.typography.bodyMedium,
@@ -303,14 +302,16 @@ fun SettingsScreen(
 
         // --- App features ---
         item(key = "workspaces") {
-            CollapsibleSection(
-                key = "workspaces",
-                title = stringResource(R.string.label_workspaces),
-                summary = uiState.workspaces.takeIf { it.isNotEmpty() }?.joinToString(", ") { it.name }
-                    ?: stringResource(R.string.no_workspaces_yet),
-                icon = rememberVectorPainter(Icons.Rounded.Folder),
-                initiallyExpanded = uiState.workspaces.isEmpty()
-            ) {
+            SettingsSection(title = stringResource(R.string.label_workspaces)) {
+                if (uiState.workspaces.isEmpty()) {
+                    SettingsBlock {
+                        Text(
+                            stringResource(R.string.no_workspaces_yet),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
                 uiState.workspaces.forEachIndexed { index, workspace ->
                     WorkspaceListItem(
                         workspace = workspace,
@@ -323,24 +324,18 @@ fun SettingsScreen(
                         onMoveDown = { onMoveDown(workspace.id) }
                     )
                 }
-                OutlinedButton(onClick = onAddWorkspace, modifier = Modifier.fillMaxWidth()) {
-                    Icon(Icons.Rounded.Add, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
-                    Spacer(Modifier.width(ButtonDefaults.IconSpacing))
-                    Text(stringResource(R.string.btn_add_workspace))
+                SettingsBlock {
+                    OutlinedButton(onClick = onAddWorkspace, modifier = Modifier.fillMaxWidth()) {
+                        Icon(Icons.Rounded.Add, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
+                        Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+                        Text(stringResource(R.string.btn_add_workspace))
+                    }
                 }
             }
         }
 
         item(key = "notion-actions") {
-            CollapsibleSection(
-                key = "notion-actions",
-                title = stringResource(R.string.label_notion_actions),
-                summary = listOfNotNull(
-                    stringResource(R.string.title_open_in_notion).takeIf { uiState.showNotionLink },
-                    stringResource(R.string.confirm_delete_confirm).takeIf { uiState.showArchiveAction }
-                ).joinToString(", ").ifEmpty { null },
-                icon = rememberVectorPainter(Icons.Rounded.Link)
-            ) {
+            SettingsSection(title = stringResource(R.string.label_notion_actions)) {
                 SwitchSetting(
                     title = stringResource(R.string.label_show_notion_link),
                     summary = null,
@@ -358,12 +353,7 @@ fun SettingsScreen(
 
         // --- Appearance, then language and formats ---
         item(key = "appearance") {
-            CollapsibleSection(
-                key = "appearance",
-                title = stringResource(R.string.label_theme),
-                summary = themeOptions.first { it.first == uiState.themeMode }.second,
-                icon = rememberVectorPainter(Icons.Rounded.Palette)
-            ) {
+            SettingsSection(title = stringResource(R.string.label_theme)) {
                 AppearanceSettings(
                     themeLabel = stringResource(R.string.label_theme_mode),
                     themeOptions = themeOptions.map { it.second },
@@ -379,12 +369,8 @@ fun SettingsScreen(
         }
 
         item(key = "language") {
-            CollapsibleSection(
-                key = "language",
-                title = stringResource(R.string.label_language),
-                summary = "${selectedLanguage.name} · ${selectedDateFormat.name} · ${selectedTimeFormat.name}",
-                icon = rememberVectorPainter(Icons.Rounded.Language)
-            ) {
+            SettingsSection(title = stringResource(R.string.label_language)) {
+              SettingsBlock {
                 SearchableDropdown(
                     options = languageOptions,
                     selected = selectedLanguage,
@@ -411,6 +397,7 @@ fun SettingsScreen(
                     searchable = false,
                     modifier = Modifier.fillMaxWidth()
                 )
+              }
             }
         }
 
@@ -431,50 +418,38 @@ private fun WorkspaceListItem(
     onMoveUp: () -> Unit,
     onMoveDown: () -> Unit
 ) {
-    Card(
-        shape = AppShapes.Item,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(modifier = Modifier.weight(1f).padding(start = 4.dp)) {
-                Text(workspace.name, style = MaterialTheme.typography.bodyLarge)
-                if (workspace.roundingMinutes > 0) {
-                    Text(
-                        stringResource(R.string.workspace_rounding_summary, workspace.roundingMinutes),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+    // A list row (tap to edit), not a card per workspace.
+    ListItem(
+        headlineContent = { Text(workspace.name) },
+        supportingContent = if (workspace.roundingMinutes > 0) {
+            { Text(stringResource(R.string.workspace_rounding_summary, workspace.roundingMinutes)) }
+        } else null,
+        trailingContent = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column {
+                    IconButton(onClick = onMoveUp, enabled = canMoveUp) {
+                        Icon(Icons.Rounded.KeyboardArrowUp, contentDescription = stringResource(R.string.title_move_up))
+                    }
+                    IconButton(onClick = onMoveDown, enabled = canMoveDown) {
+                        Icon(Icons.Rounded.KeyboardArrowDown, contentDescription = stringResource(R.string.title_move_down))
+                    }
+                }
+                IconButton(onClick = onEdit) {
+                    Icon(Icons.Rounded.Edit, contentDescription = stringResource(R.string.modal_title_edit_workspace))
+                }
+                IconButton(onClick = onDelete, enabled = !timerRunning) {
+                    Icon(
+                        Icons.Rounded.Delete,
+                        contentDescription = if (timerRunning) stringResource(R.string.title_delete_workspace_disabled)
+                        else stringResource(R.string.title_delete_workspace),
+                        tint = if (timerRunning) MaterialTheme.colorScheme.onSurfaceVariant
+                        else MaterialTheme.colorScheme.error
                     )
                 }
             }
-
-            Column {
-                IconButton(onClick = onMoveUp, enabled = canMoveUp) {
-                    Icon(Icons.Rounded.KeyboardArrowUp, contentDescription = stringResource(R.string.title_move_up))
-                }
-                IconButton(onClick = onMoveDown, enabled = canMoveDown) {
-                    Icon(Icons.Rounded.KeyboardArrowDown, contentDescription = stringResource(R.string.title_move_down))
-                }
-            }
-
-            IconButton(onClick = onEdit) {
-                Icon(Icons.Rounded.Edit, contentDescription = stringResource(R.string.modal_title_edit_workspace))
-            }
-
-            IconButton(onClick = onDelete, enabled = !timerRunning) {
-                Icon(
-                    Icons.Rounded.Delete,
-                    contentDescription = if (timerRunning) stringResource(R.string.title_delete_workspace_disabled)
-                    else stringResource(R.string.title_delete_workspace),
-                    tint = if (timerRunning) MaterialTheme.colorScheme.onSurfaceVariant
-                    else MaterialTheme.colorScheme.error
-                )
-            }
-        }
-    }
+        },
+        modifier = Modifier.clickable(onClick = onEdit)
+    )
 }
 
 /** Dialog to create a new top-level Notion page holding the sync payload. */
