@@ -16,10 +16,11 @@ export default {
   hintManualEnd: 'Das Eintragen einer Endzeit stoppt den Timer.',
   toastEndBeforeStart: 'Die Endzeit muss nach der Startzeit liegen.',
   warnNoApiKey: 'Kein Notion-API-Schlüssel konfiguriert.',
-  warnNoApiKeyLink: 'Einstellungen öffnen',
-  warnNoWorkspaces: 'Fügen Sie einen Workspace in den',
-  warnNoWorkspacesLink: 'Einstellungen',
-  warnNoWorkspacesSuffix: 'hinzu, um zu starten.',
+  setupConnectTitle: 'Mit Notion verbinden',
+  setupConnectBody: 'Fügen Sie Ihren Notion-API-Schlüssel in den Einstellungen hinzu, um Zeiten zu erfassen.',
+  setupWorkspaceTitle: 'Workspace hinzufügen',
+  setupWorkspaceBody: 'Ein Workspace verbindet den Timer mit einer Notion-Datenbank. Fügen Sie einen in den Einstellungen hinzu.',
+  setupOpenSettings: 'Zu den Einstellungen',
 
   // Settings
   settingsTitle: 'Einstellungen',

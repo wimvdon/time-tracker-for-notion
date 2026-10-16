@@ -14,11 +14,6 @@
     <string name="label_end_time">End time</string>
     <string name="time_now">Now</string>
     <string name="hint_manual_end">Filling in an end time stops the timer.</string>
-    <string name="warn_no_api_key">No Notion API key set.</string>
-    <string name="warn_no_api_key_link">Open settings</string>
-    <string name="warn_no_workspaces">Add a workspace in</string>
-    <string name="warn_no_workspaces_link">Settings</string>
-    <string name="warn_no_workspaces_suffix">to get started.</string>
 
     <!-- Settings -->
     <string name="settings_title">Settings</string>
@@ -217,4 +212,9 @@
     <string name="section_collapsed">Collapsed</string>
     <string name="label_theme_mode">Theme</string>
     <string name="sync_summary_not_connected">Not connected</string>
+    <string name="setup_connect_title">Connect to Notion</string>
+    <string name="setup_connect_body">Add your Notion API key in Settings to start tracking time.</string>
+    <string name="setup_workspace_title">Add a workspace</string>
+    <string name="setup_workspace_body">A workspace links the timer to a Notion database. Add one in Settings.</string>
+    <string name="setup_open_settings">Open settings</string>
 </resources>

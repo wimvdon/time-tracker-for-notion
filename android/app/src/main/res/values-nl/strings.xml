@@ -14,11 +14,6 @@
     <string name="label_end_time">Eindtijd</string>
     <string name="time_now">Nu</string>
     <string name="hint_manual_end">Een eindtijd invullen stopt de timer.</string>
-    <string name="warn_no_api_key">Geen Notion API-sleutel ingesteld.</string>
-    <string name="warn_no_api_key_link">Instellingen openen</string>
-    <string name="warn_no_workspaces">Voeg een werkruimte toe in</string>
-    <string name="warn_no_workspaces_link">Instellingen</string>
-    <string name="warn_no_workspaces_suffix">om te beginnen.</string>
 
     <!-- Settings -->
     <string name="settings_title">Instellingen</string>
@@ -217,4 +212,9 @@
     <string name="section_collapsed">Ingevouwen</string>
     <string name="label_theme_mode">Thema</string>
     <string name="sync_summary_not_connected">Niet verbonden</string>
+    <string name="setup_connect_title">Verbind met Notion</string>
+    <string name="setup_connect_body">Voeg je Notion API-sleutel toe in Instellingen om tijd bij te houden.</string>
+    <string name="setup_workspace_title">Voeg een werkruimte toe</string>
+    <string name="setup_workspace_body">Een werkruimte koppelt de timer aan een Notion-database. Voeg er een toe in Instellingen.</string>
+    <string name="setup_open_settings">Naar instellingen</string>
 </resources>

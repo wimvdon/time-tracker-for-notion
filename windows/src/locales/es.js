@@ -16,10 +16,11 @@ export default {
   hintManualEnd: 'Rellenar una hora de fin detiene el temporizador.',
   toastEndBeforeStart: 'La hora de fin debe ser posterior a la de inicio.',
   warnNoApiKey: 'Clave API de Notion no configurada.',
-  warnNoApiKeyLink: 'Abrir ajustes',
-  warnNoWorkspaces: 'Añada un espacio en los',
-  warnNoWorkspacesLink: 'Ajustes',
-  warnNoWorkspacesSuffix: 'para comenzar.',
+  setupConnectTitle: 'Conéctese a Notion',
+  setupConnectBody: 'Añada su clave API de Notion en Ajustes para registrar su tiempo.',
+  setupWorkspaceTitle: 'Añada un espacio',
+  setupWorkspaceBody: 'Un espacio conecta el temporizador con una base de datos de Notion. Añada uno en Ajustes.',
+  setupOpenSettings: 'Abrir ajustes',
 
   // Settings
   settingsTitle: 'Ajustes',

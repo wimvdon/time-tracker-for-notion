@@ -14,11 +14,6 @@
     <string name="label_end_time">Ora di fine</string>
     <string name="time_now">Adesso</string>
     <string name="hint_manual_end">Inserire un\'ora di fine arresta il timer.</string>
-    <string name="warn_no_api_key">Chiave API Notion non configurata.</string>
-    <string name="warn_no_api_key_link">Apri impostazioni</string>
-    <string name="warn_no_workspaces">Aggiungi uno spazio nelle</string>
-    <string name="warn_no_workspaces_link">Impostazioni</string>
-    <string name="warn_no_workspaces_suffix">per iniziare.</string>
 
     <!-- Settings -->
     <string name="settings_title">Impostazioni</string>
@@ -217,4 +212,9 @@
     <string name="section_collapsed">Compresso</string>
     <string name="label_theme_mode">Tema</string>
     <string name="sync_summary_not_connected">Non connesso</string>
+    <string name="setup_connect_title">Collegati a Notion</string>
+    <string name="setup_connect_body">Aggiungi la tua chiave API Notion nelle impostazioni per registrare il tempo.</string>
+    <string name="setup_workspace_title">Aggiungi uno spazio</string>
+    <string name="setup_workspace_body">Uno spazio collega il timer a un database Notion. Aggiungine uno nelle impostazioni.</string>
+    <string name="setup_open_settings">Apri impostazioni</string>
 </resources>

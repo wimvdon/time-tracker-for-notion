@@ -16,10 +16,11 @@ export default {
   hintManualEnd: 'Inserire un\'ora di fine arresta il timer.',
   toastEndBeforeStart: 'L\'ora di fine deve essere successiva a quella di inizio.',
   warnNoApiKey: 'Chiave API Notion non configurata.',
-  warnNoApiKeyLink: 'Apri impostazioni',
-  warnNoWorkspaces: 'Aggiungi uno spazio nelle',
-  warnNoWorkspacesLink: 'Impostazioni',
-  warnNoWorkspacesSuffix: 'per iniziare.',
+  setupConnectTitle: 'Collegati a Notion',
+  setupConnectBody: 'Aggiungi la tua chiave API Notion nelle impostazioni per registrare il tempo.',
+  setupWorkspaceTitle: 'Aggiungi uno spazio',
+  setupWorkspaceBody: 'Uno spazio collega il timer a un database Notion. Aggiungine uno nelle impostazioni.',
+  setupOpenSettings: 'Apri impostazioni',
 
   // Settings
   settingsTitle: 'Impostazioni',

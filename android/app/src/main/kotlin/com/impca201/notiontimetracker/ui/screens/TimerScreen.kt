@@ -44,6 +44,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.res.stringResource
 import com.impca201.notiontimetracker.ui.components.parseWorkspaceColor
+import com.impca201.notiontimetracker.ui.theme.EmptyState
 import com.impca201.notiontimetracker.ui.theme.Motion
 import com.impca201.notiontimetracker.ui.theme.SkeletonBlock
 import com.impca201.notiontimetracker.ui.theme.SkeletonLine
@@ -56,17 +57,14 @@ import androidx.compose.ui.semantics.semantics
 import com.impca201.notiontimetracker.ui.theme.rememberReducedMotion
 import com.impca201.notiontimetracker.ui.theme.workspaceAccentColor
 import com.impca201.notiontimetracker.ui.theme.workspaceSolidFillColor
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.LocalFocusManager
 import com.impca201.notiontimetracker.viewmodel.DescriptionAutoSave
-import androidx.compose.ui.text.style.TextDecoration
+import com.impca201.notiontimetracker.viewmodel.SetupStep
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import com.impca201.notiontimetracker.R
 import com.impca201.notiontimetracker.data.models.Preset
@@ -325,6 +323,13 @@ private fun IdleView(
             }
         }
     ) { padding ->
+        // Until the API key and a workspace are set, the timer can't do anything: the whole
+        // screen says what to set up instead (DESIGN.md, "Empty and setup states").
+        if (!uiState.settingsLoaded) return@Scaffold
+        SetupStep.of(uiState.settingsLoaded, uiState.apiKey, uiState.workspaces.size)?.let { step ->
+            SetupNeeded(step, onNavigateToSettings, Modifier.padding(padding))
+            return@Scaffold
+        }
         Column(
             modifier = Modifier
                 .padding(padding)
@@ -332,28 +337,6 @@ private fun IdleView(
                 .verticalScroll(scrollState),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            if (uiState.apiKey.isBlank()) {
-                val noApiKeyText = buildAnnotatedString {
-                    append(stringResource(R.string.warn_no_api_key))
-                    append(" ")
-                    withStyle(SpanStyle(fontWeight = FontWeight.SemiBold, textDecoration = TextDecoration.Underline)) {
-                        append(stringResource(R.string.warn_no_api_key_link))
-                    }
-                }
-                FlowingWarningCard(text = noApiKeyText, onClick = onNavigateToSettings)
-            } else if (uiState.workspaces.isEmpty()) {
-                val noWorkspacesText = buildAnnotatedString {
-                    append(stringResource(R.string.warn_no_workspaces))
-                    append(" ")
-                    withStyle(SpanStyle(fontWeight = FontWeight.SemiBold, textDecoration = TextDecoration.Underline)) {
-                        append(stringResource(R.string.warn_no_workspaces_link))
-                    }
-                    append(" ")
-                    append(stringResource(R.string.warn_no_workspaces_suffix))
-                }
-                FlowingWarningCard(text = noWorkspacesText, onClick = onNavigateToSettings)
-            }
-
             uiState.error?.let { err ->
                 val message = localisedMessage(err)
                 Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)) {
@@ -1434,21 +1417,15 @@ private fun TimerActionButton(
     }
 }
 
-/** A warning card whose message flows as a single tappable paragraph (the link
- *  stays inline instead of floating onto its own row). */
+/** The full-screen state shown instead of the timer while [step] is not set up yet. */
 @Composable
-private fun FlowingWarningCard(text: androidx.compose.ui.text.AnnotatedString, onClick: () -> Unit) {
-    Card(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onClick() }
-    ) {
-        Text(
-            text,
-            modifier = Modifier.padding(12.dp),
-            style = MaterialTheme.typography.bodySmall
-        )
+private fun SetupNeeded(step: SetupStep, onOpenSettings: () -> Unit, modifier: Modifier = Modifier) {
+    val (icon, title, body) = when (step) {
+        SetupStep.ApiKey -> Triple(Icons.Rounded.Key, R.string.setup_connect_title, R.string.setup_connect_body)
+        SetupStep.Workspace -> Triple(Icons.Rounded.Workspaces, R.string.setup_workspace_title, R.string.setup_workspace_body)
+    }
+    EmptyState(icon, stringResource(title), modifier, body = stringResource(body)) {
+        Button(onClick = onOpenSettings) { Text(stringResource(R.string.setup_open_settings)) }
     }
 }
 

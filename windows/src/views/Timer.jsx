@@ -8,6 +8,7 @@ import { useIsDarkTheme } from '../hooks/useIsDarkTheme.js';
 import ExtraFieldInput from '../components/ExtraFieldInput.jsx';
 import SearchableSelect from '../components/SearchableSelect.jsx';
 import { DESCRIPTION_AUTOSAVE_DELAY_MS, shouldAutoSaveDescription } from '../lib/descriptionAutoSave.js';
+import { setupStep } from '../lib/setupStep.js';
 import {
   ArrowClockwise20Regular,
   Add20Regular,
@@ -24,7 +25,9 @@ import {
   Dismiss16Regular,
   Play20Filled,
   Stop20Filled,
-  Add20Regular as AddPreset20Regular
+  Add20Regular as AddPreset20Regular,
+  Key20Regular,
+  Briefcase20Regular
 } from '@fluentui/react-icons';
 
 /** Combines the date of `base` with an "HH:MM" string from a time input. */
@@ -36,8 +39,10 @@ function timeOnDate(base, hhmm) {
 }
 
 export default function Timer() {
+  const settingsLoaded = useStore((s) => s.settingsLoaded);
   const apiKey = useStore((s) => s.apiKey);
   const workspaces = useStore((s) => s.workspaces);
+  const step = setupStep(settingsLoaded, apiKey, workspaces.length);
   const selectedWorkspaceId = useStore((s) => s.selectedWorkspaceId);
   const selectWorkspace = useStore((s) => s.selectWorkspace);
   const description = useStore((s) => s.description);
@@ -161,6 +166,17 @@ export default function Timer() {
         onNewPresetClick={() => setPresetDraft(newPresetDraft())}
       />
     );
+  } else if (!settingsLoaded) {
+    content = <div className="h-full" />;
+  } else if (step) {
+    // Until the API key and a workspace are set, the timer can't do anything: the whole
+    // view says what to set up instead (DESIGN.md, "Empty and setup states").
+    content = (
+      <div className="flex flex-col h-full">
+        <SetupNeeded step={step} onOpenSettings={() => setView('settings')} />
+        {settingsButton}
+      </div>
+    );
   } else {
     // ---- Idle state ----
     const canStart = !!apiKey && !!selectedWorkspaceId && !extrasLoading && !isStarting;
@@ -172,24 +188,6 @@ export default function Timer() {
     content = (
       <div className="flex flex-col h-full">
         <div className="flex-1 flex flex-col px-5 pt-5 pb-4 gap-4 overflow-y-auto">
-          {!apiKey && (
-            <div className="text-xs bg-warning-bg border border-warning-stroke text-fg1 rounded-md p-2">
-              {t('warnNoApiKey')}{' '}
-              <button onClick={() => setView('settings')} className="underline font-semibold">
-                {t('warnNoApiKeyLink')}
-              </button>
-            </div>
-          )}
-          {apiKey && workspaces.length === 0 && (
-            <div className="text-xs bg-control border border-stroke text-fg2 rounded-md p-2">
-              {t('warnNoWorkspaces')}{' '}
-              <button onClick={() => setView('settings')} className="underline font-semibold">
-                {t('warnNoWorkspacesLink')}
-              </button>{' '}
-              {t('warnNoWorkspacesSuffix')}
-            </div>
-          )}
-
           <PresetChips
             workspaces={workspaces}
             apiKey={apiKey}
@@ -1391,6 +1389,28 @@ function DeleteConfirmDialog({ title, onConfirm, onCancel }) {
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+/** The view shown instead of the timer while `step` ('apiKey' or 'workspace') is not set up. */
+function SetupNeeded({ step, onOpenSettings }) {
+  const Icon = step === 'apiKey' ? Key20Regular : Briefcase20Regular;
+  const title = step === 'apiKey' ? t('setupConnectTitle') : t('setupWorkspaceTitle');
+  const body = step === 'apiKey' ? t('setupConnectBody') : t('setupWorkspaceBody');
+  return (
+    <div className="flex-1 flex flex-col items-center justify-center gap-2 px-8 py-6 overflow-y-auto text-center">
+      <div className="w-16 h-16 mb-2 rounded-full bg-control flex items-center justify-center text-accent">
+        <Icon className="w-8 h-8" />
+      </div>
+      <h2 className="text-base font-semibold text-fg1">{title}</h2>
+      <p className="text-sm text-fg2 max-w-xs">{body}</p>
+      <button
+        onClick={onOpenSettings}
+        className="mt-2 px-4 py-2 rounded-md bg-accent hover:bg-accent-hover active:bg-accent-pressed text-on-accent text-sm font-semibold"
+      >
+        {t('setupOpenSettings')}
+      </button>
     </div>
   );
 }

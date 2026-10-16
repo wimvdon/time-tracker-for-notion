@@ -16,10 +16,11 @@ export default {
   hintManualEnd: 'Filling in an end time stops the timer.',
   toastEndBeforeStart: 'The end time must be after the start time.',
   warnNoApiKey: 'No Notion API key set.',
-  warnNoApiKeyLink: 'Open settings',
-  warnNoWorkspaces: 'Add a workspace in',
-  warnNoWorkspacesLink: 'Settings',
-  warnNoWorkspacesSuffix: 'to get started.',
+  setupConnectTitle: 'Connect to Notion',
+  setupConnectBody: 'Add your Notion API key in Settings to start tracking time.',
+  setupWorkspaceTitle: 'Add a workspace',
+  setupWorkspaceBody: 'A workspace links the timer to a Notion database. Add one in Settings.',
+  setupOpenSettings: 'Open settings',
 
   // Settings
   settingsTitle: 'Settings',
