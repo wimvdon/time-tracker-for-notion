@@ -1,5 +1,16 @@
 # Technical decisions
 
+## 2026-10-16: Android: settings as one list, list rows for timers, full touch targets
+
+A Material 3 audit (owner's request) of the Android app. Settings are one list with section
+headers instead of collapsed cards (shared `SettingsKit.kt`); workspaces are list rows (tap to
+edit). Active timers and recent time entries were a card each, which Material 3 lists as an
+anti-pattern; they are now list rows, with the workspace colour as a dot. Their icon buttons were
+shrunk to 36dp and the preset chips had their minimum touch size switched off, both below the
+48dp that Android's accessibility rules require; both now keep the full size. The Windows app is
+unchanged. Rejected: keeping workspace-tinted cards for recent entries (the dot carries the
+colour without boxing every row).
+
 ## Android: keyboard room and Material 3 time picker (2026-10-15)
 
 The app targets Android 15+ and draws edge to edge, so the system no longer shrinks the screen when the keyboard opens (`adjustResize` has no effect). Every Android screen with text fields now adds the keyboard to its content insets (`ScaffoldDefaults.contentWindowInsets.union(WindowInsets.ime)`), so the focused field scrolls into view. The time fields use the Compose Material 3 `TimePickerDialog` instead of `android.app.TimePickerDialog`, which drew in the old platform style with a teal-green accent. Rejected: opting out of edge-to-edge (not possible for apps targeting Android 15+) and theming the platform dialog (still the old look).

@@ -1,11 +1,11 @@
 # Design
 
-Time Tracker for Notion (Android) is one of three sibling Android apps (Tracker for Simkl, Time Tracker for Notion and
-Snoozer) that share one design language.
+Time Tracker for Notion (Android) is one of the sibling Android apps (Tracker for Simkl, Time
+Tracker for Notion, Snoozer, RSS Reader and Noter for Notion) that share one design language.
 
 The shared rules (every section except "This app") have their master copy in `DESIGN.md` of
 the android-app template (`wimvdon/android-app`). Change them there first, then copy them
-unchanged to all three apps. Only the "This app" section belongs to this repository.
+unchanged to every app. Only the "This app" section belongs to this repository.
 
 ## Icons
 
@@ -20,6 +20,8 @@ unchanged to all three apps. Only the "This app" section belongs to this reposit
 | Tracker for Simkl | TV screen with a checkmark | `#3D7BFF` → `#7A5CFF` → `#D15CE6` |
 | Time Tracker for Notion | Stopwatch dial with a hand | `#FF8A3D` → `#F04438` → `#C81E5A` |
 | Snoozer | Nine-lobed "cookie" (the home screen toggle) with a bell | `#22C3B4` → `#3E7BDA` → `#4E5BB0` |
+| RSS Reader | The feed symbol on its own (owner's choice, see its "This app") | `#4FC3F7` → `#0091EA` → `#0D47A1` |
+| Noter for Notion | Sticky note on a 3D box with a folded corner | `#FFC94D` → `#F5A623` → `#E8710A` |
 
 ## Colour
 
@@ -40,19 +42,47 @@ unchanged to all three apps. Only the "This app" section belongs to this reposit
 - Icons come from Material's Rounded set; direction-dependent icons use `AutoMirrored`.
 - Cards and grouped surfaces use the `surfaceContainer*` roles.
 - Components keep Material's shape scale (`MaterialTheme.shapes`). App-level containers use
-  `AppShapes`: `Group` (24dp) for grouped settings and banners, `Item` (20dp) for rows in a list.
+  `AppShapes`: `Group` (24dp) for banners and grouped content, `Item` (20dp) for tiles and
+  highlighted rows.
+
+## Navigation and structure
+
+Follows Material 3's split between destinations and actions:
+
+- Top-level destinations (two to five) sit in Material's `NavigationBar`, docked at the bottom
+  edge. On wide windows an app may switch to a `NavigationRail` with the same destinations in
+  the same order. Floating bars (M3 Expressive's floating toolbar) are for actions on the
+  current screen, never for switching sections.
+- Tabs are only for peer views of the same content. Chips filter or sort a collection; they are
+  not navigation and not general buttons.
+- Every other page is a child page: a top app bar with a back arrow, no navigation bar.
+- One FAB at most, for the screen's main action (add, start). Destructive actions never sit in
+  a FAB or next to routine actions without separation, and ask for confirmation or offer Undo.
+- Lists are lists: `ListItem` rows (or rows with the same paddings), separated by spacing or
+  dividers. A card is for a unit that stands on its own (a poster, a banner, a running timer),
+  not for every row or section.
+- Content keeps a readable width on wide windows (about 640dp for lists and settings).
 
 ## Settings screen
 
-Built from `ui/theme/SettingsKit.kt`, so every app's settings look and behave the same:
+Built from `ui/theme/SettingsKit.kt`, so every app's settings look and behave the same. It
+follows the Android and Material 3 settings pattern: one scrolling list, grouped by headers.
 
 - `SettingsScaffold`: a large top app bar ("Settings") that collapses on scroll, with a back
-  button, over a list of sections.
-- Every section is a `CollapsibleSection` card: icon, title and the current value as summary;
-  tap to expand. Sections start collapsed, except one the user still has to fill in (no API key
-  or workspace yet).
-- Inside a section: `SwitchSetting` rows (the whole row is the switch), segmented buttons for a
-  single choice, `CollapsibleSubsection` for longer instructions.
+  button, over one list, at most 640dp wide.
+- `SettingsSection`: a section header (Title Small in the primary colour) above its rows. No
+  cards and no collapsing: every setting is visible and one tap away.
+- Rows inside a section:
+  - `SwitchSetting`: a `ListItem` with a switch; the whole row is the switch and the change
+    applies at once (no Save button).
+  - `SettingItem`: a `ListItem` that opens something (a page, a dialog, another app), with a
+    chevron or "opens elsewhere" icon when it leaves the screen.
+  - `ExpandableSetting`: a row that shows longer instructions below it (setup steps most people
+    read once).
+  - `SettingsBlock`: anything else (a text field, segmented buttons for a single choice among
+    two to four options, an explanation, a button), lined up with the rows' text.
+- A choice among more than four options, or with long labels, opens a dialog with radio buttons
+  from a `SettingItem` that shows the current value.
 - Sections in this order, leaving out what an app does not have:
   1. Connection (account, API key, sync)
   2. The app's own features
@@ -103,9 +133,8 @@ English, Dutch, German, French, Spanish and Italian).
 
 ## Shared design kit
 
-These files live in each app (the template does not include them). They are identical in the
-three apps apart from their package (and `R` import) lines. Copy a change to the other two
-repositories:
+These files live in each app (the template does not include them). They are identical in every
+app apart from their package (and `R` import) lines. Copy a change to the other repositories:
 
 - `ui/theme/Motion.kt`: motion tokens, the shared-axis transition and `rememberReducedMotion()`.
 - `ui/theme/Shapes.kt`: `AppShapes`.
@@ -144,7 +173,10 @@ repositories:
   label: description, start time (and end time while running), extra fields. Idle, the start
   time is empty ("Now") unless the user picks one for a timer they forgot to start.
 - List sections (Active timers, Recent time entries) start with a Title Medium heading and
-  are set apart by space, not dividers.
+  are set apart by space, not dividers. Their entries are list rows (at least 56dp high, icon
+  buttons with full 48dp touch targets), not a card each; a recent entry shows its workspace
+  colour as a dot at the start.
+- Preset chips keep Material's 48dp touch target.
 - Start is green and Stop is red whatever the theme or wallpaper colours (a workspace colour
   replaces the green), so their meaning never depends on Dynamic color.
 - The launcher icon comes from `windows/scripts/generate-icons.cjs` (`npm run icons`), which
