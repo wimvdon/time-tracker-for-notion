@@ -17,7 +17,6 @@
 
     <!-- Settings -->
     <string name="settings_title">Instellingen</string>
-    <string name="first_launch_hint">Voeg je Notion API-sleutel en minstens één werkruimte toe om te beginnen.</string>
     <string name="label_api_key">Notion API-sleutel</string>
     <string name="placeholder_api_key">secret_… of ntn_…</string>
     <string name="btn_show_key">Toon</string>
@@ -54,7 +53,7 @@
     <string name="label_time_entry_status_done">Statusoptie – voltooid</string>
     <string name="loading_properties">Laden…</string>
     <string name="section_extra_fields">Extra velden (optioneel)</string>
-    <string name="hint_extra_fields">Tot vijf extra velden uit de tijdsregistratie-database, handmatig in te vullen in de timer.</string>
+    <string name="hint_extra_fields">Tot vijf extra velden, in te vullen op de timer.</string>
     <string name="btn_add_extra_field">Veld toevoegen</string>
     <string name="title_remove_extra_field">Veld verwijderen</string>
     <string name="placeholder_select_field">Kies veld…</string>
@@ -115,7 +114,7 @@
     <string name="theme_light">Licht</string>
     <string name="theme_dark">Donker</string>
     <string name="label_dynamic_color">Dynamische kleuren</string>
-    <string name="dynamic_color_hint">Kleuren van je achtergrond gebruiken in plaats van het rood van de app</string>
+    <string name="dynamic_color_hint">Kleuren van je achtergrond gebruiken</string>
 
     <!-- Refresh -->
     <string name="btn_refresh_all">Vernieuwen</string>
@@ -174,7 +173,7 @@
 
     <!-- Notion-page sync -->
     <string name="label_sync">Synchronisatie</string>
-    <string name="sync_status_not_connected">Niet verbonden. Maak of koppel een Notion-pagina om werkruimtes, snelstarters en instellingen te synchroniseren tussen apparaten.</string>
+    <string name="sync_status_not_connected">Niet verbonden. Synchroniseert werkruimtes, snelstarters en instellingen tussen apparaten.</string>
     <string name="sync_status_connected">Gesynchroniseerd met “%1$s”</string>
     <string name="btn_create_sync_page">Nieuwe aanmaken</string>
     <string name="btn_load_existing_sync">Bestaande laden</string>

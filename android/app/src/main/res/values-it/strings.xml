@@ -17,7 +17,6 @@
 
     <!-- Settings -->
     <string name="settings_title">Impostazioni</string>
-    <string name="first_launch_hint">Inserisci la chiave API di Notion e almeno uno spazio di lavoro per iniziare.</string>
     <string name="label_api_key">Chiave API di Notion</string>
     <string name="placeholder_api_key">secret_… o ntn_…</string>
     <string name="btn_show_key">Mostra</string>
@@ -54,7 +53,7 @@
     <string name="label_time_entry_status_done">Opzione stato \"Completato\"</string>
     <string name="loading_properties">Caricamento…</string>
     <string name="section_extra_fields">Campi aggiuntivi (opzionale)</string>
-    <string name="hint_extra_fields">Fino a cinque campi aggiuntivi del database delle registrazioni, da compilare manualmente nel timer.</string>
+    <string name="hint_extra_fields">Fino a cinque campi in più, da compilare nel timer.</string>
     <string name="btn_add_extra_field">Aggiungi campo</string>
     <string name="title_remove_extra_field">Rimuovi campo</string>
     <string name="placeholder_select_field">Seleziona campo…</string>
@@ -115,7 +114,7 @@
     <string name="theme_light">Chiaro</string>
     <string name="theme_dark">Scuro</string>
     <string name="label_dynamic_color">Colori dinamici</string>
-    <string name="dynamic_color_hint">Usa i colori dello sfondo invece del rosso dell\'app</string>
+    <string name="dynamic_color_hint">Usa i colori dello sfondo</string>
 
     <!-- Refresh -->
     <string name="btn_refresh_all">Aggiorna</string>
@@ -174,7 +173,7 @@
 
     <!-- Notion-page sync -->
     <string name="label_sync">Sincronizzazione</string>
-    <string name="sync_status_not_connected">Non connesso. Crea o collega una pagina Notion per sincronizzare spazi, scorciatoie e impostazioni tra dispositivi.</string>
+    <string name="sync_status_not_connected">Non connesso. Sincronizza spazi, scorciatoie e impostazioni tra dispositivi.</string>
     <string name="sync_status_connected">Sincronizzato con “%1$s”</string>
     <string name="btn_create_sync_page">Crea nuova</string>
     <string name="btn_load_existing_sync">Carica esistente</string>

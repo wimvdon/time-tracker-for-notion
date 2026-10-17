@@ -24,7 +24,6 @@ export default {
 
   // Settings
   settingsTitle: 'Impostazioni',
-  firstLaunchHint: 'Inserisci la chiave API di Notion e almeno uno spazio di lavoro per iniziare.',
   labelApiKey: 'Chiave API di Notion',
   placeholderApiKey: 'secret_… o ntn_…',
   btnShowKey: 'Mostra',
@@ -46,7 +45,7 @@ export default {
 
   // Notion-page sync
   labelSync: 'Sincronizzazione',
-  syncStatusNotConnected: 'Non connesso. Crea o collega una pagina Notion per sincronizzare spazi, scorciatoie e impostazioni tra dispositivi.',
+  syncStatusNotConnected: 'Non connesso. Sincronizza spazi, scorciatoie e impostazioni tra dispositivi.',
   syncStatusConnected: 'Sincronizzato con “{title}”',
   btnCreateSyncPage: 'Crea nuova',
   btnLoadExistingSync: 'Carica esistente',
@@ -91,7 +90,7 @@ export default {
   hintTimeEntryStatusDone: 'L\'opzione che indica una registrazione come completata.',
   loadingProperties: 'Caricamento…',
   sectionExtraFields: 'Campi aggiuntivi (opzionale)',
-  hintExtraFields: 'Fino a cinque campi aggiuntivi del database delle registrazioni, da compilare manualmente nel timer.',
+  hintExtraFields: 'Fino a cinque campi in più, da compilare nel timer.',
   btnAddExtraField: '+ Aggiungi campo',
   titleRemoveExtraField: 'Rimuovi campo',
   placeholderSelectField: 'Seleziona campo…',

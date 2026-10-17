@@ -17,7 +17,6 @@
 
     <!-- Settings -->
     <string name="settings_title">Einstellungen</string>
-    <string name="first_launch_hint">Gib deinen Notion-API-Schlüssel und mindestens einen Workspace ein, um zu starten.</string>
     <string name="label_api_key">Notion-API-Schlüssel</string>
     <string name="placeholder_api_key">secret_… oder ntn_…</string>
     <string name="btn_show_key">Anzeigen</string>
@@ -54,7 +53,7 @@
     <string name="label_time_entry_status_done">Status-Option für \"Abgeschlossen\"</string>
     <string name="loading_properties">Lade…</string>
     <string name="section_extra_fields">Zusatzfelder (optional)</string>
-    <string name="hint_extra_fields">Bis zu fünf zusätzliche Felder aus der Zeiteinträge-Datenbank, die manuell im Timer ausgefüllt werden.</string>
+    <string name="hint_extra_fields">Bis zu fünf weitere Felder, die im Timer ausgefüllt werden.</string>
     <string name="btn_add_extra_field">Feld hinzufügen</string>
     <string name="title_remove_extra_field">Feld entfernen</string>
     <string name="placeholder_select_field">Feld auswählen…</string>
@@ -115,7 +114,7 @@
     <string name="theme_light">Hell</string>
     <string name="theme_dark">Dunkel</string>
     <string name="label_dynamic_color">Dynamische Farben</string>
-    <string name="dynamic_color_hint">Farben deines Hintergrundbilds statt des App-Rots verwenden</string>
+    <string name="dynamic_color_hint">Farben deines Hintergrundbilds verwenden</string>
 
     <!-- Refresh -->
     <string name="btn_refresh_all">Aktualisieren</string>
@@ -174,7 +173,7 @@
 
     <!-- Notion-page sync -->
     <string name="label_sync">Synchronisierung</string>
-    <string name="sync_status_not_connected">Nicht verbunden. Erstelle oder verknüpfe eine Notion-Seite, um Workspaces, Vorlagen und Einstellungen geräteübergreifend zu synchronisieren.</string>
+    <string name="sync_status_not_connected">Nicht verbunden. Synchronisiert Workspaces, Vorlagen und Einstellungen zwischen Geräten.</string>
     <string name="sync_status_connected">Synchronisiert mit „%1$s“</string>
     <string name="btn_create_sync_page">Neu erstellen</string>
     <string name="btn_load_existing_sync">Bestehende laden</string>

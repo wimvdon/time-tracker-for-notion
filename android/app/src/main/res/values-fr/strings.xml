@@ -17,7 +17,6 @@
 
     <!-- Settings -->
     <string name="settings_title">Paramètres</string>
-    <string name="first_launch_hint">Ajoutez votre clé API Notion et au moins un espace de travail pour commencer.</string>
     <string name="label_api_key">Clé API Notion</string>
     <string name="placeholder_api_key">secret_… ou ntn_…</string>
     <string name="btn_show_key">Afficher</string>
@@ -54,7 +53,7 @@
     <string name="label_time_entry_status_done">Option de statut \"Terminé\"</string>
     <string name="loading_properties">Chargement…</string>
     <string name="section_extra_fields">Champs supplémentaires (facultatif)</string>
-    <string name="hint_extra_fields">Jusqu\'à cinq champs supplémentaires de la base des saisies de temps, à remplir manuellement dans le minuteur.</string>
+    <string name="hint_extra_fields">Jusqu’à cinq champs de plus, à remplir dans le minuteur.</string>
     <string name="btn_add_extra_field">Ajouter un champ</string>
     <string name="title_remove_extra_field">Supprimer le champ</string>
     <string name="placeholder_select_field">Sélectionner le champ…</string>
@@ -115,7 +114,7 @@
     <string name="theme_light">Clair</string>
     <string name="theme_dark">Sombre</string>
     <string name="label_dynamic_color">Couleurs dynamiques</string>
-    <string name="dynamic_color_hint">Utiliser les couleurs du fond d\'écran au lieu du rouge de l\'app</string>
+    <string name="dynamic_color_hint">Utiliser les couleurs du fond d’écran</string>
 
     <!-- Refresh -->
     <string name="btn_refresh_all">Actualiser</string>
@@ -174,7 +173,7 @@
 
     <!-- Notion-page sync -->
     <string name="label_sync">Synchronisation</string>
-    <string name="sync_status_not_connected">Non connecté. Créez ou associez une page Notion pour synchroniser les espaces, raccourcis et paramètres entre appareils.</string>
+    <string name="sync_status_not_connected">Non connecté. Synchronise les espaces, raccourcis et paramètres entre appareils.</string>
     <string name="sync_status_connected">Synchronisé avec « %1$s »</string>
     <string name="btn_create_sync_page">Créer une nouvelle page</string>
     <string name="btn_load_existing_sync">Charger une page existante</string>

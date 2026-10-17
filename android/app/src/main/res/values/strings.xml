@@ -17,7 +17,6 @@
 
     <!-- Settings -->
     <string name="settings_title">Settings</string>
-    <string name="first_launch_hint">Add your Notion API key and at least one workspace to get started.</string>
     <string name="label_api_key">Notion API key</string>
     <string name="placeholder_api_key">secret_… or ntn_…</string>
     <string name="btn_show_key">Show</string>
@@ -54,7 +53,7 @@
     <string name="label_time_entry_status_done">Completed status option</string>
     <string name="loading_properties">Loading…</string>
     <string name="section_extra_fields">Extra fields (optional)</string>
-    <string name="hint_extra_fields">Up to five additional fields from the Time Entries database, filled in manually in the timer.</string>
+    <string name="hint_extra_fields">Up to five more fields, filled in on the timer.</string>
     <string name="btn_add_extra_field">Add field</string>
     <string name="title_remove_extra_field">Remove field</string>
     <string name="placeholder_select_field">Select field…</string>
@@ -115,7 +114,7 @@
     <string name="theme_light">Light</string>
     <string name="theme_dark">Dark</string>
     <string name="label_dynamic_color">Dynamic color</string>
-    <string name="dynamic_color_hint">Use colors from your wallpaper instead of the app’s red</string>
+    <string name="dynamic_color_hint">Use colors from your wallpaper</string>
 
     <!-- Refresh -->
     <string name="btn_refresh_all">Refresh</string>
@@ -174,7 +173,7 @@
 
     <!-- Notion-page sync -->
     <string name="label_sync">Sync</string>
-    <string name="sync_status_not_connected">Not connected. Create or attach a Notion page to sync workspaces, chips and settings across devices.</string>
+    <string name="sync_status_not_connected">Not connected. Syncs workspaces, chips and settings between devices.</string>
     <string name="sync_status_connected">Synced with “%1$s”</string>
     <string name="btn_create_sync_page">Create new</string>
     <string name="btn_load_existing_sync">Load existing</string>
