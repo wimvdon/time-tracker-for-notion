@@ -54,7 +54,6 @@ export default function Settings() {
   const [showCreateSync, setShowCreateSync] = useState(false);
   const [showLoadSync, setShowLoadSync] = useState(false);
 
-  const firstLaunch = !apiKey || workspaces.length === 0;
 
   const handleSaveAndTestKey = async () => {
     const key = keyInput.trim();
@@ -91,12 +90,6 @@ export default function Settings() {
         </button>
         <h1 className="text-base font-semibold">{t('settingsTitle')}</h1>
       </div>
-
-      {firstLaunch && (
-        <div className="text-xs bg-info-bg border border-info-stroke text-fg1 rounded-md p-2">
-          {t('firstLaunchHint')}
-        </div>
-      )}
 
       <div>
         <label className="block text-xs text-fg2 mb-1">{t('labelApiKey')}</label>

@@ -24,7 +24,6 @@ export default {
 
   // Settings
   settingsTitle: 'Settings',
-  firstLaunchHint: 'Add your Notion API key and at least one workspace to get started.',
   labelApiKey: 'Notion API key',
   placeholderApiKey: 'secret_… or ntn_…',
   btnShowKey: 'Show',
@@ -46,7 +45,7 @@ export default {
 
   // Notion-page sync
   labelSync: 'Sync',
-  syncStatusNotConnected: 'Not connected. Create or attach a Notion page to sync workspaces, chips and settings across devices.',
+  syncStatusNotConnected: 'Not connected. Syncs workspaces, chips and settings between devices.',
   syncStatusConnected: 'Synced with “{title}”',
   btnCreateSyncPage: 'Create new',
   btnLoadExistingSync: 'Load existing',
@@ -91,7 +90,7 @@ export default {
   hintTimeEntryStatusDone: 'The option that marks a time entry as finished.',
   loadingProperties: 'Loading…',
   sectionExtraFields: 'Extra fields (optional)',
-  hintExtraFields: 'Up to five additional fields from the Time Entries database, filled in manually in the timer.',
+  hintExtraFields: 'Up to five more fields, filled in on the timer.',
   btnAddExtraField: '+ Add field',
   titleRemoveExtraField: 'Remove field',
   placeholderSelectField: 'Select field…',

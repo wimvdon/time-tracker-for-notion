@@ -26,7 +26,6 @@ import com.impca201.notiontimetracker.data.models.ThemeMode
 import com.impca201.notiontimetracker.data.models.Workspace
 import androidx.activity.compose.BackHandler
 import com.impca201.notiontimetracker.ui.components.WorkspaceModal
-import com.impca201.notiontimetracker.ui.theme.AppShapes
 import com.impca201.notiontimetracker.ui.theme.AppearanceSettings
 import com.impca201.notiontimetracker.ui.theme.SettingsBlock
 import com.impca201.notiontimetracker.ui.theme.SettingsSection
@@ -200,21 +199,6 @@ fun SettingsScreen(
         onBack = onBack,
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) {
-        if (uiState.workspaces.isEmpty()) {
-            item(key = "first-launch") {
-                SettingsBlock {
-                    Surface(shape = AppShapes.Group, color = MaterialTheme.colorScheme.secondaryContainer) {
-                        Row(
-                            modifier = Modifier.padding(16.dp),
-                            horizontalArrangement = Arrangement.spacedBy(16.dp)
-                        ) {
-                            Icon(Icons.Rounded.Info, contentDescription = null)
-                            Text(stringResource(R.string.first_launch_hint), style = MaterialTheme.typography.bodyMedium)
-                        }
-                    }
-                }
-            }
-        }
 
         // --- Connection: API key and sync ---
         item(key = "api-key") {

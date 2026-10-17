@@ -1,5 +1,9 @@
 # Technical decisions
 
+## 2026-10-17: Less help text
+
+The owner found the app over-explanatory; the shared rule is in `DESIGN.md` ("Wording"): help text only says what the screen can't. Removed: the first-launch banner in Settings on both apps (the timer screen now says what to set up and leads there). Shortened: the sync "not connected" line, the extra-fields hint and (Android) the Dynamic color line. Kept: consequences, privacy notes and setup steps. Rejected: removing every hint (the remaining ones say something the screen doesn't).
+
 ## 2026-10-16: Setup needed fills the timer screen
 
 Without an API key or a workspace the timer screen showed a small banner above a timer that couldn't start. It was easy to miss, and Material 3 asks an empty screen to say what it means and offer the next step. Both apps now show one centred state instead of the timer: an icon, "Connect to Notion" (or "Add a workspace"), one sentence and an "Open settings" button. Noter for Notion uses the same words for the same setup. Android uses the shared `ui/theme/EmptyState.kt` (`DESIGN.md`, "Empty and setup states"); Windows keeps its Fluent look with the same layout. The choice of step lives in `setupStep.js` / `SetupStep.kt` with tests. Rejected: a larger banner above the timer (still a screen full of controls that do nothing) and opening Settings automatically on first start (surprising, and it hides what the app is for).

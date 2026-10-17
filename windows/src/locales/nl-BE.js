@@ -24,7 +24,6 @@ export default {
 
   // Settings
   settingsTitle: 'Instellingen',
-  firstLaunchHint: 'Voeg je Notion API-sleutel en minstens één werkruimte toe om te beginnen.',
   labelApiKey: 'Notion API-sleutel',
   placeholderApiKey: 'secret_… of ntn_…',
   btnShowKey: 'Toon',
@@ -46,7 +45,7 @@ export default {
 
   // Notion-page sync
   labelSync: 'Synchronisatie',
-  syncStatusNotConnected: 'Niet verbonden. Maak of koppel een Notion-pagina om werkruimtes, snelstarters en instellingen te synchroniseren tussen apparaten.',
+  syncStatusNotConnected: 'Niet verbonden. Synchroniseert werkruimtes, snelstarters en instellingen tussen apparaten.',
   syncStatusConnected: 'Gesynchroniseerd met “{title}”',
   btnCreateSyncPage: 'Nieuwe aanmaken',
   btnLoadExistingSync: 'Bestaande laden',
@@ -91,7 +90,7 @@ export default {
   hintTimeEntryStatusDone: 'De optie die een voltooide tijdsregistratie aanduidt.',
   loadingProperties: 'Laden…',
   sectionExtraFields: 'Extra velden (optioneel)',
-  hintExtraFields: 'Tot vijf extra velden uit de tijdsregistratie-database, handmatig in te vullen in de timer.',
+  hintExtraFields: 'Tot vijf extra velden, in te vullen op de timer.',
   btnAddExtraField: '+ Veld toevoegen',
   titleRemoveExtraField: 'Veld verwijderen',
   placeholderSelectField: 'Kies veld…',

@@ -24,7 +24,6 @@ export default {
 
   // Settings
   settingsTitle: 'Einstellungen',
-  firstLaunchHint: 'Geben Sie Ihren Notion-API-Schlüssel und mindestens einen Workspace ein, um zu starten.',
   labelApiKey: 'Notion-API-Schlüssel',
   placeholderApiKey: 'secret_… oder ntn_…',
   btnShowKey: 'Anzeigen',
@@ -46,7 +45,7 @@ export default {
 
   // Notion-page sync
   labelSync: 'Synchronisierung',
-  syncStatusNotConnected: 'Nicht verbunden. Erstelle oder verknüpfe eine Notion-Seite, um Workspaces, Vorlagen und Einstellungen geräteübergreifend zu synchronisieren.',
+  syncStatusNotConnected: 'Nicht verbunden. Synchronisiert Workspaces, Vorlagen und Einstellungen zwischen Geräten.',
   syncStatusConnected: 'Synchronisiert mit „{title}“',
   btnCreateSyncPage: 'Neu erstellen',
   btnLoadExistingSync: 'Bestehende laden',
@@ -91,7 +90,7 @@ export default {
   hintTimeEntryStatusDone: 'Die Option, die einen Zeiteintrag als abgeschlossen markiert.',
   loadingProperties: 'Lade…',
   sectionExtraFields: 'Zusatzfelder (optional)',
-  hintExtraFields: 'Bis zu fünf zusätzliche Felder aus der Zeiteinträge-Datenbank, die manuell im Timer ausgefüllt werden.',
+  hintExtraFields: 'Bis zu fünf weitere Felder, die im Timer ausgefüllt werden.',
   btnAddExtraField: '+ Feld hinzufügen',
   titleRemoveExtraField: 'Feld entfernen',
   placeholderSelectField: 'Feld auswählen…',

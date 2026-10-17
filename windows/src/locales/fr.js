@@ -24,7 +24,6 @@ export default {
 
   // Settings
   settingsTitle: 'Paramètres',
-  firstLaunchHint: 'Ajoutez votre clé API Notion et au moins un espace de travail pour commencer.',
   labelApiKey: 'Clé API Notion',
   placeholderApiKey: 'secret_… ou ntn_…',
   btnShowKey: 'Afficher',
@@ -46,7 +45,7 @@ export default {
 
   // Notion-page sync
   labelSync: 'Synchronisation',
-  syncStatusNotConnected: 'Non connecté. Créez ou associez une page Notion pour synchroniser les espaces, raccourcis et paramètres entre appareils.',
+  syncStatusNotConnected: 'Non connecté. Synchronise les espaces, raccourcis et paramètres entre appareils.',
   syncStatusConnected: 'Synchronisé avec « {title} »',
   btnCreateSyncPage: 'Créer une nouvelle page',
   btnLoadExistingSync: 'Charger une page existante',
@@ -91,7 +90,7 @@ export default {
   hintTimeEntryStatusDone: 'Option qui marque une saisie comme terminée.',
   loadingProperties: 'Chargement…',
   sectionExtraFields: 'Champs supplémentaires (facultatif)',
-  hintExtraFields: 'Jusqu\'à cinq champs supplémentaires de la base des saisies de temps, à remplir manuellement dans le minuteur.',
+  hintExtraFields: 'Jusqu’à cinq champs de plus, à remplir dans le minuteur.',
   btnAddExtraField: '+ Ajouter un champ',
   titleRemoveExtraField: 'Supprimer le champ',
   placeholderSelectField: 'Sélectionner le champ…',
