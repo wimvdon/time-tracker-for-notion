@@ -26,6 +26,8 @@ import com.impca201.notiontimetracker.data.models.ThemeMode
 import com.impca201.notiontimetracker.data.models.Workspace
 import androidx.activity.compose.BackHandler
 import com.impca201.notiontimetracker.ui.components.WorkspaceModal
+import com.impca201.notiontimetracker.ui.theme.DragHandle
+import com.impca201.notiontimetracker.ui.theme.ReorderableColumn
 import com.impca201.notiontimetracker.ui.theme.AppearanceSettings
 import com.impca201.notiontimetracker.ui.theme.SettingsBlock
 import com.impca201.notiontimetracker.ui.theme.SettingsSection
@@ -49,8 +51,7 @@ fun SettingsScreen(
     onToggleApiKeyVisible: () -> Unit,
     onTestAndSave: () -> Unit,
     onRemoveApiKey: () -> Unit,
-    onMoveUp: (String) -> Unit,
-    onMoveDown: (String) -> Unit,
+    onMoveWorkspace: (from: Int, to: Int) -> Unit,
     onEditWorkspace: (Workspace) -> Unit,
     onDeleteWorkspace: (String) -> Unit,
     onAddWorkspace: () -> Unit,
@@ -128,7 +129,12 @@ fun SettingsScreen(
             onExtraPropNameChange = onExtraPropNameChange,
             onExtraPropRequiredChange = onExtraPropRequiredChange,
             onExtraPropDefaultChange = onExtraPropDefaultChange,
-            isValid = isEditValid
+            isValid = isEditValid,
+            onRemove = {
+                onDeleteWorkspace(editState.workspaceId)
+                onCloseEdit()
+            },
+            removeEnabled = !uiState.timerRunning
         )
         return
     }
@@ -296,16 +302,15 @@ fun SettingsScreen(
                         )
                     }
                 }
-                uiState.workspaces.forEachIndexed { index, workspace ->
+                ReorderableColumn(
+                    items = uiState.workspaces,
+                    key = { it.id },
+                    onMove = onMoveWorkspace
+                ) { workspace ->
                     WorkspaceListItem(
                         workspace = workspace,
-                        canMoveUp = index > 0,
-                        canMoveDown = index < uiState.workspaces.size - 1,
-                        timerRunning = uiState.timerRunning,
                         onEdit = { onEditWorkspace(workspace) },
-                        onDelete = { onDeleteWorkspace(workspace.id) },
-                        onMoveUp = { onMoveUp(workspace.id) },
-                        onMoveDown = { onMoveDown(workspace.id) }
+                        handle = { DragHandle(handleModifier) }
                     )
                 }
                 SettingsBlock {
@@ -394,13 +399,8 @@ fun SettingsScreen(
 @Composable
 private fun WorkspaceListItem(
     workspace: Workspace,
-    canMoveUp: Boolean,
-    canMoveDown: Boolean,
-    timerRunning: Boolean,
     onEdit: () -> Unit,
-    onDelete: () -> Unit,
-    onMoveUp: () -> Unit,
-    onMoveDown: () -> Unit
+    handle: @Composable () -> Unit
 ) {
     // A list row (tap to edit), not a card per workspace.
     ListItem(
@@ -410,26 +410,10 @@ private fun WorkspaceListItem(
         } else null,
         trailingContent = {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Column {
-                    IconButton(onClick = onMoveUp, enabled = canMoveUp) {
-                        Icon(Icons.Rounded.KeyboardArrowUp, contentDescription = stringResource(R.string.title_move_up))
-                    }
-                    IconButton(onClick = onMoveDown, enabled = canMoveDown) {
-                        Icon(Icons.Rounded.KeyboardArrowDown, contentDescription = stringResource(R.string.title_move_down))
-                    }
-                }
                 IconButton(onClick = onEdit) {
                     Icon(Icons.Rounded.Edit, contentDescription = stringResource(R.string.modal_title_edit_workspace))
                 }
-                IconButton(onClick = onDelete, enabled = !timerRunning) {
-                    Icon(
-                        Icons.Rounded.Delete,
-                        contentDescription = if (timerRunning) stringResource(R.string.title_delete_workspace_disabled)
-                        else stringResource(R.string.title_delete_workspace),
-                        tint = if (timerRunning) MaterialTheme.colorScheme.onSurfaceVariant
-                        else MaterialTheme.colorScheme.error
-                    )
-                }
+                handle()
             }
         },
         modifier = Modifier.clickable(onClick = onEdit)

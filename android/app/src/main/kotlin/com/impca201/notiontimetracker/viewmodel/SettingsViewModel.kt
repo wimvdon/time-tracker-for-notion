@@ -232,20 +232,12 @@ class SettingsViewModel(private val app: Application) : AndroidViewModel(app) {
 
     // --- Workspace ordering ---
 
-    fun moveWorkspaceUp(id: String) {
-        val list = _uiState.value.workspaces.toMutableList()
-        val idx = list.indexOfFirst { it.id == id }
-        if (idx <= 0) return
-        val tmp = list[idx - 1]; list[idx - 1] = list[idx]; list[idx] = tmp
-        viewModelScope.launch { saveWorkspaces(list) }
-    }
-
-    fun moveWorkspaceDown(id: String) {
-        val list = _uiState.value.workspaces.toMutableList()
-        val idx = list.indexOfFirst { it.id == id }
-        if (idx < 0 || idx >= list.size - 1) return
-        val tmp = list[idx + 1]; list[idx + 1] = list[idx]; list[idx] = tmp
-        viewModelScope.launch { saveWorkspaces(list) }
+    /** Moves a workspace from place [from] to [to] (dragged by its handle). */
+    fun moveWorkspace(from: Int, to: Int) {
+        val list = _uiState.value.workspaces
+        val moved = list.moved(from, to)
+        if (moved === list) return
+        viewModelScope.launch { saveWorkspaces(moved) }
     }
 
     fun deleteWorkspace(id: String) {

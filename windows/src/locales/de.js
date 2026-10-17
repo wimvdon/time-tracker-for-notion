@@ -167,6 +167,8 @@ export default {
 
   // Presets
   titleRemovePreset: 'Vorlage entfernen',
+  confirmRemoveWorkspaceTitle: 'Diesen Workspace entfernen?',
+  confirmRemoveWorkspaceBody: 'Seine Vorlagen werden ebenfalls entfernt. Deine Zeiteinträge bleiben in Notion.',
   confirmRemovePresetTitle: 'Diese Vorlage entfernen?',
   btnRemove: 'Entfernen',
   presetNamePlaceholder: 'z.B. Morgen-Standup',

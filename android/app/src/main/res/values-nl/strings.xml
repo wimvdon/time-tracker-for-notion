@@ -28,8 +28,9 @@
     <string name="no_workspaces_yet">Nog geen werkruimtes.</string>
     <string name="title_delete_workspace">Werkruimte verwijderen</string>
     <string name="title_delete_workspace_disabled">Stop de timer eerst</string>
-    <string name="title_move_up">Omhoog</string>
-    <string name="title_move_down">Omlaag</string>
+    <string name="action_reorder">Volgorde wijzigen</string>
+    <string name="action_move_up">Omhoog</string>
+    <string name="action_move_down">Omlaag</string>
     <string name="btn_add_workspace">Werkruimte toevoegen</string>
 
     <!-- Workspace modal -->
@@ -131,6 +132,8 @@
 
     <!-- Presets -->
     <string name="title_remove_preset">Snelstarter verwijderen</string>
+    <string name="confirm_remove_workspace_title">Deze werkruimte verwijderen?</string>
+    <string name="confirm_remove_workspace_body">Ook de snelstarters ervan verdwijnen. Je tijdregistraties blijven in Notion.</string>
     <string name="confirm_remove_preset_title">Deze snelstarter verwijderen?</string>
     <string name="btn_remove">Verwijderen</string>
 
@@ -202,8 +205,6 @@
     <string name="title_manage_presets">Snelstarters beheren</string>
     <string name="title_select_start_time">Starttijd kiezen</string>
     <string name="title_select_end_time">Eindtijd kiezen</string>
-    <string name="title_move_preset_up">Snelstarter omhoog</string>
-    <string name="title_move_preset_down">Snelstarter omlaag</string>
     <string name="title_info">Informatie</string>
     <string name="error_no_api_key">Geen Notion API-sleutel ingesteld.</string>
     <string name="error_stop_from_notification_failed">Stoppen mislukt — open de app om het opnieuw te proberen</string>

@@ -1,5 +1,9 @@
 # Technical decisions
 
+## 2026-10-17: Drag handles, and a workspace is removed only after asking
+
+A design review of the sibling apps found four ways to put a list in order. The shared rule in `DESIGN.md` ("Reordering") is now a drag handle at the end of each row (`ui/theme/Reorder.kt`), so on Android workspaces (Settings) and presets (Manage presets) are dragged instead of moved with up and down arrows; screen readers keep Move up and Move down. Manage presets lists presets as rows instead of a card each, with full 48dp buttons. Removing a workspace happened at once, with no way back, and took its presets along: it now asks first in both apps, and on Android it moved into the workspace's editor (Remove workspace at the bottom), as presets already did. The error banners on the timer use the shared banner shape (`AppShapes.Group`), the timer and editors keep a readable width on wide windows (`Layout.kt`), and "Dismiss" became "Close" as in the other apps. Windows keeps its up and down buttons: dragging is the Android pattern, and the Windows app follows Fluent. Rejected: Undo instead of a confirmation (the presets go with the workspace, and they are spread over several screens).
+
 ## 2026-10-17: Less help text
 
 The owner found the app over-explanatory; the shared rule is in `DESIGN.md` ("Wording"): help text only says what the screen can't. Removed: the first-launch banner in Settings on both apps (the timer screen now says what to set up and leads there). Shortened: the sync "not connected" line, the extra-fields hint and (Android) the Dynamic color line. Kept: consequences, privacy notes and setup steps. Rejected: removing every hint (the remaining ones say something the screen doesn't).

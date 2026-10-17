@@ -25,6 +25,7 @@ export default function Settings() {
   const theme = useStore((s) => s.theme);
   const saveApiKey = useStore((s) => s.saveApiKey);
   const deleteWorkspace = useStore((s) => s.deleteWorkspace);
+  const [confirmingRemove, setConfirmingRemove] = useState(null);
   const moveWorkspace = useStore((s) => s.moveWorkspace);
   const toggleAlwaysOnTop = useStore((s) => s.toggleAlwaysOnTop);
   const toggleStartWithWindows = useStore((s) => s.toggleStartWithWindows);
@@ -205,7 +206,7 @@ export default function Settings() {
                     <Edit20Regular className="w-4 h-4" />
                   </button>
                   <button
-                    onClick={() => deleteWorkspace(w.id)}
+                    onClick={() => setConfirmingRemove(w)}
                     disabled={timerRunning}
                     title={timerRunning ? t('titleDeleteWorkspaceDisabled') : t('titleDeleteWorkspace')}
                     className="text-fg3 hover:text-danger disabled:opacity-40 p-0.5 flex items-center justify-center"
@@ -349,6 +350,34 @@ export default function Settings() {
       )}
       {showCreateSync && <CreateSyncModal onClose={() => setShowCreateSync(false)} />}
       {showLoadSync && <LoadSyncModal onClose={() => setShowLoadSync(false)} />}
+      {confirmingRemove && (
+        <div className="fixed inset-0 bg-smoke flex items-center justify-center z-[60] px-4">
+          <div className="bg-dialog border border-surface-stroke rounded-lg shadow-dialog p-4 max-w-xs w-full">
+            <p className="text-sm text-fg1 mb-1">{t('confirmRemoveWorkspaceTitle')}</p>
+            <p className="text-xs text-fg3 mb-1 truncate">&ldquo;{confirmingRemove.name}&rdquo;</p>
+            <p className="text-xs text-fg3 mb-4">{t('confirmRemoveWorkspaceBody')}</p>
+            <div className="flex gap-2 justify-end">
+              <button
+                type="button"
+                onClick={() => setConfirmingRemove(null)}
+                className="px-3 py-1.5 text-sm text-fg2 hover:text-fg1 transition-colors"
+              >
+                {t('btnCancel')}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  deleteWorkspace(confirmingRemove.id);
+                  setConfirmingRemove(null);
+                }}
+                className="px-3 py-1.5 text-sm bg-red-700 hover:bg-red-600 text-white rounded-md font-medium transition-colors"
+              >
+                {t('btnRemove')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

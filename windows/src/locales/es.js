@@ -167,6 +167,8 @@ export default {
 
   // Presets
   titleRemovePreset: 'Eliminar preajuste',
+  confirmRemoveWorkspaceTitle: '¿Eliminar este espacio?',
+  confirmRemoveWorkspaceBody: 'También se eliminan sus preajustes. Tus registros de tiempo se quedan en Notion.',
   confirmRemovePresetTitle: '¿Eliminar este preajuste?',
   btnRemove: 'Eliminar',
   presetNamePlaceholder: 'ej. Standup matinal',

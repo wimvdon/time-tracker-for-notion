@@ -63,6 +63,8 @@ A *workspace* is one Time Entries database plus how you use it. Add several to t
 
 3. **Save**, then go back to the timer with the **←** arrow.
 
+To change the order of your workspaces, drag one by its handle (Android) or use its up and down buttons (Windows). To remove one, open it and tap **Remove workspace** at the bottom (Android), or click its bin (Windows); both ask first. Its presets go with it; your time entries stay in Notion.
+
 ## 3. Track time
 
 ### Start
@@ -106,7 +108,7 @@ A preset remembers a workspace, a title, a description and extra field values, a
 
 **Create:** click the pen button after the preset chips (or **New preset** when you have none yet) › **New preset**. The editor starts from what is in the timer form: pick the workspace, enter a name (required, it's the chip label), the description and extra field values › **Save**.
 
-**Edit, reorder, remove:** the pen button after the chips opens **Manage presets**. Each preset has buttons to move it up or down and to edit it (pen). **Remove preset** is at the bottom of the edit screen.
+**Edit, reorder, remove:** the pen button after the chips opens **Manage presets**. Each preset has a pen to edit it. To change the order, drag a preset by its handle on Android, or use its up and down buttons on Windows. **Remove preset** is at the bottom of the edit screen.
 
 Required extra fields (marked *) may stay empty in a preset: they only have to be filled in before the timer stops.
 
@@ -116,7 +118,7 @@ Required extra fields (marked *) may stay empty in a preset: they only have to b
 - **Windows:** right-click the tray icon (first 10 presets), or launch the app with `--preset=<id>` (see [api.md](api.md#4-windows-command-line-arguments)).
 - **Android:** long-press the app icon (up to 4 presets).
 
-**Manage:** click the pencil after the chips. Reorder with the arrows, delete with the bin, then **Dismiss**.
+**Manage:** click the pencil after the chips. Reorder (drag handles on Android, arrows on Windows) or open a preset to edit or remove it, then **Close**.
 
 ## 5. Same settings on every device
 
@@ -158,7 +160,7 @@ Changes reach other devices within about a minute. If the same settings changed 
 | **Connection failed** on test | Re-copy the token without spaces around it |
 | **No databases found** | The connection has no access to the page (step 1.2.5), then **Refresh** |
 | **Fill in required fields before stopping.** | Fill the red fields, press **Stop** again |
-| **Page not found in Notion** | The entry was deleted. **Dismiss**, or restore it from Notion's **Trash** |
+| **Page not found in Notion** | The entry was deleted. **Close**, or restore it from Notion's **Trash** |
 | Window closed but app won't reopen (Windows) | It's in the tray: **^** next to the clock › right-click › **Open** |
 | **Windows protected your PC** | **More info** › **Run anyway** (unsigned installer) |
 | **App not installed** (Android) | Allow installs from the Files app; uninstall a self-built copy first |

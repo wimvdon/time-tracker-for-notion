@@ -1,6 +1,7 @@
 package com.impca201.notiontimetracker.ui.components
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -23,6 +24,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.impca201.notiontimetracker.R
+import com.impca201.notiontimetracker.ui.theme.readableWidth
 import com.impca201.notiontimetracker.data.models.ExtraProp
 import com.impca201.notiontimetracker.data.models.NamedOption
 import com.impca201.notiontimetracker.data.models.READ_ONLY_TYPES
@@ -52,7 +54,9 @@ fun WorkspaceModal(
     onExtraPropNameChange: (Int, String) -> Unit,
     onExtraPropRequiredChange: (Int, Boolean) -> Unit,
     onExtraPropDefaultChange: (Int, String?) -> Unit,
-    isValid: Boolean
+    isValid: Boolean,
+    onRemove: (() -> Unit)? = null,
+    removeEnabled: Boolean = true
 ) {
     val scrollState = rememberScrollState()
 
@@ -153,6 +157,7 @@ fun WorkspaceModal(
         Column(
             modifier = Modifier
                 .padding(padding)
+                .readableWidth()
                 .padding(horizontal = 16.dp)
                 .verticalScroll(scrollState)
         ) {
@@ -305,8 +310,6 @@ fun WorkspaceModal(
             Spacer(Modifier.height(8.dp))
             ColorPicker(selected = state.color, onSelect = onColorChange)
 
-
-
             if (!isValid) {
                 Spacer(Modifier.height(8.dp))
                 Text(
@@ -314,6 +317,47 @@ fun WorkspaceModal(
                     color = MaterialTheme.colorScheme.error,
                     style = MaterialTheme.typography.bodySmall
                 )
+            }
+
+            // Removing lives here, with the workspace it removes, as for presets.
+            if (onRemove != null && !state.isNew) {
+                var confirmRemove by remember { mutableStateOf(false) }
+                Spacer(Modifier.height(24.dp))
+                OutlinedButton(
+                    onClick = { confirmRemove = true },
+                    enabled = removeEnabled,
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+                ) {
+                    Icon(Icons.Rounded.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(stringResource(R.string.title_delete_workspace))
+                }
+                if (!removeEnabled) {
+                    Text(
+                        stringResource(R.string.title_delete_workspace_disabled),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                if (confirmRemove) {
+                    AlertDialog(
+                        onDismissRequest = { confirmRemove = false },
+                        icon = { Icon(Icons.Rounded.Delete, contentDescription = null) },
+                        title = { Text(stringResource(R.string.confirm_remove_workspace_title)) },
+                        text = { Text(stringResource(R.string.confirm_remove_workspace_body)) },
+                        confirmButton = {
+                            TextButton(onClick = { confirmRemove = false; onRemove() }) {
+                                Text(stringResource(R.string.btn_remove))
+                            }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { confirmRemove = false }) {
+                                Text(stringResource(R.string.btn_cancel))
+                            }
+                        }
+                    )
+                }
             }
 
             Spacer(Modifier.height(32.dp))

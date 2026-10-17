@@ -167,6 +167,8 @@ export default {
 
   // Presets
   titleRemovePreset: 'Rimuovi preimpostazione',
+  confirmRemoveWorkspaceTitle: 'Rimuovere questo spazio?',
+  confirmRemoveWorkspaceBody: 'Vengono rimosse anche le sue preimpostazioni. Le tue registrazioni restano in Notion.',
   confirmRemovePresetTitle: 'Rimuovere questa preimpostazione?',
   btnRemove: 'Rimuovi',
   presetNamePlaceholder: 'es. Standup mattutino',

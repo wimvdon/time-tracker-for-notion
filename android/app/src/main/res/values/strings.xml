@@ -26,10 +26,11 @@
     <string name="btn_remove_key">Remove key</string>
     <string name="label_workspaces">Workspaces</string>
     <string name="no_workspaces_yet">No workspaces yet.</string>
-    <string name="title_delete_workspace">Delete workspace</string>
+    <string name="title_delete_workspace">Remove workspace</string>
     <string name="title_delete_workspace_disabled">Stop the timer first</string>
-    <string name="title_move_up">Move up</string>
-    <string name="title_move_down">Move down</string>
+    <string name="action_reorder">Reorder</string>
+    <string name="action_move_up">Move up</string>
+    <string name="action_move_down">Move down</string>
     <string name="btn_add_workspace">Add workspace</string>
 
     <!-- Workspace modal -->
@@ -87,7 +88,7 @@
     <string name="toast_start_error">Could not start timer</string>
     <string name="toast_stop_error">Could not stop timer</string>
     <string name="toast_stop_retry">Retry</string>
-    <string name="title_dismiss">Dismiss</string>
+    <string name="title_dismiss">Close</string>
     <string name="btn_back">Back</string>
     <string name="title_settings">Settings</string>
 
@@ -131,6 +132,8 @@
 
     <!-- Presets -->
     <string name="title_remove_preset">Remove preset</string>
+    <string name="confirm_remove_workspace_title">Remove this workspace?</string>
+    <string name="confirm_remove_workspace_body">Its presets are removed too. Your time entries stay in Notion.</string>
     <string name="confirm_remove_preset_title">Remove this preset?</string>
     <string name="btn_remove">Remove</string>
 
@@ -141,7 +144,7 @@
     <string name="deleted_page_title">Page not found in Notion</string>
     <string name="deleted_page_body">The time entry could not be saved because the page was deleted or is no longer accessible.</string>
     <string name="deleted_page_hint">If this entry is needed, restore the page from Notion trash or recreate it manually.</string>
-    <string name="deleted_page_confirm">Dismiss</string>
+    <string name="deleted_page_confirm">Close</string>
     <string name="toast_update_error">Could not update timer</string>
 
     <!-- Additional New Strings -->
@@ -202,8 +205,6 @@
     <string name="title_manage_presets">Manage presets</string>
     <string name="title_select_start_time">Select start time</string>
     <string name="title_select_end_time">Select end time</string>
-    <string name="title_move_preset_up">Move preset up</string>
-    <string name="title_move_preset_down">Move preset down</string>
     <string name="title_info">Information</string>
     <string name="error_no_api_key">No Notion API key set.</string>
     <string name="error_stop_from_notification_failed">Stopping failed — open the app to try again</string>

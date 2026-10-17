@@ -25,6 +25,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import com.impca201.notiontimetracker.R
+import com.impca201.notiontimetracker.ui.theme.readableWidth
 import com.impca201.notiontimetracker.data.models.NamedOption
 import com.impca201.notiontimetracker.data.models.Workspace
 import com.impca201.notiontimetracker.ui.theme.SkeletonBlock
@@ -78,6 +79,7 @@ fun PresetEditorScreen(
         Column(
             modifier = Modifier
                 .padding(padding)
+                .readableWidth()
                 .padding(horizontal = 16.dp)
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(12.dp)

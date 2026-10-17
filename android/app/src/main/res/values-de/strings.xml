@@ -28,8 +28,9 @@
     <string name="no_workspaces_yet">Noch keine Workspaces.</string>
     <string name="title_delete_workspace">Workspace löschen</string>
     <string name="title_delete_workspace_disabled">Stoppe zuerst den Timer</string>
-    <string name="title_move_up">Nach oben</string>
-    <string name="title_move_down">Nach unten</string>
+    <string name="action_reorder">Neu anordnen</string>
+    <string name="action_move_up">Nach oben</string>
+    <string name="action_move_down">Nach unten</string>
     <string name="btn_add_workspace">Workspace hinzufügen</string>
 
     <!-- Workspace modal -->
@@ -131,6 +132,8 @@
 
     <!-- Presets -->
     <string name="title_remove_preset">Vorlage entfernen</string>
+    <string name="confirm_remove_workspace_title">Diesen Workspace entfernen?</string>
+    <string name="confirm_remove_workspace_body">Seine Vorlagen werden ebenfalls entfernt. Deine Zeiteinträge bleiben in Notion.</string>
     <string name="confirm_remove_preset_title">Diese Vorlage entfernen?</string>
     <string name="btn_remove">Entfernen</string>
 
@@ -202,8 +205,6 @@
     <string name="title_manage_presets">Vorlagen verwalten</string>
     <string name="title_select_start_time">Startzeit wählen</string>
     <string name="title_select_end_time">Endzeit wählen</string>
-    <string name="title_move_preset_up">Vorlage nach oben</string>
-    <string name="title_move_preset_down">Vorlage nach unten</string>
     <string name="title_info">Information</string>
     <string name="error_no_api_key">Kein Notion-API-Schlüssel hinterlegt.</string>
     <string name="error_stop_from_notification_failed">Stoppen fehlgeschlagen — App öffnen und erneut versuchen</string>
