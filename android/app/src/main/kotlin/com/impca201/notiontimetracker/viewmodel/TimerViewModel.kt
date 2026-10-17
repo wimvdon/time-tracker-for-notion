@@ -1687,30 +1687,9 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
         editPresets(workspaceId) { presets -> presets.filter { it.id != presetId } }
     }
 
-    fun movePresetUp(workspaceId: String, presetId: String) {
-        editPresets(workspaceId) { presets ->
-            val list = presets.toMutableList()
-            val idx = list.indexOfFirst { it.id == presetId }
-            if (idx > 0) {
-                val temp = list[idx]
-                list[idx] = list[idx - 1]
-                list[idx - 1] = temp
-            }
-            list
-        }
-    }
-
-    fun movePresetDown(workspaceId: String, presetId: String) {
-        editPresets(workspaceId) { presets ->
-            val list = presets.toMutableList()
-            val idx = list.indexOfFirst { it.id == presetId }
-            if (idx in 0 until list.size - 1) {
-                val temp = list[idx]
-                list[idx] = list[idx + 1]
-                list[idx + 1] = temp
-            }
-            list
-        }
+    /** Moves a workspace's preset from place [from] to [to] (dragged in Manage presets). */
+    fun movePreset(workspaceId: String, from: Int, to: Int) {
+        editPresets(workspaceId) { presets -> presets.moved(from, to) }
     }
 
     /**

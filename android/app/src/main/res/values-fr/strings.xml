@@ -28,8 +28,9 @@
     <string name="no_workspaces_yet">Aucun espace de travail.</string>
     <string name="title_delete_workspace">Supprimer l\'espace de travail</string>
     <string name="title_delete_workspace_disabled">Arrêtez le minuteur d\'abord</string>
-    <string name="title_move_up">Monter</string>
-    <string name="title_move_down">Descendre</string>
+    <string name="action_reorder">Réorganiser</string>
+    <string name="action_move_up">Monter</string>
+    <string name="action_move_down">Descendre</string>
     <string name="btn_add_workspace">Ajouter un espace</string>
 
     <!-- Workspace modal -->
@@ -131,6 +132,8 @@
 
     <!-- Presets -->
     <string name="title_remove_preset">Supprimer le préréglage</string>
+    <string name="confirm_remove_workspace_title">Supprimer cet espace de travail ?</string>
+    <string name="confirm_remove_workspace_body">Ses préréglages sont aussi supprimés. Vos entrées de temps restent dans Notion.</string>
     <string name="confirm_remove_preset_title">Supprimer ce préréglage ?</string>
     <string name="btn_remove">Supprimer</string>
 
@@ -202,8 +205,6 @@
     <string name="title_manage_presets">Gérer les préréglages</string>
     <string name="title_select_start_time">Choisir l\'heure de début</string>
     <string name="title_select_end_time">Choisir l\'heure de fin</string>
-    <string name="title_move_preset_up">Déplacer le préréglage vers le haut</string>
-    <string name="title_move_preset_down">Déplacer le préréglage vers le bas</string>
     <string name="title_info">Informations</string>
     <string name="error_no_api_key">Aucune clé API Notion configurée.</string>
     <string name="error_stop_from_notification_failed">Échec de l\'arrêt — ouvrez l\'application pour réessayer</string>

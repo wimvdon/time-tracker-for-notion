@@ -187,8 +187,7 @@ private fun AppNavigation(
                 onSavePresetEditor = timerViewModel::savePresetEditor,
                 onClosePresetEditor = timerViewModel::closePresetEditor,
                 onDeletePresetEditor = timerViewModel::deletePresetEditor,
-                onMovePresetUp = timerViewModel::movePresetUp,
-                onMovePresetDown = timerViewModel::movePresetDown
+                onMovePreset = timerViewModel::movePreset
             )
         }
 
@@ -209,8 +208,7 @@ private fun AppNavigation(
                 onToggleApiKeyVisible = settingsViewModel::toggleApiKeyVisible,
                 onTestAndSave = settingsViewModel::testAndSaveApiKey,
                 onRemoveApiKey = settingsViewModel::removeApiKey,
-                onMoveUp = settingsViewModel::moveWorkspaceUp,
-                onMoveDown = settingsViewModel::moveWorkspaceDown,
+                onMoveWorkspace = settingsViewModel::moveWorkspace,
                 onEditWorkspace = settingsViewModel::openEditWorkspace,
                 onDeleteWorkspace = settingsViewModel::deleteWorkspace,
                 onAddWorkspace = settingsViewModel::openAddWorkspace,

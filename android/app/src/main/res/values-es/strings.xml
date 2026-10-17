@@ -28,8 +28,9 @@
     <string name="no_workspaces_yet">No hay espacios de trabajo aún.</string>
     <string name="title_delete_workspace">Eliminar espacio</string>
     <string name="title_delete_workspace_disabled">Detén primero el temporizador</string>
-    <string name="title_move_up">Subir</string>
-    <string name="title_move_down">Bajar</string>
+    <string name="action_reorder">Reordenar</string>
+    <string name="action_move_up">Subir</string>
+    <string name="action_move_down">Bajar</string>
     <string name="btn_add_workspace">Añadir espacio</string>
 
     <!-- Workspace modal -->
@@ -131,6 +132,8 @@
 
     <!-- Presets -->
     <string name="title_remove_preset">Eliminar preajuste</string>
+    <string name="confirm_remove_workspace_title">¿Eliminar este espacio?</string>
+    <string name="confirm_remove_workspace_body">También se eliminan sus preajustes. Tus registros de tiempo se quedan en Notion.</string>
     <string name="confirm_remove_preset_title">¿Eliminar este preajuste?</string>
     <string name="btn_remove">Eliminar</string>
 
@@ -202,8 +205,6 @@
     <string name="title_manage_presets">Gestionar preajustes</string>
     <string name="title_select_start_time">Elegir hora de inicio</string>
     <string name="title_select_end_time">Elegir hora de fin</string>
-    <string name="title_move_preset_up">Subir preajuste</string>
-    <string name="title_move_preset_down">Bajar preajuste</string>
     <string name="title_info">Información</string>
     <string name="error_no_api_key">No hay ninguna clave de API de Notion configurada.</string>
     <string name="error_stop_from_notification_failed">Error al detener: abra la aplicación para reintentar</string>

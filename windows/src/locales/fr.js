@@ -167,6 +167,8 @@ export default {
 
   // Presets
   titleRemovePreset: 'Supprimer le préréglage',
+  confirmRemoveWorkspaceTitle: 'Supprimer cet espace de travail ?',
+  confirmRemoveWorkspaceBody: 'Ses préréglages sont aussi supprimés. Vos entrées de temps restent dans Notion.',
   confirmRemovePresetTitle: 'Supprimer ce préréglage ?',
   btnRemove: 'Supprimer',
   presetNamePlaceholder: 'ex. Standup du matin',

@@ -32,7 +32,7 @@ export default {
   btnTestingKey: 'Testing…',
   labelWorkspaces: 'Workspaces',
   noWorkspacesYet: 'No workspaces yet.',
-  titleDeleteWorkspace: 'Delete workspace',
+  titleDeleteWorkspace: 'Remove workspace',
   titleDeleteWorkspaceDisabled: 'Stop the timer first',
   titleMoveUp: 'Move up',
   titleMoveDown: 'Move down',
@@ -167,6 +167,8 @@ export default {
 
   // Presets
   titleRemovePreset: 'Remove preset',
+  confirmRemoveWorkspaceTitle: 'Remove this workspace?',
+  confirmRemoveWorkspaceBody: 'Its presets are removed too. Your time entries stay in Notion.',
   confirmRemovePresetTitle: 'Remove this preset?',
   btnRemove: 'Remove',
   presetNamePlaceholder: 'e.g. Morning standup',

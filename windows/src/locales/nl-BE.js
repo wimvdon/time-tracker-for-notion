@@ -163,6 +163,8 @@ export default {
 
   // Snelstarters
   titleRemovePreset: 'Snelstarter verwijderen',
+  confirmRemoveWorkspaceTitle: 'Deze werkruimte verwijderen?',
+  confirmRemoveWorkspaceBody: 'Ook de snelstarters ervan verdwijnen. Je tijdregistraties blijven in Notion.',
   confirmRemovePresetTitle: 'Deze snelstarter verwijderen?',
   btnRemove: 'Verwijderen',
   presetNamePlaceholder: 'bijv. Ochtendoverleg',

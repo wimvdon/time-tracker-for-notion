@@ -44,6 +44,9 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.res.stringResource
 import com.impca201.notiontimetracker.ui.components.parseWorkspaceColor
+import com.impca201.notiontimetracker.ui.theme.DragHandle
+import com.impca201.notiontimetracker.ui.theme.readableWidth
+import com.impca201.notiontimetracker.ui.theme.ReorderableColumn
 import com.impca201.notiontimetracker.ui.theme.EmptyState
 import com.impca201.notiontimetracker.ui.theme.Motion
 import com.impca201.notiontimetracker.ui.theme.SkeletonBlock
@@ -121,8 +124,7 @@ fun TimerScreen(
     onSavePresetEditor: () -> Unit,
     onClosePresetEditor: () -> Unit,
     onDeletePresetEditor: () -> Unit,
-    onMovePresetUp: (String, String) -> Unit,
-    onMovePresetDown: (String, String) -> Unit
+    onMovePreset: (workspaceId: String, from: Int, to: Int) -> Unit
 ) {
     if (uiState.showAlreadyRunningWarning) {
         AlertDialog(
@@ -149,8 +151,7 @@ fun TimerScreen(
             workspaces = uiState.workspaces,
             onNewPreset = onNewPreset,
             onEditPreset = onEditPreset,
-            onMovePresetUp = onMovePresetUp,
-            onMovePresetDown = onMovePresetDown,
+            onMovePreset = onMovePreset,
             onDismiss = { showManagePresetsDialog = false }
         )
     }
@@ -333,13 +334,14 @@ private fun IdleView(
         Column(
             modifier = Modifier
                 .padding(padding)
+                .readableWidth()
                 .padding(horizontal = 16.dp)
                 .verticalScroll(scrollState),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             uiState.error?.let { err ->
                 val message = localisedMessage(err)
-                Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)) {
+                Card(shape = AppShapes.Group, colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer), modifier = Modifier.fillMaxWidth()) {
                     Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                         Text(message, modifier = Modifier.weight(1f), color = MaterialTheme.colorScheme.onErrorContainer)
                         IconButton(onClick = onClearError) {
@@ -461,7 +463,7 @@ private fun IdleView(
                 // that no longer exist in the database. Both used to just show fewer
                 // fields than configured, with no way to tell that from "correct".
                 uiState.extrasError?.let { err ->
-                    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)) {
+                    Card(shape = AppShapes.Group, colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer), modifier = Modifier.fillMaxWidth()) {
                         Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                             Text(
                                 localisedMessage(err),
@@ -737,7 +739,7 @@ private fun RunningView(
 
                 uiState.stopError?.let { err ->
                     val errMsg = localisedMessage(err)
-                    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)) {
+                    Card(shape = AppShapes.Group, colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer), modifier = Modifier.fillMaxWidth()) {
                         Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                             Text(errMsg, modifier = Modifier.weight(1f), color = MaterialTheme.colorScheme.onErrorContainer)
                             if (!isValidationMessage(err)) {
@@ -1598,8 +1600,7 @@ private fun ManagePresetsDialog(
     workspaces: List<com.impca201.notiontimetracker.data.models.Workspace>,
     onNewPreset: () -> Unit,
     onEditPreset: (String, String) -> Unit,
-    onMovePresetUp: (String, String) -> Unit,
-    onMovePresetDown: (String, String) -> Unit,
+    onMovePreset: (workspaceId: String, from: Int, to: Int) -> Unit,
     onDismiss: () -> Unit
 ) {
     AlertDialog(
@@ -1631,16 +1632,18 @@ private fun ManagePresetsDialog(
                     }
                 }
 
-                val flatPresets = workspaces.flatMap { ws ->
-                    ws.presets.mapIndexed { index, preset -> Triple(ws, preset, index) }
-                }
-                flatPresets.forEach { (ws, preset, indexInWorkspace) ->
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)
-                    ) {
+                // A list row per preset (tap or pen to edit), dragged within its workspace.
+                workspaces.filter { it.presets.isNotEmpty() }.forEach { ws ->
+                    ReorderableColumn(
+                        items = ws.presets,
+                        key = { it.id },
+                        onMove = { from, to -> onMovePreset(ws.id, from, to) }
+                    ) { preset ->
                         Row(
-                            modifier = Modifier.padding(start = 12.dp, end = 4.dp, top = 6.dp, bottom = 6.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = 56.dp)
+                                .clickable { onEditPreset(ws.id, preset.id) },
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             // The preset's name, with its workspace (and colour) underneath.
@@ -1667,26 +1670,10 @@ private fun ManagePresetsDialog(
                                     )
                                 }
                             }
-                            IconButton(
-                                onClick = { onMovePresetUp(ws.id, preset.id) },
-                                enabled = indexInWorkspace > 0,
-                                modifier = Modifier.size(36.dp)
-                            ) {
-                                Icon(Icons.Rounded.ArrowUpward, contentDescription = stringResource(R.string.title_move_preset_up), modifier = Modifier.size(18.dp))
+                            IconButton(onClick = { onEditPreset(ws.id, preset.id) }) {
+                                Icon(Icons.Rounded.Edit, contentDescription = stringResource(R.string.title_edit_preset))
                             }
-                            IconButton(
-                                onClick = { onMovePresetDown(ws.id, preset.id) },
-                                enabled = indexInWorkspace < ws.presets.size - 1,
-                                modifier = Modifier.size(36.dp)
-                            ) {
-                                Icon(Icons.Rounded.ArrowDownward, contentDescription = stringResource(R.string.title_move_preset_down), modifier = Modifier.size(18.dp))
-                            }
-                            IconButton(
-                                onClick = { onEditPreset(ws.id, preset.id) },
-                                modifier = Modifier.size(36.dp)
-                            ) {
-                                Icon(Icons.Rounded.Edit, contentDescription = stringResource(R.string.title_edit_preset), modifier = Modifier.size(18.dp))
-                            }
+                            DragHandle(handleModifier)
                         }
                     }
                 }
