@@ -40,12 +40,17 @@ All tests are unit tests. Windows: 45 tests across 8 files:
 | `src/lib/color.test.js` | Light/dark workspace colour variants reach ~3:1 contrast; extremes (white, black, yellow) stay usable and recognisable |
 | `src/lib/presets.test.js` | Untitled presets get their description or the workspace name; workspaces without presets are untouched |
 | `src/lib/descriptionAutoSave.test.js` | A running timer's description is auto-saved only when it really changed; spaces and an emptied field don't trigger a save |
-| `src/lib/setupStep.test.js` | Which setup screen the timer shows: connect to Notion without an API key, add a workspace without one, nothing once both are set or while settings load |
+| `src/lib/setupStep.test.js` | Which setup screen the timer shows: sign in when not signed in, add a workspace without one, nothing once both are set or while settings load |
+| `src/lib/errors.test.js` | IPC noise is stripped; "not signed in" becomes a readable message; a cancelled sign-in is recognised |
 | `src/store/useStore.test.js` | `init()` is idempotent under React StrictMode (no double interval); a failed running-timer query keeps the active timer |
-| `electron/apiKey.test.cjs` | The API key is saved encrypted, an old plain key is moved over, plain fallback without encryption, clearing, undecryptable keys read as empty, the renderer never gets the encrypted field |
+| `electron/notionTokens.test.cjs` | The sign-in is saved encrypted, plain fallback without encryption, signing out clears it, an undecryptable one reads as signed out, an old API key is deleted, the renderer never sees a token |
+| `electron/notionAuth.test.cjs` | Sign-in opens the server with a local port and swaps the code with the matching verifier; Cancel on Notion's page, cancel from the app, a refused code and the listener timeout; one refresh for several failing requests; a refused refresh signs out, a server problem keeps the sign-in |
+| `electron/notionClient.test.cjs` | A 401 renews the token once and retries; no renewal means "not signed in"; no loop on a second 401; nothing is sent without a sign-in |
 | `electron/bundlePath.test.cjs` | `app://bundle/` maps only to files inside `dist/`; `../` and encoded tricks, other schemes and hosts are refused |
 
-Android: tests in `SyncPayloadJsonTest`, `DescriptionAutoSaveTest` (same auto-save rule as Windows), `SetupStepTest` (same setup-screen rule as Windows), `BackupRulesTest`, plus the release-script tests in `android/scripts/tests/` (version parsing and bumping, version codes, keystore-secret decoding).
+Android: tests in `NotionSessionTest` (the same sign-in and refresh rules as Windows, the challenge, the Dev build's own app link, reading the server's answers), `SyncPayloadJsonTest`, `DescriptionAutoSaveTest` (same auto-save rule as Windows), `SetupStepTest` (same setup-screen rule as Windows), `BackupRulesTest`, plus the release-script tests in `android/scripts/tests/` (version parsing and bumping, version codes, keystore-secret decoding).
+
+Worker (`worker/`): `src/index.test.js` runs with `node --test` in the "Worker" CI job: start refuses bad parameters, callback goes only to the app that started (local port on Windows, the matching app link on Android) and refuses forged or expired states, the code is only swapped with the right verifier, refresh passes `invalid_grant` on, pages follow the browser language.
 
 ## Strategy
 
@@ -64,7 +69,7 @@ For each pull request (before or after it is merged: merging only waits for gree
 - [ ] Start and stop a timer on each platform; the Notion row gets its start, end and status.
 - [ ] Dark mode on and off: text stays readable.
 - [ ] Another language (Windows: Settings › Language; Android: Settings › System › Languages › App languages): all text is translated.
-- [ ] After a release: install over the previous version. Settings, API key and a running timer are kept.
+- [ ] After a release: install over the previous version. Settings and a running timer are kept; you are asked to sign in with Notion once (older versions used an API key).
 
 ## Reading a crash from a release APK
 

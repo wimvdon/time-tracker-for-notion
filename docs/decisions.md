@@ -1,5 +1,26 @@
 # Technical decisions
 
+## 2026-10-31: Sign in with Notion instead of an API key
+
+The owner asked for Notion's sign-in (OAuth) instead of pasting an internal-integration API key.
+Notion's token exchange needs a client secret, which can't be kept safely inside a downloadable
+app, so a small Cloudflare Worker (`worker/`, `https://timetracker-signin.wim.to`) holds it and does
+only the code swap and token renewal. It stores nothing; a signed `state` carries what it needs.
+The apps prove they started the sign-in with a PKCE-style verifier (Notion's OAuth has no PKCE of
+its own), so a caught link or code is useless to anyone else. Windows gets the code back on a
+local `127.0.0.1` port (no protocol registration, nothing that clashes with the Dev build);
+Android through an app link with a separate scheme for the Dev build. Pasting an API key was
+removed (owner's choice): one way in, and the next step, settings sync through the worker, needs
+a signed-in Notion user. Existing users sign in once; their settings stay.
+
+- **New network address and server**, approved by the owner: `PRIVACY.md` lists it. The worker
+  has no npm dependencies. Cloudflare deploys it straight from this repository (Workers Builds,
+  connected in the Cloudflare dashboard by the owner), so GitHub holds no Cloudflare token; its
+  tests run in CI ("Worker").
+- **Rejected:** a custom URL protocol on Windows (registry changes, and the Dev build would fight
+  the real app for it); storing state in Cloudflare KV (not needed with a signed state); keeping
+  the API key as a fallback (two ways to sign in, and no user identity for sync).
+
 ## 2026-10-17: Drag handles, and a workspace is removed only after asking
 
 A design review of the sibling apps found four ways to put a list in order. The shared rule in `DESIGN.md` ("Reordering") is now a drag handle at the end of each row (`ui/theme/Reorder.kt`), so on Android workspaces (Settings) and presets (Manage presets) are dragged instead of moved with up and down arrows; screen readers keep Move up and Move down. Manage presets lists presets as rows instead of a card each, with full 48dp buttons. Removing a workspace happened at once, with no way back, and took its presets along: it now asks first in both apps, and on Android it moved into the workspace's editor (Remove workspace at the bottom), as presets already did. The error banners on the timer use the shared banner shape (`AppShapes.Group`), the timer and editors keep a readable width on wide windows (`Layout.kt`), and "Dismiss" became "Close" as in the other apps. Windows keeps its up and down buttons: dragging is the Android pattern, and the Windows app follows Fluent. Rejected: Undo instead of a confirmation (the presets go with the workspace, and they are spread over several screens).
@@ -121,7 +142,9 @@ Entries are created with the exact start time. When stopping, both start and end
 - **Rounding at stop:** the stored entry still matches what the user's existing Notion Start/Stop button formulas produced, which `rounding.js` replicates.
 - **Minimum duration:** a quick start/stop still records one billing unit.
 
-## API key handling
+## Notion sign-in handling
+
+*Since 2026-10-31 the apps store a Notion sign-in (access and refresh token) instead of an API key, in the same encrypted places; see the entry of that date. The notes below describe how the storage was chosen.*
 
 ### Windows
 

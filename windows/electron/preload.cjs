@@ -11,6 +11,15 @@ ipcRenderer.on('tray:apply-preset', (_event, data) => {
 
 contextBridge.exposeInMainWorld('notionAPI', {
   getSettings: () => ipcRenderer.invoke('store:get'),
+  getNotionAccount: () => ipcRenderer.invoke('auth:get'),
+  signIn: () => ipcRenderer.invoke('auth:signIn'),
+  cancelSignIn: () => ipcRenderer.invoke('auth:cancelSignIn'),
+  signOut: () => ipcRenderer.invoke('auth:signOut'),
+  onAuthChanged: (callback) => {
+    const listener = (_event, data) => callback(data);
+    ipcRenderer.on('auth:changed', listener);
+    return () => ipcRenderer.removeListener('auth:changed', listener);
+  },
   saveSettings: (data) => ipcRenderer.invoke('store:set', data),
   searchDatabases: () => ipcRenderer.invoke('notion:searchDatabases'),
   getDatabaseSchema: (dbId) => ipcRenderer.invoke('notion:getDatabaseSchema', dbId),
@@ -20,7 +29,6 @@ contextBridge.exposeInMainWorld('notionAPI', {
   stopTimeEntry: (params) => ipcRenderer.invoke('notion:stop', params),
   fetchRunningTimers: (dbId, statusProp, statusRunning, dateProp) =>
     ipcRenderer.invoke('notion:fetchRunningTimers', dbId, statusProp, statusRunning, dateProp),
-  testConnection: (apiKey, dbId) => ipcRenderer.invoke('notion:test', apiKey, dbId),
   fetchRecentEntries: (dbId, statusProp, statusDone, dateProp) =>
     ipcRenderer.invoke('notion:fetchRecentEntries', dbId, statusProp, statusDone, dateProp),
   deletePage: (pageId) => ipcRenderer.invoke('notion:deletePage', pageId),

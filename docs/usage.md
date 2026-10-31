@@ -35,11 +35,13 @@ Everything inside that page is included. If you'll use settings sync, the page w
 
 ## 2. Connect the app
 
-Until the key and a workspace are set, the timer screen shows **Connect to Notion** (or **Add a workspace**) with an **Open settings** button instead of the timer.
+Until you are signed in and a workspace is set, the timer screen shows **Connect to Notion** (or **Add a workspace**) with an **Open settings** button instead of the timer.
 
-### 2.1 Add the key
+### 2.1 Sign in
 
-**Settings** › paste into **Notion API Key** › **Test connection & save**. Expect **API key works and was saved.**
+**Settings** › **Sign in with Notion**. Your browser opens Notion's page: choose your workspace, tick the pages and databases the app may use (your Time Entries database, the projects database, and a page for settings sync), and click **Allow**. Back in the app you see **Signed in to <workspace>**.
+
+To share more (or fewer) pages later: **Settings** › **Choose pages**. **Sign out** forgets the sign-in on this device.
 
 ### 2.2 Add a workspace
 
@@ -126,7 +128,7 @@ Settings sync copies these through a Notion page:
 - workspaces, extra fields, presets, rounding and colours;
 - appearance, language and date/time format.
 
-It does **not** copy the API key or device-only options (**Keep window on top**, **Start with Windows**, Android dynamic colour).
+It does **not** copy your Notion sign-in or device-only options (**Keep window on top**, **Start with Windows**, Android dynamic colour).
 
 **First device:**
 1. **Settings** › **Sync** › **Create new**.

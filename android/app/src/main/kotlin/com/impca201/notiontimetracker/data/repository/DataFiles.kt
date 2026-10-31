@@ -9,7 +9,10 @@ object DataFiles {
     /** Workspaces, presets, the active timer and preferences (DataStore). Backed up. */
     const val SETTINGS = "notion_settings"
 
-    /** The Notion API key (EncryptedSharedPreferences). Never leaves this phone. */
+    /**
+     * The Notion sign-in: tokens and workspace name (EncryptedSharedPreferences). Never leaves this
+     * phone. The name dates from when it held an API key; kept so existing installs find it.
+     */
     const val API_KEY = "NotionTimeTracker_encrypted_prefs"
 
     /** Used only when the Android keystore fails. Never leaves this phone. */

@@ -53,7 +53,7 @@ Other scripts:
 | `npm run dist:dir` | Build + unpacked app (no installer), faster for smoke tests |
 | `npm run icons` | Regenerate all icons from the vector design, including Android launcher layers |
 
-Settings are stored by electron-store in `%APPDATA%\Time Tracker for Notion\config.json` (obfuscated, with the API key encrypted by Windows, see [decisions.md](decisions.md#api-key-handling)). The Dev app uses `%APPDATA%\Time Tracker for Notion Dev\`. Uninstalling keeps it (`deleteAppDataOnUninstall: false`).
+Settings are stored by electron-store in `%APPDATA%\Time Tracker for Notion\config.json` (obfuscated, with the Notion sign-in encrypted by Windows, see [decisions.md](decisions.md#api-key-handling)). The Dev app uses `%APPDATA%\Time Tracker for Notion Dev\`. Uninstalling keeps it (`deleteAppDataOnUninstall: false`).
 
 #### Optional: mock Notion server
 
@@ -77,13 +77,13 @@ From a terminal, inside `android/`:
 ./gradlew testDebugUnitTest lintDebug   # what CI checks
 ```
 
-Debug builds have the application ID `com.impca201.notiontimetracker.debug` and the name **Time Tracker Dev**, so they install next to the released app with their own settings and API key.
+Debug builds have the application ID `com.impca201.notiontimetracker.debug` and the name **Time Tracker Dev**, so they install next to the released app with their own settings and Notion sign-in.
 
 Use `gradlew.bat` on Windows. Android Studio writes `local.properties` with the SDK path; without it, create one with `sdk.dir=/path/to/Android/Sdk`.
 
 ## Verify it works
 
-1. Open the app's **Settings**, paste the token and click **Test connection & save**. Expect **API key works and was saved.**
+1. Open the app's **Settings** and click **Sign in with Notion**; allow access in the browser. Expect **Signed in to <workspace>**. (The sign-in server must be set up once: [notion-sign-in-setup.md](notion-sign-in-setup.md).)
 2. Add a workspace and press **Start**. A new row with the *running* status appears in the Notion database.
 3. Press **Stop**. The row gets an end time and the *done* status.
 

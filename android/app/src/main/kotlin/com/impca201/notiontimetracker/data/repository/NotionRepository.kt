@@ -1,5 +1,6 @@
 package com.impca201.notiontimetracker.data.repository
 
+import com.impca201.notiontimetracker.data.api.NotionAuth
 import com.impca201.notiontimetracker.data.api.NotionClient
 import com.impca201.notiontimetracker.data.models.*
 import kotlinx.coroutines.CancellationException
@@ -7,10 +8,9 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
 class NotionRepository(
-    private val settingsRepository: SettingsRepository,
+    private val auth: NotionAuth,
     private val client: NotionClient = NotionClient()
 ) {
-    private fun apiKey() = settingsRepository.getApiKey()
 
     // ---- Metadata cache ----
     //
@@ -50,7 +50,7 @@ class NotionRepository(
         }
     }
 
-    /** Drops every cached schema/option list — call after the API key changes or
+    /** Drops every cached schema/option list — call after signing in again or
      *  a workspace's database configuration is edited. */
     suspend fun invalidateMetadataCache() {
         cacheMutex.withLock {
@@ -60,30 +60,24 @@ class NotionRepository(
         }
     }
 
-    suspend fun testConnection(dbId: String? = null) =
-        client.testConnection(apiKey(), dbId)
-
-    suspend fun testConnectionWithKey(explicitKey: String, dbId: String? = null) =
-        client.testConnection(explicitKey, dbId)
-
     suspend fun searchDatabases(): List<NamedOption> =
-        client.searchDatabases(apiKey())
+        client.searchDatabases(auth)
 
     suspend fun getDatabaseSchema(dbId: String, forceRefresh: Boolean = false): Map<String, SchemaProperty> =
-        cached(schemaCache, dbId, forceRefresh) { client.getDatabaseSchema(apiKey(), dbId) }
+        cached(schemaCache, dbId, forceRefresh) { client.getDatabaseSchema(auth, dbId) }
 
     suspend fun fetchDatabasePages(dbId: String, forceRefresh: Boolean = false): List<NamedOption> =
-        cached(databasePagesCache, dbId, forceRefresh) { client.fetchDatabasePages(apiKey(), dbId) }
+        cached(databasePagesCache, dbId, forceRefresh) { client.fetchDatabasePages(auth, dbId) }
 
     suspend fun listUsers(forceRefresh: Boolean = false): List<NamedOption> =
-        cached(usersCache, "users", forceRefresh) { client.listUsers(apiKey()) }
+        cached(usersCache, "users", forceRefresh) { client.listUsers(auth) }
 
     suspend fun fetchRunningTimers(
         dbId: String,
         statusProp: String,
         statusRunning: String,
         dateProp: String
-    ): List<RunningTimerResult> = client.fetchRunningTimers(apiKey(), dbId, statusProp, statusRunning, dateProp)
+    ): List<RunningTimerResult> = client.fetchRunningTimers(auth, dbId, statusProp, statusRunning, dateProp)
 
     suspend fun createTimeEntry(
         dbId: String,
@@ -92,40 +86,40 @@ class NotionRepository(
         projectId: String?,
         propertyMap: PropertyMap,
         extra: Map<String, Any?> = emptyMap()
-    ): String = client.createTimeEntry(apiKey(), dbId, title, startISO, projectId, propertyMap, extra)
+    ): String = client.createTimeEntry(auth, dbId, title, startISO, projectId, propertyMap, extra)
 
     suspend fun stopTimeEntry(
         pageId: String,
         startISO: String,
         endISO: String,
         propertyMap: PropertyMap
-    ) = client.stopTimeEntry(apiKey(), pageId, startISO, endISO, propertyMap)
+    ) = client.stopTimeEntry(auth, pageId, startISO, endISO, propertyMap)
 
     suspend fun fetchRecentEntries(
         dbId: String,
         statusProp: String,
         statusDone: String,
         dateProp: String
-    ): List<RecentEntryResult> = client.fetchRecentEntries(apiKey(), dbId, statusProp, statusDone, dateProp)
+    ): List<RecentEntryResult> = client.fetchRecentEntries(auth, dbId, statusProp, statusDone, dateProp)
 
     suspend fun updatePageProperties(pageId: String, properties: Map<String, Any?>) =
-        client.updatePageProperties(apiKey(), pageId, properties)
+        client.updatePageProperties(auth, pageId, properties)
 
     suspend fun fetchPageProperties(pageId: String) =
-        client.fetchPageProperties(apiKey(), pageId)
+        client.fetchPageProperties(auth, pageId)
 
-    suspend fun deletePage(pageId: String) = client.deletePage(apiKey(), pageId)
+    suspend fun deletePage(pageId: String) = client.deletePage(auth, pageId)
 
-    suspend fun searchPages(): List<NamedOption> = client.searchPages(apiKey())
+    suspend fun searchPages(): List<NamedOption> = client.searchPages(auth)
 
     suspend fun createSyncPage(parentPageId: String, title: String, payload: SyncPayload): String =
-        client.createSyncPage(apiKey(), parentPageId, title, payload)
+        client.createSyncPage(auth, parentPageId, title, payload)
 
     suspend fun fetchSyncPageContent(pageId: String): SyncFetchResult? =
-        client.fetchSyncPageContent(apiKey(), pageId)
+        client.fetchSyncPageContent(auth, pageId)
 
     suspend fun updateSyncBlock(blockId: String, payload: SyncPayload) =
-        client.updateSyncBlock(apiKey(), blockId, payload)
+        client.updateSyncBlock(auth, blockId, payload)
 
     companion object {
         /** How long a cached schema/option list counts as fresh. */

@@ -6,6 +6,9 @@ import androidx.lifecycle.viewModelScope
 import com.impca201.notiontimetracker.NotionTimeTrackerApp
 import com.impca201.notiontimetracker.data.models.*
 import com.impca201.notiontimetracker.ShortcutHelper
+import com.impca201.notiontimetracker.data.api.AuthServer
+import com.impca201.notiontimetracker.data.repository.NotionAccount
+import com.impca201.notiontimetracker.data.repository.SessionEvent
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -17,16 +20,10 @@ import java.util.UUID
 class SettingsViewModel(private val app: Application) : AndroidViewModel(app) {
 
     data class UiState(
-        val apiKey: String = "",
-        /** The key currently persisted, so the UI can tell "nothing stored yet"
-         *  apart from "stored key, field edited". */
-        val savedApiKey: String = "",
-        val apiKeyVisible: Boolean = false,
+        /** The signed-in Notion workspace, or null. The token itself stays in NotionSession. */
+        val account: NotionAccount? = null,
         val workspaces: List<Workspace> = emptyList(),
         val timerRunning: Boolean = false,
-        val testingKey: Boolean = false,
-        val keyTestSuccess: Boolean = false,
-        val keyTestError: String? = null,
         val snackbarMessage: String? = null,
         val themeMode: ThemeMode = ThemeMode.AUTO,
         val dynamicColor: Boolean = false,
@@ -95,11 +92,30 @@ class SettingsViewModel(private val app: Application) : AndroidViewModel(app) {
     private val settingsRepo get() = (app as NotionTimeTrackerApp).settingsRepository
     private val notionRepo get() = (app as NotionTimeTrackerApp).notionRepository
     private val syncer get() = (app as NotionTimeTrackerApp).settingsSyncer
+    private val session get() = (app as NotionTimeTrackerApp).notionSession
 
     init {
         viewModelScope.launch {
             loadSettings()
-            if (_uiState.value.apiKey.isNotBlank() && _uiState.value.syncPageId != null) syncNow()
+            if (session.isSignedIn() && _uiState.value.syncPageId != null) syncNow()
+        }
+        viewModelScope.launch {
+            session.account.collect { account -> _uiState.update { it.copy(account = account) } }
+        }
+        // The outcome of "Sign in with Notion", which finishes when the browser opens the app again.
+        viewModelScope.launch {
+            session.events.collect { event ->
+                val message = when (event) {
+                    is SessionEvent.SignedIn -> {
+                        // Cached schemas and options may belong to pages no longer shared.
+                        notionRepo.invalidateMetadataCache()
+                        "signed_in:${event.workspaceName}"
+                    }
+                    is SessionEvent.SignInFailed -> "sign_in_failed:${event.message}"
+                    SessionEvent.Expired -> "sign_in_expired"
+                }
+                _uiState.update { it.copy(snackbarMessage = message) }
+            }
         }
         viewModelScope.launch {
             settingsRepo.workspacesFlow.collect { workspaces ->
@@ -109,7 +125,6 @@ class SettingsViewModel(private val app: Application) : AndroidViewModel(app) {
     }
 
     private suspend fun loadSettings() {
-        val apiKey = settingsRepo.getApiKey()
         val workspaces = settingsRepo.getWorkspaces()
         val themeMode = settingsRepo.themeModeFlow.first()
         val dynamicColor = settingsRepo.dynamicColorFlow.first()
@@ -121,8 +136,7 @@ class SettingsViewModel(private val app: Application) : AndroidViewModel(app) {
         val syncPageId = settingsRepo.getSyncPageId()
         val syncPageTitle = settingsRepo.syncPageTitleFlow.first()
         _uiState.update { it.copy(
-            apiKey = apiKey,
-            savedApiKey = apiKey,
+            account = session.account.value,
             workspaces = workspaces,
             themeMode = themeMode,
             dynamicColor = dynamicColor,
@@ -180,52 +194,16 @@ class SettingsViewModel(private val app: Application) : AndroidViewModel(app) {
 
     fun setTimerRunning(running: Boolean) = _uiState.update { it.copy(timerRunning = running) }
 
-    fun setApiKey(key: String) = _uiState.update { it.copy(apiKey = key, keyTestError = null, keyTestSuccess = false) }
+    /**
+     * Starts "Sign in with Notion" and returns the page the screen opens in the browser. The
+     * browser comes back to MainActivity, which finishes the sign-in; the outcome arrives on
+     * NotionSession.events.
+     */
+    fun signInUrl(): String = session.beginSignIn(AuthServer.platform(app.packageName))
 
-    fun toggleApiKeyVisible() = _uiState.update { it.copy(apiKeyVisible = !it.apiKeyVisible) }
-
-    /** Removes the stored key. Only offered while one is actually stored. */
-    fun removeApiKey() {
-        viewModelScope.launch {
-            settingsRepo.saveApiKey("")
-            _uiState.update {
-                it.copy(
-                    apiKey = "",
-                    savedApiKey = "",
-                    keyTestSuccess = false,
-                    keyTestError = null,
-                    snackbarMessage = "api_key_removed"
-                )
-            }
-        }
-    }
-
-    fun testAndSaveApiKey() {
-        val key = _uiState.value.apiKey.trim()
-        // Nothing to test or save; the button is disabled in this state anyway.
-        if (key.isBlank()) return
-        _uiState.update { it.copy(testingKey = true, keyTestError = null, keyTestSuccess = false) }
-        viewModelScope.launch {
-            runCatching { notionRepo.testConnectionWithKey(key) }
-                .onSuccess {
-                    settingsRepo.saveApiKey(key)
-                    // Cached schemas/options belong to whatever integration the old key
-                    // pointed at.
-                    notionRepo.invalidateMetadataCache()
-                    _uiState.update {
-                        it.copy(
-                            apiKey = key,
-                            savedApiKey = key,
-                            testingKey = false,
-                            keyTestSuccess = true,
-                            snackbarMessage = "api_key_saved"
-                        )
-                    }
-                }
-                .onFailure { err ->
-                    _uiState.update { it.copy(testingKey = false, keyTestError = err.message) }
-                }
-        }
+    fun signOut() {
+        session.signOut()
+        _uiState.update { it.copy(snackbarMessage = "signed_out") }
     }
 
     fun clearSnackbar() = _uiState.update { it.copy(snackbarMessage = null) }

@@ -12,18 +12,21 @@ import {
   ArrowUp20Regular,
   ArrowDown20Regular,
   ArrowClockwise20Regular,
-  Eye20Regular,
-  EyeOff20Regular,
+  CheckmarkCircle20Regular,
   Dismiss20Regular,
 } from '@fluentui/react-icons';
 
 export default function Settings() {
-  const apiKey = useStore((s) => s.apiKey);
+  const notionAccount = useStore((s) => s.notionAccount);
+  const signedIn = !!notionAccount;
+  const signingIn = useStore((s) => s.signingIn);
   const workspaces = useStore((s) => s.workspaces);
   const alwaysOnTop = useStore((s) => s.alwaysOnTop);
   const startWithWindows = useStore((s) => s.startWithWindows);
   const theme = useStore((s) => s.theme);
-  const saveApiKey = useStore((s) => s.saveApiKey);
+  const signIn = useStore((s) => s.signIn);
+  const cancelSignIn = useStore((s) => s.cancelSignIn);
+  const signOut = useStore((s) => s.signOut);
   const deleteWorkspace = useStore((s) => s.deleteWorkspace);
   const [confirmingRemove, setConfirmingRemove] = useState(null);
   const moveWorkspace = useStore((s) => s.moveWorkspace);
@@ -35,7 +38,6 @@ export default function Settings() {
   const setShowArchiveAction = useStore((s) => s.setShowArchiveAction);
   const setTheme = useStore((s) => s.setTheme);
   const setView = useStore((s) => s.setView);
-  const addToast = useStore((s) => s.addToast);
   const timerRunning = useStore((s) => s.timer.running);
   const locale = useStore((s) => s.locale);
   const dateFormat = useStore((s) => s.dateFormat);
@@ -47,37 +49,11 @@ export default function Settings() {
   const syncPageTitle = useStore((s) => s.syncPageTitle);
   const disconnectSync = useStore((s) => s.disconnectSync);
 
-  const [keyInput, setKeyInput] = useState(apiKey);
-  const [showKey, setShowKey] = useState(false);
-  const [testing, setTesting] = useState(false);
   const [showAddWorkspace, setShowAddWorkspace] = useState(false);
   const [editingWorkspace, setEditingWorkspace] = useState(null);
   const [showCreateSync, setShowCreateSync] = useState(false);
   const [showLoadSync, setShowLoadSync] = useState(false);
 
-
-  const handleSaveAndTestKey = async () => {
-    const key = keyInput.trim();
-    // Nothing to test or save; the button is disabled in this state anyway.
-    if (!key) return;
-    setTesting(true);
-    try {
-      await window.notionAPI.testConnection(key, null);
-      await saveApiKey(key);
-      addToast({ type: 'success', message: t('toastApiKeySaved') });
-    } catch (err) {
-      addToast({ type: 'error', message: `${t('toastConnectionFailed')}: ${errorMessage(err)}` });
-    } finally {
-      setTesting(false);
-    }
-  };
-
-  // Removing is its own action, offered only while a key is actually stored.
-  const handleRemoveKey = async () => {
-    await saveApiKey('');
-    setKeyInput('');
-    addToast({ type: 'success', message: t('toastApiKeyRemoved') });
-  };
 
   return (
     <div className="flex flex-col h-full overflow-y-auto px-5 py-4 gap-5">
@@ -93,41 +69,57 @@ export default function Settings() {
       </div>
 
       <div>
-        <label className="block text-xs text-fg2 mb-1">{t('labelApiKey')}</label>
-        <div className="flex gap-2">
-          <input
-            type={showKey ? 'text' : 'password'}
-            value={keyInput}
-            onChange={(e) => setKeyInput(e.target.value)}
-            placeholder={t('placeholderApiKey')}
-            className="flex-1 bg-control border border-stroke rounded-md px-3 py-2 text-sm placeholder-fg3"
-          />
-          <button
-            onClick={() => setShowKey((v) => !v)}
-            title={showKey ? t('btnHideKey') : t('btnShowKey')}
-            className="px-2 bg-control border border-stroke rounded-md hover:bg-control-hover flex items-center justify-center"
-          >
-            {showKey ? <EyeOff20Regular className="w-4 h-4" /> : <Eye20Regular className="w-4 h-4" />}
-          </button>
-        </div>
-        <div className="mt-2 flex items-center gap-2">
-          <button
-            onClick={handleSaveAndTestKey}
-            disabled={testing || !keyInput.trim()}
-            className="px-3 py-1.5 rounded-md bg-control hover:bg-control-hover active:bg-control-pressed border border-stroke disabled:opacity-50 text-sm"
-          >
-            {testing ? t('btnTestingKey') : t('btnTestAndSaveKey')}
-          </button>
-          {apiKey && (
-            <button
-              onClick={handleRemoveKey}
-              disabled={testing}
-              className="px-3 py-1.5 rounded-md text-sm text-danger hover:text-danger hover:bg-subtle-hover disabled:opacity-50"
-            >
-              {t('btnRemoveKey')}
-            </button>
-          )}
-        </div>
+        <label className="block text-xs text-fg2 mb-1">{t('labelNotionAccount')}</label>
+        {signedIn ? (
+          <>
+            <div className="flex items-center justify-between bg-control border border-stroke rounded-md px-3 py-2 gap-2">
+              <span className="text-sm truncate flex items-center gap-1.5">
+                <CheckmarkCircle20Regular className="w-4 h-4 shrink-0 text-success" />
+                {t('signedInTo').replace('{workspace}', notionAccount.workspaceName || 'Notion')}
+              </span>
+              <button
+                onClick={signOut}
+                disabled={signingIn}
+                className="text-xs text-fg3 hover:text-danger shrink-0 disabled:opacity-50"
+              >
+                {t('btnSignOut')}
+              </button>
+            </div>
+            <div className="mt-2 flex items-center gap-2">
+              <button
+                onClick={signIn}
+                disabled={signingIn}
+                title={t('titleChoosePages')}
+                className="px-3 py-1.5 rounded-md bg-control hover:bg-control-hover active:bg-control-pressed border border-stroke disabled:opacity-50 text-sm"
+              >
+                {signingIn ? t('signInWaiting') : t('btnChoosePages')}
+              </button>
+              {signingIn && (
+                <button onClick={cancelSignIn} className="px-3 py-1.5 rounded-md text-sm text-fg2 hover:bg-subtle-hover">
+                  {t('btnCancel')}
+                </button>
+              )}
+            </div>
+          </>
+        ) : (
+          <>
+            <p className="text-xs text-fg3 mb-2">{t('signInHint')}</p>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={signIn}
+                disabled={signingIn}
+                className="px-4 py-2 rounded-md bg-accent hover:bg-accent-hover active:bg-accent-pressed text-on-accent text-sm font-semibold disabled:opacity-60"
+              >
+                {signingIn ? t('signInWaiting') : t('btnSignIn')}
+              </button>
+              {signingIn && (
+                <button onClick={cancelSignIn} className="px-3 py-1.5 rounded-md text-sm text-fg2 hover:bg-subtle-hover">
+                  {t('btnCancel')}
+                </button>
+              )}
+            </div>
+          </>
+        )}
       </div>
 
       {/* Notion-page sync */}
@@ -152,7 +144,7 @@ export default function Settings() {
             <div className="flex flex-wrap gap-2">
               <button
                 onClick={() => setShowCreateSync(true)}
-                disabled={!apiKey}
+                disabled={!signedIn}
                 className="px-3 py-1.5 rounded-md bg-control hover:bg-control-hover active:bg-control-pressed border border-stroke disabled:opacity-50 text-sm flex items-center gap-1.5"
               >
                 <ArrowClockwise20Regular className="w-4 h-4" />
@@ -160,7 +152,7 @@ export default function Settings() {
               </button>
               <button
                 onClick={() => setShowLoadSync(true)}
-                disabled={!apiKey}
+                disabled={!signedIn}
                 className="px-3 py-1.5 rounded-md bg-control hover:bg-control-hover active:bg-control-pressed border border-stroke disabled:opacity-50 text-sm"
               >
                 {t('btnLoadExistingSync')}
@@ -222,8 +214,8 @@ export default function Settings() {
         <div className="flex flex-wrap gap-2 mt-2">
           <button
             onClick={() => setShowAddWorkspace(true)}
-            disabled={!apiKey}
-            title={!apiKey ? t('warnNoApiKey') : undefined}
+            disabled={!signedIn}
+            title={!signedIn ? t('warnNotSignedIn') : undefined}
             className="px-3 py-1.5 rounded-md bg-control hover:bg-control-hover active:bg-control-pressed border border-stroke disabled:opacity-50 text-sm"
           >
             {t('btnAddWorkspace')}

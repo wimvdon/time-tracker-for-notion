@@ -1,0 +1,63 @@
+# Setting up "Sign in with Notion"
+
+The apps sign in to Notion through a small sign-in server: a Cloudflare Worker (`worker/` in this
+repository) at **https://timetracker-signin.wim.to**. It holds Notion's client secret, which can't
+be kept safely inside an app, and only swaps Notion's one-time sign-in code for a token (and
+renews tokens). It stores nothing. How it works: [architecture.md](architecture.md#sign-in-with-notion).
+
+This is a one-time setup. Each value goes in exactly one place:
+
+| Value | Where it comes from | Where it goes |
+|---|---|---|
+| OAuth client ID | Notion (your public connection) | Cloudflare, worker secret `NOTION_CLIENT_ID` |
+| OAuth client secret | Notion (your public connection) | Cloudflare, worker secret `NOTION_CLIENT_SECRET` |
+| State secret | You make it up (a long random password) | Cloudflare, worker secret `STATE_SECRET` |
+
+None of these ever go in the repository or in an app.
+
+## 1. Notion: the public connection
+
+In Notion's developer portal ([app.notion.com/developers/connections](https://app.notion.com/developers/connections)),
+open the public connection for Time Tracker:
+
+1. **Redirect URI:** `https://timetracker-signin.wim.to/callback` (exactly this, no slash at the end).
+2. **Capabilities:** Read content, Update content, Insert content, and Read user information
+   **without** email addresses (for "person" fields).
+3. **Icon:** the app icon (512×512 PNG).
+4. Copy the **OAuth client ID** and **OAuth client secret** for step 3.
+
+## 2. Cloudflare: deploying the worker from GitHub
+
+Cloudflare builds and deploys the worker itself whenever `main` changes (Workers Builds). The
+domain `wim.to` must be in the same Cloudflare account; the worker adds
+`timetracker-signin.wim.to` to it by itself on the first deploy.
+
+1. Cloudflare → **Workers & Pages → Create application → Import a repository**.
+2. **Connect GitHub** (first time only): allow the Cloudflare app on GitHub, for this repository
+   only is enough. Pick `time-tracker-for-notion`.
+3. Settings on the next screen:
+   - **Project name:** `time-tracker-for-notion` (must match `name` in `worker/wrangler.toml`).
+   - **Build command:** leave empty.
+   - **Deploy command:** `npx wrangler deploy` (the default).
+   - **Advanced settings → Path (root directory):** `worker`
+4. **Deploy.** From now on every push to `main` deploys again. Under the worker's **Settings →
+   Build**, turn off builds for other branches (non-production branch builds), so a pull request
+   never changes the live sign-in server.
+
+## 3. Cloudflare: the worker's secrets
+
+After the first deploy: Cloudflare → **Workers & Pages → time-tracker-for-notion → Settings →
+Variables and Secrets → Add**, type **Secret**, three times:
+
+- `NOTION_CLIENT_ID`: the OAuth client ID from step 1.
+- `NOTION_CLIENT_SECRET`: the OAuth client secret from step 1.
+- `STATE_SECRET`: a long random password (40+ characters, from a password manager). Changing it
+  later only cancels sign-ins that are in progress at that moment.
+
+**Deploy** after adding them. Check: opening https://timetracker-signin.wim.to/ in a browser shows
+`{"error":"not_found"}`. That means the worker runs.
+
+## If the client secret leaks
+
+Notion → your connection → regenerate the client secret, then replace `NOTION_CLIENT_SECRET` in
+Cloudflare. People who are signed in stay signed in.

@@ -5,6 +5,7 @@ import android.content.Intent
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.impca201.notiontimetracker.NotionTimeTrackerApp
+import com.impca201.notiontimetracker.data.api.NotSignedInException
 import com.impca201.notiontimetracker.data.api.arrayOrNull
 import com.impca201.notiontimetracker.data.api.asObjectOrNull
 import com.impca201.notiontimetracker.data.api.boolOrNull
@@ -41,7 +42,7 @@ private const val RECENTLY_STOPPED_TTL_MS = 60_000L
  * carry Notion's own message after a `|`, which is appended as detail.
  */
 object UiError {
-    const val NO_API_KEY = "no_api_key"
+    const val NOT_SIGNED_IN = "not_signed_in"
     const val START_FAILED = "start_failed"
     const val STOP_FAILED = "stop_failed"
     const val UPDATE_FAILED = "update_failed"
@@ -52,14 +53,16 @@ object UiError {
 private fun uiError(key: String, detail: String?): String =
     if (detail.isNullOrBlank()) key else "$key|$detail"
 
-private fun uiError(key: String, cause: Throwable): String = uiError(key, cause.message)
+/** "Not signed in" (the sign-in expired or was removed) is its own message, whatever was being done. */
+private fun uiError(key: String, cause: Throwable): String =
+    if (cause is NotSignedInException) UiError.NOT_SIGNED_IN else uiError(key, cause.message)
 
 class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
 
     data class UiState(
         /** False until the stored settings have been read, so the setup screen doesn't flash at start. */
         val settingsLoaded: Boolean = false,
-        val apiKey: String = "",
+        val signedIn: Boolean = false,
         val workspaces: List<Workspace> = emptyList(),
         val selectedWorkspaceId: String? = null,
         val projects: List<NamedOption> = emptyList(),
@@ -113,6 +116,7 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
     private val settingsRepo get() = (app as NotionTimeTrackerApp).settingsRepository
     private val notionRepo get() = (app as NotionTimeTrackerApp).notionRepository
     private val syncer get() = (app as NotionTimeTrackerApp).settingsSyncer
+    private val session get() = (app as NotionTimeTrackerApp).notionSession
 
     private var tickJob: Job? = null
     private var tickStartMs: Long = 0L
@@ -160,12 +164,18 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
 
     init {
         viewModelScope.launch { loadInitialState() }
+        // Signed in or out in Settings, or the sign-in expired: the timer screen follows.
+        viewModelScope.launch {
+            session.account.collect { account ->
+                _uiState.update { it.copy(signedIn = account != null) }
+            }
+        }
         // Auto-refresh every 60s
         viewModelScope.launch {
             while (true) {
                 delay(60_000L)
                 val state = _uiState.value
-                if (state.apiKey.isNotBlank() && state.workspaces.isNotEmpty()) {
+                if (state.signedIn && state.workspaces.isNotEmpty()) {
                     if (state.running) {
                         checkActiveTimerStillRunning()
                         if (_uiState.value.running) {
@@ -178,7 +188,7 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
                         loadRecentEntries()
                     }
                 }
-                if (state.apiKey.isNotBlank() && settingsRepo.getSyncPageId() != null) {
+                if (state.signedIn && settingsRepo.getSyncPageId() != null) {
                     runCatching { syncer.syncNow() }.onSuccess { refreshSettings() }
                 }
             }
@@ -187,7 +197,7 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
 
     private suspend fun loadInitialState() {
         try {
-            val apiKey = settingsRepo.getApiKey()
+            val signedIn = session.isSignedIn()
             val workspaces = settingsRepo.getWorkspaces()
             val lastId = settingsRepo.lastWorkspaceIdFlow.first()
             val activeTimer = settingsRepo.getActiveTimer()
@@ -200,7 +210,7 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
             _uiState.update { state ->
                 state.copy(
                     settingsLoaded = true,
-                    apiKey = apiKey,
+                    signedIn = signedIn,
                     workspaces = workspaces,
                     locale = locale,
                     dateFormat = dateFormat,
@@ -237,7 +247,7 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
                         android.util.Log.e("TimerViewModel", "Failed to start foreground service on launch", e)
                     }
                 }
-                if (apiKey.isNotBlank() && workspaces.isNotEmpty()) {
+                if (signedIn && workspaces.isNotEmpty()) {
                     viewModelScope.launch { checkActiveTimerStillRunning() }
                     loadRunningTimers()
                     loadRecentEntries()
@@ -245,7 +255,7 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
             } else {
                 val firstId = (workspaces.firstOrNull { it.id == lastId } ?: workspaces.firstOrNull())?.id
                 if (firstId != null) selectWorkspace(firstId)
-                if (apiKey.isNotBlank() && workspaces.isNotEmpty()) { loadRunningTimers(); loadRecentEntries() }
+                if (signedIn && workspaces.isNotEmpty()) { loadRunningTimers(); loadRecentEntries() }
             }
 
             val pending = pendingPreset
@@ -254,7 +264,7 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
                 applyPresetById(pending.first, pending.second)
             }
 
-            if (apiKey.isNotBlank() && settingsRepo.getSyncPageId() != null) {
+            if (signedIn && settingsRepo.getSyncPageId() != null) {
                 runCatching { syncer.syncNow() }.onSuccess { refreshSettings() }
             }
         } catch (e: Exception) {
@@ -266,7 +276,7 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
     fun refreshSettings() {
         viewModelScope.launch {
             val previousWorkspace = _uiState.value.workspaces.firstOrNull { it.id == _uiState.value.selectedWorkspaceId }
-            val apiKey = settingsRepo.getApiKey()
+            val signedIn = session.isSignedIn()
             val workspaces = settingsRepo.getWorkspaces()
             val locale = settingsRepo.localeFlow.first()
             val dateFormat = settingsRepo.dateFormatFlow.first()
@@ -275,7 +285,7 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
             val showArchiveAction = settingsRepo.showArchiveActionFlow.first()
             _uiState.update { it.copy(
                 settingsLoaded = true,
-                apiKey = apiKey,
+                signedIn = signedIn,
                 workspaces = workspaces,
                 locale = locale,
                 dateFormat = dateFormat,
@@ -504,7 +514,7 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
 
     fun refreshAll() {
         val state = _uiState.value
-        if (state.apiKey.isBlank() || state.workspaces.isEmpty()) return
+        if (!state.signedIn || state.workspaces.isEmpty()) return
         if (state.running && state.activeTimer != null) {
             viewModelScope.launch {
                 checkActiveTimerStillRunning()
@@ -630,7 +640,7 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
     fun startTimer(startAtMs: Long? = null) {
         val initial = _uiState.value
         val workspace = initial.workspaces.firstOrNull { it.id == initial.selectedWorkspaceId } ?: return
-        if (initial.apiKey.isBlank()) { _uiState.update { it.copy(error = UiError.NO_API_KEY) }; return }
+        if (!initial.signedIn) { _uiState.update { it.copy(error = UiError.NOT_SIGNED_IN) }; return }
 
         // No validation on start (validated on stop instead)
 
@@ -970,7 +980,7 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
 
     suspend fun loadRunningTimersSuspending() {
         val state = _uiState.value
-        if (state.apiKey.isBlank() || state.workspaces.isEmpty()) return
+        if (!state.signedIn || state.workspaces.isEmpty()) return
 
         _uiState.update { it.copy(runningTimersLoading = true) }
 
@@ -1042,7 +1052,7 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
 
     fun loadRecentEntries() {
         val state = _uiState.value
-        if (state.apiKey.isBlank() ||
+        if (!state.signedIn ||
             state.workspaces.isEmpty() || state.recentEntriesLoading) return
 
         _uiState.update { it.copy(recentEntriesLoading = true) }
