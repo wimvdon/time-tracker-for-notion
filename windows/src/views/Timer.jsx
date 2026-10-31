@@ -49,6 +49,7 @@ export default function Timer() {
   const setDescription = useStore((s) => s.setDescription);
   const extraFieldDefs = useStore((s) => s.extraFieldDefs);
   const extrasLoading = useStore((s) => s.extrasLoading);
+  const extrasMissing = useStore((s) => s.extrasMissing);
   const extraValues = useStore((s) => s.extraValues);
   const setExtraValue = useStore((s) => s.setExtraValue);
   const timer = useStore((s) => s.timer);
@@ -254,6 +255,9 @@ export default function Timer() {
 
             {selectedWorkspaceId && extrasLoading && (
               <div className="text-xs text-fg3">{t('placeholderLoading')}</div>
+            )}
+            {selectedWorkspaceId && !extrasLoading && extrasMissing > 0 && (
+              <div className="text-xs text-danger">{t('errorExtrasMissing')}</div>
             )}
             {selectedWorkspaceId &&
               extraFieldDefs.map((def) => (
@@ -956,7 +960,7 @@ function PresetEditorDialog({ draft, workspaces, onCancel, onSave, onDelete }) {
     setLoadFailed(false);
     setLoading(!!workspace?.extraProps?.length);
     fetchExtraFieldDefs(workspace)
-      .then((loaded) => {
+      .then(({ defs: loaded }) => {
         if (cancelled) return;
         setDefs(loaded);
         setValues((current) => {

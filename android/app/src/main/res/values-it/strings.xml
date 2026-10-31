@@ -193,7 +193,7 @@
     <string name="language_it">Italiano</string>
     <string name="error_extras_load_failed">Impossibile caricare i campi di questo spazio da Notion. I valori mostrati potrebbero essere incompleti.</string>
     <string name="error_running_timers_failed">Impossibile caricare i timer in corso da Notion. L\'elenco potrebbe essere incompleto.</string>
-    <string name="error_extras_missing_props">Alcune proprietà configurate non esistono più in questo database. Controlla lo spazio nelle Impostazioni.</string>
+    <string name="error_extras_missing_props">Alcuni campi di questo spazio di lavoro non possono essere mostrati: sono stati rinominati o eliminati in Notion, oppure collegano un database non condiviso con l’app (Impostazioni › Scegli pagine).</string>
     <string name="app_title">Time Tracker</string>
     <string name="title_manage_presets">Gestisci preimpostazioni</string>
     <string name="title_select_start_time">Scegli ora di inizio</string>

@@ -91,6 +91,7 @@ export default {
   hintDescriptionOptional: 'Laissée vide, la saisie de temps prend sa date de début comme titre.',
   toastDescriptionBeforeStopping: 'Remplissez une description avant d\'arrêter.',
   errorLoadingExtras: 'Impossible de charger les champs supplémentaires',
+  errorExtrasMissing: 'Certains champs de cet espace de travail ne peuvent pas être affichés : ils ont été renommés ou supprimés dans Notion, ou ils renvoient à une base de données non partagée avec l’app (Paramètres › Choisir les pages).',
   noPropertiesOfType: 'Aucun champ correspondant trouvé.',
   labelDefaultValue: 'Valeur par défaut',
   labelWorkspaceRounding: 'Arrondi du temps',

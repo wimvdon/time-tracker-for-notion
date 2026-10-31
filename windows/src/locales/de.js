@@ -91,6 +91,7 @@ export default {
   hintDescriptionOptional: 'Ohne Eingabe erhält der Zeiteintrag sein Startdatum als Titel.',
   toastDescriptionBeforeStopping: 'Beschreibung ausfüllen, bevor Sie stoppen.',
   errorLoadingExtras: 'Zusatzfelder konnten nicht geladen werden',
+  errorExtrasMissing: 'Einige Felder dieses Arbeitsbereichs können nicht angezeigt werden: Sie wurden in Notion umbenannt oder gelöscht, oder sie verweisen auf eine Datenbank, die nicht mit der App geteilt ist (Einstellungen › Seiten wählen).',
   noPropertiesOfType: 'Keine passenden Felder gefunden.',
   labelDefaultValue: 'Standardwert',
   labelWorkspaceRounding: 'Zeitrungung',

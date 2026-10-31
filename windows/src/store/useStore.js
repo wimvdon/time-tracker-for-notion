@@ -5,6 +5,7 @@ import { t, setLocale } from '../lib/i18n.js';
 import { errorMessage, isSignInCancelled } from '../lib/errors.js';
 import { withPresetTitles, needsPresetTitles } from '../lib/presets.js';
 import { syncDecision } from '../lib/syncDecision.js';
+import { countMissingExtraProps } from '../lib/schema.js';
 import { WRITABLE_EXTRA_TYPES, emptyValueFor, buildPropertyValue, parsePropertyValue, coerceInputValue } from '../lib/notionValues.js';
 
 const api = window.notionAPI;
@@ -81,10 +82,11 @@ let extrasLoadPromise = null;
 /**
  * The input definitions for a workspace's extra properties: the live Notion type of each
  * configured property plus the options it can be set to. Used by the timer form and the
- * preset editor; throws when Notion can't be reached.
+ * preset editor. `missing` counts configured fields the app can't show (lib/schema.js).
+ * Throws when Notion can't be reached.
  */
 export async function fetchExtraFieldDefs(workspace) {
-  if (!(workspace?.extraProps?.length)) return [];
+  if (!(workspace?.extraProps?.length)) return { defs: [], missing: 0 };
   const schema = await api.getDatabaseSchema(workspace.timeEntriesDbId);
   let users = null;
   const defs = [];
@@ -102,7 +104,7 @@ export async function fetchExtraFieldDefs(workspace) {
     }
     defs.push(def);
   }
-  return defs;
+  return { defs, missing: countMissingExtraProps(workspace.extraProps, schema, WRITABLE_EXTRA_TYPES) };
 }
 
 export const useStore = create((set, get) => ({
@@ -142,6 +144,8 @@ export const useStore = create((set, get) => ({
   description: '',
   extraFieldDefs: [],
   extrasLoading: false,
+  /** Configured extra fields the app can't show (missing in the schema or not writable). */
+  extrasMissing: 0,
   extraValues: {},
 
   // Timer state
@@ -570,6 +574,7 @@ export const useStore = create((set, get) => ({
       extraFieldDefs: [],
       extraValues,
       extrasLoading: !!workspace && (workspace.extraProps?.length ?? 0) > 0,
+      extrasMissing: 0,
     });
     api.saveSettings({ lastUsedWorkspaceId: workspaceId });
     if (!workspace) return;
@@ -581,7 +586,7 @@ export const useStore = create((set, get) => ({
   loadExtraFields: async (workspace, active = null) => {
     if (!(workspace.extraProps?.length)) return;
     try {
-      const defs = await fetchExtraFieldDefs(workspace);
+      const { defs, missing } = await fetchExtraFieldDefs(workspace);
       if (get().selectedWorkspaceId !== workspace.id) return;
       const extraValues = { ...active?.extraValues };
       for (const def of defs) {
@@ -589,7 +594,7 @@ export const useStore = create((set, get) => ({
           extraValues[def.name] = emptyValueFor(def.type);
         }
       }
-      set({ extraFieldDefs: defs, extraValues, extrasLoading: false });
+      set({ extraFieldDefs: defs, extraValues, extrasLoading: false, extrasMissing: missing });
     } catch (err) {
       if (get().selectedWorkspaceId !== workspace.id) return;
       set({ extrasLoading: false });

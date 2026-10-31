@@ -439,9 +439,11 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
             )
         }
 
-        // A configured property that is no longer in the database (renamed or
-        // deleted in Notion) is dropped from the form — say so instead of just
-        // showing fewer fields than the workspace is configured with.
+        // A configured property that isn't in the schema (renamed or deleted in
+        // Notion, or a relation to a database not shared with the app, which Notion
+        // leaves out) is dropped from the form — say so instead of just showing
+        // fewer fields than the workspace is configured with. Same rule as Windows
+        // (src/lib/schema.js, countMissingExtraProps).
         val missing = workspace.extraProps.count { prop ->
             prop.propName.isNotBlank() && (schema[prop.propName]?.type ?: "") !in WRITABLE_EXTRA_TYPES
         }

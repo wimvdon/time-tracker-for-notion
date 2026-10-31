@@ -91,6 +91,7 @@ export default {
   hintDescriptionOptional: 'Si se deja vacía, el registro recibe su fecha de inicio como título.',
   toastDescriptionBeforeStopping: 'Rellene una descripción antes de detener.',
   errorLoadingExtras: 'No se pudieron cargar los campos adicionales',
+  errorExtrasMissing: 'Algunos campos de este espacio de trabajo no se pueden mostrar: se renombraron o eliminaron en Notion, o enlazan a una base de datos que no está compartida con la app (Ajustes › Elegir páginas).',
   noPropertiesOfType: 'No se encontraron campos compatibles.',
   labelDefaultValue: 'Valor por defecto',
   labelWorkspaceRounding: 'Redondeo de tiempo',
