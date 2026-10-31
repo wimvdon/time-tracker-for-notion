@@ -1,4 +1,5 @@
-# Cloudflare Worker for "Sign in with Notion". Deployed by .github/workflows/worker.yml.
+# Cloudflare Worker for "Sign in with Notion". Cloudflare deploys it from this repository
+# (Workers Builds, root directory worker/) on every push to main. The name must match there.
 # Secrets (NOTION_CLIENT_ID, NOTION_CLIENT_SECRET, STATE_SECRET) are set in the Cloudflare
 # dashboard, never here. See docs/notion-sign-in-setup.md.
 name = "time-tracker-for-notion"

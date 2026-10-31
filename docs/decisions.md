@@ -14,8 +14,9 @@ removed (owner's choice): one way in, and the next step, settings sync through t
 a signed-in Notion user. Existing users sign in once; their settings stay.
 
 - **New network address and server**, approved by the owner: `PRIVACY.md` lists it. The worker
-  has no npm dependencies; deploying uses Cloudflare's `wrangler-action` in
-  `.github/workflows/worker.yml`, and its tests run in CI ("Worker").
+  has no npm dependencies. Cloudflare deploys it straight from this repository (Workers Builds,
+  connected in the Cloudflare dashboard by the owner), so GitHub holds no Cloudflare token; its
+  tests run in CI ("Worker").
 - **Rejected:** a custom URL protocol on Windows (registry changes, and the Dev build would fight
   the real app for it); storing state in Cloudflare KV (not needed with a signed state); keeping
   the API key as a fallback (two ways to sign in, and no user identity for sync).

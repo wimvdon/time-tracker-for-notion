@@ -12,8 +12,6 @@ This is a one-time setup. Each value goes in exactly one place:
 | OAuth client ID | Notion (your public connection) | Cloudflare, worker secret `NOTION_CLIENT_ID` |
 | OAuth client secret | Notion (your public connection) | Cloudflare, worker secret `NOTION_CLIENT_SECRET` |
 | State secret | You make it up (a long random password) | Cloudflare, worker secret `STATE_SECRET` |
-| Cloudflare API token | Cloudflare | GitHub, repository secret `CLOUDFLARE_API_TOKEN` |
-| Cloudflare account ID | Cloudflare | GitHub, repository secret `CLOUDFLARE_ACCOUNT_ID` |
 
 None of these ever go in the repository or in an app.
 
@@ -28,19 +26,23 @@ open the public connection for Time Tracker:
 3. **Icon:** the app icon (512×512 PNG).
 4. Copy the **OAuth client ID** and **OAuth client secret** for step 3.
 
-## 2. Cloudflare and GitHub: deploying the worker
+## 2. Cloudflare: deploying the worker from GitHub
 
-The domain `wim.to` must be in the same Cloudflare account; the worker adds
+Cloudflare builds and deploys the worker itself whenever `main` changes (Workers Builds). The
+domain `wim.to` must be in the same Cloudflare account; the worker adds
 `timetracker-signin.wim.to` to it by itself on the first deploy.
 
-1. Cloudflare → **My Profile → API Tokens → Create Token** → template **Edit Cloudflare Workers**
-   → choose your account and the `wim.to` zone → **Create**. Copy the token.
-2. Cloudflare → **Workers & Pages** → copy the **Account ID** (right-hand side).
-3. GitHub → this repository → **Settings → Secrets and variables → Actions → New repository
-   secret**: add `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` with the values above.
-4. Deploy: GitHub → **Actions → Deploy worker → Run workflow** (on `main`). It also runs by
-   itself whenever `worker/` changes on `main`. Without the two secrets it is skipped, with a
-   note on the run's summary.
+1. Cloudflare → **Workers & Pages → Create application → Import a repository**.
+2. **Connect GitHub** (first time only): allow the Cloudflare app on GitHub, for this repository
+   only is enough. Pick `time-tracker-for-notion`.
+3. Settings on the next screen:
+   - **Project name:** `time-tracker-for-notion` (must match `name` in `worker/wrangler.toml`).
+   - **Build command:** leave empty.
+   - **Deploy command:** `npx wrangler deploy` (the default).
+   - **Advanced settings → Path (root directory):** `worker`
+4. **Deploy.** From now on every push to `main` deploys again. Under the worker's **Settings →
+   Build**, turn off builds for other branches (non-production branch builds), so a pull request
+   never changes the live sign-in server.
 
 ## 3. Cloudflare: the worker's secrets
 

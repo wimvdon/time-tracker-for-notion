@@ -9,8 +9,7 @@ time-tracker-for-notion/
 │   ├── pull_request_template.md      Plain-language PR description, PC and phone test steps, checklist
 │   └── workflows/
 │       ├── ci.yml                    Windows checks, Windows installer smoke test, Android checks
-│       ├── release.yml               Version → Windows installer + Android APK → GitHub Release
-│       └── worker.yml                Deploys the sign-in worker to Cloudflare when worker/ changes on main
+│       └── release.yml               Version → Windows installer + Android APK → GitHub Release
 ├── .gitignore                        Build outputs, release/, keystores, .env
 ├── CLAUDE.md                         Rules for Claude Code sessions
 ├── DESIGN.md                         Design language shared with the sibling apps
