@@ -269,106 +269,6 @@ async function getPageProperties(auth, pageId) {
   return data.properties || {};
 }
 
-// ---- Settings sync (stores a JSON blob in a code block on a Notion page) ----
-
-// Notion rich_text segments are capped at 2000 chars each.
-const RICH_TEXT_CHUNK_SIZE = 2000;
-
-function encodeSyncPayload(payload) {
-  const json = JSON.stringify(payload);
-  const chunks = [];
-  for (let i = 0; i < json.length; i += RICH_TEXT_CHUNK_SIZE) {
-    chunks.push(json.slice(i, i + RICH_TEXT_CHUNK_SIZE));
-  }
-  if (chunks.length === 0) chunks.push('');
-  return chunks.map((c) => ({ type: 'text', text: { content: c } }));
-}
-
-function decodeSyncPayload(richText) {
-  const json = (richText || []).map((t) => t.plain_text ?? t.text?.content ?? '').join('');
-  const data = JSON.parse(json);
-  if (!data || !Array.isArray(data.workspaces) || typeof data.updatedAt !== 'string') {
-    throw new Error('Not a valid sync page');
-  }
-  return data;
-}
-
-/**
- * Returns all Notion pages the integration can access (for the "load existing
- * sync page" picker).
- * @returns [{ id, name, url }]
- */
-async function searchPages(auth) {
-  const results = [];
-  let cursor;
-  do {
-    const data = await notionFetch(auth, 'POST', '/search', {
-      filter: { value: 'page', property: 'object' },
-      sort: { direction: 'descending', timestamp: 'last_edited_time' },
-      page_size: 100,
-      ...(cursor ? { start_cursor: cursor } : {}),
-    });
-    for (const page of data.results) {
-      const titleProp = Object.values(page.properties || {}).find((p) => p.type === 'title');
-      const name = (titleProp?.title || []).map((t) => t.plain_text).join('').trim() || '(Untitled)';
-      results.push({ id: page.id, name, url: page.url || '' });
-    }
-    cursor = data.has_more ? data.next_cursor : undefined;
-  } while (cursor);
-  return results;
-}
-
-/**
- * Creates a new Notion page as a child of `parentPageId` (movable/renamable by
- * the user afterward) containing the sync payload as a single JSON code block.
- * Internal integrations cannot create pages directly at the workspace root
- * (Notion's API rejects `parent.workspace`), so an existing accessible page
- * must be chosen as the parent.
- * @returns { pageId }
- */
-async function createSyncPage(auth, parentPageId, title, payload) {
-  const data = await notionFetch(auth, 'POST', '/pages', {
-    parent: { page_id: parentPageId },
-    properties: {
-      title: { title: [{ text: { content: title } }] },
-    },
-    children: [
-      {
-        object: 'block',
-        type: 'code',
-        code: { language: 'json', rich_text: encodeSyncPayload(payload) },
-      },
-    ],
-  });
-  return { pageId: data.id };
-}
-
-/**
- * Reads a page's children looking for the sync JSON code block.
- * @returns { blockId, payload } or null if the page has no valid sync data
- */
-async function fetchSyncPageContent(auth, pageId) {
-  const data = await notionFetch(auth, 'GET', `/blocks/${pageId}/children?page_size=100`);
-  for (const block of data.results) {
-    if (block.type !== 'code') continue;
-    try {
-      const payload = decodeSyncPayload(block.code.rich_text);
-      return { blockId: block.id, payload };
-    } catch {
-      // Not our sync block — keep looking
-    }
-  }
-  return null;
-}
-
-/** Overwrites the sync code block in place with a fresh payload. */
-async function updateSyncBlock(auth, blockId, payload) {
-  await notionFetch(auth, 'PATCH', `/blocks/${blockId}`, {
-    code: { language: 'json', rich_text: encodeSyncPayload(payload) },
-  });
-  return { ok: true };
-}
-
 module.exports = {
   NOT_SIGNED_IN,
   notionFetch,
@@ -383,8 +283,4 @@ module.exports = {
   deletePage,
   updatePageProperties,
   getPageProperties,
-  searchPages,
-  createSyncPage,
-  fetchSyncPageContent,
-  updateSyncBlock,
 };

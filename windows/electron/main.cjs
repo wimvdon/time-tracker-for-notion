@@ -7,6 +7,7 @@ const Store = require('electron-store');
 const notion = require('./notionClient.cjs');
 const { createTokenStore } = require('./notionTokens.cjs');
 const { createNotionSession } = require('./notionAuth.cjs');
+const { createSettingsSync, isSyncPayload } = require('./settingsSync.cjs');
 const { APP_ORIGIN, APP_SCHEME, resolveBundlePath } = require('./bundlePath.cjs');
 
 // ---- Minimal PNG encoder (for the coloured tray icon) ----
@@ -98,7 +99,7 @@ const store = new Store({
     lastUsedWorkspaceId: null,
     activeTimer: null,
     theme: 'auto',
-    syncPageId: null,
+    syncEnabled: true,
     settingsUpdatedAt: null,
     lastSyncedUpdatedAt: null,
   },
@@ -118,6 +119,7 @@ const notionSession = createNotionSession({
   // Signed in, signed out, or Notion no longer accepts the sign-in: the UI follows.
   onChange: (reason) => mainWindow?.webContents.send('auth:changed', { account: notionSession.account(), reason }),
 });
+const settingsSync = createSettingsSync({ auth: notionSession });
 
 // The UI is served from app://bundle/ instead of file:// (Electron security checklist).
 // Must be registered before the app is ready.
@@ -430,19 +432,13 @@ handle('notion:getPageProperties', (_event, pageId) =>
   notion.getPageProperties(notionSession, pageId)
 );
 
-handle('notion:searchPages', () => notion.searchPages(notionSession));
-
-handle('notion:createSyncPage', (_event, parentPageId, title, payload) =>
-  notion.createSyncPage(notionSession, parentPageId, title, payload)
-);
-
-handle('notion:fetchSyncPage', (_event, pageId) =>
-  notion.fetchSyncPageContent(notionSession, pageId)
-);
-
-handle('notion:updateSyncBlock', (_event, blockId, payload) =>
-  notion.updateSyncBlock(notionSession, blockId, payload)
-);
+// Settings sync with the sign-in server (settingsSync.cjs). The renderer decides pull or push.
+handle('sync:get', () => settingsSync.get());
+handle('sync:put', (_event, payload) => {
+  if (!isSyncPayload(payload)) throw new Error('Invalid settings payload');
+  return settingsSync.put(payload);
+});
+handle('sync:delete', () => settingsSync.remove());
 
 // Only web links (Notion page URLs) — never file:// or other protocol handlers.
 handle('shell:openExternal', (_event, url) => {

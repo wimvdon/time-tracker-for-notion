@@ -1,4 +1,4 @@
-# Cloudflare Worker for "Sign in with Notion". Cloudflare deploys it from this repository
+# Cloudflare Worker for "Sign in with Notion" and settings sync. Cloudflare deploys it from this repository
 # (Workers Builds, root directory worker/) on every push to main. The name must match there.
 # Secrets (NOTION_CLIENT_SECRET, STATE_SECRET) are set in the Cloudflare dashboard, never here. See docs/notion-sign-in-setup.md.
 name = "time-tracker-for-notion"
@@ -12,3 +12,13 @@ routes = [{ pattern = "timetracker-signin.wim.to", custom_domain = true }]
 # Notion's OAuth client ID is public (it is part of every sign-in link), so it lives here.
 # Plain variables set in the dashboard are replaced by this list on every deploy.
 NOTION_CLIENT_ID = "40ad872b-594c-81b9-a29f-0037f4947fb3"
+
+# Settings sync (src/sync.js): one SQLite-backed Durable Object per Notion user. Cloudflare creates
+# it on deploy; nothing to set up in the dashboard.
+[[durable_objects.bindings]]
+name = "SETTINGS"
+class_name = "SettingsStore"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["SettingsStore"]

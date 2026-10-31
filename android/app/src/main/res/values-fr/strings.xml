@@ -178,20 +178,11 @@
 
     <!-- Notion-page sync -->
     <string name="label_sync">Synchronisation</string>
-    <string name="sync_status_not_connected">Non connecté. Synchronise les espaces, raccourcis et paramètres entre appareils.</string>
-    <string name="sync_status_connected">Synchronisé avec « %1$s »</string>
-    <string name="btn_create_sync_page">Créer une nouvelle page</string>
-    <string name="btn_load_existing_sync">Charger une page existante</string>
-    <string name="btn_disconnect_sync">Déconnecter</string>
-    <string name="modal_title_create_sync">Créer une page de synchronisation</string>
-    <string name="modal_title_load_sync">S\'associer à une page existante</string>
-    <string name="placeholder_sync_page_title">Titre de la page</string>
-    <string name="placeholder_select_sync_page">Sélectionnez une page…</string>
-    <string name="hint_create_sync">Saisissez un titre de page et choisissez une page parente. Assurez-vous que la page parente est partagée avec votre intégration Notion.</string>
-    <string name="hint_load_sync">Choisissez une page contenant déjà un code de synchronisation Time Tracker (créé depuis un autre appareil).</string>
-    <string name="error_not_a_sync_page">Cette page ne contient pas de code de synchronisation Time Tracker.</string>
-    <string name="btn_create">Créer</string>
-    <string name="btn_attach">Associer</string>
+    <string name="label_sync_enabled">Synchroniser les paramètres entre mes appareils</string>
+    <string name="sync_hint">Espaces de travail, préréglages et options d’affichage, stockés sur le serveur de connexion de Time Tracker sous votre compte Notion.</string>
+    <string name="btn_delete_sync">Supprimer les paramètres synchronisés</string>
+    <string name="confirm_delete_sync">Supprimer la copie sur le serveur et arrêter la synchronisation sur cet appareil ?</string>
+    <string name="toast_sync_deleted">Paramètres synchronisés supprimés. La synchronisation est désactivée sur cet appareil.</string>
 
     <string name="language_system">Système</string>
     <string name="language_en">English</string>
@@ -213,7 +204,6 @@
     <string name="section_expanded">Développé</string>
     <string name="section_collapsed">Réduit</string>
     <string name="label_theme_mode">Thème</string>
-    <string name="sync_summary_not_connected">Non connecté</string>
     <string name="setup_connect_title">Connexion à Notion</string>
     <string name="setup_connect_body">Connectez-vous avec Notion dans les Paramètres pour suivre votre temps.</string>
     <string name="setup_workspace_title">Ajoutez un espace</string>

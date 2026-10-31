@@ -4,6 +4,7 @@ import { toNotionDateTime, fallbackDescription, isFallbackDescription } from '..
 import { t, setLocale } from '../lib/i18n.js';
 import { errorMessage, isSignInCancelled } from '../lib/errors.js';
 import { withPresetTitles, needsPresetTitles } from '../lib/presets.js';
+import { syncDecision } from '../lib/syncDecision.js';
 import { WRITABLE_EXTRA_TYPES, emptyValueFor, buildPropertyValue, parsePropertyValue, coerceInputValue } from '../lib/notionValues.js';
 
 const api = window.notionAPI;
@@ -119,10 +120,8 @@ export const useStore = create((set, get) => ({
   showNotionLink: true,
   showArchiveAction: true,
 
-  // Notion-page sync
-  syncPageId: null,
-  syncPageTitle: '',
-  syncPageUrl: '',
+  // Settings sync through the sign-in server. Device-only switch; on by default.
+  syncEnabled: true,
   settingsUpdatedAt: null,
   lastSyncedUpdatedAt: null,
   syncing: false,
@@ -243,6 +242,18 @@ export const useStore = create((set, get) => ({
       })).then(() => api.notifySettingsChanged?.());
     }
 
+    // Settings used to sync through a Notion page; they now sync through the sign-in server.
+    // The page is no longer read. "Last synced" referred to that page, so it is forgotten too.
+    const oldSyncPage = settings.syncPageId !== undefined;
+    if (oldSyncPage) {
+      api.saveSettings({
+        syncPageId: undefined,
+        syncPageTitle: undefined,
+        syncPageUrl: undefined,
+        lastSyncedUpdatedAt: undefined,
+      });
+    }
+
     const activeLocale = settings.locale || 'system';
     setLocale(activeLocale);
 
@@ -258,11 +269,9 @@ export const useStore = create((set, get) => ({
       locale: activeLocale,
       dateFormat: settings.dateFormat || 'DD/MM/YYYY',
       timeFormat: settings.timeFormat || '24h',
-      syncPageId: settings.syncPageId || null,
-      syncPageTitle: settings.syncPageTitle || '',
-      syncPageUrl: settings.syncPageUrl || '',
+      syncEnabled: settings.syncEnabled !== false,
       settingsUpdatedAt: settings.settingsUpdatedAt || null,
-      lastSyncedUpdatedAt: settings.lastSyncedUpdatedAt || null,
+      lastSyncedUpdatedAt: oldSyncPage ? null : settings.lastSyncedUpdatedAt || null,
     });
 
     if (!notionAccount || !workspaces.length) {
@@ -292,7 +301,7 @@ export const useStore = create((set, get) => ({
       get().loadRecentEntries();
     }
 
-    if (notionAccount && settings.syncPageId) {
+    if (notionAccount && settings.syncEnabled !== false) {
       get().syncNow();
     }
 
@@ -320,7 +329,7 @@ export const useStore = create((set, get) => ({
         get().loadRunningTimers();
         get().loadRecentEntries();
       }
-      if (s.notionAccount && s.syncPageId) {
+      if (s.notionAccount && s.syncEnabled) {
         get().syncNow();
       }
     }, 60_000);
@@ -1256,110 +1265,63 @@ export const useStore = create((set, get) => ({
 
   refreshAll: () => {
     const s = get();
-    if (s.notionAccount && s.syncPageId) {
+    if (s.notionAccount && s.syncEnabled) {
       get().syncNow();
     }
     get().loadRunningTimers();
     get().loadRecentEntries();
   },
 
-  // ---- Notion-page sync ----
+  // ---- Settings sync (sign-in server) ----
 
-  createSyncPage: async (parentPageId, title) => {
-    const state = get();
-    set({ syncing: true, syncError: null });
+  /** Turns syncing on or off on this device. Turning it on syncs straight away. */
+  setSyncEnabled: async (syncEnabled) => {
+    await api.saveSettings({ syncEnabled });
+    set({ syncEnabled, syncError: null });
+    if (syncEnabled) get().syncNow();
+  },
+
+  /** Deletes the copy on the server and stops syncing on this device. */
+  deleteSyncedSettings: async () => {
     try {
-      const now = new Date().toISOString();
-      const payload = buildSyncPayload(state, now);
-      const { pageId } = await api.createSyncPage(parentPageId, title.trim(), payload);
-      await api.saveSettings({
-        syncPageId: pageId,
-        syncPageTitle: title.trim(),
-        syncPageUrl: '',
-        settingsUpdatedAt: now,
-        lastSyncedUpdatedAt: now,
-      });
-      set({
-        syncPageId: pageId,
-        syncPageTitle: title.trim(),
-        syncPageUrl: '',
-        settingsUpdatedAt: now,
-        lastSyncedUpdatedAt: now,
-        syncing: false,
-      });
-      get().addToast({ type: 'success', message: t('toastSyncCreated') });
-      return true;
+      await api.deleteSyncedSettings();
+      await api.saveSettings({ syncEnabled: false, lastSyncedUpdatedAt: undefined });
+      set({ syncEnabled: false, lastSyncedUpdatedAt: null, syncError: null });
+      get().addToast({ type: 'success', message: t('toastSyncDeleted') });
     } catch (err) {
-      set({ syncing: false, syncError: errorMessage(err) });
-      return false;
+      get().addToast({ type: 'error', message: errorMessage(err) });
     }
   },
 
-  /** Attaches to an existing page; fails (returns false) if it has no sync data. */
-  loadExistingSyncPage: async (pageId, title) => {
-    set({ syncing: true, syncError: null });
-    try {
-      const result = await api.fetchSyncPage(pageId);
-      if (!result) {
-        set({ syncing: false, syncError: t('errorNotASyncPage') });
-        return false;
-      }
-      applySyncPayload(set, get, result.payload);
-      await api.saveSettings({
-        syncPageId: pageId,
-        syncPageTitle: title || '',
-        settingsUpdatedAt: result.payload.updatedAt,
-        lastSyncedUpdatedAt: result.payload.updatedAt,
-      });
-      set({
-        syncPageId: pageId,
-        syncPageTitle: title || '',
-        settingsUpdatedAt: result.payload.updatedAt,
-        lastSyncedUpdatedAt: result.payload.updatedAt,
-        syncing: false,
-      });
-      get().addToast({ type: 'success', message: t('toastSyncConnected') });
-      return true;
-    } catch (err) {
-      set({ syncing: false, syncError: errorMessage(err) });
-      return false;
-    }
-  },
-
-  disconnectSync: async () => {
-    await api.saveSettings({
-      syncPageId: undefined,
-      syncPageTitle: undefined,
-      syncPageUrl: undefined,
-      lastSyncedUpdatedAt: undefined,
-    });
-    set({ syncPageId: null, syncPageTitle: '', syncPageUrl: '', lastSyncedUpdatedAt: null });
-  },
-
-  /** Pull-or-push against the configured sync page, whichever side is newer. */
+  /** Pull or push, whichever side is newer (lib/syncDecision.js, same rule as Android). */
   syncNow: async () => {
     const state = get();
-    if (!state.notionAccount || !state.syncPageId || state.syncing) return;
+    if (!state.notionAccount || !state.syncEnabled || state.syncing) return;
     set({ syncing: true, syncError: null });
     try {
-      const result = await api.fetchSyncPage(state.syncPageId);
-      if (!result) {
-        set({ syncing: false, syncError: t('errorNotASyncPage') });
-        return;
-      }
-      const { blockId, payload: remote } = result;
+      const remote = await api.getSyncedSettings();
       const local = get();
-      if (remote.updatedAt > (local.settingsUpdatedAt || '')) {
-        // Remote is newer — pull it in.
-        applySyncPayload(set, get, remote);
-        await api.saveSettings({ settingsUpdatedAt: remote.updatedAt, lastSyncedUpdatedAt: remote.updatedAt });
-        set({ settingsUpdatedAt: remote.updatedAt, lastSyncedUpdatedAt: remote.updatedAt });
-      } else if (local.settingsUpdatedAt && local.settingsUpdatedAt !== local.lastSyncedUpdatedAt) {
-        // Local has unsynced edits — push them.
-        const snapshot = buildSyncPayload(local, local.settingsUpdatedAt);
-        await api.updateSyncBlock(blockId, snapshot);
-        await api.saveSettings({ lastSyncedUpdatedAt: local.settingsUpdatedAt });
-        set({ lastSyncedUpdatedAt: local.settingsUpdatedAt });
+      const decision = syncDecision(
+        {
+          settingsUpdatedAt: local.settingsUpdatedAt,
+          lastSyncedUpdatedAt: local.lastSyncedUpdatedAt,
+          hasSettings: local.workspaces.length > 0,
+        },
+        remote
+      );
+      if (decision === 'pull') {
+        await pullSyncPayload(set, get, remote);
+      } else if (decision === 'push') {
+        // Settings from before sync existed have no timestamp yet.
+        const updatedAt = local.settingsUpdatedAt || new Date().toISOString();
+        const result = await api.putSyncedSettings(buildSyncPayload(local, updatedAt));
+        if (result.accepted) {
+          await api.saveSettings({ settingsUpdatedAt: updatedAt, lastSyncedUpdatedAt: updatedAt });
+          set({ settingsUpdatedAt: updatedAt, lastSyncedUpdatedAt: updatedAt });
+        } else if (result.payload) {
+          // Another device was faster with newer settings.
+          await pullSyncPayload(set, get, result.payload);
+        }
       }
       set({ syncing: false });
     } catch (err) {
@@ -1500,6 +1462,13 @@ function buildSyncPayload(state, updatedAt) {
     showNotionLink: state.showNotionLink,
     showArchiveAction: state.showArchiveAction,
   };
+}
+
+/** Takes the server's settings and remembers that this device is in step with them. */
+async function pullSyncPayload(set, get, remote) {
+  applySyncPayload(set, get, remote);
+  await api.saveSettings({ settingsUpdatedAt: remote.updatedAt, lastSyncedUpdatedAt: remote.updatedAt });
+  set({ settingsUpdatedAt: remote.updatedAt, lastSyncedUpdatedAt: remote.updatedAt });
 }
 
 /** Applies a fetched sync payload to local state and persists it. */

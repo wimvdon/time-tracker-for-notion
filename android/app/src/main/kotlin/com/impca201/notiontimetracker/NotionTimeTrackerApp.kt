@@ -2,6 +2,7 @@ package com.impca201.notiontimetracker
 
 import android.app.Application
 import com.impca201.notiontimetracker.data.api.AuthClient
+import com.impca201.notiontimetracker.data.api.SyncClient
 import com.impca201.notiontimetracker.data.repository.NotionRepository
 import com.impca201.notiontimetracker.data.repository.NotionSession
 import com.impca201.notiontimetracker.data.repository.SettingsRepository
@@ -25,6 +26,6 @@ class NotionTimeTrackerApp : Application() {
         settingsRepository.removeLegacyApiKey()
         notionSession = NotionSession(settingsRepository, AuthClient())
         notionRepository = NotionRepository(notionSession)
-        settingsSyncer = SettingsSyncer(settingsRepository, notionRepository)
+        settingsSyncer = SettingsSyncer(settingsRepository, notionRepository, SyncClient(notionSession))
     }
 }

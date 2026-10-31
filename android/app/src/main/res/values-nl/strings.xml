@@ -178,20 +178,11 @@
 
     <!-- Notion-page sync -->
     <string name="label_sync">Synchronisatie</string>
-    <string name="sync_status_not_connected">Niet verbonden. Synchroniseert werkruimtes, snelstarters en instellingen tussen apparaten.</string>
-    <string name="sync_status_connected">Gesynchroniseerd met “%1$s”</string>
-    <string name="btn_create_sync_page">Nieuwe aanmaken</string>
-    <string name="btn_load_existing_sync">Bestaande laden</string>
-    <string name="btn_disconnect_sync">Ontkoppelen</string>
-    <string name="modal_title_create_sync">Synchronisatiepagina aanmaken</string>
-    <string name="modal_title_load_sync">Koppelen aan bestaande pagina</string>
-    <string name="placeholder_sync_page_title">Paginatitel</string>
-    <string name="placeholder_select_sync_page">Selecteer een pagina…</string>
-    <string name="hint_create_sync">Vul een paginatitel in en kies een bovenliggende pagina. Zorg dat de bovenliggende pagina gedeeld is met je Notion-integratie.</string>
-    <string name="hint_load_sync">Kies een pagina die al een Time Tracker-synchronisatiecode bevat (aangemaakt vanaf een ander apparaat).</string>
-    <string name="error_not_a_sync_page">Deze pagina bevat geen Time Tracker-synchronisatiecode.</string>
-    <string name="btn_create">Aanmaken</string>
-    <string name="btn_attach">Koppelen</string>
+    <string name="label_sync_enabled">Instellingen synchroniseren tussen mijn toestellen</string>
+    <string name="sync_hint">Werkruimtes, voorinstellingen en weergaveopties, bewaard op de aanmeldserver van Time Tracker onder je Notion-account.</string>
+    <string name="btn_delete_sync">Gesynchroniseerde instellingen verwijderen</string>
+    <string name="confirm_delete_sync">De kopie op de server verwijderen en synchroniseren op dit toestel stoppen?</string>
+    <string name="toast_sync_deleted">Gesynchroniseerde instellingen verwijderd. Synchroniseren staat uit op dit toestel.</string>
 
     <string name="language_system">Systeem</string>
     <string name="language_en">English</string>
@@ -213,7 +204,6 @@
     <string name="section_expanded">Uitgevouwen</string>
     <string name="section_collapsed">Ingevouwen</string>
     <string name="label_theme_mode">Thema</string>
-    <string name="sync_summary_not_connected">Niet verbonden</string>
     <string name="setup_connect_title">Verbind met Notion</string>
     <string name="setup_connect_body">Meld je aan met Notion in Instellingen om tijd bij te houden.</string>
     <string name="setup_workspace_title">Voeg een werkruimte toe</string>

@@ -32,8 +32,8 @@ class SettingsViewModel(private val app: Application) : AndroidViewModel(app) {
         val timeFormat: String = "24h",
         val showNotionLink: Boolean = true,
         val showArchiveAction: Boolean = true,
-        val syncPageId: String? = null,
-        val syncPageTitle: String = "",
+        /** Whether this device syncs its settings through the sign-in server (device-only, on by default). */
+        val syncEnabled: Boolean = true,
         val syncing: Boolean = false,
         val syncError: String? = null
     )
@@ -97,7 +97,7 @@ class SettingsViewModel(private val app: Application) : AndroidViewModel(app) {
     init {
         viewModelScope.launch {
             loadSettings()
-            if (session.isSignedIn() && _uiState.value.syncPageId != null) syncNow()
+            if (session.isSignedIn() && _uiState.value.syncEnabled) syncNow()
         }
         viewModelScope.launch {
             session.account.collect { account -> _uiState.update { it.copy(account = account) } }
@@ -133,8 +133,7 @@ class SettingsViewModel(private val app: Application) : AndroidViewModel(app) {
         val timeFormat = settingsRepo.timeFormatFlow.first()
         val showNotionLink = settingsRepo.showNotionLinkFlow.first()
         val showArchiveAction = settingsRepo.showArchiveActionFlow.first()
-        val syncPageId = settingsRepo.getSyncPageId()
-        val syncPageTitle = settingsRepo.syncPageTitleFlow.first()
+        val syncEnabled = settingsRepo.isSyncEnabled()
         _uiState.update { it.copy(
             account = session.account.value,
             workspaces = workspaces,
@@ -145,8 +144,7 @@ class SettingsViewModel(private val app: Application) : AndroidViewModel(app) {
             timeFormat = timeFormat,
             showNotionLink = showNotionLink,
             showArchiveAction = showArchiveAction,
-            syncPageId = syncPageId,
-            syncPageTitle = syncPageTitle
+            syncEnabled = syncEnabled
         ) }
     }
 
@@ -435,65 +433,36 @@ class SettingsViewModel(private val app: Application) : AndroidViewModel(app) {
         settingsRepo.touchSettingsUpdatedAt()
     }
 
-    // ---- Notion-page sync ----
+    // ---- Settings sync (sign-in server) ----
 
-    suspend fun searchSyncPages(): List<NamedOption> = notionRepo.searchPages()
+    /** Turns syncing on or off on this device. Turning it on syncs straight away. */
+    fun setSyncEnabled(enabled: Boolean) {
+        _uiState.update { it.copy(syncEnabled = enabled, syncError = null) }
+        viewModelScope.launch {
+            settingsRepo.saveSyncEnabled(enabled)
+            if (enabled) syncNow()
+        }
+    }
 
-    fun createSyncPage(parentPageId: String, title: String) {
-        if (title.isBlank() || parentPageId.isBlank()) return
-        _uiState.update { it.copy(syncing = true, syncError = null) }
+    /** Deletes the copy on the server and stops syncing on this device. */
+    fun deleteSyncedSettings() {
         viewModelScope.launch {
             try {
-                val now = settingsRepo.syncTimestamp()
-                val payload = syncer.buildPayload(now)
-                val pageId = notionRepo.createSyncPage(parentPageId, title.trim(), payload)
-                settingsRepo.saveSyncPage(pageId, title.trim())
-                settingsRepo.saveSettingsUpdatedAt(now)
-                settingsRepo.saveLastSyncedUpdatedAt(now)
-                _uiState.update { it.copy(syncPageId = pageId, syncPageTitle = title.trim(), syncing = false) }
+                syncer.deleteFromServer()
+                _uiState.update { it.copy(syncEnabled = false, syncError = null, snackbarMessage = "sync_deleted") }
             } catch (e: Exception) {
-                _uiState.update { it.copy(syncing = false, syncError = e.message) }
+                _uiState.update { it.copy(snackbarMessage = e.message) }
             }
         }
     }
 
-    fun loadExistingSyncPage(pageId: String, title: String) {
-        _uiState.update { it.copy(syncing = true, syncError = null) }
-        viewModelScope.launch {
-            try {
-                val result = notionRepo.fetchSyncPageContent(pageId)
-                if (result == null) {
-                    _uiState.update { it.copy(syncing = false, syncError = "not_a_sync_page") }
-                    return@launch
-                }
-                syncer.applyPayload(result.payload)
-                settingsRepo.saveSyncPage(pageId, title)
-                settingsRepo.saveSettingsUpdatedAt(result.payload.updatedAt)
-                settingsRepo.saveLastSyncedUpdatedAt(result.payload.updatedAt)
-                loadSettings()
-                _uiState.update { it.copy(syncPageId = pageId, syncPageTitle = title, syncing = false) }
-            } catch (e: Exception) {
-                _uiState.update { it.copy(syncing = false, syncError = e.message) }
-            }
-        }
-    }
-
-    fun disconnectSync() {
-        viewModelScope.launch { settingsRepo.clearSyncPage() }
-        _uiState.update { it.copy(syncPageId = null, syncPageTitle = "") }
-    }
-
-    /** Pull-or-push against the configured sync page, whichever side is newer. */
+    /** Pull or push, whichever side is newer (SyncDecision, same rule as Windows). */
     fun syncNow() {
-        if (_uiState.value.syncPageId == null || _uiState.value.syncing) return
+        if (!_uiState.value.syncEnabled || _uiState.value.syncing || !session.isSignedIn()) return
         _uiState.update { it.copy(syncing = true, syncError = null) }
         viewModelScope.launch {
             try {
-                val ok = syncer.syncNow()
-                if (!ok) {
-                    _uiState.update { it.copy(syncing = false, syncError = "not_a_sync_page") }
-                    return@launch
-                }
+                syncer.syncNow()
                 loadSettings()
                 _uiState.update { it.copy(syncing = false) }
             } catch (e: Exception) {

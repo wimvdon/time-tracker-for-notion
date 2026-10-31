@@ -1,11 +1,29 @@
 # Technical decisions
 
+## 2026-10-31: Settings sync through the worker instead of a Notion page
+
+The owner asked to sync settings through the worker instead of the JSON code block on a Notion
+page. Setting up the page took several steps on every device (create, pick a parent page, load
+it elsewhere), and the page had to be shared with the app. Now sync is a switch, on by default,
+and works as soon as you are signed in. The worker keeps one copy per Notion workspace and user
+(it asks Notion `/users/me` who the token belongs to), in a SQLite-backed Durable Object per user:
+nothing to set up in Cloudflare, and two devices writing at once can't overwrite each other's
+check. Same payload and last-writer-wins rule as before; the server refuses a push older than
+its copy and returns that copy. **Delete synced settings** removes it. `PRIVACY.md` lists what is
+stored (owner approved storing settings on the server).
+
+- **The old sync page is ignored** (owner's choice): the first device to sync uploads its own
+  settings; a new install with no settings never uploads.
+- **Rejected:** Cloudflare KV (needs a namespace created by hand and is only eventually
+  consistent); keeping the Notion page as an option (two ways to sync); storing per device
+  instead of per user (the point is sharing between devices).
+
 ## 2026-10-31: Sign in with Notion instead of an API key
 
 The owner asked for Notion's sign-in (OAuth) instead of pasting an internal-integration API key.
 Notion's token exchange needs a client secret, which can't be kept safely inside a downloadable
 app, so a small Cloudflare Worker (`worker/`, `https://timetracker-signin.wim.to`) holds it and does
-only the code swap and token renewal. It stores nothing; a signed `state` carries what it needs.
+only the code swap and token renewal. Sign-in stores nothing; a signed `state` carries what it needs.
 The apps prove they started the sign-in with a PKCE-style verifier (Notion's OAuth has no PKCE of
 its own), so a caught link or code is useless to anyone else. Windows gets the code back on a
 local `127.0.0.1` port (no protocol registration, nothing that clashes with the Dev build);
@@ -117,6 +135,8 @@ A timer is "running" because its Notion page has the *running* status. There is 
 The cost is the 60-second polling loop. Notion has no push or webhook channel for internal integrations that a desktop or phone client could receive.
 
 ## Settings sync through a JSON code block
+
+*Replaced on 2026-10-31 by sync through the worker (see that entry). Kept for the history.*
 
 The settings (workspaces, presets, preferences) are a single JSON document in a code block on a user-chosen page.
 

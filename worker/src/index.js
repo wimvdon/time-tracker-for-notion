@@ -1,4 +1,5 @@
-// Cloudflare Worker entry point. The logic is in auth.js; this file only routes requests.
+// Cloudflare Worker entry point. Sign-in logic is in auth.js, settings sync in sync.js; this file
+// only routes requests.
 // NOTION_CLIENT_ID is in wrangler.toml (public). Secrets, set in the Cloudflare dashboard and never
 // in this repository: NOTION_CLIENT_SECRET and STATE_SECRET. See docs/notion-sign-in-setup.md.
 
@@ -12,6 +13,9 @@ import {
   verifyState,
 } from './auth.js';
 import { messagePage } from './page.js';
+import { handleSettings, SettingsStore } from './sync.js';
+
+export { SettingsStore };
 
 const json = (status, body) =>
   new Response(JSON.stringify(body), {
@@ -71,6 +75,8 @@ export async function handleRequest(request, env, fetchImpl = fetch) {
     const result = await notionToken(env, { grant_type: 'refresh_token', refresh_token: refreshToken }, fetchImpl);
     return json(result.status, result.body);
   }
+
+  if (url.pathname === '/settings') return handleSettings(request, env, fetchImpl);
 
   return json(404, { error: 'not_found' });
 }

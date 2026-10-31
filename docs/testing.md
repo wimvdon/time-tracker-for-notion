@@ -26,7 +26,7 @@ Android, inside `android/`:
 python3 -m unittest discover -s scripts/tests    # release scripts (version maths, keystore secret)
 ```
 
-The unit tests cover the sync payload: round trips, the shapes the Windows app writes, rejecting non-sync pages, and the JSON helpers. CI runs the script tests, unit tests and lint, then builds the debug and release APKs, so compile and R8 errors fail the check too; the release workflow runs the unit tests and lint again before the signed build. Test and lint reports are attached to every CI run (`android-reports`).
+The unit tests cover the sync payload: round trips, the shapes the Windows app writes, rejecting invalid payloads, and the JSON helpers. CI runs the script tests, unit tests and lint, then builds the debug and release APKs, so compile and R8 errors fail the check too; the release workflow runs the unit tests and lint again before the signed build. Test and lint reports are attached to every CI run (`android-reports`).
 
 ## What is covered
 
@@ -41,6 +41,8 @@ All tests are unit tests. Windows: 45 tests across 8 files:
 | `src/lib/presets.test.js` | Untitled presets get their description or the workspace name; workspaces without presets are untouched |
 | `src/lib/descriptionAutoSave.test.js` | A running timer's description is auto-saved only when it really changed; spaces and an emptied field don't trigger a save |
 | `src/lib/setupStep.test.js` | Which setup screen the timer shows: sign in when not signed in, add a workspace without one, nothing once both are set or while settings load |
+| `src/lib/syncDecision.test.js` | Settings sync: pull newer server settings, push unsynced local edits, fill an empty server, never push from an empty new install |
+| `electron/settingsSync.test.cjs` | Sync server calls with the Notion token; a refused push returns the newer copy; 401 renews the token once; errors; payload check for IPC |
 | `src/lib/errors.test.js` | IPC noise is stripped; "not signed in" becomes a readable message; a cancelled sign-in is recognised |
 | `src/store/useStore.test.js` | `init()` is idempotent under React StrictMode (no double interval); a failed running-timer query keeps the active timer |
 | `electron/notionTokens.test.cjs` | The sign-in is saved encrypted, plain fallback without encryption, signing out clears it, an undecryptable one reads as signed out, an old API key is deleted, the renderer never sees a token |
@@ -48,9 +50,9 @@ All tests are unit tests. Windows: 45 tests across 8 files:
 | `electron/notionClient.test.cjs` | A 401 renews the token once and retries; no renewal means "not signed in"; no loop on a second 401; nothing is sent without a sign-in |
 | `electron/bundlePath.test.cjs` | `app://bundle/` maps only to files inside `dist/`; `../` and encoded tricks, other schemes and hosts are refused |
 
-Android: tests in `NotionSessionTest` (the same sign-in and refresh rules as Windows, the challenge, the Dev build's own app link, reading the server's answers), `SyncPayloadJsonTest`, `DescriptionAutoSaveTest` (same auto-save rule as Windows), `SetupStepTest` (same setup-screen rule as Windows), `BackupRulesTest`, plus the release-script tests in `android/scripts/tests/` (version parsing and bumping, version codes, keystore-secret decoding).
+Android: tests in `SyncDecisionTest` (same sync rule as Windows, reading the server's answers), `NotionSessionTest` (the same sign-in and refresh rules as Windows, the challenge, the Dev build's own app link, reading the server's answers), `SyncPayloadJsonTest`, `DescriptionAutoSaveTest` (same auto-save rule as Windows), `SetupStepTest` (same setup-screen rule as Windows), `BackupRulesTest`, plus the release-script tests in `android/scripts/tests/` (version parsing and bumping, version codes, keystore-secret decoding).
 
-Worker (`worker/`): `src/index.test.js` runs with `node --test` in the "Worker" CI job: start refuses bad parameters, callback goes only to the app that started (local port on Windows, the matching app link on Android) and refuses forged or expired states, the code is only swapped with the right verifier, refresh passes `invalid_grant` on, pages follow the browser language.
+Worker (`worker/`): `src/index.test.js` and `src/sync.test.js` run with `node --test` in the "Worker" CI job: start refuses bad parameters, callback goes only to the app that started (local port on Windows, the matching app link on Android) and refuses forged or expired states, the code is only swapped with the right verifier, refresh passes `invalid_grant` on, pages follow the browser language; settings are kept per Notion workspace and user, an older push is refused with the stored copy, delete works, expired tokens get 401 and API keys 403, bad and oversized payloads are refused, Notion is asked once per token.
 
 ## Strategy
 

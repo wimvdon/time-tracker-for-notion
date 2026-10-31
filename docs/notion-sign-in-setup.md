@@ -3,7 +3,8 @@
 The apps sign in to Notion through a small sign-in server: a Cloudflare Worker (`worker/` in this
 repository) at **https://timetracker-signin.wim.to**. It holds Notion's client secret, which can't
 be kept safely inside an app, and only swaps Notion's one-time sign-in code for a token (and
-renews tokens). It stores nothing. How it works: [architecture.md](architecture.md#sign-in-with-notion).
+renews tokens). It also keeps each user's synced settings, in Durable Objects that Cloudflare
+creates by itself on deploy (nothing to set up). How it works: [architecture.md](architecture.md#sign-in-with-notion).
 
 This is a one-time setup. Each value goes in exactly one place:
 

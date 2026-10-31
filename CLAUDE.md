@@ -51,9 +51,9 @@ time.
 - Change `appId`/`name` in `windows/package.json` or `appId` in `android/app/build.gradle.kts`.
   Both apps are released: Windows would install a second app, phones would refuse to update.
 - Change how the Notion sign-in is stored (Windows `safeStorage`, Android `EncryptedSharedPreferences`)
-  or the format of the Notion sync page (both apps read it).
-- Make the sign-in worker (`worker/`) store anything, or change its addresses: both apps and the
-  redirect URL in Notion's connection settings use them.
+  or the format of the synced settings payload (both apps read it; `docs/api.md`).
+- Make the worker (`worker/`) store anything beyond the synced settings, or change its addresses:
+  both apps and the redirect URL in Notion's connection settings use them.
 - Run anything with administrator rights, or make the installer per-machine.
 
 ## Never commit

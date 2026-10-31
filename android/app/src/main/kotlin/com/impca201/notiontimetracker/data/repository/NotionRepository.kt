@@ -110,17 +110,6 @@ class NotionRepository(
 
     suspend fun deletePage(pageId: String) = client.deletePage(auth, pageId)
 
-    suspend fun searchPages(): List<NamedOption> = client.searchPages(auth)
-
-    suspend fun createSyncPage(parentPageId: String, title: String, payload: SyncPayload): String =
-        client.createSyncPage(auth, parentPageId, title, payload)
-
-    suspend fun fetchSyncPageContent(pageId: String): SyncFetchResult? =
-        client.fetchSyncPageContent(auth, pageId)
-
-    suspend fun updateSyncBlock(blockId: String, payload: SyncPayload) =
-        client.updateSyncBlock(auth, blockId, payload)
-
     companion object {
         /** How long a cached schema/option list counts as fresh. */
         private const val CACHE_TTL_MS = 60_000L

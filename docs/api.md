@@ -3,7 +3,7 @@
 The project exposes no HTTP API of its own. These are the interfaces it depends on or offers:
 
 1. [Notion REST API calls](#1-notion-rest-api-calls) — what both apps send to Notion
-2. [Sync page format](#2-sync-page-format) — the contract between the Windows and Android apps
+2. [Synced settings format](#2-synced-settings-format) — the contract between the Windows and Android apps
 3. [Windows IPC bridge](#3-windows-ipc-bridge-windownotionapi) — renderer ↔ main process
 4. [Windows command-line arguments](#4-windows-command-line-arguments)
 5. [Android intents](#5-android-intents)
@@ -28,10 +28,6 @@ The project exposes no HTTP API of its own. These are the interfaces it depends 
 | `updatePage` | `PATCH /pages/{id}` | `{ properties }` | — |
 | `getPageProperties` | `GET /pages/{id}` | — | raw `properties` |
 | `deletePage` | `PATCH /pages/{id}` | `{ archived: true }` (moves to Notion Trash) | — |
-| `searchPages` | `POST /search` | `filter.object = page`, last edited desc, paginated | `[{ id, name, url }]` |
-| `createSyncPage` | `POST /pages` | child of a page, one `code` block (json) | `{ pageId }` |
-| `fetchSyncPage` | `GET /blocks/{pageId}/children?page_size=100` | — | `{ blockId, payload }` or `null` |
-| `updateSyncBlock` | `PATCH /blocks/{blockId}` | `code.rich_text` = payload | — |
 
 ### Create a time entry
 
@@ -64,9 +60,9 @@ The property names come from the workspace's `propertyMap`. Extra fields support
 
 "Sign in with Notion" (OAuth, public connection). The user picks the pages the app may use on Notion's own page. The connection needs **Read**, **Update** and **Insert content**, and user information without email. The client secret lives only in the sign-in server (`worker/`); see section 5 and [notion-sign-in-setup.md](notion-sign-in-setup.md).
 
-## 2. Sync page format
+## 2. Synced settings format
 
-A Notion page containing a `code` block (language `json`). The JSON is split into `rich_text` segments of at most 2000 characters (Notion's per-segment limit) and joined when read. The first code block that parses as a valid payload is used; any other block is ignored.
+One JSON document per Notion user, stored by the sync server (section 5, `/settings`). Until 2026-10-31 the same document lived in a `code` block on a Notion page; that page is no longer read.
 
 ```json
 {
@@ -103,11 +99,11 @@ A Notion page containing a `code` block (language `json`). The JSON is split int
 
 Rules both apps follow:
 
-- **Validity:** `updatedAt` (ISO string) and `workspaces` (array) are required; anything else makes the block "not a sync page".
+- **Validity:** `updatedAt` (ISO string) and `workspaces` (array) are required; the server refuses anything else.
 - **Optional fields:** a missing optional field leaves the local value untouched. Android therefore keeps `null`s out of the payload (`explicitNulls = false` in `SyncPayloadJson.kt`).
 - **Locale tags differ per app:** Windows writes `en-GB` and `nl-BE`, Android writes `en` and `nl`. Both map any tag by its language subtag.
 - **Preset values:** each app normalizes the other's value shapes when reading them.
-- **Never included:** the API key and device-only settings.
+- **Never included:** the Notion sign-in and device-only settings (including whether sync is on).
 
 ## 3. Windows IPC bridge (`window.notionAPI`)
 
@@ -121,7 +117,7 @@ Defined in `windows/electron/preload.cjs`; handlers live in `windows/electron/ma
 | `fetchRunningTimers`, `fetchRecentEntries` | `notion:*` | invoke |
 | `getNotionAccount()`, `signIn()`, `cancelSignIn()`, `signOut()` | `auth:*` | invoke |
 | `onAuthChanged(cb)` | `auth:changed` (signed in, signed out, sign-in expired) | main → renderer |
-| `searchPages`, `createSyncPage`, `fetchSyncPage`, `updateSyncBlock` | `notion:*` | invoke |
+| `getSyncedSettings()`, `putSyncedSettings(payload)`, `deleteSyncedSettings()` | `sync:*` (payload checked in the main process) | invoke |
 | `openExternal(url)` | `shell:openExternal` (only `http(s)://` URLs) | invoke |
 | `setAlwaysOnTop(bool)`, `setStartWithWindows(bool)` | `window:*` | invoke |
 | `setNativeTheme(theme)` | `window:setTheme` | send |
@@ -146,7 +142,7 @@ Example desktop shortcut target:
 "%LOCALAPPDATA%\Programs\Time Tracker for Notion\Time Tracker for Notion.exe" --preset=3f2c…
 ```
 
-Preset ids are visible in the sync page JSON or in `%APPDATA%\Time Tracker for Notion\config.json` (obfuscated; the API key inside is encrypted).
+Preset ids are visible in `%APPDATA%\Time Tracker for Notion\config.json` (obfuscated; the API key inside is encrypted).
 
 ## 5. Android intents
 
@@ -158,7 +154,7 @@ Preset ids are visible in the sync page JSON or in `%APPDATA%\Time Tracker for N
 
 ## 5. Sign-in server
 
-`worker/src/index.js`, at `https://timetracker-signin.wim.to`. Stores nothing; `state` is signed with `STATE_SECRET` and expires after 15 minutes.
+`worker/src/index.js`, at `https://timetracker-signin.wim.to`. Sign-in stores nothing: `state` is signed with `STATE_SECRET` and expires after 15 minutes. Settings sync stores one payload per user (`worker/src/sync.js`, a SQLite-backed Durable Object per user).
 
 | Request | What it does |
 |---|---|
@@ -166,4 +162,8 @@ Preset ids are visible in the sync page JSON or in `%APPDATA%\Time Tracker for N
 | `GET /callback?code&state` (or `error`) | Notion comes back here. Checks `state`, then sends the browser to `http://127.0.0.1:<port>/callback` (Windows) or shows a page that opens the app link `timetrackerfornotion://auth` (Android; the Dev build uses `timetrackerfornotion-debug://auth`). |
 | `POST /token` `{code, state, verifier}` | Checks that sha256(verifier) matches the challenge in `state`, then asks Notion for the tokens with the client secret. Answers `{access_token, refresh_token, workspace_id, workspace_name, bot_id}`, or 400 `{error}`. |
 | `POST /refresh` `{refresh_token}` | Renews the tokens. 400 `{error: "invalid_grant"}` means: sign in again; 502 means Notion had trouble (the app keeps its sign-in). |
+| `GET /settings` | With `Authorization: Bearer <Notion token>`. Answers `{payload}` (`null` when nothing is stored). |
+| `PUT /settings` `{payload}` | Stores the payload if its `updatedAt` is newer than the stored one: `{accepted: true, payload}`. Otherwise 409 `{accepted: false, payload: <stored>}`, which the app applies. 400 for an invalid payload, 413 above 256 KB. |
+| `DELETE /settings` | Removes the stored payload. |
 
+For `/settings` the server asks Notion `GET /v1/users/me` who the token belongs to (cached for 5 minutes per token hash) and uses `<workspace_id>:<owner user id>` as the key. 401 means the token is expired (the app renews it and retries); 403 means it is not a user's sign-in.
