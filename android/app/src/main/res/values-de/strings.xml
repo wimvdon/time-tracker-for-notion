@@ -193,7 +193,7 @@
     <string name="language_it">Italiano</string>
     <string name="error_extras_load_failed">Die Felder dieses Workspace konnten nicht aus Notion geladen werden. Die angezeigten Werte sind möglicherweise unvollständig.</string>
     <string name="error_running_timers_failed">Die laufenden Timer konnten nicht aus Notion geladen werden. Die Liste ist möglicherweise unvollständig.</string>
-    <string name="error_extras_missing_props">Einige konfigurierte Eigenschaften gibt es in dieser Datenbank nicht mehr. Prüfe den Workspace in den Einstellungen.</string>
+    <string name="error_extras_missing_props">Einige Felder dieses Arbeitsbereichs können nicht angezeigt werden: Sie wurden in Notion umbenannt oder gelöscht, oder sie verweisen auf eine Datenbank, die nicht mit der App geteilt ist (Einstellungen › Seiten wählen).</string>
     <string name="app_title">Time Tracker</string>
     <string name="title_manage_presets">Vorlagen verwalten</string>
     <string name="title_select_start_time">Startzeit wählen</string>

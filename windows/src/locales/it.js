@@ -91,6 +91,7 @@ export default {
   hintDescriptionOptional: 'Se lasciata vuota, la registrazione riceve come titolo la data di inizio.',
   toastDescriptionBeforeStopping: 'Compila una descrizione prima di fermare il timer.',
   errorLoadingExtras: 'Impossibile caricare i campi aggiuntivi',
+  errorExtrasMissing: 'Alcuni campi di questo spazio di lavoro non possono essere mostrati: sono stati rinominati o eliminati in Notion, oppure collegano un database non condiviso con l’app (Impostazioni › Scegli pagine).',
   noPropertiesOfType: 'Nessun campo compatibile trovato.',
   labelDefaultValue: 'Valore predefinito',
   labelWorkspaceRounding: 'Arrotondamento tempo',

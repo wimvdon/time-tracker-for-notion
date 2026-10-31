@@ -193,7 +193,7 @@
     <string name="language_it">Italiano</string>
     <string name="error_extras_load_failed">Kon de velden van deze workspace niet uit Notion laden. De getoonde waarden zijn mogelijk onvolledig.</string>
     <string name="error_running_timers_failed">Kon de lopende timers niet uit Notion laden. De lijst is mogelijk onvolledig.</string>
-    <string name="error_extras_missing_props">Sommige ingestelde eigenschappen bestaan niet meer in deze database. Controleer de workspace in Instellingen.</string>
+    <string name="error_extras_missing_props">Sommige velden van deze workspace kunnen niet getoond worden: ze zijn hernoemd of verwijderd in Notion, of ze verwijzen naar een database die niet met de app gedeeld is (Instellingen › Pagina’s kiezen).</string>
     <string name="app_title">Time Tracker</string>
     <string name="title_manage_presets">Snelstarters beheren</string>
     <string name="title_select_start_time">Starttijd kiezen</string>

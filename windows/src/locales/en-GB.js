@@ -91,6 +91,7 @@ export default {
   hintDescriptionOptional: 'Left empty, the time entry is titled with its start date.',
   toastDescriptionBeforeStopping: 'Fill in a description before stopping.',
   errorLoadingExtras: 'Could not load extra fields',
+  errorExtrasMissing: 'Some fields of this workspace can\'t be shown: they were renamed or deleted in Notion, or they link to a database that isn\'t shared with the app (Settings › Choose pages).',
   noPropertiesOfType: 'No suitable field found in this database.',
   labelDefaultValue: 'Default value',
   labelWorkspaceRounding: 'Time rounding',

@@ -91,6 +91,7 @@ export default {
   hintDescriptionOptional: 'Als je niets invult, krijgt de tijdsregistratie de startdatum als titel.',
   toastDescriptionBeforeStopping: 'Vul een omschrijving in voor je stopt.',
   errorLoadingExtras: 'Kon extra velden niet laden',
+  errorExtrasMissing: 'Sommige velden van deze workspace kunnen niet getoond worden: ze zijn hernoemd of verwijderd in Notion, of ze verwijzen naar een database die niet met de app gedeeld is (Instellingen › Pagina’s kiezen).',
   noPropertiesOfType: 'Geen geschikt veld gevonden in deze database.',
   labelDefaultValue: 'Standaardwaarde',
   labelWorkspaceRounding: 'Tijden afronden',

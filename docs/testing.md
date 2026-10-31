@@ -41,6 +41,7 @@ All tests are unit tests. Windows: 45 tests across 8 files:
 | `src/lib/presets.test.js` | Untitled presets get their description or the workspace name; workspaces without presets are untouched |
 | `src/lib/descriptionAutoSave.test.js` | A running timer's description is auto-saved only when it really changed; spaces and an emptied field don't trigger a save |
 | `src/lib/setupStep.test.js` | Which setup screen the timer shows: sign in when not signed in, add a workspace without one, nothing once both are set or while settings load |
+| `src/lib/schema.test.js` | Which configured extra fields count as missing (not in the schema, or not writable), for the warning on the timer screen (same rule as Android) |
 | `src/lib/syncDecision.test.js` | Settings sync: pull newer server settings, push unsynced local edits, fill an empty server, never push from an empty new install |
 | `electron/settingsSync.test.cjs` | Sync server calls with the Notion token; a refused push returns the newer copy; 401 renews the token once; errors; payload check for IPC |
 | `src/lib/errors.test.js` | IPC noise is stripped; "not signed in" becomes a readable message; a cancelled sign-in is recognised |
