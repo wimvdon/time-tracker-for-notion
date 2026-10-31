@@ -49,7 +49,7 @@ npm run dev
 | UI | React 19, Tailwind CSS 4, Fluent UI icons | Jetpack Compose, Material 3 |
 | State | Zustand | ViewModel + `StateFlow` |
 | Shell / runtime | Electron 44 (tray, Mica, single instance) | Foreground service for the running timer |
-| Storage | electron-store (API key encrypted with Windows DPAPI) | DataStore + EncryptedSharedPreferences |
+| Storage | electron-store (Notion sign-in encrypted with Windows DPAPI) | DataStore + EncryptedSharedPreferences |
 | HTTP | Node `fetch` in the main process | OkHttp + kotlinx.serialization |
 | Build | Vite 6, electron-builder (NSIS), Node.js 24 (`windows/.nvmrc`) | Gradle 9.8, AGP 9.4, R8 |
 | Tests | `node:test`, ESLint, installer smoke test on Windows | JUnit 4 unit tests, Android lint |
@@ -70,11 +70,11 @@ Details: [docs/installation.md](docs/installation.md).
 
 ## Architecture (summary)
 
-Two independent clients talk directly to the Notion API with the user's own integration token; there is no backend. Notion is both the data store for time entries and the shared state between devices:
+Two independent clients talk directly to the Notion API with the user's own Notion sign-in. A small sign-in server (`worker/`, a Cloudflare Worker) only holds Notion's client secret for "Sign in with Notion" and stores nothing. Notion is both the data store for time entries and the shared state between devices:
 - **Running timers:** a page whose status is the "running" option.
 - **Settings:** a JSON code block on a "sync page", merged by "newest `updatedAt` wins".
 
-On Windows the API key and all HTTP calls stay in the Electron main process; the React renderer reaches them only through a narrow preload bridge. Details: [docs/architecture.md](docs/architecture.md).
+On Windows the Notion token and all HTTP calls stay in the Electron main process; the React renderer reaches them only through a narrow preload bridge. Details: [docs/architecture.md](docs/architecture.md).
 
 ## Project structure
 

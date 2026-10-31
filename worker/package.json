@@ -1,0 +1,9 @@
+{
+  "name": "time-tracker-for-notion-auth",
+  "private": true,
+  "type": "module",
+  "description": "Cloudflare Worker for \"Sign in with Notion\" (holds the OAuth client secret)",
+  "scripts": {
+    "test": "node --test \"src/**/*.test.js\""
+  }
+}

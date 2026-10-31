@@ -6,23 +6,23 @@ import org.junit.Test
 
 class SetupStepTest {
     @Test
-    fun `without an API key the first step is connecting to Notion`() {
-        assertEquals(SetupStep.ApiKey, SetupStep.of(settingsLoaded = true, apiKey = "", workspaceCount = 0))
-        assertEquals(SetupStep.ApiKey, SetupStep.of(settingsLoaded = true, apiKey = "  ", workspaceCount = 2))
+    fun `when not signed in the first step is signing in to Notion`() {
+        assertEquals(SetupStep.SignIn, SetupStep.of(settingsLoaded = true, signedIn = false, workspaceCount = 0))
+        assertEquals(SetupStep.SignIn, SetupStep.of(settingsLoaded = true, signedIn = false, workspaceCount = 2))
     }
 
     @Test
-    fun `with a key but no workspace the step is adding a workspace`() {
-        assertEquals(SetupStep.Workspace, SetupStep.of(settingsLoaded = true, apiKey = "secret_abc", workspaceCount = 0))
+    fun `signed in but no workspace, the step is adding a workspace`() {
+        assertEquals(SetupStep.Workspace, SetupStep.of(settingsLoaded = true, signedIn = true, workspaceCount = 0))
     }
 
     @Test
-    fun `with a key and a workspace nothing is left to set up`() {
-        assertNull(SetupStep.of(settingsLoaded = true, apiKey = "secret_abc", workspaceCount = 1))
+    fun `signed in with a workspace, nothing is left to set up`() {
+        assertNull(SetupStep.of(settingsLoaded = true, signedIn = true, workspaceCount = 1))
     }
 
     @Test
     fun `nothing is shown while the settings are still loading`() {
-        assertNull(SetupStep.of(settingsLoaded = false, apiKey = "", workspaceCount = 0))
+        assertNull(SetupStep.of(settingsLoaded = false, signedIn = false, workspaceCount = 0))
     }
 }

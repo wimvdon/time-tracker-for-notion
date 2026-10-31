@@ -5,7 +5,8 @@ const zlib = require('zlib');
 const { pathToFileURL } = require('url');
 const Store = require('electron-store');
 const notion = require('./notionClient.cjs');
-const { createApiKeyStore } = require('./apiKey.cjs');
+const { createTokenStore } = require('./notionTokens.cjs');
+const { createNotionSession } = require('./notionAuth.cjs');
 const { APP_ORIGIN, APP_SCHEME, resolveBundlePath } = require('./bundlePath.cjs');
 
 // ---- Minimal PNG encoder (for the coloured tray icon) ----
@@ -86,12 +87,11 @@ function makeColoredTrayIcon(hexColor) {
 }
 
 // encryptionKey obfuscates the config file at rest (it is not a hard security
-// boundary — anyone with access to this source can derive it). The API key itself is
-// additionally encrypted with Windows' DPAPI, see apiKey.cjs.
+// boundary — anyone with access to this source can derive it). The Notion sign-in itself is
+// additionally encrypted with Windows' DPAPI, see notionTokens.cjs.
 const store = new Store({
   encryptionKey: 'notion-timer-local-config-v1',
   defaults: {
-    apiKey: '',
     alwaysOnTop: true,
     startWithWindows: false,
     workspaces: [],
@@ -104,9 +104,20 @@ const store = new Store({
   },
 });
 
-// The Notion API key, encrypted at rest (see apiKey.cjs). Always read it with apiKeys.get(),
-// never straight from the store.
-const apiKeys = createApiKeyStore(store, safeStorage);
+// The Notion sign-in, encrypted at rest (see notionTokens.cjs). Only notionSession reads it;
+// the renderer is told whether it is signed in and to which workspace, never the token.
+const notionTokens = createTokenStore(store, safeStorage);
+const notionSession = createNotionSession({
+  tokens: notionTokens,
+  // Only ever the sign-in server's own https address (notionAuth.cjs).
+  openBrowser: (url) => shell.openExternal(url),
+  locale: () => {
+    const stored = store.get('locale');
+    return !stored || stored === 'system' ? app.getLocale() : stored;
+  },
+  // Signed in, signed out, or Notion no longer accepts the sign-in: the UI follows.
+  onChange: (reason) => mainWindow?.webContents.send('auth:changed', { account: notionSession.account(), reason }),
+});
 
 // The UI is served from app://bundle/ instead of file:// (Electron security checklist).
 // Must be registered before the app is ready.
@@ -346,15 +357,13 @@ function applyPresetById(presetId) {
 
 // ---- IPC handlers ----
 
-// The renderer sees the API key in plain `apiKey`; on disk it is only stored encrypted.
-handle('store:get', () => apiKeys.forRenderer(store.store));
+// The renderer never sees the Notion sign-in, only whether there is one (auth:get).
+handle('store:get', () => notionTokens.forRenderer(store.store));
 
 handle('store:set', (_event, data) => {
   for (const [key, value] of Object.entries(data)) {
-    if (key === apiKeys.PLAIN_FIELD) {
-      apiKeys.set(value);
-    } else if (key === apiKeys.ENCRYPTED_FIELD) {
-      // Only apiKeys may write the encrypted key.
+    if (notionTokens.PROTECTED_FIELDS.includes(key)) {
+      // Only notionTokens may write the sign-in.
       continue;
     } else if (value === undefined) {
       // undefined means "remove this key" — used by schema migrations
@@ -363,63 +372,76 @@ handle('store:set', (_event, data) => {
       store.set(key, value);
     }
   }
-  return apiKeys.forRenderer(store.store);
+  return notionTokens.forRenderer(store.store);
 });
 
+// "Sign in with Notion": opens the browser and resolves once the user is back (notionAuth.cjs).
+handle('auth:get', () => notionSession.account());
+handle('auth:signIn', async () => {
+  try {
+    return await notionSession.signIn();
+  } finally {
+    // The browser had the focus; bring the app back.
+    showWindow();
+  }
+});
+handle('auth:cancelSignIn', () => notionSession.cancelSignIn());
+handle('auth:signOut', () => notionSession.signOut());
+
 handle('notion:searchDatabases', () =>
-  notion.searchDatabases(apiKeys.get())
+  notion.searchDatabases(notionSession)
 );
 
 handle('notion:getDatabaseSchema', (_event, dbId) =>
-  notion.getDatabaseSchema(apiKeys.get(), dbId)
+  notion.getDatabaseSchema(notionSession, dbId)
 );
 
 handle('notion:fetchDatabasePages', (_event, dbId) =>
-  notion.fetchDatabasePages(apiKeys.get(), dbId)
+  notion.fetchDatabasePages(notionSession, dbId)
 );
 
-handle('notion:listUsers', () => notion.listUsers(apiKeys.get()));
+handle('notion:listUsers', () => notion.listUsers(notionSession));
 
 handle('notion:create', (_event, params) =>
-  notion.createTimeEntry(apiKeys.get(), params)
+  notion.createTimeEntry(notionSession, params)
 );
 
 handle('notion:stop', (_event, params) =>
-  notion.stopTimeEntry(apiKeys.get(), params)
+  notion.stopTimeEntry(notionSession, params)
 );
 
 handle('notion:fetchRunningTimers', (_event, dbId, statusProp, statusRunning, dateProp) =>
-  notion.fetchRunningTimers(apiKeys.get(), dbId, statusProp, statusRunning, dateProp)
+  notion.fetchRunningTimers(notionSession, dbId, statusProp, statusRunning, dateProp)
 );
 
 handle('notion:fetchRecentEntries', (_event, dbId, statusProp, statusDone, dateProp) =>
-  notion.fetchRecentEntries(apiKeys.get(), dbId, statusProp, statusDone, dateProp)
+  notion.fetchRecentEntries(notionSession, dbId, statusProp, statusDone, dateProp)
 );
 
 handle('notion:deletePage', (_event, pageId) =>
-  notion.deletePage(apiKeys.get(), pageId)
+  notion.deletePage(notionSession, pageId)
 );
 
 handle('notion:updatePage', (_event, pageId, properties) =>
-  notion.updatePageProperties(apiKeys.get(), pageId, properties)
+  notion.updatePageProperties(notionSession, pageId, properties)
 );
 
 handle('notion:getPageProperties', (_event, pageId) =>
-  notion.getPageProperties(apiKeys.get(), pageId)
+  notion.getPageProperties(notionSession, pageId)
 );
 
-handle('notion:searchPages', () => notion.searchPages(apiKeys.get()));
+handle('notion:searchPages', () => notion.searchPages(notionSession));
 
 handle('notion:createSyncPage', (_event, parentPageId, title, payload) =>
-  notion.createSyncPage(apiKeys.get(), parentPageId, title, payload)
+  notion.createSyncPage(notionSession, parentPageId, title, payload)
 );
 
 handle('notion:fetchSyncPage', (_event, pageId) =>
-  notion.fetchSyncPageContent(apiKeys.get(), pageId)
+  notion.fetchSyncPageContent(notionSession, pageId)
 );
 
 handle('notion:updateSyncBlock', (_event, blockId, payload) =>
-  notion.updateSyncBlock(apiKeys.get(), blockId, payload)
+  notion.updateSyncBlock(notionSession, blockId, payload)
 );
 
 // Only web links (Notion page URLs) — never file:// or other protocol handlers.
@@ -427,11 +449,6 @@ handle('shell:openExternal', (_event, url) => {
   if (typeof url !== 'string' || !/^https?:\/\//i.test(url)) return;
   return shell.openExternal(url);
 });
-
-// apiKey is passed explicitly here so Settings can test a key before saving it
-handle('notion:test', (_event, apiKey, dbId) =>
-  notion.testConnection(apiKey || apiKeys.get(), dbId)
-);
 
 handle('window:alwaysOnTop', (_event, value) => {
   store.set('alwaysOnTop', value);
@@ -489,8 +506,8 @@ if (!gotLock) {
   });
 
   app.whenReady().then(() => {
-    // safeStorage only works once the app is ready.
-    apiKeys.migrate();
+    // API keys from before "Sign in with Notion" are no longer used.
+    notionTokens.removeLegacyApiKey();
     const distDir = path.join(__dirname, '..', 'dist');
     protocol.handle(APP_SCHEME, (request) => {
       const file = resolveBundlePath(distDir, request.url);

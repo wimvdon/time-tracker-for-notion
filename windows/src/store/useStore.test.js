@@ -60,7 +60,7 @@ test('a failed running-timer query keeps the active timer instead of clearing it
   });
 
   api.fetchRunningTimers = async () => { throw new Error('Network error reaching Notion'); };
-  useStore.setState({ apiKey: 'k', workspaces: [ws], timer: runningTimer(), runningTimers: [], runningTimersLoading: false });
+  useStore.setState({ notionAccount: { workspaceName: 'Team' }, workspaces: [ws], timer: runningTimer(), runningTimers: [], runningTimersLoading: false });
   await useStore.getState().loadRunningTimers();
   assert.equal(useStore.getState().timer.running, true);
   assert.ok(!saved.some((d) => 'activeTimer' in d && d.activeTimer === null));
@@ -83,7 +83,7 @@ test('startTimer starts at a picked time, yesterday when it is later than now, e
 
   const ws = { id: 'ws1', name: 'Work', timeEntriesDbId: 'db1', propertyMap: {} };
   const idle = () => useStore.setState({
-    apiKey: 'k', workspaces: [ws], selectedWorkspaceId: 'ws1', description: '',
+    notionAccount: { workspaceName: 'Team' }, workspaces: [ws], selectedWorkspaceId: 'ws1', description: '',
     extraFieldDefs: [], extraValues: {}, extrasLoading: false, isStarting: false,
     timer: { ...useStore.getState().timer, running: false, tickInterval: null },
   });

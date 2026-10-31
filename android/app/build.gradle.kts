@@ -81,6 +81,8 @@ android {
         targetSdk = 37
         versionCode = appVersion.code
         versionName = appVersion.name
+        // The app link "Sign in with Notion" comes back on (AndroidManifest.xml, worker/src/auth.js).
+        manifestPlaceholders["authScheme"] = "timetrackerfornotion"
     }
 
     signingConfigs {
@@ -99,6 +101,8 @@ android {
             // Lets a pull request's debug APK be installed next to the released app, as
             // "Time Tracker Dev" (src/debug/res), with its own settings and API key.
             applicationIdSuffix = ".debug"
+            // Its own sign-in link, so signing in on the Dev build never opens the released app.
+            manifestPlaceholders["authScheme"] = "timetrackerfornotion-debug"
         }
         release {
             isMinifyEnabled = true

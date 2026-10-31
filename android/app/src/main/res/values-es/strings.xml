@@ -17,13 +17,17 @@
 
     <!-- Settings -->
     <string name="settings_title">Ajustes</string>
-    <string name="label_api_key">Clave API de Notion</string>
-    <string name="placeholder_api_key">secret_… o ntn_…</string>
-    <string name="btn_show_key">Mostrar</string>
-    <string name="btn_hide_key">Ocultar</string>
-    <string name="btn_test_and_save_key">Probar conexión y guardar</string>
-    <string name="btn_testing_key">Probando…</string>
-    <string name="btn_remove_key">Eliminar clave</string>
+    <string name="label_notion_account">Notion</string>
+    <string name="sign_in_hint">Inicia sesión y elige las páginas y bases de datos de Notion que la app puede usar.</string>
+    <string name="btn_sign_in">Iniciar sesión con Notion</string>
+    <string name="signed_in_to">Sesión iniciada en %1$s</string>
+    <string name="btn_sign_out">Cerrar sesión</string>
+    <string name="btn_choose_pages">Elegir páginas</string>
+    <string name="choose_pages_hint">Vuelve a iniciar sesión para compartir más (o menos) páginas de Notion con la app.</string>
+    <string name="toast_signed_in">Sesión iniciada en %1$s.</string>
+    <string name="toast_signed_out">Sesión de Notion cerrada.</string>
+    <string name="toast_sign_in_failed">No se pudo iniciar sesión</string>
+    <string name="toast_sign_in_expired">Tu sesión de Notion ha caducado. Vuelve a iniciar sesión en Ajustes.</string>
     <string name="label_workspaces">Espacios de trabajo</string>
     <string name="no_workspaces_yet">No hay espacios de trabajo aún.</string>
     <string name="title_delete_workspace">Eliminar espacio</string>
@@ -81,8 +85,6 @@
     <string name="btn_save">Guardar</string>
 
     <!-- Toasts / errors -->
-    <string name="toast_api_key_saved">La clave API funciona y ha sido guardada.</string>
-    <string name="toast_api_key_removed">Clave API eliminada.</string>
     <string name="toast_workspace_added">Espacio de trabajo \"%1$s\" añadido.</string>
     <string name="toast_workspace_saved">Espacio de trabajo \"%1$s\" guardado.</string>
     <string name="toast_start_error">No se pudo iniciar el temporizador</string>
@@ -206,14 +208,14 @@
     <string name="title_select_start_time">Elegir hora de inicio</string>
     <string name="title_select_end_time">Elegir hora de fin</string>
     <string name="title_info">Información</string>
-    <string name="error_no_api_key">No hay ninguna clave de API de Notion configurada.</string>
+    <string name="error_not_signed_in">No has iniciado sesión en Notion. Inicia sesión en Ajustes.</string>
     <string name="error_stop_from_notification_failed">Error al detener: abra la aplicación para reintentar</string>
     <string name="section_expanded">Desplegado</string>
     <string name="section_collapsed">Contraído</string>
     <string name="label_theme_mode">Tema</string>
     <string name="sync_summary_not_connected">No conectado</string>
     <string name="setup_connect_title">Conéctate a Notion</string>
-    <string name="setup_connect_body">Añade tu clave API de Notion en Ajustes para registrar tu tiempo.</string>
+    <string name="setup_connect_body">Inicia sesión con Notion en Ajustes para empezar a registrar tiempo.</string>
     <string name="setup_workspace_title">Añade un espacio</string>
     <string name="setup_workspace_body">Un espacio conecta el temporizador con una base de datos de Notion. Añade uno en Ajustes.</string>
     <string name="setup_open_settings">Abrir ajustes</string>

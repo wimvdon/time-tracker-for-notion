@@ -22,7 +22,7 @@ import kotlinx.serialization.json.Json
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = DataFiles.SETTINGS)
 
-class SettingsRepository(private val context: Context) {
+class SettingsRepository(private val context: Context) : TokenStore {
 
     // Applies @Serializable defaults for missing
     // fields and ignores unknown keys, so workspaces saved by older versions
@@ -84,10 +84,47 @@ class SettingsRepository(private val context: Context) {
         }
     }
 
-    fun getApiKey(): String = encryptedPrefs.getString("api_key", "") ?: ""
+    // ---- Notion sign-in (TokenStore for NotionSession) ----
+    // In the encrypted, never backed up file. "api_key" is from versions before "Sign in with
+    // Notion": it is deleted, the user signs in once instead.
 
-    fun saveApiKey(key: String) {
-        encryptedPrefs.edit().putString("api_key", key).apply()
+    override fun loadSession(): StoredSession? {
+        val access = encryptedPrefs.getString(ACCESS_TOKEN, null)
+        if (access.isNullOrBlank()) return null
+        return StoredSession(
+            accessToken = access,
+            refreshToken = encryptedPrefs.getString(REFRESH_TOKEN, null),
+            workspaceName = encryptedPrefs.getString(WORKSPACE_NAME, null).orEmpty(),
+            workspaceId = encryptedPrefs.getString(WORKSPACE_ID, null),
+        )
+    }
+
+    override fun saveSession(session: StoredSession?) {
+        encryptedPrefs.edit().apply {
+            remove(LEGACY_API_KEY)
+            if (session == null) {
+                remove(ACCESS_TOKEN)
+                remove(REFRESH_TOKEN)
+                remove(WORKSPACE_NAME)
+                remove(WORKSPACE_ID)
+            } else {
+                putString(ACCESS_TOKEN, session.accessToken)
+                putString(REFRESH_TOKEN, session.refreshToken)
+                putString(WORKSPACE_NAME, session.workspaceName)
+                putString(WORKSPACE_ID, session.workspaceId)
+            }
+        }.apply()
+    }
+
+    override fun loadPendingVerifier(): String? = encryptedPrefs.getString(PENDING_VERIFIER, null)
+
+    override fun savePendingVerifier(verifier: String?) {
+        encryptedPrefs.edit().putString(PENDING_VERIFIER, verifier).apply()
+    }
+
+    /** Deletes an API key saved by a version before "Sign in with Notion". */
+    fun removeLegacyApiKey() {
+        if (encryptedPrefs.contains(LEGACY_API_KEY)) encryptedPrefs.edit().remove(LEGACY_API_KEY).apply()
     }
 
     val workspacesFlow: Flow<List<Workspace>> = context.dataStore.data.map { prefs ->
@@ -269,5 +306,12 @@ class SettingsRepository(private val context: Context) {
         val SYNC_TIMESTAMP_FORMAT: java.time.format.DateTimeFormatter =
             java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
                 .withZone(java.time.ZoneOffset.UTC)
+
+        const val LEGACY_API_KEY = "api_key"
+        const val ACCESS_TOKEN = "notion_access_token"
+        const val REFRESH_TOKEN = "notion_refresh_token"
+        const val WORKSPACE_NAME = "notion_workspace_name"
+        const val WORKSPACE_ID = "notion_workspace_id"
+        const val PENDING_VERIFIER = "notion_pending_verifier"
     }
 }

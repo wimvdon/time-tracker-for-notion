@@ -17,13 +17,17 @@
 
     <!-- Settings -->
     <string name="settings_title">Settings</string>
-    <string name="label_api_key">Notion API key</string>
-    <string name="placeholder_api_key">secret_… or ntn_…</string>
-    <string name="btn_show_key">Show</string>
-    <string name="btn_hide_key">Hide</string>
-    <string name="btn_test_and_save_key">Test connection and save</string>
-    <string name="btn_testing_key">Testing…</string>
-    <string name="btn_remove_key">Remove key</string>
+    <string name="label_notion_account">Notion</string>
+    <string name="sign_in_hint">Sign in and choose the Notion pages and databases the app may use.</string>
+    <string name="btn_sign_in">Sign in with Notion</string>
+    <string name="signed_in_to">Signed in to %1$s</string>
+    <string name="btn_sign_out">Sign out</string>
+    <string name="btn_choose_pages">Choose pages</string>
+    <string name="choose_pages_hint">Sign in again to share more (or fewer) Notion pages with the app.</string>
+    <string name="toast_signed_in">Signed in to %1$s.</string>
+    <string name="toast_signed_out">Signed out of Notion.</string>
+    <string name="toast_sign_in_failed">Sign-in failed</string>
+    <string name="toast_sign_in_expired">Your Notion sign-in has expired. Sign in again in Settings.</string>
     <string name="label_workspaces">Workspaces</string>
     <string name="no_workspaces_yet">No workspaces yet.</string>
     <string name="title_delete_workspace">Remove workspace</string>
@@ -81,8 +85,6 @@
     <string name="btn_save">Save</string>
 
     <!-- Toasts / errors -->
-    <string name="toast_api_key_saved">API key works and was saved.</string>
-    <string name="toast_api_key_removed">API key removed.</string>
     <string name="toast_workspace_added">Workspace \"%1$s\" added.</string>
     <string name="toast_workspace_saved">Workspace \"%1$s\" saved.</string>
     <string name="toast_start_error">Could not start timer</string>
@@ -206,14 +208,14 @@
     <string name="title_select_start_time">Select start time</string>
     <string name="title_select_end_time">Select end time</string>
     <string name="title_info">Information</string>
-    <string name="error_no_api_key">No Notion API key set.</string>
+    <string name="error_not_signed_in">Not signed in to Notion. Sign in in Settings.</string>
     <string name="error_stop_from_notification_failed">Stopping failed — open the app to try again</string>
     <string name="section_expanded">Expanded</string>
     <string name="section_collapsed">Collapsed</string>
     <string name="label_theme_mode">Theme</string>
     <string name="sync_summary_not_connected">Not connected</string>
     <string name="setup_connect_title">Connect to Notion</string>
-    <string name="setup_connect_body">Add your Notion API key in Settings to start tracking time.</string>
+    <string name="setup_connect_body">Sign in with Notion in Settings to start tracking time.</string>
     <string name="setup_workspace_title">Add a workspace</string>
     <string name="setup_workspace_body">A workspace links the timer to a Notion database. Add one in Settings.</string>
     <string name="setup_open_settings">Open settings</string>

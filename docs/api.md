@@ -55,13 +55,14 @@ The property names come from the workspace's `propertyMap`. Extra fields support
 
 - **Retries:** 429 and 5xx responses are retried up to 4 attempts. The wait honours `Retry-After`, otherwise it is `500 ms × 2^attempt`, clamped between 300 ms and 10 s.
 - **Other errors:** the error carries Notion's `message`, or `Notion API error (HTTP <code>)`.
-- **No key configured:** `No Notion API key configured. Add one in Settings.`
+- **Not signed in:** when there is no sign-in, or Notion refuses it and it can't be renewed, the call fails as *not signed in* and the app shows **Not signed in to Notion. Sign in in Settings.**
+- **Expired token (401):** renewed once through the sign-in server, then the call is retried.
 - **Network failures (Windows):** `Network error reaching Notion: …`.
 - **Deleted entries:** messages containing `404`, `object_not_found` or "could not find page" are treated as a deleted page. The UI shows **Page not found in Notion** instead of an error toast.
 
 ### Authentication
 
-Internal-integration token only (no OAuth). The token needs **Read**, **Update** and **Insert content**. It only sees pages explicitly connected to it in Notion.
+"Sign in with Notion" (OAuth, public connection). The user picks the pages the app may use on Notion's own page. The connection needs **Read**, **Update** and **Insert content**, and user information without email. The client secret lives only in the sign-in server (`worker/`); see section 5 and [notion-sign-in-setup.md](notion-sign-in-setup.md).
 
 ## 2. Sync page format
 
@@ -117,7 +118,9 @@ Defined in `windows/electron/preload.cjs`; handlers live in `windows/electron/ma
 | `getSettings()` / `saveSettings(patch)` | `store:get` / `store:set` | invoke |
 | `searchDatabases`, `getDatabaseSchema`, `fetchDatabasePages`, `listUsers` | `notion:*` | invoke |
 | `createTimeEntry`, `stopTimeEntry`, `updatePage`, `getPageProperties`, `deletePage` | `notion:create`, `notion:stop`, `notion:updatePage`, … | invoke |
-| `fetchRunningTimers`, `fetchRecentEntries`, `testConnection` | `notion:*` | invoke |
+| `fetchRunningTimers`, `fetchRecentEntries` | `notion:*` | invoke |
+| `getNotionAccount()`, `signIn()`, `cancelSignIn()`, `signOut()` | `auth:*` | invoke |
+| `onAuthChanged(cb)` | `auth:changed` (signed in, signed out, sign-in expired) | main → renderer |
 | `searchPages`, `createSyncPage`, `fetchSyncPage`, `updateSyncBlock` | `notion:*` | invoke |
 | `openExternal(url)` | `shell:openExternal` (only `http(s)://` URLs) | invoke |
 | `setAlwaysOnTop(bool)`, `setStartWithWindows(bool)` | `window:*` | invoke |
@@ -126,7 +129,7 @@ Defined in `windows/electron/preload.cjs`; handlers live in `windows/electron/ma
 | `notifySettingsChanged()` | `settings:changed` (rebuild tray menu) | send |
 | `onTrayStopTimer(cb)`, `onTrayApplyPreset(cb)`, `onAccentColorChanged(cb)` | `tray:stop-timer`, `tray:apply-preset`, `appearance:accent` | main → renderer |
 
-The main process injects the API key into every `notion:*` call. The renderer never receives it except as part of `store:get`, which the Settings screen needs to display the field. On disk it is stored only encrypted (`apiKeyEncrypted`); `store:get` and `store:set` translate to and from the plain `apiKey` field the renderer uses.
+The main process adds the Notion token to every `notion:*` call. The renderer never receives it: `auth:get` only says whether it is signed in and to which workspace. On disk the sign-in is stored encrypted (`notionAuthEncrypted`); `store:get` leaves it out and `store:set` refuses to write it.
 
 Every channel is registered through `handle()` / `on()` in `main.cjs`, which reject or ignore messages that don't come from the app's own page (`app://bundle/…`, or the Vite dev server during `npm run dev`).
 
@@ -152,3 +155,15 @@ Preset ids are visible in the sync page JSON or in `%APPDATA%\Time Tracker for N
 | `ACTION_VIEW` with extras `preset_workspace_id`, `preset_id` | `MainActivity` | Starts the preset (used by the dynamic launcher shortcuts, max 4) |
 | `ACTION_STOP_TIMER` | `TimerForegroundService` (not exported) | Notification **Stop** button: stops the entry in Notion |
 | Broadcast `com.impca201.notiontimetracker.TIMER_STOPPED` (extra: page id) | `MainActivity` receiver | Tells a visible UI the service stopped the timer |
+
+## 5. Sign-in server
+
+`worker/src/index.js`, at `https://timetracker-signin.wim.to`. Stores nothing; `state` is signed with `STATE_SECRET` and expires after 15 minutes.
+
+| Request | What it does |
+|---|---|
+| `GET /start?platform=windows&port=<n>&challenge=<c>` | Signs `{platform, port, challenge, expiry}` into `state` and redirects to Notion's consent page. `platform` is `windows` (needs `port`, 1024–65535), `android` or `android-debug`. `challenge` is base64url(sha256(verifier)), 43 characters. |
+| `GET /callback?code&state` (or `error`) | Notion comes back here. Checks `state`, then sends the browser to `http://127.0.0.1:<port>/callback` (Windows) or shows a page that opens the app link `timetrackerfornotion://auth` (Android; the Dev build uses `timetrackerfornotion-debug://auth`). |
+| `POST /token` `{code, state, verifier}` | Checks that sha256(verifier) matches the challenge in `state`, then asks Notion for the tokens with the client secret. Answers `{access_token, refresh_token, workspace_id, workspace_name, bot_id}`, or 400 `{error}`. |
+| `POST /refresh` `{refresh_token}` | Renews the tokens. 400 `{error: "invalid_grant"}` means: sign in again; 502 means Notion had trouble (the app keeps its sign-in). |
+

@@ -47,10 +47,8 @@ fun SettingsScreen(
     editState: SettingsViewModel.WorkspaceEditState?,
     isEditValid: Boolean,
     onBack: () -> Unit,
-    onApiKeyChange: (String) -> Unit,
-    onToggleApiKeyVisible: () -> Unit,
-    onTestAndSave: () -> Unit,
-    onRemoveApiKey: () -> Unit,
+    onSignIn: () -> Unit,
+    onSignOut: () -> Unit,
     onMoveWorkspace: (from: Int, to: Int) -> Unit,
     onEditWorkspace: (Workspace) -> Unit,
     onDeleteWorkspace: (String) -> Unit,
@@ -94,8 +92,12 @@ fun SettingsScreen(
     LaunchedEffect(uiState.snackbarMessage) {
         uiState.snackbarMessage?.let { msg ->
             val text = when {
-                msg == "api_key_saved" -> resources.getString(R.string.toast_api_key_saved)
-                msg == "api_key_removed" -> resources.getString(R.string.toast_api_key_removed)
+                msg.startsWith("signed_in:") ->
+                    resources.getString(R.string.toast_signed_in, msg.substringAfter(":").ifBlank { "Notion" })
+                msg == "signed_out" -> resources.getString(R.string.toast_signed_out)
+                msg == "sign_in_expired" -> resources.getString(R.string.toast_sign_in_expired)
+                msg.startsWith("sign_in_failed:") ->
+                    resources.getString(R.string.toast_sign_in_failed) + ": " + msg.substringAfter(":")
                 msg.startsWith("workspace_added:") -> resources.getString(R.string.toast_workspace_added, msg.substringAfter(":"))
                 msg.startsWith("workspace_saved:") -> resources.getString(R.string.toast_workspace_saved, msg.substringAfter(":"))
                 else -> msg
@@ -206,55 +208,43 @@ fun SettingsScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) {
 
-        // --- Connection: API key and sync ---
-        item(key = "api-key") {
-            SettingsSection(title = stringResource(R.string.label_api_key)) {
-              SettingsBlock {
-                OutlinedTextField(
-                    value = uiState.apiKey,
-                    onValueChange = onApiKeyChange,
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    placeholder = { Text(stringResource(R.string.placeholder_api_key)) },
-                    visualTransformation = if (uiState.apiKeyVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                    trailingIcon = {
-                        TextButton(onClick = onToggleApiKeyVisible) {
-                            Text(
-                                if (uiState.apiKeyVisible) stringResource(R.string.btn_hide_key)
-                                else stringResource(R.string.btn_show_key)
-                            )
+        // --- Connection: Notion sign-in and sync ---
+        item(key = "notion-account") {
+            SettingsSection(title = stringResource(R.string.label_notion_account)) {
+                val account = uiState.account
+                if (account != null) {
+                    ListItem(
+                        headlineContent = {
+                            Text(stringResource(R.string.signed_in_to, account.workspaceName.ifBlank { "Notion" }))
+                        },
+                        leadingContent = {
+                            Icon(Icons.Rounded.CheckCircle, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                        },
+                        trailingContent = {
+                            TextButton(onClick = onSignOut) { Text(stringResource(R.string.btn_sign_out)) }
                         }
-                    },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
-                    keyboardActions = KeyboardActions(onDone = { onTestAndSave() })
-                )
-                uiState.keyTestError?.let { err ->
-                    Text(err, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-                }
-                Button(
-                    onClick = onTestAndSave,
-                    enabled = !uiState.testingKey && uiState.apiKey.isNotBlank(),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    if (uiState.testingKey) {
-                        CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
-                        Spacer(Modifier.width(8.dp))
-                        Text(stringResource(R.string.btn_testing_key))
-                    } else {
-                        Text(stringResource(R.string.btn_test_and_save_key))
+                    )
+                    SettingsBlock {
+                        // Notion's own page is where the shared pages are chosen, so this signs in again.
+                        OutlinedButton(onClick = onSignIn, modifier = Modifier.fillMaxWidth()) {
+                            Text(stringResource(R.string.btn_choose_pages))
+                        }
+                        Text(
+                            stringResource(R.string.choose_pages_hint),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                } else SettingsBlock {
+                    Text(
+                        stringResource(R.string.sign_in_hint),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Button(onClick = onSignIn, modifier = Modifier.fillMaxWidth()) {
+                        Text(stringResource(R.string.btn_sign_in))
                     }
                 }
-                // Removing is its own action, offered only while a key is actually stored.
-                if (uiState.savedApiKey.isNotBlank()) {
-                    TextButton(
-                        onClick = onRemoveApiKey,
-                        enabled = !uiState.testingKey,
-                        modifier = Modifier.align(Alignment.End)
-                    ) {
-                        Text(stringResource(R.string.btn_remove_key), color = MaterialTheme.colorScheme.error)
-                    }
-                }
-              }
             }
         }
 
@@ -279,10 +269,10 @@ fun SettingsScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        OutlinedButton(onClick = { showCreateSync = true }, enabled = uiState.apiKey.isNotBlank()) {
+                        OutlinedButton(onClick = { showCreateSync = true }, enabled = uiState.account != null) {
                             Text(stringResource(R.string.btn_create_sync_page))
                         }
-                        OutlinedButton(onClick = { showLoadSync = true }, enabled = uiState.apiKey.isNotBlank()) {
+                        OutlinedButton(onClick = { showLoadSync = true }, enabled = uiState.account != null) {
                             Text(stringResource(R.string.btn_load_existing_sync))
                         }
                     }

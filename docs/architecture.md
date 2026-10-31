@@ -2,7 +2,7 @@
 
 ## General design
 
-The repository holds two independent clients with the same feature set. There is no backend: each client calls the Notion REST API directly with the user's internal-integration token.
+The repository holds two independent clients with the same feature set. Each client calls the Notion REST API directly with the user's own Notion sign-in. The only server of its own is a small sign-in server (`worker/`, see [Sign in with Notion](#sign-in-with-notion)) that holds Notion's client secret and stores nothing.
 
 ```
                      ┌────────────────────────────────────────────┐
@@ -54,8 +54,9 @@ The two codebases share no code. They agree on Notion page shapes and the sync p
 |---|---|---|
 | `NotionTimeTrackerApp` | root | Creates the singletons: `SettingsRepository`, `NotionRepository`, `SettingsSyncer` |
 | `NotionClient` | `data/api` | OkHttp calls, same retry policy as Windows. Request JSON keeps `null`s, because Notion reads `null` as "clear". |
-| `NotionRepository` | `data/repository` | Injects the API key. Caches schemas, related pages and users for 60 s, and serves stale data when a refetch fails. |
-| `SettingsRepository` | `data/repository` | DataStore `notion_settings` for workspaces and the active timer (JSON via kotlinx.serialization) and display settings. The API key is in EncryptedSharedPreferences. |
+| `NotionRepository` | `data/repository` | Passes the sign-in (`NotionSession`) to every call. Caches schemas, related pages and users for 60 s, and serves stale data when a refetch fails. |
+| `SettingsRepository` | `data/repository` | DataStore `notion_settings` for workspaces and the active timer (JSON via kotlinx.serialization) and display settings. The Notion sign-in is in EncryptedSharedPreferences. |
+| `NotionSession` | `data/repository` | Sign in with Notion and token renewal (same rules as Windows `notionAuth.cjs`); `AuthClient` (`data/api`) talks to the sign-in server |
 | `SettingsSyncer` | `data/repository` | Pull-or-push algorithm for the sync page, shared by Settings and the timer refresh loop |
 | `TimerViewModel` / `SettingsViewModel` | `viewmodel` | All screen logic: start/stop, rounding, presets, running and recent lists, 60 s refresh |
 | `TimerForegroundService` | `service` | Ongoing notification with live elapsed time and a **Stop** action. Stops the entry in Notion itself, so it works with the app closed. |
@@ -75,7 +76,7 @@ The two codebases share no code. They agree on Notion page shapes and the sync p
 
 ### While running
 
-- Until an API key and at least one workspace are set, the timer screen shows a full-screen "setup needed" state instead of the timer ("Connect to Notion", then "Add a workspace"), with a button to Settings. The rule is shared: `src/lib/setupStep.js` and `viewmodel/SetupStep.kt`.
+- Until the user is signed in and at least one workspace is set, the timer screen shows a full-screen "setup needed" state instead of the timer ("Connect to Notion", then "Add a workspace"), with a button to Settings. The rule is shared: `src/lib/setupStep.js` and `viewmodel/SetupStep.kt`.
 - Description and extra field edits are written with `PATCH /pages/{id}` (description 800 ms after the last keystroke and on Enter or blur, extra fields 600 ms after the last change). An emptied description is only written on Enter/Done, Stop or (Windows) blur; the rule is shared: `src/lib/descriptionAutoSave.js` and `viewmodel/DescriptionAutoSave.kt`.
 - Changing **Start time** rewrites the date. Filling **End time** stops at that time.
 
@@ -87,7 +88,7 @@ The two codebases share no code. They agree on Notion page shapes and the sync p
 
 ### 60-second refresh loop (both apps)
 
-Every minute, when a key and workspaces exist:
+Every minute, when signed in with workspaces:
 
 1. Query each workspace's database for pages with the *running* status, and the last 15 *done* entries.
 2. If the local active timer is no longer running in Notion, clear it: "Timer was stopped on another device."
@@ -97,6 +98,41 @@ Every minute, when a key and workspaces exist:
 
 Lists are merged by page id to avoid flicker. Timers stopped locally within the last minute are filtered out of the running list, because Notion's query can still return them briefly.
 
+### Sign in with Notion
+
+Notion's sign-in (OAuth) needs a client secret, which can't be kept inside an app people download.
+A small Cloudflare Worker (`worker/`, at `https://timetracker-signin.wim.to`) holds it. It stores
+nothing: what it needs travels in a signed `state`. Setup: [notion-sign-in-setup.md](notion-sign-in-setup.md).
+Requests: [api.md](api.md#5-sign-in-server).
+
+```
+ App                          Browser                   Sign-in server          Notion
+  │ random verifier             │                           │                     │
+  │── open /start?challenge ───►│──────────────────────────►│ signs state         │
+  │                             │◄── redirect to consent ───│                     │
+  │                             │── user picks pages, Allow ─────────────────────►│
+  │                             │◄────────────── /callback?code&state ────────────│
+  │◄── code + state ────────────│◄── to the app ────────────│ checks state        │
+  │── POST /token code, state, verifier ───────────────────►│ sha256(verifier)    │
+  │                             │                           │   = challenge? ────►│ code + secret
+  │◄────────────────────────── access + refresh token ──────│◄────────────────────│
+```
+
+- **Back to the app.** Windows listens on a free port on `127.0.0.1` for one `/callback`
+  (`electron/notionAuth.cjs`). Android receives the app link `timetrackerfornotion://auth` in
+  `MainActivity` (the Dev build has `timetrackerfornotion-debug://`, so it never opens the
+  released app).
+- **The verifier** binds the code to the app that started the sign-in: another app that catches
+  the link (or a page that calls the local port) can't swap the code without it. Android keeps the
+  verifier in the encrypted preferences while the browser is open, in case Android ends the app.
+- **Renewal.** When Notion answers 401, the token is renewed once through `/refresh` and the call
+  is retried; requests failing at the same time share one renewal. If Notion refuses the refresh
+  token, the app is signed out and says *Your Notion sign-in has expired*. If the server or the
+  network has trouble, the sign-in is kept and only that call fails.
+- **Choose pages** signs in again: Notion's consent page is where the shared pages are picked.
+- **Upgrade.** An API key saved by an older version is deleted on start; the user signs in once.
+  Workspaces, presets and the sync page are kept.
+
 ### Settings sync
 
 `syncNow` compares the remote payload's `updatedAt` with the local `settingsUpdatedAt`:
@@ -105,12 +141,12 @@ Lists are merged by page id to avoid flicker. Timers stopped locally within the 
 - **Local edits not yet pushed** (`settingsUpdatedAt ≠ lastSyncedUpdatedAt`): overwrite the code block with the local snapshot.
 - **Otherwise:** nothing.
 
-It is last-writer-wins at whole-payload granularity. The API key and device-only settings (always on top, start with Windows, Android dynamic colour) are never synced.
+It is last-writer-wins at whole-payload granularity. The Notion sign-in and device-only settings (always on top, start with Windows, Android dynamic colour) are never synced.
 
 ## Patterns used
 
-- **Thin client, no backend.** Each user's own token talks to their own workspace.
-- **Process isolation (Windows).** `contextIsolation: true`, `nodeIntegration: false`, navigation and `window.open` blocked, strict CSP in production, UI served from `app://bundle/`, every IPC message checked to come from the app's page, Electron fuses on. Notion requests (and so the token's use) stay in the main process; the renderer only gets the token to show it in Settings.
+- **Thin client, no backend.** Each user's own sign-in talks to their own workspace; the sign-in server only swaps codes and renews tokens.
+- **Process isolation (Windows).** `contextIsolation: true`, `nodeIntegration: false`, navigation and `window.open` blocked, strict CSP in production, UI served from `app://bundle/`, every IPC message checked to come from the app's page, Electron fuses on. Notion requests (and so the token) stay in the main process; the renderer only learns whether it is signed in and to which workspace.
 - **Single store / MVVM.** Zustand on Windows and ViewModel + `StateFlow` on Android hold all logic; views are declarative.
 - **Repository + cache (Android).** `NotionRepository` hides the token and caches slow-changing metadata.
 - **Optimistic local state with Notion reconciliation.** UI updates immediately; the refresh loop corrects it from Notion.
@@ -120,15 +156,15 @@ It is last-writer-wins at whole-payload granularity. The API key and device-only
 
 | Data | Windows | Android |
 |---|---|---|
-| API key | electron-store, encrypted with `safeStorage` (Windows DPAPI, tied to the Windows user) | EncryptedSharedPreferences (AES-256). Falls back to recreating it, then to plain prefs if the keystore fails. Never backed up. |
+| Notion sign-in (tokens, workspace name) | electron-store, encrypted with `safeStorage` (Windows DPAPI, tied to the Windows user) | EncryptedSharedPreferences (AES-256). Falls back to recreating it, then to plain prefs if the keystore fails. Never backed up. |
 | Workspaces, presets, active timer, preferences | electron-store `config.json` | DataStore `notion_settings` (JSON strings for structured values). Backed up. |
 | Time entries | Notion | Notion |
 | Shared settings | Notion sync page | Notion sync page |
 
 **Android backup.** Android's own backup (to the Google account) and phone-to-phone transfer copy
 only `notion_settings`, so workspaces, presets and preferences come back on a new phone; you only
-enter the API key again. The rules are an allow list (`res/xml/data_extraction_rules.xml` for
+sign in with Notion again. The rules are an allow list (`res/xml/data_extraction_rules.xml` for
 Android 12+, `res/xml/backup_rules.xml` for Android 8-11, guarded by `BackupRulesTest`), so a file
-added later is never backed up by accident. The API key is left out: it is secret, and it is
+added later is never backed up by accident. The Notion sign-in is left out: it is secret, and it is
 encrypted with an Android Keystore key that can't be moved to another phone. File names are in
 `data/repository/DataFiles.kt`. Windows has no automatic backup.

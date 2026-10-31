@@ -1,9 +1,8 @@
 # Rules for Claude Code sessions in this repository
 
-Time Tracker for Notion: a Windows desktop app (Electron, `windows/`) and an Android app
-(`android/`) in one repository, built from the same rules as the
-`windows-electron-app` and
-`android-app` templates (private repositories). The owner is **not a developer
+Time Tracker for Notion: a Windows desktop app (Electron, `windows/`), an Android app
+(`android/`) and the "Sign in with Notion" Cloudflare Worker (`worker/`) in one repository,
+built from the same rules as the `windows-electron-app` and `android-app` templates (private repositories). The owner is **not a developer
 and does not review code**. CI, tests, lint and these rules are the safety net. Follow them every
 time.
 
@@ -19,8 +18,9 @@ time.
    ```
    If you touched `android/scripts/` or the workflows, also run
    `cd android && python3 -m unittest discover -s scripts/tests`.
+   If you touched `worker/`, run `cd worker && npm test`.
    Then push and make sure **all** CI jobs on the pull request are green ("Windows checks",
-   "Windows build", "Android"). Only CI can build and install the Windows installer; a Linux
+   "Windows build", "Android", "Worker"). Only CI can build and install the Windows installer; a Linux
    session cannot.
 3. **Write the pull request description in plain language** (fill in
    `.github/pull_request_template.md`): what changed and why, in words a non-developer
@@ -43,14 +43,17 @@ time.
   Content Security Policy (`windows/vite.config.js`), navigation/permission blocking and the
   `isTrustedSender` IPC check in `windows/electron/main.cjs`, or the Electron fuses in
   `windows/package.json`.
-- Add network access beyond the Notion API (`api.notion.com`), telemetry, analytics, crash
+- Add network access beyond the Notion API (`api.notion.com`) and the sign-in server
+  (`timetracker-signin.wim.to`, `worker/`), telemetry, analytics, crash
   reporting or ads, or Android permissions beyond the ones in `PRIVACY.md`.
 - Add dependencies (npm packages, libraries or Gradle plugins). Prefer what is already there.
   If one is needed, say why and check it is widely used and maintained.
 - Change `appId`/`name` in `windows/package.json` or `appId` in `android/app/build.gradle.kts`.
   Both apps are released: Windows would install a second app, phones would refuse to update.
-- Change how the API key is stored (Windows `safeStorage`, Android `EncryptedSharedPreferences`)
+- Change how the Notion sign-in is stored (Windows `safeStorage`, Android `EncryptedSharedPreferences`)
   or the format of the Notion sync page (both apps read it).
+- Make the sign-in worker (`worker/`) store anything, or change its addresses: both apps and the
+  redirect URL in Notion's connection settings use them.
 - Run anything with administrator rights, or make the installer per-machine.
 
 ## Never commit
@@ -70,7 +73,7 @@ passwords, Notion API keys or `.env` files.
   types so it runs on the JVM.
 - **Every logic change gets new or updated unit tests**, in the app it touches.
 - **Android stored data and backup:** settings go in the DataStore `notion_settings` (Android backs
-  it up); the API key and device-only state go in another file (never backed up). See
+  it up); the Notion sign-in and device-only state go in another file (never backed up). See
   `docs/architecture.md`, "Data storage".
 - **All user-visible text is translated.** Windows: `windows/src/locales/` (every language file).
   Android: `values/strings.xml` and **every** `values-xx/strings.xml`. Never hard-code text.

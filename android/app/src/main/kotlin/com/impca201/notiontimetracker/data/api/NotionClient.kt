@@ -14,6 +14,21 @@ import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlin.coroutines.suspendCoroutine
 
+/**
+ * The Notion token for a call, and a way to renew it. NotionSession implements it; every call
+ * renews an expired token once (Notion answers 401) and retries.
+ */
+interface NotionAuth {
+    /** The current access token, or "" when not signed in. */
+    fun token(): String
+
+    /** A new token after Notion refused [failedToken], or null when the user has to sign in again. */
+    suspend fun refresh(failedToken: String): String?
+}
+
+/** Thrown when there is no (longer a) Notion sign-in; the UI asks to sign in. */
+class NotSignedInException : Exception("Not signed in to Notion. Sign in in Settings.")
+
 class NotionClient {
     private val BASE_URL = "https://api.notion.com/v1"
     private val NOTION_VERSION = "2022-06-28"
@@ -32,35 +47,41 @@ class NotionClient {
     private val maxAttempts = 4
 
     private suspend fun fetch(
-        apiKey: String,
+        auth: NotionAuth,
         method: String,
         endpoint: String,
         body: Any? = null
     ): JsonObject = withContext(Dispatchers.IO) {
-        if (apiKey.isBlank()) throw Exception("No Notion API key configured. Add one in Settings.")
+        var token = auth.token()
+        if (token.isBlank()) throw NotSignedInException()
 
-        val reqBody = when {
-            body != null -> body.toJsonElement().toString().toRequestBody(JSON)
-            method != "GET" -> "{}".toRequestBody(JSON)
-            else -> null
-        }
+        val reqBody = body?.toJsonElement()?.toString()
+            ?: if (method != "GET") "{}" else null
 
-        val request = Request.Builder()
+        fun request(token: String) = Request.Builder()
             .url("$BASE_URL$endpoint")
-            .header("Authorization", "Bearer $apiKey")
+            .header("Authorization", "Bearer $token")
             .header("Notion-Version", NOTION_VERSION)
             .header("Content-Type", "application/json")
-            .method(method, reqBody)
+            .method(method, reqBody?.toRequestBody(JSON))
             .build()
 
+        var renewed = false
         var lastError = Exception("Notion API error")
-        repeat(maxAttempts) { attempt ->
-            val response = httpClient.newCall(request).await()
+        var attempt = 0
+        while (attempt < maxAttempts) {
+            val response = httpClient.newCall(request(token)).await()
             val responseBody = response.use { it.body.string() }
             val data = runCatching { Json.parseToJsonElement(responseBody).jsonObject }
                 .getOrDefault(JsonObject(emptyMap()))
 
             if (response.isSuccessful) return@withContext data
+
+            if (response.code == 401 && !renewed) {
+                renewed = true
+                token = auth.refresh(token) ?: throw NotSignedInException()
+                continue
+            }
 
             lastError = Exception(
                 data.stringOrNull("message") ?: "Notion API error (HTTP ${response.code})"
@@ -70,19 +91,12 @@ class NotionClient {
 
             val retryAfterMs = response.header("Retry-After")?.toDoubleOrNull()?.times(1000)?.toLong()
             delay((retryAfterMs ?: (500L shl attempt)).coerceIn(300L, 10_000L))
+            attempt++
         }
         throw lastError
     }
 
-    suspend fun testConnection(apiKey: String, dbId: String? = null) {
-        if (!dbId.isNullOrBlank()) {
-            fetch(apiKey, "POST", "/databases/$dbId/query", mapOf("page_size" to 1))
-        } else {
-            fetch(apiKey, "GET", "/users/me")
-        }
-    }
-
-    suspend fun searchDatabases(apiKey: String): List<NamedOption> {
+    suspend fun searchDatabases(auth: NotionAuth): List<NamedOption> {
         val results = mutableListOf<NamedOption>()
         var cursor: String? = null
         do {
@@ -92,7 +106,7 @@ class NotionClient {
                 put("page_size", 100)
                 if (cursor != null) put("start_cursor", cursor)
             }
-            val data = fetch(apiKey, "POST", "/search", body)
+            val data = fetch(auth, "POST", "/search", body)
             data.arrayOrNull("results")?.forEach { el ->
                 val db = el.asObjectOrNull() ?: return@forEach
                 val id = db.stringOrNull("id") ?: return@forEach
@@ -108,8 +122,8 @@ class NotionClient {
         return results
     }
 
-    suspend fun getDatabaseSchema(apiKey: String, dbId: String): Map<String, SchemaProperty> {
-        val data = fetch(apiKey, "GET", "/databases/$dbId")
+    suspend fun getDatabaseSchema(auth: NotionAuth, dbId: String): Map<String, SchemaProperty> {
+        val data = fetch(auth, "GET", "/databases/$dbId")
         val props = data.objOrNull("properties") ?: return emptyMap()
         return props.mapNotNull { (name, el) ->
             val prop = el.asObjectOrNull() ?: return@mapNotNull null
@@ -142,7 +156,7 @@ class NotionClient {
             ?.trim()
             ?.ifBlank { fallback } ?: fallback
 
-    suspend fun fetchDatabasePages(apiKey: String, dbId: String): List<NamedOption> {
+    suspend fun fetchDatabasePages(auth: NotionAuth, dbId: String): List<NamedOption> {
         val results = mutableListOf<NamedOption>()
         var cursor: String? = null
         do {
@@ -151,7 +165,7 @@ class NotionClient {
                 put("sorts", listOf(mapOf("timestamp" to "last_edited_time", "direction" to "descending")))
                 if (cursor != null) put("start_cursor", cursor)
             }
-            val data = fetch(apiKey, "POST", "/databases/$dbId/query", body)
+            val data = fetch(auth, "POST", "/databases/$dbId/query", body)
             data.arrayOrNull("results")?.forEach { el ->
                 val page = el.asObjectOrNull() ?: return@forEach
                 val id = page.stringOrNull("id") ?: return@forEach
@@ -168,12 +182,12 @@ class NotionClient {
         return results
     }
 
-    suspend fun listUsers(apiKey: String): List<NamedOption> {
+    suspend fun listUsers(auth: NotionAuth): List<NamedOption> {
         val results = mutableListOf<NamedOption>()
         var cursor: String? = null
         do {
             val endpoint = "/users?page_size=100" + if (cursor != null) "&start_cursor=$cursor" else ""
-            val data = fetch(apiKey, "GET", endpoint)
+            val data = fetch(auth, "GET", endpoint)
             data.arrayOrNull("results")?.forEach { el ->
                 val user = el.asObjectOrNull() ?: return@forEach
                 val id = user.stringOrNull("id") ?: return@forEach
@@ -191,7 +205,7 @@ class NotionClient {
     }
 
     suspend fun createTimeEntry(
-        apiKey: String,
+        auth: NotionAuth,
         dbId: String,
         title: String,
         startISO: String,
@@ -217,7 +231,7 @@ class NotionClient {
             )
         }
 
-        val data = fetch(apiKey, "POST", "/pages", mapOf(
+        val data = fetch(auth, "POST", "/pages", mapOf(
             "parent" to mapOf("database_id" to dbId),
             "properties" to properties
         ))
@@ -225,7 +239,7 @@ class NotionClient {
     }
 
     suspend fun fetchRunningTimers(
-        apiKey: String,
+        auth: NotionAuth,
         dbId: String,
         statusProp: String,
         statusRunning: String,
@@ -242,7 +256,7 @@ class NotionClient {
                 put("page_size", 100)
                 if (cursor != null) put("start_cursor", cursor)
             }
-            val data = fetch(apiKey, "POST", "/databases/$dbId/query", body)
+            val data = fetch(auth, "POST", "/databases/$dbId/query", body)
             data.arrayOrNull("results")?.forEach { el ->
                 val page = el.asObjectOrNull() ?: return@forEach
                 val pageId = page.stringOrNull("id") ?: return@forEach
@@ -265,7 +279,7 @@ class NotionClient {
     }
 
     suspend fun fetchRecentEntries(
-        apiKey: String,
+        auth: NotionAuth,
         dbId: String,
         statusProp: String,
         statusDone: String,
@@ -278,7 +292,7 @@ class NotionClient {
             }
             put("page_size", 15)
         }
-        val data = fetch(apiKey, "POST", "/databases/$dbId/query", body)
+        val data = fetch(auth, "POST", "/databases/$dbId/query", body)
         val results = mutableListOf<RecentEntryResult>()
         data.arrayOrNull("results")?.forEach { el ->
             val page = el.asObjectOrNull() ?: return@forEach
@@ -294,29 +308,29 @@ class NotionClient {
         return results
     }
 
-    suspend fun updatePageProperties(apiKey: String, pageId: String, properties: Map<String, Any?>) {
-        fetch(apiKey, "PATCH", "/pages/$pageId", mapOf("properties" to properties.filterValues { it != null }))
+    suspend fun updatePageProperties(auth: NotionAuth, pageId: String, properties: Map<String, Any?>) {
+        fetch(auth, "PATCH", "/pages/$pageId", mapOf("properties" to properties.filterValues { it != null }))
     }
 
     /** Fetches a page's raw `properties` object, used to restore extra-field
      *  values (e.g. connected project) when loading an already-running timer. */
-    suspend fun fetchPageProperties(apiKey: String, pageId: String): JsonObject {
-        val data = fetch(apiKey, "GET", "/pages/$pageId")
+    suspend fun fetchPageProperties(auth: NotionAuth, pageId: String): JsonObject {
+        val data = fetch(auth, "GET", "/pages/$pageId")
         return data.objOrNull("properties") ?: JsonObject(emptyMap())
     }
 
-    suspend fun deletePage(apiKey: String, pageId: String) {
-        fetch(apiKey, "PATCH", "/pages/$pageId", mapOf("archived" to true))
+    suspend fun deletePage(auth: NotionAuth, pageId: String) {
+        fetch(auth, "PATCH", "/pages/$pageId", mapOf("archived" to true))
     }
 
     suspend fun stopTimeEntry(
-        apiKey: String,
+        auth: NotionAuth,
         pageId: String,
         startISO: String,
         endISO: String,
         propertyMap: PropertyMap
     ) {
-        fetch(apiKey, "PATCH", "/pages/$pageId", mapOf(
+        fetch(auth, "PATCH", "/pages/$pageId", mapOf(
             "properties" to mapOf(
                 propertyMap.timeEntryDateProp to mapOf(
                     "date" to mapOf("start" to startISO, "end" to endISO)
@@ -340,7 +354,7 @@ class NotionClient {
      * Returns all Notion pages the integration can access (for the "load
      * existing sync page" picker).
      */
-    suspend fun searchPages(apiKey: String): List<NamedOption> {
+    suspend fun searchPages(auth: NotionAuth): List<NamedOption> {
         val results = mutableListOf<NamedOption>()
         var cursor: String? = null
         do {
@@ -350,7 +364,7 @@ class NotionClient {
                 put("page_size", 100)
                 if (cursor != null) put("start_cursor", cursor)
             }
-            val data = fetch(apiKey, "POST", "/search", body)
+            val data = fetch(auth, "POST", "/search", body)
             data.arrayOrNull("results")?.forEach { el ->
                 val page = el.asObjectOrNull() ?: return@forEach
                 val id = page.stringOrNull("id") ?: return@forEach
@@ -371,7 +385,7 @@ class NotionClient {
      * accessible page must be chosen as the parent.
      * @return the new page id
      */
-    suspend fun createSyncPage(apiKey: String, parentPageId: String, title: String, payload: SyncPayload): String {
+    suspend fun createSyncPage(auth: NotionAuth, parentPageId: String, title: String, payload: SyncPayload): String {
         val body = mapOf(
             "parent" to mapOf("page_id" to parentPageId),
             "properties" to mapOf(
@@ -385,7 +399,7 @@ class NotionClient {
                 )
             )
         )
-        val data = fetch(apiKey, "POST", "/pages", body)
+        val data = fetch(auth, "POST", "/pages", body)
         return data.stringOrNull("id") ?: throw Exception("Notion did not return a page id")
     }
 
@@ -394,8 +408,8 @@ class NotionClient {
      * @return the block id and decoded payload, or null if the page has no
      * valid sync data.
      */
-    suspend fun fetchSyncPageContent(apiKey: String, pageId: String): SyncFetchResult? {
-        val data = fetch(apiKey, "GET", "/blocks/$pageId/children?page_size=100")
+    suspend fun fetchSyncPageContent(auth: NotionAuth, pageId: String): SyncFetchResult? {
+        val data = fetch(auth, "GET", "/blocks/$pageId/children?page_size=100")
         val results = data.arrayOrNull("results") ?: return null
         for (el in results) {
             val block = el.asObjectOrNull() ?: continue
@@ -415,14 +429,14 @@ class NotionClient {
     }
 
     /** Overwrites the sync code block in place with a fresh payload. */
-    suspend fun updateSyncBlock(apiKey: String, blockId: String, payload: SyncPayload) {
-        fetch(apiKey, "PATCH", "/blocks/$blockId", mapOf(
+    suspend fun updateSyncBlock(auth: NotionAuth, blockId: String, payload: SyncPayload) {
+        fetch(auth, "PATCH", "/blocks/$blockId", mapOf(
             "code" to mapOf("language" to "json", "rich_text" to syncPayloadRichText(payload))
         ))
     }
 }
 
-private suspend fun Call.await(): Response = suspendCoroutine { cont ->
+internal suspend fun Call.await(): Response = suspendCoroutine { cont ->
     enqueue(object : Callback {
         override fun onFailure(call: Call, e: java.io.IOException) =
             cont.resumeWithException(Exception("Network error: ${e.message}"))

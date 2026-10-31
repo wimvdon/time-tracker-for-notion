@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { computeStartTime, computeEndTime } from '../lib/rounding.js';
 import { toNotionDateTime, fallbackDescription, isFallbackDescription } from '../lib/format.js';
 import { t, setLocale } from '../lib/i18n.js';
-import { errorMessage } from '../lib/errors.js';
+import { errorMessage, isSignInCancelled } from '../lib/errors.js';
 import { withPresetTitles, needsPresetTitles } from '../lib/presets.js';
 import { WRITABLE_EXTRA_TYPES, emptyValueFor, buildPropertyValue, parsePropertyValue, coerceInputValue } from '../lib/notionValues.js';
 
@@ -108,7 +108,10 @@ export const useStore = create((set, get) => ({
   // Settings
   /** False until the stored settings have been read, so the setup screen doesn't flash at start. */
   settingsLoaded: false,
-  apiKey: '',
+  /** The signed-in Notion workspace ({ workspaceName }), or null. The token stays in the main process. */
+  notionAccount: null,
+  /** True while the browser is open for "Sign in with Notion". */
+  signingIn: false,
   workspaces: [],
   alwaysOnTop: true,
   startWithWindows: false,
@@ -187,6 +190,7 @@ export const useStore = create((set, get) => ({
     initialized = true;
 
     const settings = await api.getSettings();
+    const notionAccount = (await api.getNotionAccount?.()) ?? null;
 
     const hasLegacy =
       (settings.projects?.length ?? 0) > 0 && !(settings.workspaces?.length);
@@ -244,7 +248,7 @@ export const useStore = create((set, get) => ({
 
     set({
       settingsLoaded: true,
-      apiKey: settings.apiKey || '',
+      notionAccount,
       workspaces,
       alwaysOnTop: settings.alwaysOnTop !== false,
       startWithWindows: settings.startWithWindows === true,
@@ -261,7 +265,7 @@ export const useStore = create((set, get) => ({
       lastSyncedUpdatedAt: settings.lastSyncedUpdatedAt || null,
     });
 
-    if (!settings.apiKey || !workspaces.length) {
+    if (!notionAccount || !workspaces.length) {
       set({ view: 'settings' });
     }
 
@@ -283,16 +287,24 @@ export const useStore = create((set, get) => ({
       if (exists) get().selectWorkspace(lastUsedWorkspaceId);
     }
 
-    if (settings.apiKey && workspaces.length) {
+    if (notionAccount && workspaces.length) {
       get().loadRunningTimers();
       get().loadRecentEntries();
     }
 
-    if (settings.apiKey && settings.syncPageId) {
+    if (notionAccount && settings.syncPageId) {
       get().syncNow();
     }
 
     get().applyTheme();
+
+    // Signed out elsewhere (Settings) or Notion no longer accepts the sign-in.
+    api.onAuthChanged?.(({ account, reason }) => {
+      set({ notionAccount: account ?? null });
+      if (reason === 'expired') {
+        get().addToast({ type: 'error', message: t('toastSignInExpired'), sticky: true });
+      }
+    });
 
     // Tray preset shortcuts
     if (api.onTrayApplyPreset) {
@@ -304,19 +316,40 @@ export const useStore = create((set, get) => ({
     // 60s auto-refresh
     setInterval(() => {
       const s = get();
-      if (s.apiKey && s.workspaces.length) {
+      if (s.notionAccount && s.workspaces.length) {
         get().loadRunningTimers();
         get().loadRecentEntries();
       }
-      if (s.apiKey && s.syncPageId) {
+      if (s.notionAccount && s.syncPageId) {
         get().syncNow();
       }
     }, 60_000);
   },
 
-  saveApiKey: async (apiKey) => {
-    await api.saveSettings({ apiKey });
-    set({ apiKey });
+  /** "Sign in with Notion": opens the browser and waits until the user is back. */
+  signIn: async () => {
+    if (get().signingIn) return;
+    set({ signingIn: true });
+    try {
+      const notionAccount = await api.signIn();
+      set({ notionAccount });
+      get().addToast({ type: 'success', message: t('toastSignedIn').replace('{workspace}', notionAccount?.workspaceName || 'Notion') });
+      get().refreshAll();
+    } catch (err) {
+      if (!isSignInCancelled(err)) {
+        get().addToast({ type: 'error', message: `${t('toastSignInFailed')}: ${errorMessage(err)}` });
+      }
+    } finally {
+      set({ signingIn: false });
+    }
+  },
+
+  cancelSignIn: () => api.cancelSignIn(),
+
+  signOut: async () => {
+    await api.signOut();
+    set({ notionAccount: null });
+    get().addToast({ type: 'success', message: t('toastSignedOut') });
   },
 
   // Bumped whenever a synced field (workspaces/presets, theme, locale, formats,
@@ -921,8 +954,8 @@ export const useStore = create((set, get) => ({
   // ---- Running timers loaded from Notion ----
 
   loadRunningTimers: async () => {
-    const { workspaces, apiKey, runningTimersLoading } = get();
-    if (!apiKey || !workspaces.length || runningTimersLoading) return;
+    const { workspaces, notionAccount, runningTimersLoading } = get();
+    if (!notionAccount || !workspaces.length || runningTimersLoading) return;
 
     set({ runningTimersLoading: true });
     const allRunning = [];
@@ -995,8 +1028,8 @@ export const useStore = create((set, get) => ({
   },
 
   loadRecentEntries: async () => {
-    const { workspaces, apiKey, recentEntriesLoading } = get();
-    if (!apiKey || !workspaces.length || recentEntriesLoading) return;
+    const { workspaces, notionAccount, recentEntriesLoading } = get();
+    if (!notionAccount || !workspaces.length || recentEntriesLoading) return;
 
     set({ recentEntriesLoading: true });
     const allRecent = [];
@@ -1223,7 +1256,7 @@ export const useStore = create((set, get) => ({
 
   refreshAll: () => {
     const s = get();
-    if (s.apiKey && s.syncPageId) {
+    if (s.notionAccount && s.syncPageId) {
       get().syncNow();
     }
     get().loadRunningTimers();
@@ -1306,7 +1339,7 @@ export const useStore = create((set, get) => ({
   /** Pull-or-push against the configured sync page, whichever side is newer. */
   syncNow: async () => {
     const state = get();
-    if (!state.apiKey || !state.syncPageId || state.syncing) return;
+    if (!state.notionAccount || !state.syncPageId || state.syncing) return;
     set({ syncing: true, syncError: null });
     try {
       const result = await api.fetchSyncPage(state.syncPageId);

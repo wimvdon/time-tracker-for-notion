@@ -9,7 +9,8 @@ time-tracker-for-notion/
 │   ├── pull_request_template.md      Plain-language PR description, PC and phone test steps, checklist
 │   └── workflows/
 │       ├── ci.yml                    Windows checks, Windows installer smoke test, Android checks
-│       └── release.yml               Version → Windows installer + Android APK → GitHub Release
+│       ├── release.yml               Version → Windows installer + Android APK → GitHub Release
+│       └── worker.yml                Deploys the sign-in worker to Cloudflare when worker/ changes on main
 ├── .gitignore                        Build outputs, release/, keystores, .env
 ├── CLAUDE.md                         Rules for Claude Code sessions
 ├── DESIGN.md                         Design language shared with the sibling apps
@@ -17,6 +18,9 @@ time-tracker-for-notion/
 ├── PRIVACY.md                        Privacy policy (both apps)
 ├── README.md
 ├── docs/
+├── worker/                           "Sign in with Notion" server (Cloudflare Worker, no dependencies)
+│   ├── wrangler.toml                 Worker name and the timetracker-signin.wim.to domain (secrets live in Cloudflare)
+│   └── src/                          index.js (routes), auth.js (signed state, token swap), page.js (browser pages), index.test.js
 ├── windows/                          Electron desktop app
 │   ├── .nvmrc                        Node.js version (24), used by CI and for development
 │   ├── package.json                  Scripts, dependencies, electron-builder config (NSIS → ../release)
@@ -30,7 +34,8 @@ time-tracker-for-notion/
 │   ├── scripts/smoke-test-installer.ps1  CI: install, start and uninstall the installer on Windows
 │   ├── electron/
 │   │   ├── main.cjs                  Window, tray, IPC handlers (sender-checked), app:// protocol, lifecycle
-│   │   ├── apiKey.cjs                API key encrypted at rest with safeStorage (DPAPI), unit tested
+│   │   ├── notionAuth.cjs            "Sign in with Notion" (browser + local callback) and token renewal, unit tested
+│   │   ├── notionTokens.cjs          The Notion sign-in encrypted at rest with safeStorage (DPAPI), unit tested
 │   │   ├── bundlePath.cjs            Safe app://bundle/ → dist/ file mapping, unit tested
 │   │   ├── preload.cjs               contextBridge → window.notionAPI
 │   │   └── notionClient.cjs          All Notion REST calls (main process only)
@@ -71,7 +76,7 @@ time-tracker-for-notion/
         ├── build.gradle.kts          App ID, versioning, signing, lint, dependencies, printApkBaseName
         ├── proguard-rules.pro        Notes on R8 (no extra keep rules needed)
         ├── src/debug/res/values*/    Debug build only: the "Time Tracker Dev" name, in every language
-        ├── src/test/kotlin/…/        SyncPayloadJsonTest (JVM unit tests)
+        ├── src/test/kotlin/…/        JVM unit tests (NotionSessionTest, SyncPayloadJsonTest, …)
         └── src/main/
             ├── AndroidManifest.xml
             ├── kotlin/com/impca201/notiontimetracker/
@@ -80,9 +85,9 @@ time-tracker-for-notion/
             │   ├── ShortcutHelper.kt         Preset launcher shortcuts
             │   ├── LocaleHelper.kt           In-app language override
             │   ├── data/
-            │   │   ├── api/                  NotionClient (HTTP), NotionJson (JSON helpers), SyncPayloadJson (sync payload)
+            │   │   ├── api/                  NotionClient (HTTP), AuthClient (sign-in server, PKCE), NotionJson (JSON helpers), SyncPayloadJson (sync payload)
             │   │   ├── models/Models.kt      Workspace, PropertyMap, Preset, ActiveTimer, SyncPayload, …
-            │   │   └── repository/           SettingsRepository, NotionRepository, SettingsSyncer
+            │   │   └── repository/           SettingsRepository, NotionRepository, NotionSession (sign-in, token renewal), SettingsSyncer
             │   ├── service/
             │   │   └── TimerForegroundService.kt
             │   ├── ui/
@@ -102,7 +107,7 @@ time-tracker-for-notion/
 
 | Layer | Location | Rule |
 |---|---|---|
-| Privileged | `electron/` | Only place with Node APIs, the API key, the file system and network |
+| Privileged | `electron/` | Only place with Node APIs, the Notion token, the file system and network |
 | Bridge | `electron/preload.cjs` | One function per IPC channel, no logic beyond queueing early events |
 | State and logic | `src/store/useStore.js` | All async flows, persistence calls and Notion orchestration |
 | Pure logic | `src/lib/` | No I/O, no React, no `window`. Safe to unit-test with `node --test`. |
@@ -119,7 +124,7 @@ time-tracker-for-notion/
 
 ## What should NOT go where
 
-- **Windows `src/`:** no `fetch` to Notion and no access to the API key. Add an IPC channel in `main.cjs` + `preload.cjs` + `notionClient.cjs` instead.
+- **Windows `src/`:** no `fetch` to Notion and no access to the Notion token. Add an IPC channel in `main.cjs` + `preload.cjs` + `notionClient.cjs` instead.
 - **Windows `src/lib/`:** no imports of the store, `window.notionAPI` or React. Keep it pure so tests run without Electron.
 - **Android `ui/`:** no repository calls. Go through a ViewModel.
 - **Both apps:** changes to the sync payload or to how preset values are stored must be made in **both** apps. Each reads the other's payloads.

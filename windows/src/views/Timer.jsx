@@ -40,9 +40,9 @@ function timeOnDate(base, hhmm) {
 
 export default function Timer() {
   const settingsLoaded = useStore((s) => s.settingsLoaded);
-  const apiKey = useStore((s) => s.apiKey);
+  const signedIn = useStore((s) => !!s.notionAccount);
   const workspaces = useStore((s) => s.workspaces);
-  const step = setupStep(settingsLoaded, apiKey, workspaces.length);
+  const step = setupStep(settingsLoaded, signedIn, workspaces.length);
   const selectedWorkspaceId = useStore((s) => s.selectedWorkspaceId);
   const selectWorkspace = useStore((s) => s.selectWorkspace);
   const description = useStore((s) => s.description);
@@ -179,7 +179,7 @@ export default function Timer() {
     );
   } else {
     // ---- Idle state ----
-    const canStart = !!apiKey && !!selectedWorkspaceId && !extrasLoading && !isStarting;
+    const canStart = signedIn && !!selectedWorkspaceId && !extrasLoading && !isStarting;
     // Like required extra fields, a required description is enforced when the
     // timer is stopped — starting stays a single click.
     const descriptionRequired = !!selectedWorkspace?.descriptionRequired;
@@ -190,7 +190,7 @@ export default function Timer() {
         <div className="flex-1 flex flex-col px-5 pt-5 pb-4 gap-4 overflow-y-auto">
           <PresetChips
             workspaces={workspaces}
-            apiKey={apiKey}
+            signedIn={signedIn}
             onApplyPreset={applyPreset}
             onManageClick={() => setShowManagePresetsModal(true)}
             onNewClick={() => setPresetDraft(newPresetDraft())}
@@ -476,7 +476,7 @@ function RunningView({
   const stopTimer = useStore((s) => s.stopTimer);
   const updateStartTime = useStore((s) => s.updateStartTime);
   const workspaces = useStore((s) => s.workspaces);
-  const apiKey = useStore((s) => s.apiKey);
+  const signedIn = useStore((s) => !!s.notionAccount);
   const isDarkTheme = useIsDarkTheme();
   const accentColor = workspaceColor ? getWorkspaceAccentColor(workspaceColor, isDarkTheme) : null;
 
@@ -649,7 +649,7 @@ function RunningView({
       <div className="flex-1 flex flex-col px-5 pt-5 pb-4 gap-4 overflow-y-auto">
         <PresetChips
           workspaces={workspaces}
-          apiKey={apiKey}
+          signedIn={signedIn}
           onApplyPreset={onApplyPreset}
           onManageClick={onManagePresetsClick}
           onNewClick={onNewPresetClick}
@@ -1202,10 +1202,10 @@ function RunningTimerItem({ rt, isActive, onLoad, onStop, onDelete, onOpenUrl })
 /** Quick-start preset chips — shown when an API key is set and any workspace
  *  has presets, in both the idle form and the running view. Clicking one while a timer is already
  *  running goes through `applyPreset`'s "already running" confirmation. */
-function PresetChips({ workspaces, apiKey, onApplyPreset, onManageClick, onNewClick, className = '' }) {
+function PresetChips({ workspaces, signedIn, onApplyPreset, onManageClick, onNewClick, className = '' }) {
   const isDarkTheme = useIsDarkTheme();
   // Hidden (not just disabled) without an API key, same as on Android.
-  if (!apiKey || workspaces.length === 0) return null;
+  if (!signedIn || workspaces.length === 0) return null;
   // Before the first preset, one quiet chip creates it.
   if (!workspaces.some((w) => (w.presets?.length ?? 0) > 0)) {
     return (
@@ -1393,11 +1393,11 @@ function DeleteConfirmDialog({ title, onConfirm, onCancel }) {
   );
 }
 
-/** The view shown instead of the timer while `step` ('apiKey' or 'workspace') is not set up. */
+/** The view shown instead of the timer while `step` ('signIn' or 'workspace') is not set up. */
 function SetupNeeded({ step, onOpenSettings }) {
-  const Icon = step === 'apiKey' ? Key20Regular : Briefcase20Regular;
-  const title = step === 'apiKey' ? t('setupConnectTitle') : t('setupWorkspaceTitle');
-  const body = step === 'apiKey' ? t('setupConnectBody') : t('setupWorkspaceBody');
+  const Icon = step === 'signIn' ? Key20Regular : Briefcase20Regular;
+  const title = step === 'signIn' ? t('setupConnectTitle') : t('setupWorkspaceTitle');
+  const body = step === 'signIn' ? t('setupConnectBody') : t('setupWorkspaceBody');
   return (
     <div className="flex-1 flex flex-col items-center justify-center gap-2 px-8 py-6 overflow-y-auto text-center">
       <div className="w-16 h-16 mb-2 rounded-full bg-control flex items-center justify-center text-accent">

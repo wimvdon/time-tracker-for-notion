@@ -17,13 +17,17 @@
 
     <!-- Settings -->
     <string name="settings_title">Einstellungen</string>
-    <string name="label_api_key">Notion-API-Schlüssel</string>
-    <string name="placeholder_api_key">secret_… oder ntn_…</string>
-    <string name="btn_show_key">Anzeigen</string>
-    <string name="btn_hide_key">Ausblenden</string>
-    <string name="btn_test_and_save_key">Verbindung testen und speichern</string>
-    <string name="btn_testing_key">Testen…</string>
-    <string name="btn_remove_key">Schlüssel entfernen</string>
+    <string name="label_notion_account">Notion</string>
+    <string name="sign_in_hint">Melde dich an und wähle die Notion-Seiten und -Datenbanken, die die App nutzen darf.</string>
+    <string name="btn_sign_in">Mit Notion anmelden</string>
+    <string name="signed_in_to">Angemeldet bei %1$s</string>
+    <string name="btn_sign_out">Abmelden</string>
+    <string name="btn_choose_pages">Seiten wählen</string>
+    <string name="choose_pages_hint">Melde dich erneut an, um mehr (oder weniger) Notion-Seiten mit der App zu teilen.</string>
+    <string name="toast_signed_in">Angemeldet bei %1$s.</string>
+    <string name="toast_signed_out">Von Notion abgemeldet.</string>
+    <string name="toast_sign_in_failed">Anmeldung fehlgeschlagen</string>
+    <string name="toast_sign_in_expired">Deine Notion-Anmeldung ist abgelaufen. Melde dich in den Einstellungen erneut an.</string>
     <string name="label_workspaces">Workspaces</string>
     <string name="no_workspaces_yet">Noch keine Workspaces.</string>
     <string name="title_delete_workspace">Workspace löschen</string>
@@ -81,8 +85,6 @@
     <string name="btn_save">Speichern</string>
 
     <!-- Toasts / errors -->
-    <string name="toast_api_key_saved">API-Schlüssel funktioniert und wurde gespeichert.</string>
-    <string name="toast_api_key_removed">API-Schlüssel entfernt.</string>
     <string name="toast_workspace_added">Workspace \"%1$s\" hinzugefügt.</string>
     <string name="toast_workspace_saved">Workspace \"%1$s\" gespeichert.</string>
     <string name="toast_start_error">Timer konnte nicht gestartet werden</string>
@@ -206,14 +208,14 @@
     <string name="title_select_start_time">Startzeit wählen</string>
     <string name="title_select_end_time">Endzeit wählen</string>
     <string name="title_info">Information</string>
-    <string name="error_no_api_key">Kein Notion-API-Schlüssel hinterlegt.</string>
+    <string name="error_not_signed_in">Nicht bei Notion angemeldet. Melde dich in den Einstellungen an.</string>
     <string name="error_stop_from_notification_failed">Stoppen fehlgeschlagen — App öffnen und erneut versuchen</string>
     <string name="section_expanded">Ausgeklappt</string>
     <string name="section_collapsed">Eingeklappt</string>
     <string name="label_theme_mode">Design</string>
     <string name="sync_summary_not_connected">Nicht verbunden</string>
     <string name="setup_connect_title">Mit Notion verbinden</string>
-    <string name="setup_connect_body">Füge deinen Notion-API-Schlüssel in den Einstellungen hinzu, um Zeiten zu erfassen.</string>
+    <string name="setup_connect_body">Melde dich in den Einstellungen mit Notion an, um Zeit zu erfassen.</string>
     <string name="setup_workspace_title">Workspace hinzufügen</string>
     <string name="setup_workspace_body">Ein Workspace verbindet den Timer mit einer Notion-Datenbank. Füge einen in den Einstellungen hinzu.</string>
     <string name="setup_open_settings">Zu den Einstellungen</string>

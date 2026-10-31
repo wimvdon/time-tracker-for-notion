@@ -327,7 +327,7 @@ private fun IdleView(
         // Until the API key and a workspace are set, the timer can't do anything: the whole
         // screen says what to set up instead (DESIGN.md, "Empty and setup states").
         if (!uiState.settingsLoaded) return@Scaffold
-        SetupStep.of(uiState.settingsLoaded, uiState.apiKey, uiState.workspaces.size)?.let { step ->
+        SetupStep.of(uiState.settingsLoaded, uiState.signedIn, uiState.workspaces.size)?.let { step ->
             SetupNeeded(step, onNavigateToSettings, Modifier.padding(padding))
             return@Scaffold
         }
@@ -353,7 +353,7 @@ private fun IdleView(
 
             PresetChips(
                 workspaces = uiState.workspaces,
-                apiKey = uiState.apiKey,
+                signedIn = uiState.signedIn,
                 onApplyPreset = onApplyPreset,
                 onManageClick = onManagePresetsClick,
                 onNewClick = onNewPresetClick
@@ -370,7 +370,7 @@ private fun IdleView(
 
             // Starting while the fields are still loading would drop every extra
             // value from the new entry, so the button waits for them.
-            val canStart = uiState.apiKey.isNotBlank() &&
+            val canStart = uiState.signedIn &&
                     uiState.selectedWorkspaceId != null &&
                     !uiState.extrasLoading &&
                     !uiState.isStarting
@@ -700,7 +700,7 @@ private fun RunningView(
             ) {
                 PresetChips(
                     workspaces = uiState.workspaces,
-                    apiKey = uiState.apiKey,
+                    signedIn = uiState.signedIn,
                     onApplyPreset = onApplyPreset,
                     onManageClick = onManagePresetsClick,
                     onNewClick = onNewPresetClick
@@ -1272,13 +1272,13 @@ private fun ExtraFieldsSkeleton(props: List<com.impca201.notiontimetracker.data.
 @Composable
 private fun PresetChips(
     workspaces: List<com.impca201.notiontimetracker.data.models.Workspace>,
-    apiKey: String,
+    signedIn: Boolean,
     onApplyPreset: (String, Preset) -> Unit,
     onManageClick: () -> Unit,
     onNewClick: () -> Unit
 ) {
     val allPresets = workspaces.flatMap { ws -> ws.presets.map { ws to it } }
-    if (apiKey.isBlank() || workspaces.isEmpty()) return
+    if (!signedIn || workspaces.isEmpty()) return
     // Before the first preset, one quiet chip creates it.
     if (allPresets.isEmpty()) {
         AssistChip(
@@ -1423,7 +1423,7 @@ private fun TimerActionButton(
 @Composable
 private fun SetupNeeded(step: SetupStep, onOpenSettings: () -> Unit, modifier: Modifier = Modifier) {
     val (icon, title, body) = when (step) {
-        SetupStep.ApiKey -> Triple(Icons.Rounded.Key, R.string.setup_connect_title, R.string.setup_connect_body)
+        SetupStep.SignIn -> Triple(Icons.Rounded.Key, R.string.setup_connect_title, R.string.setup_connect_body)
         SetupStep.Workspace -> Triple(Icons.Rounded.Workspaces, R.string.setup_workspace_title, R.string.setup_workspace_body)
     }
     EmptyState(icon, stringResource(title), modifier, body = stringResource(body)) {
@@ -1466,7 +1466,7 @@ private fun localisedMessage(raw: String): String {
     val key = raw.substringBefore('|')
     val detail = raw.substringAfter('|', "")
     val resId = when (key) {
-        "no_api_key" -> R.string.error_no_api_key
+        "not_signed_in" -> R.string.error_not_signed_in
         "start_failed" -> R.string.toast_start_error
         "stop_failed" -> R.string.toast_stop_error
         "update_failed" -> R.string.toast_update_error

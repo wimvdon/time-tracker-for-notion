@@ -1,5 +1,9 @@
 // All Notion REST API calls. Runs in the main process only — the renderer
-// never sees the API key.
+// never sees a Notion token.
+//
+// Every call takes `auth`: { token(), refresh(failedToken) } from notionAuth.cjs (a plain token
+// string also works, for tests). When Notion answers 401 the token is renewed once and the call
+// is retried; when it can't be renewed, the call fails with NOT_SIGNED_IN.
 
 // Overridable for integration testing against a local mock server
 const BASE_URL = process.env.NOTION_API_BASE_URL || 'https://api.notion.com/v1';
@@ -17,17 +21,21 @@ const MAX_ATTEMPTS = 4;
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-async function notionFetch(apiKey, method, endpoint, body) {
-  if (!apiKey) {
-    throw new Error('No Notion API key configured. Add one in Settings.');
-  }
+const NOT_SIGNED_IN = 'NOT_SIGNED_IN';
+
+const tokenOf = (auth) => (typeof auth === 'string' ? auth : auth?.token?.() || '');
+
+async function notionFetch(auth, method, endpoint, body) {
+  let token = tokenOf(auth);
+  if (!token) throw new Error(NOT_SIGNED_IN);
+  let renewed = false;
   for (let attempt = 0; ; attempt++) {
     let response;
     try {
       response = await fetch(`${BASE_URL}${endpoint}`, {
         method,
         headers: {
-          Authorization: `Bearer ${apiKey}`,
+          Authorization: `Bearer ${token}`,
           'Notion-Version': NOTION_VERSION,
           'Content-Type': 'application/json',
         },
@@ -38,6 +46,13 @@ async function notionFetch(apiKey, method, endpoint, body) {
     }
     const data = await response.json().catch(() => ({}));
     if (response.ok) return data;
+
+    if (response.status === 401 && !renewed && typeof auth?.refresh === 'function') {
+      renewed = true;
+      token = await auth.refresh(token);
+      if (!token) throw new Error(NOT_SIGNED_IN);
+      continue;
+    }
 
     const message = data.message || `Notion API error (HTTP ${response.status})`;
     const retryable = response.status === 429 || response.status >= 500;
@@ -52,28 +67,14 @@ async function notionFetch(apiKey, method, endpoint, body) {
 }
 
 /**
- * Verifies the API key can reach a database (Settings "Test connection").
- * Queries one page so query access is validated, not just metadata access.
- * Without a dbId it only validates the key itself via /users/me.
- */
-async function testConnection(apiKey, dbId) {
-  if (dbId) {
-    await notionFetch(apiKey, 'POST', `/databases/${dbId}/query`, { page_size: 1 });
-  } else {
-    await notionFetch(apiKey, 'GET', '/users/me');
-  }
-  return { ok: true };
-}
-
-/**
  * Returns all Notion databases the integration can access.
  * @returns [{ id, name }]
  */
-async function searchDatabases(apiKey) {
+async function searchDatabases(auth) {
   const results = [];
   let cursor;
   do {
-    const data = await notionFetch(apiKey, 'POST', '/search', {
+    const data = await notionFetch(auth, 'POST', '/search', {
       filter: { value: 'database', property: 'object' },
       sort: { direction: 'descending', timestamp: 'last_edited_time' },
       page_size: 100,
@@ -93,8 +94,8 @@ async function searchDatabases(apiKey) {
  * happens in the renderer (src/lib/schema.js).
  * Shape: { [propName]: { id, type, status?: { options: [{ name, color, id }] }, ... } }
  */
-async function getDatabaseSchema(apiKey, dbId) {
-  const data = await notionFetch(apiKey, 'GET', `/databases/${dbId}`);
+async function getDatabaseSchema(auth, dbId) {
+  const data = await notionFetch(auth, 'GET', `/databases/${dbId}`);
   return data.properties;
 }
 
@@ -104,11 +105,11 @@ async function getDatabaseSchema(apiKey, dbId) {
  * picker and for relation-type extra fields. Sorted by most recently edited.
  * @returns [{ id, name }]
  */
-async function fetchDatabasePages(apiKey, dbId) {
+async function fetchDatabasePages(auth, dbId) {
   const results = [];
   let cursor;
   do {
-    const data = await notionFetch(apiKey, 'POST', `/databases/${dbId}/query`, {
+    const data = await notionFetch(auth, 'POST', `/databases/${dbId}/query`, {
       page_size: 100,
       sorts: [{ timestamp: 'last_edited_time', direction: 'descending' }],
       ...(cursor ? { start_cursor: cursor } : {}),
@@ -131,12 +132,12 @@ async function fetchDatabasePages(apiKey, dbId) {
  * Returns the workspace members (for people-type extra fields).
  * @returns [{ id, name }]
  */
-async function listUsers(apiKey) {
+async function listUsers(auth) {
   const results = [];
   let cursor;
   do {
     const data = await notionFetch(
-      apiKey,
+      auth,
       'GET',
       `/users?page_size=100${cursor ? `&start_cursor=${cursor}` : ''}`
     );
@@ -158,8 +159,8 @@ async function listUsers(apiKey) {
  *   ({ [propName]: value }); managed properties win on a name collision.
  * @returns {{ pageId: string }}
  */
-async function createTimeEntry(apiKey, { dbId, title, startISO, projectId, props, extra }) {
-  const data = await notionFetch(apiKey, 'POST', '/pages', {
+async function createTimeEntry(auth, { dbId, title, startISO, projectId, props, extra }) {
+  const data = await notionFetch(auth, 'POST', '/pages', {
     parent: { database_id: dbId },
     properties: {
       ...(extra || {}),
@@ -185,8 +186,8 @@ async function createTimeEntry(apiKey, { dbId, title, startISO, projectId, props
  * creation — it is not re-rounded.
  * @param {object} params { pageId, startISO, endISO, props }
  */
-async function stopTimeEntry(apiKey, { pageId, startISO, endISO, props }) {
-  await notionFetch(apiKey, 'PATCH', `/pages/${pageId}`, {
+async function stopTimeEntry(auth, { pageId, startISO, endISO, props }) {
+  await notionFetch(auth, 'PATCH', `/pages/${pageId}`, {
     properties: {
       [props.timeEntryDateProp]: {
         date: { start: startISO, end: endISO },
@@ -203,7 +204,7 @@ async function stopTimeEntry(apiKey, { pageId, startISO, endISO, props }) {
  * Queries a time-entries database for pages that have the "running" status.
  * Returns [{ pageId, title, startISO }], sorted by startISO descending.
  */
-async function fetchRunningTimers(apiKey, dbId, statusProp, statusRunning, dateProp) {
+async function fetchRunningTimers(auth, dbId, statusProp, statusRunning, dateProp) {
   const results = [];
   let cursor;
   do {
@@ -213,7 +214,7 @@ async function fetchRunningTimers(apiKey, dbId, statusProp, statusRunning, dateP
       ...(dateProp ? { sorts: [{ property: dateProp, direction: 'descending' }] } : {}),
       ...(cursor ? { start_cursor: cursor } : {}),
     };
-    const data = await notionFetch(apiKey, 'POST', `/databases/${dbId}/query`, body);
+    const data = await notionFetch(auth, 'POST', `/databases/${dbId}/query`, body);
     for (const page of data.results) {
       const props = page.properties || {};
       const titlePropObj = Object.values(props).find((p) => p.type === 'title');
@@ -228,13 +229,13 @@ async function fetchRunningTimers(apiKey, dbId, statusProp, statusRunning, dateP
   return results;
 }
 
-async function fetchRecentEntries(apiKey, dbId, statusProp, statusDone, dateProp) {
+async function fetchRecentEntries(auth, dbId, statusProp, statusDone, dateProp) {
   const body = {
     filter: { property: statusProp, status: { equals: statusDone } },
     page_size: 15,
     ...(dateProp ? { sorts: [{ property: dateProp, direction: 'descending' }] } : {}),
   };
-  const data = await notionFetch(apiKey, 'POST', `/databases/${dbId}/query`, body);
+  const data = await notionFetch(auth, 'POST', `/databases/${dbId}/query`, body);
   const results = [];
   for (const page of data.results) {
     const props = page.properties || {};
@@ -248,14 +249,14 @@ async function fetchRecentEntries(apiKey, dbId, statusProp, statusDone, dateProp
   return results;
 }
 
-async function deletePage(apiKey, pageId) {
-  await notionFetch(apiKey, 'PATCH', `/pages/${pageId}`, { archived: true });
+async function deletePage(auth, pageId) {
+  await notionFetch(auth, 'PATCH', `/pages/${pageId}`, { archived: true });
   return { ok: true };
 }
 
-async function updatePageProperties(apiKey, pageId, properties) {
+async function updatePageProperties(auth, pageId, properties) {
   const filtered = Object.fromEntries(Object.entries(properties).filter(([, v]) => v != null));
-  await notionFetch(apiKey, 'PATCH', `/pages/${pageId}`, { properties: filtered });
+  await notionFetch(auth, 'PATCH', `/pages/${pageId}`, { properties: filtered });
   return { ok: true };
 }
 
@@ -263,8 +264,8 @@ async function updatePageProperties(apiKey, pageId, properties) {
  * Fetches a page's raw `properties` map, used to restore extra-field values
  * (e.g. connected project) when loading an already-running timer.
  */
-async function getPageProperties(apiKey, pageId) {
-  const data = await notionFetch(apiKey, 'GET', `/pages/${pageId}`);
+async function getPageProperties(auth, pageId) {
+  const data = await notionFetch(auth, 'GET', `/pages/${pageId}`);
   return data.properties || {};
 }
 
@@ -297,11 +298,11 @@ function decodeSyncPayload(richText) {
  * sync page" picker).
  * @returns [{ id, name, url }]
  */
-async function searchPages(apiKey) {
+async function searchPages(auth) {
   const results = [];
   let cursor;
   do {
-    const data = await notionFetch(apiKey, 'POST', '/search', {
+    const data = await notionFetch(auth, 'POST', '/search', {
       filter: { value: 'page', property: 'object' },
       sort: { direction: 'descending', timestamp: 'last_edited_time' },
       page_size: 100,
@@ -325,8 +326,8 @@ async function searchPages(apiKey) {
  * must be chosen as the parent.
  * @returns { pageId }
  */
-async function createSyncPage(apiKey, parentPageId, title, payload) {
-  const data = await notionFetch(apiKey, 'POST', '/pages', {
+async function createSyncPage(auth, parentPageId, title, payload) {
+  const data = await notionFetch(auth, 'POST', '/pages', {
     parent: { page_id: parentPageId },
     properties: {
       title: { title: [{ text: { content: title } }] },
@@ -346,8 +347,8 @@ async function createSyncPage(apiKey, parentPageId, title, payload) {
  * Reads a page's children looking for the sync JSON code block.
  * @returns { blockId, payload } or null if the page has no valid sync data
  */
-async function fetchSyncPageContent(apiKey, pageId) {
-  const data = await notionFetch(apiKey, 'GET', `/blocks/${pageId}/children?page_size=100`);
+async function fetchSyncPageContent(auth, pageId) {
+  const data = await notionFetch(auth, 'GET', `/blocks/${pageId}/children?page_size=100`);
   for (const block of data.results) {
     if (block.type !== 'code') continue;
     try {
@@ -361,15 +362,16 @@ async function fetchSyncPageContent(apiKey, pageId) {
 }
 
 /** Overwrites the sync code block in place with a fresh payload. */
-async function updateSyncBlock(apiKey, blockId, payload) {
-  await notionFetch(apiKey, 'PATCH', `/blocks/${blockId}`, {
+async function updateSyncBlock(auth, blockId, payload) {
+  await notionFetch(auth, 'PATCH', `/blocks/${blockId}`, {
     code: { language: 'json', rich_text: encodeSyncPayload(payload) },
   });
   return { ok: true };
 }
 
 module.exports = {
-  testConnection,
+  NOT_SIGNED_IN,
+  notionFetch,
   searchDatabases,
   getDatabaseSchema,
   fetchDatabasePages,

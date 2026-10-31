@@ -17,13 +17,17 @@
 
     <!-- Settings -->
     <string name="settings_title">Instellingen</string>
-    <string name="label_api_key">Notion API-sleutel</string>
-    <string name="placeholder_api_key">secret_… of ntn_…</string>
-    <string name="btn_show_key">Toon</string>
-    <string name="btn_hide_key">Verberg</string>
-    <string name="btn_test_and_save_key">Verbinding testen en opslaan</string>
-    <string name="btn_testing_key">Testen…</string>
-    <string name="btn_remove_key">Sleutel verwijderen</string>
+    <string name="label_notion_account">Notion</string>
+    <string name="sign_in_hint">Meld je aan en kies de Notion-pagina’s en -databases die de app mag gebruiken.</string>
+    <string name="btn_sign_in">Aanmelden met Notion</string>
+    <string name="signed_in_to">Aangemeld bij %1$s</string>
+    <string name="btn_sign_out">Afmelden</string>
+    <string name="btn_choose_pages">Pagina’s kiezen</string>
+    <string name="choose_pages_hint">Meld je opnieuw aan om meer (of minder) Notion-pagina’s met de app te delen.</string>
+    <string name="toast_signed_in">Aangemeld bij %1$s.</string>
+    <string name="toast_signed_out">Afgemeld bij Notion.</string>
+    <string name="toast_sign_in_failed">Aanmelden mislukt</string>
+    <string name="toast_sign_in_expired">Je aanmelding bij Notion is verlopen. Meld je opnieuw aan in Instellingen.</string>
     <string name="label_workspaces">Werkruimtes</string>
     <string name="no_workspaces_yet">Nog geen werkruimtes.</string>
     <string name="title_delete_workspace">Werkruimte verwijderen</string>
@@ -81,8 +85,6 @@
     <string name="btn_save">Opslaan</string>
 
     <!-- Toasts / errors -->
-    <string name="toast_api_key_saved">API-sleutel werkt en is opgeslagen.</string>
-    <string name="toast_api_key_removed">API-sleutel verwijderd.</string>
     <string name="toast_workspace_added">Werkruimte \"%1$s\" toegevoegd.</string>
     <string name="toast_workspace_saved">Werkruimte \"%1$s\" opgeslagen.</string>
     <string name="toast_start_error">Kon timer niet starten</string>
@@ -206,14 +208,14 @@
     <string name="title_select_start_time">Starttijd kiezen</string>
     <string name="title_select_end_time">Eindtijd kiezen</string>
     <string name="title_info">Informatie</string>
-    <string name="error_no_api_key">Geen Notion API-sleutel ingesteld.</string>
+    <string name="error_not_signed_in">Niet aangemeld bij Notion. Meld je aan in Instellingen.</string>
     <string name="error_stop_from_notification_failed">Stoppen mislukt — open de app om het opnieuw te proberen</string>
     <string name="section_expanded">Uitgevouwen</string>
     <string name="section_collapsed">Ingevouwen</string>
     <string name="label_theme_mode">Thema</string>
     <string name="sync_summary_not_connected">Niet verbonden</string>
     <string name="setup_connect_title">Verbind met Notion</string>
-    <string name="setup_connect_body">Voeg je Notion API-sleutel toe in Instellingen om tijd bij te houden.</string>
+    <string name="setup_connect_body">Meld je aan met Notion in Instellingen om tijd bij te houden.</string>
     <string name="setup_workspace_title">Voeg een werkruimte toe</string>
     <string name="setup_workspace_body">Een werkruimte koppelt de timer aan een Notion-database. Voeg er een toe in Instellingen.</string>
     <string name="setup_open_settings">Naar instellingen</string>

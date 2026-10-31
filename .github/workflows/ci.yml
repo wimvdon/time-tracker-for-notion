@@ -4,6 +4,7 @@
 #    Windows machine, and attaches it to the run so it can be tested on a PC.
 #  - "Android": release-script tests, unit tests, lint, debug + release builds, and the debug
 #    APK attached to the run so it can be tested on a phone.
+#  - "Worker": unit tests of the "Sign in with Notion" Cloudflare Worker (worker/).
 name: CI
 
 on:
@@ -134,6 +135,25 @@ jobs:
           archive: false
           retention-days: 3
           if-no-files-found: error
+
+  worker:
+    name: Worker
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: worker
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: windows/.nvmrc
+
+      - name: Unit tests
+        run: npm test
 
   android:
     name: Android

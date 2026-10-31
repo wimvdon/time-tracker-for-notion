@@ -30,6 +30,7 @@ import com.impca201.notiontimetracker.ui.theme.NotionTimeTrackerTheme
 import com.impca201.notiontimetracker.viewmodel.SettingsViewModel
 import com.impca201.notiontimetracker.viewmodel.TimerViewModel
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 
 class MainActivity : ComponentActivity() {
@@ -74,6 +75,7 @@ class MainActivity : ComponentActivity() {
 
         requestNotificationPermissionIfNeeded()
         handlePresetShortcut(intent)
+        if (savedInstanceState == null) handleSignInLink(intent)
 
         setContent {
             val settingsUiState by settingsViewModel.uiState.collectAsState()
@@ -90,6 +92,25 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         handlePresetShortcut(intent)
+        handleSignInLink(intent)
+    }
+
+    /**
+     * Finishes "Sign in with Notion": the browser opens the app with
+     * timetrackerfornotion://auth?code=…&state=… (…-debug:// for the Dev build). The app scope
+     * lets it finish even if this screen is recreated meanwhile.
+     */
+    private fun handleSignInLink(intent: Intent?) {
+        val uri = intent?.data ?: return
+        if (intent.action != Intent.ACTION_VIEW || uri.host != "auth") return
+        val app = application as NotionTimeTrackerApp
+        app.appScope.launch {
+            app.notionSession.completeSignIn(
+                code = uri.getQueryParameter("code"),
+                state = uri.getQueryParameter("state"),
+                error = uri.getQueryParameter("error"),
+            )
+        }
     }
 
     override fun onResume() {
@@ -204,10 +225,14 @@ private fun AppNavigation(
                 onBack = {
                     navController.popBackStack()
                 },
-                onApiKeyChange = settingsViewModel::setApiKey,
-                onToggleApiKeyVisible = settingsViewModel::toggleApiKeyVisible,
-                onTestAndSave = settingsViewModel::testAndSaveApiKey,
-                onRemoveApiKey = settingsViewModel::removeApiKey,
+                onSignIn = {
+                    // Notion's sign-in page, in the browser. It comes back through the app link
+                    // (handleSignInLink).
+                    runCatching {
+                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(settingsViewModel.signInUrl())))
+                    }.onFailure { e -> android.util.Log.e("MainActivity", "No browser to sign in with", e) }
+                },
+                onSignOut = settingsViewModel::signOut,
                 onMoveWorkspace = settingsViewModel::moveWorkspace,
                 onEditWorkspace = settingsViewModel::openEditWorkspace,
                 onDeleteWorkspace = settingsViewModel::deleteWorkspace,
