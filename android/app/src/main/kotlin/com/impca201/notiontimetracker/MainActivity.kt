@@ -266,10 +266,8 @@ private fun AppNavigation(
                 onTimeFormatChange = settingsViewModel::setTimeFormat,
                 onShowNotionLinkChange = settingsViewModel::setShowNotionLink,
                 onShowArchiveActionChange = settingsViewModel::setShowArchiveAction,
-                onCreateSyncPage = settingsViewModel::createSyncPage,
-                onLoadExistingSyncPage = settingsViewModel::loadExistingSyncPage,
-                onDisconnectSync = settingsViewModel::disconnectSync,
-                onSearchSyncPages = settingsViewModel::searchSyncPages
+                onSyncEnabledChange = settingsViewModel::setSyncEnabled,
+                onDeleteSyncedSettings = settingsViewModel::deleteSyncedSettings
             )
         }
     }

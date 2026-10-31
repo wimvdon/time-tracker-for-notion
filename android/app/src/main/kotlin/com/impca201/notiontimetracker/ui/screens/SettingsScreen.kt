@@ -78,10 +78,8 @@ fun SettingsScreen(
     onTimeFormatChange: (String) -> Unit = {},
     onShowNotionLinkChange: (Boolean) -> Unit = {},
     onShowArchiveActionChange: (Boolean) -> Unit = {},
-    onCreateSyncPage: (String, String) -> Unit = { _, _ -> },
-    onLoadExistingSyncPage: (String, String) -> Unit = { _, _ -> },
-    onDisconnectSync: () -> Unit = {},
-    onSearchSyncPages: suspend () -> List<NamedOption> = { emptyList() }
+    onSyncEnabledChange: (Boolean) -> Unit = {},
+    onDeleteSyncedSettings: () -> Unit = {},
 ) {
     BackHandler(onBack = onBack)
     val snackbarHostState = remember { SnackbarHostState() }
@@ -95,6 +93,7 @@ fun SettingsScreen(
                 msg.startsWith("signed_in:") ->
                     resources.getString(R.string.toast_signed_in, msg.substringAfter(":").ifBlank { "Notion" })
                 msg == "signed_out" -> resources.getString(R.string.toast_signed_out)
+                msg == "sync_deleted" -> resources.getString(R.string.toast_sync_deleted)
                 msg == "sign_in_expired" -> resources.getString(R.string.toast_sign_in_expired)
                 msg.startsWith("sign_in_failed:") ->
                     resources.getString(R.string.toast_sign_in_failed) + ": " + msg.substringAfter(":")
@@ -141,32 +140,20 @@ fun SettingsScreen(
         return
     }
 
-    // Both sync dialogs close themselves once the sync page id changes (success);
-    // on failure uiState.syncError is shown and the dialog stays open.
-    var showCreateSync by remember { mutableStateOf(false) }
-    var showLoadSync by remember { mutableStateOf(false) }
-    LaunchedEffect(uiState.syncPageId) {
-        if (uiState.syncPageId != null) {
-            showCreateSync = false
-            showLoadSync = false
-        }
-    }
-    if (showCreateSync) {
-        CreateSyncDialog(
-            syncing = uiState.syncing,
-            error = uiState.syncError,
-            onDismiss = { showCreateSync = false },
-            onSearch = onSearchSyncPages,
-            onCreate = onCreateSyncPage
-        )
-    }
-    if (showLoadSync) {
-        LoadSyncDialog(
-            syncing = uiState.syncing,
-            error = uiState.syncError,
-            onDismiss = { showLoadSync = false },
-            onSearch = onSearchSyncPages,
-            onAttach = onLoadExistingSyncPage
+    var confirmDeleteSync by remember { mutableStateOf(false) }
+    if (confirmDeleteSync) {
+        AlertDialog(
+            onDismissRequest = { confirmDeleteSync = false },
+            text = { Text(stringResource(R.string.confirm_delete_sync)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmDeleteSync = false
+                    onDeleteSyncedSettings()
+                }) { Text(stringResource(R.string.btn_delete_sync), color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmDeleteSync = false }) { Text(stringResource(R.string.btn_cancel)) }
+            }
         )
     }
 
@@ -250,30 +237,25 @@ fun SettingsScreen(
 
         item(key = "sync") {
             SettingsSection(title = stringResource(R.string.label_sync)) {
-                if (uiState.syncPageId != null) {
-                    ListItem(
-                        headlineContent = {
-                            Text(stringResource(R.string.sync_status_connected, uiState.syncPageTitle.ifBlank { uiState.syncPageId!! }))
-                        },
-                        leadingContent = { Icon(Icons.Rounded.Sync, contentDescription = null) },
-                        trailingContent = {
-                            TextButton(onClick = onDisconnectSync) {
-                                Text(stringResource(R.string.btn_disconnect_sync))
-                            }
-                        }
-                    )
-                } else SettingsBlock {
-                    Text(
-                        stringResource(R.string.sync_status_not_connected),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        OutlinedButton(onClick = { showCreateSync = true }, enabled = uiState.account != null) {
-                            Text(stringResource(R.string.btn_create_sync_page))
-                        }
-                        OutlinedButton(onClick = { showLoadSync = true }, enabled = uiState.account != null) {
-                            Text(stringResource(R.string.btn_load_existing_sync))
+                SwitchSetting(
+                    title = stringResource(R.string.label_sync_enabled),
+                    summary = stringResource(R.string.sync_hint),
+                    checked = uiState.syncEnabled,
+                    onCheckedChange = { if (uiState.account != null) onSyncEnabledChange(it) }
+                )
+                if (uiState.account != null && uiState.syncEnabled && uiState.syncError != null) {
+                    SettingsBlock {
+                        Text(
+                            uiState.syncError,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
+                }
+                if (uiState.account != null) {
+                    SettingsBlock {
+                        TextButton(onClick = { confirmDeleteSync = true }) {
+                            Text(stringResource(R.string.btn_delete_sync), color = MaterialTheme.colorScheme.error)
                         }
                     }
                 }
@@ -407,159 +389,5 @@ private fun WorkspaceListItem(
             }
         },
         modifier = Modifier.clickable(onClick = onEdit)
-    )
-}
-
-/** Dialog to create a new top-level Notion page holding the sync payload. */
-@Composable
-/**
- * Notion's API rejects `parent.workspace` for internal integrations ("aren't
- * owned by a single user"), so the new page must be created as a child of a
- * page the integration already has access to — picked here via the same
- * search-and-select pattern as [LoadSyncDialog].
- */
-private fun CreateSyncDialog(
-    syncing: Boolean,
-    error: String?,
-    onDismiss: () -> Unit,
-    onSearch: suspend () -> List<NamedOption>,
-    onCreate: (String, String) -> Unit
-) {
-    var title by remember { mutableStateOf("Time Tracker Sync") }
-    var pages by remember { mutableStateOf<List<NamedOption>>(emptyList()) }
-    var loadingPages by remember { mutableStateOf(true) }
-    var parentPage by remember { mutableStateOf<NamedOption?>(null) }
-    var searchError by remember { mutableStateOf<String?>(null) }
-
-    LaunchedEffect(Unit) {
-        loadingPages = true
-        pages = runCatching { onSearch() }.getOrElse {
-            searchError = it.message
-            emptyList()
-        }
-        loadingPages = false
-    }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.modal_title_create_sync)) },
-        text = {
-            Column {
-                OutlinedTextField(
-                    value = title,
-                    onValueChange = { title = it },
-                    placeholder = { Text(stringResource(R.string.placeholder_sync_page_title)) },
-                    singleLine = true,
-                    enabled = !syncing,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(Modifier.height(8.dp))
-                if (searchError != null) {
-                    Text(searchError!!, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-                } else {
-                    SearchableDropdown(
-                        options = pages,
-                        selected = parentPage,
-                        placeholder = stringResource(R.string.placeholder_select_sync_page),
-                        onSelect = { parentPage = it },
-                        loading = loadingPages,
-                        enabled = !syncing,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    stringResource(R.string.hint_create_sync),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                error?.let {
-                    Spacer(Modifier.height(8.dp))
-                    Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = { parentPage?.let { onCreate(it.id, title) } },
-                enabled = !syncing && title.isNotBlank() && parentPage != null
-            ) {
-                Text(stringResource(R.string.btn_create))
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.btn_cancel)) }
-        }
-    )
-}
-
-/** Dialog to attach to an existing Notion page containing a sync code block. */
-@Composable
-private fun LoadSyncDialog(
-    syncing: Boolean,
-    error: String?,
-    onDismiss: () -> Unit,
-    onSearch: suspend () -> List<NamedOption>,
-    onAttach: (String, String) -> Unit
-) {
-    var pages by remember { mutableStateOf<List<NamedOption>>(emptyList()) }
-    var loadingPages by remember { mutableStateOf(true) }
-    var selected by remember { mutableStateOf<NamedOption?>(null) }
-    var searchError by remember { mutableStateOf<String?>(null) }
-
-    LaunchedEffect(Unit) {
-        loadingPages = true
-        pages = runCatching { onSearch() }.getOrElse {
-            searchError = it.message
-            emptyList()
-        }
-        loadingPages = false
-    }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.modal_title_load_sync)) },
-        text = {
-            Column {
-                if (searchError != null) {
-                    Text(searchError!!, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-                } else {
-                    SearchableDropdown(
-                        options = pages,
-                        selected = selected,
-                        placeholder = stringResource(R.string.placeholder_select_sync_page),
-                        onSelect = { selected = it },
-                        loading = loadingPages,
-                        enabled = !syncing,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    stringResource(R.string.hint_load_sync),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                error?.let {
-                    Spacer(Modifier.height(8.dp))
-                    Text(
-                        if (it == "not_a_sync_page") stringResource(R.string.error_not_a_sync_page) else it,
-                        color = MaterialTheme.colorScheme.error,
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = { selected?.let { onAttach(it.id, it.name) } },
-                enabled = !syncing && selected != null
-            ) {
-                Text(stringResource(R.string.btn_attach))
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.btn_cancel)) }
-        }
     )
 }

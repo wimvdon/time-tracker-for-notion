@@ -86,7 +86,6 @@ data class SyncPayload(
     val showArchiveAction: Boolean? = null
 )
 
-data class SyncFetchResult(val blockId: String, val payload: SyncPayload)
 
 data class RunningTimerResult(
     val pageId: String,

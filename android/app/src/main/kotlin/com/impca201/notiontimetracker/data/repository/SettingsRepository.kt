@@ -42,8 +42,10 @@ class SettingsRepository(private val context: Context) : TokenStore {
     private val TIME_FORMAT_KEY = stringPreferencesKey("time_format")
     private val SHOW_NOTION_LINK_KEY = booleanPreferencesKey("show_notion_link")
     private val SHOW_ARCHIVE_ACTION_KEY = booleanPreferencesKey("show_archive_action")
-    private val SYNC_PAGE_ID_KEY = stringPreferencesKey("sync_page_id")
-    private val SYNC_PAGE_TITLE_KEY = stringPreferencesKey("sync_page_title")
+    // From when settings synced through a Notion page; only read to remove them.
+    private val OLD_SYNC_PAGE_ID_KEY = stringPreferencesKey("sync_page_id")
+    private val OLD_SYNC_PAGE_TITLE_KEY = stringPreferencesKey("sync_page_title")
+    private val SYNC_ENABLED_KEY = booleanPreferencesKey("sync_enabled")
     private val SETTINGS_UPDATED_AT_KEY = stringPreferencesKey("settings_updated_at")
     private val LAST_SYNCED_UPDATED_AT_KEY = stringPreferencesKey("last_synced_updated_at")
 
@@ -249,12 +251,15 @@ class SettingsRepository(private val context: Context) : TokenStore {
         context.dataStore.edit { prefs -> prefs[SHOW_ARCHIVE_ACTION_KEY] = enabled }
     }
 
-    // ---- Notion-page sync ----
+    // ---- Settings sync (sign-in server) ----
 
-    val syncPageIdFlow: Flow<String?> = context.dataStore.data.map { prefs -> prefs[SYNC_PAGE_ID_KEY] }
-    suspend fun getSyncPageId(): String? = syncPageIdFlow.first()
+    /** Whether this device syncs its settings. On unless turned off in Settings. */
+    val syncEnabledFlow: Flow<Boolean> = context.dataStore.data.map { prefs -> prefs[SYNC_ENABLED_KEY] ?: true }
+    suspend fun isSyncEnabled(): Boolean = syncEnabledFlow.first()
 
-    val syncPageTitleFlow: Flow<String> = context.dataStore.data.map { prefs -> prefs[SYNC_PAGE_TITLE_KEY] ?: "" }
+    suspend fun saveSyncEnabled(enabled: Boolean) {
+        context.dataStore.edit { prefs -> prefs[SYNC_ENABLED_KEY] = enabled }
+    }
 
     val settingsUpdatedAtFlow: Flow<String?> = context.dataStore.data.map { prefs -> prefs[SETTINGS_UPDATED_AT_KEY] }
     suspend fun getSettingsUpdatedAt(): String? = settingsUpdatedAtFlow.first()
@@ -262,18 +267,21 @@ class SettingsRepository(private val context: Context) : TokenStore {
     val lastSyncedUpdatedAtFlow: Flow<String?> = context.dataStore.data.map { prefs -> prefs[LAST_SYNCED_UPDATED_AT_KEY] }
     suspend fun getLastSyncedUpdatedAt(): String? = lastSyncedUpdatedAtFlow.first()
 
-    suspend fun saveSyncPage(pageId: String, title: String) {
-        context.dataStore.edit { prefs ->
-            prefs[SYNC_PAGE_ID_KEY] = pageId
-            prefs[SYNC_PAGE_TITLE_KEY] = title
-        }
+    suspend fun clearLastSyncedUpdatedAt() {
+        context.dataStore.edit { prefs -> prefs.remove(LAST_SYNCED_UPDATED_AT_KEY) }
     }
 
-    suspend fun clearSyncPage() {
+    /**
+     * Settings used to sync through a Notion page; they now sync through the sign-in server. The
+     * page is no longer read, and "last synced" referred to it, so both are forgotten.
+     */
+    suspend fun removeOldSyncPage() {
         context.dataStore.edit { prefs ->
-            prefs.remove(SYNC_PAGE_ID_KEY)
-            prefs.remove(SYNC_PAGE_TITLE_KEY)
-            prefs.remove(LAST_SYNCED_UPDATED_AT_KEY)
+            if (prefs.contains(OLD_SYNC_PAGE_ID_KEY)) {
+                prefs.remove(OLD_SYNC_PAGE_ID_KEY)
+                prefs.remove(OLD_SYNC_PAGE_TITLE_KEY)
+                prefs.remove(LAST_SYNCED_UPDATED_AT_KEY)
+            }
         }
     }
 

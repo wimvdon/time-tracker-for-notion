@@ -45,14 +45,15 @@ export default function Settings() {
   const setLocale = useStore((s) => s.setLocale);
   const setDateFormat = useStore((s) => s.setDateFormat);
   const setTimeFormat = useStore((s) => s.setTimeFormat);
-  const syncPageId = useStore((s) => s.syncPageId);
-  const syncPageTitle = useStore((s) => s.syncPageTitle);
-  const disconnectSync = useStore((s) => s.disconnectSync);
+  const syncEnabled = useStore((s) => s.syncEnabled);
+  const syncing = useStore((s) => s.syncing);
+  const syncError = useStore((s) => s.syncError);
+  const setSyncEnabled = useStore((s) => s.setSyncEnabled);
+  const deleteSyncedSettings = useStore((s) => s.deleteSyncedSettings);
+  const [confirmingDeleteSync, setConfirmingDeleteSync] = useState(false);
 
   const [showAddWorkspace, setShowAddWorkspace] = useState(false);
   const [editingWorkspace, setEditingWorkspace] = useState(null);
-  const [showCreateSync, setShowCreateSync] = useState(false);
-  const [showLoadSync, setShowLoadSync] = useState(false);
 
 
   return (
@@ -122,43 +123,52 @@ export default function Settings() {
         )}
       </div>
 
-      {/* Notion-page sync */}
+      {/* Settings sync through the sign-in server */}
       <div>
         <label className="block text-xs text-fg2 mb-1">{t('labelSync')}</label>
-        {syncPageId ? (
-          <div className="flex items-center justify-between bg-control border border-stroke rounded-md px-3 py-2 gap-2">
-            <span className="text-sm truncate flex items-center gap-1.5">
-              <ArrowClockwise20Regular className="w-4 h-4 shrink-0 text-success" />
-              {t('syncStatusConnected').replace('{title}', syncPageTitle || syncPageId)}
-            </span>
-            <button
-              onClick={disconnectSync}
-              className="text-xs text-fg3 hover:text-danger shrink-0"
-            >
-              {t('btnDisconnectSync')}
-            </button>
-          </div>
-        ) : (
-          <>
-            <p className="text-xs text-fg3 mb-2">{t('syncStatusNotConnected')}</p>
-            <div className="flex flex-wrap gap-2">
+        <label className="flex items-center gap-2 text-sm cursor-pointer">
+          <input
+            type="checkbox"
+            checked={syncEnabled}
+            disabled={!signedIn}
+            onChange={(e) => setSyncEnabled(e.target.checked)}
+            className="accent-accent"
+          />
+          <span className="flex items-center gap-1.5">
+            {t('labelSyncEnabled')}
+            {syncEnabled && signedIn && syncing && <ArrowClockwise20Regular className="w-4 h-4 text-fg3" />}
+          </span>
+        </label>
+        <p className="text-xs text-fg3 mt-1">{t('syncHint')}</p>
+        {syncEnabled && signedIn && syncError && <p className="text-xs text-danger mt-1">{syncError}</p>}
+        {signedIn && (
+          confirmingDeleteSync ? (
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <span className="text-xs text-fg2">{t('confirmDeleteSync')}</span>
               <button
-                onClick={() => setShowCreateSync(true)}
-                disabled={!signedIn}
-                className="px-3 py-1.5 rounded-md bg-control hover:bg-control-hover active:bg-control-pressed border border-stroke disabled:opacity-50 text-sm flex items-center gap-1.5"
+                onClick={() => {
+                  setConfirmingDeleteSync(false);
+                  deleteSyncedSettings();
+                }}
+                className="px-3 py-1.5 rounded-md text-sm text-danger hover:bg-subtle-hover"
               >
-                <ArrowClockwise20Regular className="w-4 h-4" />
-                {t('btnCreateSyncPage')}
+                {t('btnDeleteSync')}
               </button>
               <button
-                onClick={() => setShowLoadSync(true)}
-                disabled={!signedIn}
-                className="px-3 py-1.5 rounded-md bg-control hover:bg-control-hover active:bg-control-pressed border border-stroke disabled:opacity-50 text-sm"
+                onClick={() => setConfirmingDeleteSync(false)}
+                className="px-3 py-1.5 rounded-md text-sm text-fg2 hover:bg-subtle-hover"
               >
-                {t('btnLoadExistingSync')}
+                {t('btnCancel')}
               </button>
             </div>
-          </>
+          ) : (
+            <button
+              onClick={() => setConfirmingDeleteSync(true)}
+              className="mt-1 text-xs text-fg3 hover:text-danger"
+            >
+              {t('btnDeleteSync')}
+            </button>
+          )
         )}
       </div>
 
@@ -340,8 +350,6 @@ export default function Settings() {
           onClose={() => setEditingWorkspace(null)}
         />
       )}
-      {showCreateSync && <CreateSyncModal onClose={() => setShowCreateSync(false)} />}
-      {showLoadSync && <LoadSyncModal onClose={() => setShowLoadSync(false)} />}
       {confirmingRemove && (
         <div className="fixed inset-0 bg-smoke flex items-center justify-center z-[60] px-4">
           <div className="bg-dialog border border-surface-stroke rounded-lg shadow-dialog p-4 max-w-xs w-full">
@@ -370,162 +378,6 @@ export default function Settings() {
           </div>
         </div>
       )}
-    </div>
-  );
-}
-
-/**
- * Dialog to create a new Notion page holding the sync payload. Notion's API
- * rejects `parent.workspace` for internal integrations ("aren't owned by a
- * single user"), so the page must be created as a child of a page the
- * integration already has access to — the user picks one here.
- */
-function CreateSyncModal({ onClose }) {
-  const createSyncPage = useStore((s) => s.createSyncPage);
-  const [title, setTitle] = useState('Time Tracker Sync');
-  const [pages, setPages] = useState({ loading: true, error: null, items: [] });
-  const [parentPageId, setParentPageId] = useState('');
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState(null);
-
-  useEffect(() => {
-    (async () => {
-      try {
-        const items = await window.notionAPI.searchPages();
-        setPages({ loading: false, error: null, items });
-      } catch (err) {
-        setPages({ loading: false, error: errorMessage(err), items: [] });
-      }
-    })();
-  }, []);
-
-  const handleCreate = async () => {
-    if (!title.trim() || !parentPageId) return;
-    setSaving(true);
-    setError(null);
-    const ok = await createSyncPage(parentPageId, title);
-    setSaving(false);
-    if (ok) onClose();
-    else setError(useStore.getState().syncError || t('errorNotASyncPage'));
-  };
-
-  const pageOptions = pages.items.map((p) => ({ value: p.id, label: p.name }));
-
-  return (
-    <div className="fixed inset-0 bg-smoke flex items-center justify-center z-40 p-4">
-      <div className="bg-dialog border border-surface-stroke rounded-lg shadow-dialog p-4 w-full max-w-sm flex flex-col gap-4">
-        <h2 className="text-sm font-semibold">{t('modalTitleCreateSync')}</h2>
-        <Field label={t('placeholderSyncPageTitle')}>
-          <input
-            type="text"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder={t('placeholderSyncPageTitle')}
-            className="w-full bg-control border border-stroke rounded-md px-3 py-2 text-sm"
-          />
-        </Field>
-        <Field label={t('labelParentPage')} hint={t('hintCreateSync')}>
-          {pages.error ? (
-            <div className="text-xs bg-danger-bg border border-danger-stroke text-fg1 rounded-md p-2">
-              {pages.error}
-            </div>
-          ) : (
-            <SearchableSelect
-              value={parentPageId}
-              onChange={setParentPageId}
-              options={pageOptions}
-              placeholder={pages.loading ? t('loadingPages') : t('placeholderSelectSyncPage')}
-              disabled={pages.loading}
-              loading={pages.loading}
-              className="w-full"
-            />
-          )}
-        </Field>
-        {error && <p className="text-xs text-danger">{error}</p>}
-        <div className="flex justify-end gap-2">
-          <button onClick={onClose} className="px-3 py-1.5 rounded-md bg-control hover:bg-control-hover active:bg-control-pressed border border-stroke text-sm">
-            {t('btnCancel')}
-          </button>
-          <button
-            onClick={handleCreate}
-            disabled={saving || !title.trim() || !parentPageId}
-            className="px-3 py-1.5 rounded-md bg-accent hover:bg-accent-hover active:bg-accent-pressed text-on-accent disabled:opacity-50 text-sm font-semibold"
-          >
-            {t('btnCreate')}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/** Dialog to attach to an existing Notion page containing a sync code block. */
-function LoadSyncModal({ onClose }) {
-  const loadExistingSyncPage = useStore((s) => s.loadExistingSyncPage);
-  const [pages, setPages] = useState({ loading: true, error: null, items: [] });
-  const [pageId, setPageId] = useState('');
-  const [attaching, setAttaching] = useState(false);
-  const [error, setError] = useState(null);
-
-  useEffect(() => {
-    (async () => {
-      try {
-        const items = await window.notionAPI.searchPages();
-        setPages({ loading: false, error: null, items });
-      } catch (err) {
-        setPages({ loading: false, error: errorMessage(err), items: [] });
-      }
-    })();
-  }, []);
-
-  const handleAttach = async () => {
-    if (!pageId) return;
-    setAttaching(true);
-    setError(null);
-    const selected = pages.items.find((p) => p.id === pageId);
-    const ok = await loadExistingSyncPage(pageId, selected?.name || '');
-    setAttaching(false);
-    if (ok) onClose();
-    else setError(useStore.getState().syncError || t('errorNotASyncPage'));
-  };
-
-  const pageOptions = pages.items.map((p) => ({ value: p.id, label: p.name }));
-
-  return (
-    <div className="fixed inset-0 bg-smoke flex items-center justify-center z-40 p-4">
-      <div className="bg-dialog border border-surface-stroke rounded-lg shadow-dialog p-4 w-full max-w-sm flex flex-col gap-4">
-        <h2 className="text-sm font-semibold">{t('modalTitleLoadSync')}</h2>
-        <Field hint={t('hintLoadSync')}>
-          {pages.error ? (
-            <div className="text-xs bg-danger-bg border border-danger-stroke text-fg1 rounded-md p-2">
-              {pages.error}
-            </div>
-          ) : (
-            <SearchableSelect
-              value={pageId}
-              onChange={setPageId}
-              options={pageOptions}
-              placeholder={pages.loading ? t('loadingPages') : t('placeholderSelectSyncPage')}
-              disabled={pages.loading}
-              loading={pages.loading}
-              className="w-full"
-            />
-          )}
-        </Field>
-        {error && <p className="text-xs text-danger">{error}</p>}
-        <div className="flex justify-end gap-2">
-          <button onClick={onClose} className="px-3 py-1.5 rounded-md bg-control hover:bg-control-hover active:bg-control-pressed border border-stroke text-sm">
-            {t('btnCancel')}
-          </button>
-          <button
-            onClick={handleAttach}
-            disabled={attaching || !pageId}
-            className="px-3 py-1.5 rounded-md bg-accent hover:bg-accent-hover active:bg-accent-pressed text-on-accent disabled:opacity-50 text-sm font-semibold"
-          >
-            {t('btnAttach')}
-          </button>
-        </div>
-      </div>
     </div>
   );
 }

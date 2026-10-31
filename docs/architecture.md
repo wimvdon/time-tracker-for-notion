@@ -2,13 +2,12 @@
 
 ## General design
 
-The repository holds two independent clients with the same feature set. Each client calls the Notion REST API directly with the user's own Notion sign-in. The only server of its own is a small sign-in server (`worker/`, see [Sign in with Notion](#sign-in-with-notion)) that holds Notion's client secret and stores nothing.
+The repository holds two independent clients with the same feature set. Each client calls the Notion REST API directly with the user's own Notion sign-in. The only server of its own is a small Cloudflare Worker (`worker/`) that holds Notion's client secret ([Sign in with Notion](#sign-in-with-notion)) and keeps each user's synced settings ([Settings sync](#settings-sync)).
 
 ```
                      ┌────────────────────────────────────────────┐
                      │                Notion API                  │
                      │  Time Entries DB(s)  ·  Projects DB  ·     │
-                     │  Sync page (JSON code block)               │
                      └───────────▲───────────────────▲────────────┘
                                  │ HTTPS             │ HTTPS
            ┌─────────────────────┴───┐   ┌───────────┴────────────────────┐
@@ -20,11 +19,10 @@ The repository holds two independent clients with the same feature set. Each cli
            └─────────────────────────┘   └────────────────────────────────┘
 ```
 
-Notion plays three roles:
+Notion plays two roles:
 
 1. **System of record:** every timer is a page in a user-chosen *Time Entries* database.
 2. **Shared runtime state:** a timer is "running" when its status property equals the workspace's *running* option. Any device can list, adopt or stop it.
-3. **Settings sync:** workspaces, presets and display preferences live as JSON in a code block on a page the user picks.
 
 The two codebases share no code. They agree on Notion page shapes and the sync payload format, and both read each other's variants (locale tags, preset value shapes).
 
@@ -57,7 +55,7 @@ The two codebases share no code. They agree on Notion page shapes and the sync p
 | `NotionRepository` | `data/repository` | Passes the sign-in (`NotionSession`) to every call. Caches schemas, related pages and users for 60 s, and serves stale data when a refetch fails. |
 | `SettingsRepository` | `data/repository` | DataStore `notion_settings` for workspaces and the active timer (JSON via kotlinx.serialization) and display settings. The Notion sign-in is in EncryptedSharedPreferences. |
 | `NotionSession` | `data/repository` | Sign in with Notion and token renewal (same rules as Windows `notionAuth.cjs`); `AuthClient` (`data/api`) talks to the sign-in server |
-| `SettingsSyncer` | `data/repository` | Pull-or-push algorithm for the sync page, shared by Settings and the timer refresh loop |
+| `SettingsSyncer` | `data/repository` | Settings sync through the worker (`SyncClient` in `data/api`, rule in `SyncDecision`), shared by Settings and the timer refresh loop |
 | `TimerViewModel` / `SettingsViewModel` | `viewmodel` | All screen logic: start/stop, rounding, presets, running and recent lists, 60 s refresh |
 | `TimerForegroundService` | `service` | Ongoing notification with live elapsed time and a **Stop** action. Stops the entry in Notion itself, so it works with the app closed. |
 | `ShortcutHelper` | root | Up to 4 presets as dynamic launcher shortcuts |
@@ -94,7 +92,7 @@ Every minute, when signed in with workspaces:
 2. If the local active timer is no longer running in Notion, clear it: "Timer was stopped on another device."
 3. If the active page no longer exists, show the "Page not found" dialog.
 4. Re-read the active page's properties so edits made in Notion appear locally.
-5. Run a settings sync if a sync page is configured.
+5. Run a settings sync, unless it is turned off on this device.
 
 Lists are merged by page id to avoid flicker. Timers stopped locally within the last minute are filtered out of the running list, because Notion's query can still return them briefly.
 
@@ -131,21 +129,36 @@ Requests: [api.md](api.md#5-sign-in-server).
   network has trouble, the sign-in is kept and only that call fails.
 - **Choose pages** signs in again: Notion's consent page is where the shared pages are picked.
 - **Upgrade.** An API key saved by an older version is deleted on start; the user signs in once.
-  Workspaces, presets and the sync page are kept.
+  Workspaces and presets are kept.
 
 ### Settings sync
 
-`syncNow` compares the remote payload's `updatedAt` with the local `settingsUpdatedAt`:
+Workspaces, presets and display preferences sync between devices through the worker
+(`worker/src/sync.js`, `GET`/`PUT`/`DELETE /settings`). The app sends its Notion token; the worker
+asks Notion who it belongs to and keeps one copy per Notion workspace and user, in a Durable
+Object per user (so two devices writing at once are handled one after the other). It is on by
+default; **Settings › Sync** turns it off per device, and **Delete synced settings** removes the
+server copy and turns it off on that device.
 
-- **Remote newer:** apply the remote payload (workspaces, theme, locale, date and time format, link and archive toggles).
-- **Local edits not yet pushed** (`settingsUpdatedAt ≠ lastSyncedUpdatedAt`): overwrite the code block with the local snapshot.
+Every sync (at start, after signing in, every 60 seconds, after a settings change) fetches the
+server copy and applies one rule, shared by `src/lib/syncDecision.js` and `SyncDecision.kt`:
+
+- **Server newer** than the local `settingsUpdatedAt`: apply it (workspaces, theme, locale, date
+  and time format, link and archive toggles).
+- **Server empty:** push this device's settings, unless it has none at all (a new install never
+  wipes another device's settings with an empty list).
+- **Local edits not yet pushed** (`settingsUpdatedAt ≠ lastSyncedUpdatedAt`): push.
 - **Otherwise:** nothing.
 
-It is last-writer-wins at whole-payload granularity. The Notion sign-in and device-only settings (always on top, start with Windows, Android dynamic colour) are never synced.
+The server only accepts a push that is newer than what it has; otherwise it answers with its
+copy, which the app applies. It is last-writer-wins for the whole payload. The Notion sign-in
+and device-only settings (always on top, start with Windows, Android dynamic colour, sync on/off)
+are never synced. The Notion sync page of earlier versions is no longer read; its settings
+(`syncPageId`, …) are deleted on start.
 
 ## Patterns used
 
-- **Thin client, no backend.** Each user's own sign-in talks to their own workspace; the sign-in server only swaps codes and renews tokens.
+- **Thin client, small backend.** Each user's own sign-in talks to their own workspace; the worker only swaps codes, renews tokens and keeps the synced settings.
 - **Process isolation (Windows).** `contextIsolation: true`, `nodeIntegration: false`, navigation and `window.open` blocked, strict CSP in production, UI served from `app://bundle/`, every IPC message checked to come from the app's page, Electron fuses on. Notion requests (and so the token) stay in the main process; the renderer only learns whether it is signed in and to which workspace.
 - **Single store / MVVM.** Zustand on Windows and ViewModel + `StateFlow` on Android hold all logic; views are declarative.
 - **Repository + cache (Android).** `NotionRepository` hides the token and caches slow-changing metadata.
@@ -159,7 +172,8 @@ It is last-writer-wins at whole-payload granularity. The Notion sign-in and devi
 | Notion sign-in (tokens, workspace name) | electron-store, encrypted with `safeStorage` (Windows DPAPI, tied to the Windows user) | EncryptedSharedPreferences (AES-256). Falls back to recreating it, then to plain prefs if the keystore fails. Never backed up. |
 | Workspaces, presets, active timer, preferences | electron-store `config.json` | DataStore `notion_settings` (JSON strings for structured values). Backed up. |
 | Time entries | Notion | Notion |
-| Shared settings | Notion sync page | Notion sync page |
+| Shared settings | Sync server (`worker/`), one copy per Notion user | same |
+| Sync on or off | electron-store `syncEnabled` | DataStore `sync_enabled` |
 
 **Android backup.** Android's own backup (to the Google account) and phone-to-phone transfer copy
 only `notion_settings`, so workspaces, presets and preferences come back on a new phone; you only

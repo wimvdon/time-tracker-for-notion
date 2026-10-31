@@ -31,7 +31,7 @@ Only a **Workspace Owner** can create a connection.
 4. Copy the **Installation access token** (starts with `ntn_` or `secret_`). Treat it like a password.
 5. Open the page that contains your database › **•••** › **Connections** › **Add connection** › `Time Tracker` › **Confirm**.
 
-Everything inside that page is included. If you'll use settings sync, the page where the sync page lives must be connected too.
+Everything inside that page is included.
 
 ## 2. Connect the app
 
@@ -124,22 +124,13 @@ Required extra fields (marked *) may stay empty in a preset: they only have to b
 
 ## 5. Same settings on every device
 
-Settings sync copies these through a Notion page:
+Settings sync copies these between your devices, through Time Tracker's sign-in server:
 - workspaces, extra fields, presets, rounding and colours;
 - appearance, language and date/time format.
 
 It does **not** copy your Notion sign-in or device-only options (**Keep window on top**, **Start with Windows**, Android dynamic colour).
 
-**First device:**
-1. **Settings** › **Sync** › **Create new**.
-2. Enter a page title.
-3. Pick a parent page that is connected to your key (**Create inside** on Windows, **Select a page…** on Android).
-4. **Create**. Expect **Sync page created**.
-
-**Other devices:**
-1. Add the key.
-2. **Sync** › **Load existing**.
-3. Choose the page › **Attach**.
+Sync is on by default: sign in with the same Notion account in the same workspace on each device, and the settings follow. A new device with no workspaces takes them from the server. To stop it on one device: **Settings** › **Sync** › untick **Sync settings between my devices**. **Delete synced settings** removes the copy on the server and turns sync off on that device.
 
 Changes reach other devices within about a minute. If the same settings changed on two devices, the most recent save wins as a whole.
 

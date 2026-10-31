@@ -188,7 +188,7 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
                         loadRecentEntries()
                     }
                 }
-                if (state.signedIn && settingsRepo.getSyncPageId() != null) {
+                if (state.signedIn && settingsRepo.isSyncEnabled()) {
                     runCatching { syncer.syncNow() }.onSuccess { refreshSettings() }
                 }
             }
@@ -264,7 +264,7 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
                 applyPresetById(pending.first, pending.second)
             }
 
-            if (signedIn && settingsRepo.getSyncPageId() != null) {
+            if (signedIn && settingsRepo.isSyncEnabled()) {
                 runCatching { syncer.syncNow() }.onSuccess { refreshSettings() }
             }
         } catch (e: Exception) {
@@ -522,7 +522,7 @@ class TimerViewModel(private val app: Application) : AndroidViewModel(app) {
             }
         }
         viewModelScope.launch {
-            if (settingsRepo.getSyncPageId() != null) {
+            if (settingsRepo.isSyncEnabled()) {
                 runCatching { syncer.syncNow() }.onSuccess { refreshSettings() }
             }
         }

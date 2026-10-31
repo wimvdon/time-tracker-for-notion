@@ -2,7 +2,7 @@
 //
 // Notion's OAuth needs a client secret to swap the one-time sign-in code for a token. A secret
 // can't be kept inside an app people download, so this worker holds it and does only that swap
-// (and the token refresh). It stores nothing: everything it needs travels in a signed `state`.
+// (and the token refresh). Sign-in stores nothing: everything it needs travels in a signed `state`.
 //
 // Flow (see docs/architecture.md, "Sign in with Notion"):
 //  1. The app makes a random `verifier` and opens  /start?platform=…&challenge=sha256(verifier)

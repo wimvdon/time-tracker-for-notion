@@ -8,7 +8,7 @@
 | [🚀 Installation](docs/installation.md) | Requirements and steps to run the project |
 | [🧠 Technical decisions](docs/decisions.md) | Trade-offs and design justifications |
 | [📖 Usage guide](docs/usage.md) | Notion setup, tracking time, presets, sync |
-| [🔌 API](docs/api.md) | Notion API calls, sync page format, IPC bridge, launch arguments |
+| [🔌 API](docs/api.md) | Notion API calls, synced settings format, IPC bridge, launch arguments, sign-in and sync server |
 | [🧪 Testing](docs/testing.md) | How to run tests and what they cover |
 
 ---
@@ -22,7 +22,7 @@ Press **Start** when you begin working and **Stop** when you're done. Time Track
   - Fills in the end time and sets *Done* when it stops.
   - Optional time rounding, extra database fields, presets and one-click restarts of recent entries.
 - **What problem it solves:** Notion has no built-in timer. Tracking time there means typing dates by hand or wiring up buttons and formulas. This app keeps the data in Notion, where you already report on it, and makes recording it a single click.
-- **Real use case:** a freelancer tracks client work in a *Time Entries* database related to a *Projects* database. They start timers from the Windows tray during the day and from the phone notification on the go. Both devices share workspaces and presets through a Notion sync page.
+- **Real use case:** a freelancer tracks client work in a *Time Entries* database related to a *Projects* database. They start timers from the Windows tray during the day and from the phone notification on the go. Both devices share workspaces and presets through settings sync.
 
 ## Quick start
 
@@ -70,9 +70,9 @@ Details: [docs/installation.md](docs/installation.md).
 
 ## Architecture (summary)
 
-Two independent clients talk directly to the Notion API with the user's own Notion sign-in. A small sign-in server (`worker/`, a Cloudflare Worker) only holds Notion's client secret for "Sign in with Notion" and stores nothing. Notion is both the data store for time entries and the shared state between devices:
+Two independent clients talk directly to the Notion API with the user's own Notion sign-in. A small server (`worker/`, a Cloudflare Worker) holds Notion's client secret for "Sign in with Notion" and keeps each user's synced settings. Notion is both the data store for time entries and the shared state between devices:
 - **Running timers:** a page whose status is the "running" option.
-- **Settings:** a JSON code block on a "sync page", merged by "newest `updatedAt` wins".
+- **Settings:** one JSON copy per Notion user on the worker, merged by "newest `updatedAt` wins".
 
 On Windows the Notion token and all HTTP calls stay in the Electron main process; the React renderer reaches them only through a narrow preload bridge. Details: [docs/architecture.md](docs/architecture.md).
 

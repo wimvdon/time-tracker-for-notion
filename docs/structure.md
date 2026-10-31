@@ -17,9 +17,9 @@ time-tracker-for-notion/
 ├── PRIVACY.md                        Privacy policy (both apps)
 ├── README.md
 ├── docs/
-├── worker/                           "Sign in with Notion" server (Cloudflare Worker, no dependencies)
+├── worker/                           "Sign in with Notion" and settings sync server (Cloudflare Worker, no dependencies)
 │   ├── wrangler.toml                 Worker name and the timetracker-signin.wim.to domain (secrets live in Cloudflare)
-│   └── src/                          index.js (routes), auth.js (signed state, token swap), page.js (browser pages), index.test.js
+│   └── src/                          index.js (routes), auth.js (signed state, token swap), sync.js (settings per user), page.js (browser pages), tests
 ├── windows/                          Electron desktop app
 │   ├── .nvmrc                        Node.js version (24), used by CI and for development
 │   ├── package.json                  Scripts, dependencies, electron-builder config (NSIS → ../release)
@@ -34,6 +34,7 @@ time-tracker-for-notion/
 │   ├── electron/
 │   │   ├── main.cjs                  Window, tray, IPC handlers (sender-checked), app:// protocol, lifecycle
 │   │   ├── notionAuth.cjs            "Sign in with Notion" (browser + local callback) and token renewal, unit tested
+│   │   ├── settingsSync.cjs          Settings sync with the worker (token renewal on 401), unit tested
 │   │   ├── notionTokens.cjs          The Notion sign-in encrypted at rest with safeStorage (DPAPI), unit tested
 │   │   ├── bundlePath.cjs            Safe app://bundle/ → dist/ file mapping, unit tested
 │   │   ├── preload.cjs               contextBridge → window.notionAPI
@@ -84,9 +85,9 @@ time-tracker-for-notion/
             │   ├── ShortcutHelper.kt         Preset launcher shortcuts
             │   ├── LocaleHelper.kt           In-app language override
             │   ├── data/
-            │   │   ├── api/                  NotionClient (HTTP), AuthClient (sign-in server, PKCE), NotionJson (JSON helpers), SyncPayloadJson (sync payload)
+            │   │   ├── api/                  NotionClient (HTTP), AuthClient (sign-in server, PKCE), SyncClient (settings sync), NotionJson (JSON helpers), SyncPayloadJson (sync payload)
             │   │   ├── models/Models.kt      Workspace, PropertyMap, Preset, ActiveTimer, SyncPayload, …
-            │   │   └── repository/           SettingsRepository, NotionRepository, NotionSession (sign-in, token renewal), SettingsSyncer
+            │   │   └── repository/           SettingsRepository, NotionRepository, NotionSession (sign-in, token renewal), SettingsSyncer + SyncDecision (settings sync)
             │   ├── service/
             │   │   └── TimerForegroundService.kt
             │   ├── ui/

@@ -178,20 +178,11 @@
 
     <!-- Notion-page sync -->
     <string name="label_sync">Sync</string>
-    <string name="sync_status_not_connected">Not connected. Syncs workspaces, chips and settings between devices.</string>
-    <string name="sync_status_connected">Synced with “%1$s”</string>
-    <string name="btn_create_sync_page">Create new</string>
-    <string name="btn_load_existing_sync">Load existing</string>
-    <string name="btn_disconnect_sync">Disconnect</string>
-    <string name="modal_title_create_sync">Create sync page</string>
-    <string name="modal_title_load_sync">Attach to existing page</string>
-    <string name="placeholder_sync_page_title">Page title</string>
-    <string name="placeholder_select_sync_page">Select a page…</string>
-    <string name="hint_create_sync">Enter a page title and choose a parent page. Make sure the parent page is shared with your Notion integration.</string>
-    <string name="hint_load_sync">Pick a page that already contains a Time Tracker sync code (created from another device).</string>
-    <string name="error_not_a_sync_page">This page doesn\'t contain a Time Tracker sync code.</string>
-    <string name="btn_create">Create</string>
-    <string name="btn_attach">Attach</string>
+    <string name="label_sync_enabled">Sync settings between my devices</string>
+    <string name="sync_hint">Workspaces, presets and display options, stored on Time Tracker’s sign-in server under your Notion account.</string>
+    <string name="btn_delete_sync">Delete synced settings</string>
+    <string name="confirm_delete_sync">Delete the copy on the server and stop syncing on this device?</string>
+    <string name="toast_sync_deleted">Synced settings deleted. Sync is off on this device.</string>
 
     <string name="language_system">System</string>
     <string name="language_en">English</string>
@@ -213,7 +204,6 @@
     <string name="section_expanded">Expanded</string>
     <string name="section_collapsed">Collapsed</string>
     <string name="label_theme_mode">Theme</string>
-    <string name="sync_summary_not_connected">Not connected</string>
     <string name="setup_connect_title">Connect to Notion</string>
     <string name="setup_connect_body">Sign in with Notion in Settings to start tracking time.</string>
     <string name="setup_workspace_title">Add a workspace</string>
