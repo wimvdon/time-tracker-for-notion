@@ -9,11 +9,11 @@ This is a one-time setup. Each value goes in exactly one place:
 
 | Value | Where it comes from | Where it goes |
 |---|---|---|
-| OAuth client ID | Notion (your public connection) | Cloudflare, worker secret `NOTION_CLIENT_ID` |
+| OAuth client ID | Notion (your public connection) | `worker/wrangler.toml` (`[vars]`): it is public |
 | OAuth client secret | Notion (your public connection) | Cloudflare, worker secret `NOTION_CLIENT_SECRET` |
 | State secret | You make it up (a long random password) | Cloudflare, worker secret `STATE_SECRET` |
 
-None of these ever go in the repository or in an app.
+The two secrets never go in the repository or in an app.
 
 ## 1. Notion: the public connection
 
@@ -47,9 +47,8 @@ domain `wim.to` must be in the same Cloudflare account; the worker adds
 ## 3. Cloudflare: the worker's secrets
 
 After the first deploy: Cloudflare → **Workers & Pages → time-tracker-for-notion → Settings →
-Variables and Secrets → Add**, type **Secret**, three times:
+Variables and Secrets → Add**, type **Secret**, twice:
 
-- `NOTION_CLIENT_ID`: the OAuth client ID from step 1.
 - `NOTION_CLIENT_SECRET`: the OAuth client secret from step 1.
 - `STATE_SECRET`: a long random password (40+ characters, from a password manager). Changing it
   later only cancels sign-ins that are in progress at that moment.

@@ -1,10 +1,14 @@
 # Cloudflare Worker for "Sign in with Notion". Cloudflare deploys it from this repository
 # (Workers Builds, root directory worker/) on every push to main. The name must match there.
-# Secrets (NOTION_CLIENT_ID, NOTION_CLIENT_SECRET, STATE_SECRET) are set in the Cloudflare
-# dashboard, never here. See docs/notion-sign-in-setup.md.
+# Secrets (NOTION_CLIENT_SECRET, STATE_SECRET) are set in the Cloudflare dashboard, never here. See docs/notion-sign-in-setup.md.
 name = "time-tracker-for-notion"
 main = "src/index.js"
 compatibility_date = "2026-10-01"
 workers_dev = false
 # Notion's redirect URL is https://timetracker-signin.wim.to/callback (the wim.to zone is on Cloudflare).
 routes = [{ pattern = "timetracker-signin.wim.to", custom_domain = true }]
+
+[vars]
+# Notion's OAuth client ID is public (it is part of every sign-in link), so it lives here.
+# Plain variables set in the dashboard are replaced by this list on every deploy.
+NOTION_CLIENT_ID = "40ad872b-594c-81b9-a29f-0037f4947fb3"

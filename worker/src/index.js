@@ -1,6 +1,6 @@
 // Cloudflare Worker entry point. The logic is in auth.js; this file only routes requests.
-// Secrets (set in the Cloudflare dashboard, never in this repository): NOTION_CLIENT_ID,
-// NOTION_CLIENT_SECRET and STATE_SECRET. See docs/notion-sign-in-setup.md.
+// NOTION_CLIENT_ID is in wrangler.toml (public). Secrets, set in the Cloudflare dashboard and never
+// in this repository: NOTION_CLIENT_SECRET and STATE_SECRET. See docs/notion-sign-in-setup.md.
 
 import {
   appRedirect,
