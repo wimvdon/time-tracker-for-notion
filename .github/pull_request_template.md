@@ -32,7 +32,7 @@
 
 ## Checklist
 
-- [ ] Windows: `npm run check` passes in `windows/`; Android: `./gradlew testDebugUnitTest lintDebug assembleDebug` passes in `android/`; all CI jobs are green
+- [ ] Windows: `npm run check` passes in `windows/`; Android: `./gradlew testDebugUnitTest lintDebug` passes in `android/`; all CI jobs are green
 - [ ] Unit tests added or updated for every logic change
 - [ ] No tests, lint rules, CI steps or workflows removed or weakened
 - [ ] Windows security setup unchanged (sandbox, context isolation, CSP, fuses, IPC sender checks)
