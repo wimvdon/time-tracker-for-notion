@@ -14,8 +14,9 @@ time.
 2. **Before finishing, run and fix everything** for the app(s) you touched:
    ```
    cd windows && npm ci && npm run check          # lint, unit tests, UI build (Node.js version in windows/.nvmrc)
-   cd android && ./gradlew testDebugUnitTest lintDebug assembleDebug
+   cd android && ./gradlew testDebugUnitTest lintDebug
    ```
+   CI builds the debug and release APKs on every push, so don't build them here unless a step below asks for it.
    If you touched `android/scripts/` or the workflows, also run
    `cd android && python3 -m unittest discover -s scripts/tests`.
    If you touched `worker/`, run `cd worker && npm test`.

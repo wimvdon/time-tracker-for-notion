@@ -1,5 +1,14 @@
 # Technical decisions
 
+## 2026-11-01: Claude Code sessions don't build the APK before pushing
+
+Sessions ran `./gradlew testDebugUnitTest lintDebug assembleDebug` before every push, and CI then
+runs the same and more. The APK built in the session was never used: the owner installs the one
+from CI. Sessions now run only the unit tests and lint, which catch nearly every problem and
+compile the app's code and resources. CI still builds the debug and release APKs, so a packaging
+problem still turns the pull request red. Rejected: no local checks at all (every test or lint
+failure would then cost a CI round trip).
+
 ## 2026-10-31: Settings sync through the worker instead of a Notion page
 
 The owner asked to sync settings through the worker instead of the JSON code block on a Notion
