@@ -86,7 +86,7 @@ time-tracker-for-notion/
             │   ├── LocaleHelper.kt           In-app language override
             │   ├── data/
             │   │   ├── api/                  NotionClient (HTTP), AuthClient (sign-in server, PKCE), SyncClient (settings sync), NotionJson (JSON helpers), SyncPayloadJson (sync payload)
-            │   │   ├── models/Models.kt      Workspace, PropertyMap, Preset, ActiveTimer, SyncPayload, …
+            │   │   ├── models/Models.kt      Workspace, PropertyMap, Preset, ActiveTimer, SyncPayload, … (plus ShortcutIconColor: launcher shortcut colour)
             │   │   └── repository/           SettingsRepository, NotionRepository, NotionSession (sign-in, token renewal), SettingsSyncer + SyncDecision (settings sync)
             │   ├── service/
             │   │   └── TimerForegroundService.kt
